@@ -26,44 +26,9 @@ func NewHandler(db *gorm.DB) *Handler {
 
 // SetupRoutes configures all API routes
 func (h *Handler) SetupRoutes(mux *http.ServeMux) {
-	mux.Handle("/api/v1/policy/", utils.PanicRecoveryMiddleware(http.HandlerFunc(h.handlePolicyService)))
-}
-
-// handlePolicyService handles policy metadata service requests
-func (h *Handler) handlePolicyService(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/policy")
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-
-	if len(parts) != 1 {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
-
-	switch parts[0] {
-	case "metadata":
-		switch r.Method {
-		case http.MethodPost:
-			h.CreatePolicyMetadata(w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	case "update-allowlist":
-		switch r.Method {
-		case http.MethodPost:
-			h.UpdateAllowList(w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	case "decide":
-		switch r.Method {
-		case http.MethodPost:
-			h.GetPolicyDecision(w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	default:
-		http.Error(w, "Not Found", http.StatusNotFound)
-	}
+	mux.Handle("POST /api/v1/policy/metadata", utils.PanicRecoveryMiddleware(http.HandlerFunc(h.CreatePolicyMetadata)))
+	mux.Handle("POST /api/v1/policy/update-allowlist", utils.PanicRecoveryMiddleware(http.HandlerFunc(h.UpdateAllowList)))
+	mux.Handle("POST /api/v1/policy/decide", utils.PanicRecoveryMiddleware(http.HandlerFunc(h.GetPolicyDecision)))
 }
 
 // CreatePolicyMetadata handles creating policy metadata

@@ -32,6 +32,17 @@ func main() {
 	// Setup logging
 	utils.SetupLogging(cfg.Logging.Format, cfg.Logging.Level)
 
+	// Initialize monitoring/observability (optional - can be disabled via ENABLE_OBSERVABILITY=false)
+	// Services will continue to function normally even if observability is disabled
+	if monitoring.IsObservabilityEnabled() {
+		monitoringConfig := monitoring.DefaultConfig("consent-engine")
+		if err := monitoring.Initialize(monitoringConfig); err != nil {
+			slog.Warn("Failed to initialize monitoring (service will continue)", "error", err)
+		}
+	} else {
+		slog.Info("Observability disabled via environment variable")
+	}
+
 	slog.Info("Starting consent engine",
 		"environment", cfg.Environment,
 		"port", cfg.Service.Port,

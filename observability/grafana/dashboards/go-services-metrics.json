@@ -16,7 +16,6 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "uid": "go-services-dashboard",
   "iteration": 1710643200000,
   "links": [],
   "panels": [
@@ -46,8 +45,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total[5m])) by (method, route)",
-          "legendFormat": "{{method}} {{route}}",
+          "expr": "sum(rate(http_requests_total[5m])) by (http_request_method, http_route)",
+          "legendFormat": "{{http_request_method}} {{http_route}}",
           "refId": "A"
         }
       ],
@@ -81,8 +80,8 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (route, le))",
-          "legendFormat": "{{route}}",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (http_route, le))",
+          "legendFormat": "{{http_route}}",
           "refId": "A"
         }
       ],

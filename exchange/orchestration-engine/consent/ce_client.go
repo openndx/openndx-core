@@ -16,13 +16,18 @@ import (
 type CEServiceClient struct {
 	baseURL    string
 	httpClient *http.Client
+	tracker    monitoring.Tracker
 }
 
 // NewCEServiceClient creates a new instance of CEServiceClient
-func NewCEServiceClient(baseURL string) *CEServiceClient {
+func NewCEServiceClient(baseURL string, tracker monitoring.Tracker) *CEServiceClient {
+	if tracker == nil {
+		tracker = monitoring.NewNoOpTracker()
+	}
 	return &CEServiceClient{
 		baseURL:    baseURL,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
+		tracker:    tracker,
 	}
 }
 
@@ -49,7 +54,9 @@ func (c *CEServiceClient) CreateConsent(ctx context.Context, request *CreateCons
 		req.Header.Set("X-Trace-ID", traceID)
 	}
 
+	start := time.Now()
 	resp, err := c.httpClient.Do(req)
+	c.tracker.RecordExternalCall("consent-engine", "create_consent", time.Since(start), err)
 	if err != nil {
 		logger.Log.Error("Failed to send HTTP request for CreateConsent", "error", err)
 		return nil, err

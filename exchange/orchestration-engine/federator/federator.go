@@ -38,6 +38,7 @@ type Federator struct {
 	Schema          *ast.Document
 	SchemaService   interface{}          // Will be *services.SchemaService, using interface{} to avoid circular import
 	TokenValidator  *auth.TokenValidator // Cached validator for JWT token signature verification
+	Tracker         monitoring.Tracker
 }
 
 type FederationServiceAST struct {
@@ -103,11 +104,16 @@ func createErrorResponseWithCode(message string, code string) graphql.Response {
 // Initialize sets up the Federator with providers and an HTTP client.
 // Returns error if critical configuration is invalid (fail-fast approach).
 // The provided context controls the lifecycle of background operations (e.g., JWKS auto-refresh).
-func Initialize(ctx context.Context, configs *configs.Config, providerHandler *provider.Handler, schemaService interface{}) (*Federator, error) {
+func Initialize(ctx context.Context, configs *configs.Config, providerHandler *provider.Handler, schemaService interface{}, tracker monitoring.Tracker) (*Federator, error) {
+	if tracker == nil {
+		tracker = monitoring.NewNoOpTracker()
+	}
+
 	federator := &Federator{
 		ProviderHandler: providerHandler,
 		SchemaService:   schemaService,
 		Configs:         configs,
+		Tracker:         tracker,
 	}
 
 	// Validate JWT configuration based on trustUpstream setting
@@ -307,10 +313,10 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 	var ceClient *consent.CEServiceClient
 
 	if f.Configs.PdpConfig.ClientURL != "" {
-		pdpClient = policy.NewPdpClient(f.Configs.PdpConfig.ClientURL)
+		pdpClient = policy.NewPdpClient(f.Configs.PdpConfig.ClientURL, f.Tracker)
 	}
 	if f.Configs.CeConfig.ClientURL != "" {
-		ceClient = consent.NewCEServiceClient(f.Configs.CeConfig.ClientURL)
+		ceClient = consent.NewCEServiceClient(f.Configs.CeConfig.ClientURL, f.Tracker)
 	}
 
 	// Check if PDP client is available before making request

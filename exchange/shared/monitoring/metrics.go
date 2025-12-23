@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -26,8 +27,22 @@ var (
 
 // ensureInitialized ensures OpenTelemetry is initialized with default config
 // This is called automatically when metrics functions are used
+// Observability can be disabled via ENABLE_OBSERVABILITY=false or OTEL_METRICS_ENABLED=false
 func ensureInitialized() {
 	initOnce.Do(func() {
+		// Check if observability is explicitly disabled
+		enableObservability := getEnvBoolOrDefault("ENABLE_OBSERVABILITY", true)
+		otelMetricsEnabled := getEnvBoolOrDefault("OTEL_METRICS_ENABLED", true)
+
+		if !enableObservability || !otelMetricsEnabled {
+			slog.Info("Observability disabled via environment variable, skipping initialization",
+				"ENABLE_OBSERVABILITY", enableObservability,
+				"OTEL_METRICS_ENABLED", otelMetricsEnabled)
+			// Use sentinel error so IsInitialized() returns false when observability is disabled
+			initErr = errors.New("observability disabled via environment variable")
+			return
+		}
+
 		// Try to get service name from environment or use default
 		serviceName := os.Getenv("SERVICE_NAME")
 		if serviceName == "" {
@@ -59,6 +74,15 @@ func GetInitError() error {
 func IsInitialized() bool {
 	ensureInitialized()
 	return initErr == nil
+}
+
+// IsObservabilityEnabled checks if observability is enabled via environment variables
+// Returns false if ENABLE_OBSERVABILITY=false or OTEL_METRICS_ENABLED=false
+// Returns true otherwise (default behavior)
+func IsObservabilityEnabled() bool {
+	enableObservability := getEnvBoolOrDefault("ENABLE_OBSERVABILITY", true)
+	otelMetricsEnabled := getEnvBoolOrDefault("OTEL_METRICS_ENABLED", true)
+	return enableObservability && otelMetricsEnabled
 }
 
 // RegisterRoutes registers routes for normalization. Supports static routes and templates with :id or {id} placeholders.
@@ -242,7 +266,7 @@ func looksLikeID(s string) bool {
 			break
 		}
 	}
-	if allNumeric && len(s) > 0 {
+	if allNumeric && len(s) >= 3 {
 		return true
 	}
 

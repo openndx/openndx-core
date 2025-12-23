@@ -16,15 +16,20 @@ import (
 type PdpClient struct {
 	httpClient *http.Client
 	baseUrl    string
+	tracker    monitoring.Tracker
 }
 
 // NewPdpClient creates a new instance of PdpClient
-func NewPdpClient(baseUrl string) *PdpClient {
+func NewPdpClient(baseUrl string, tracker monitoring.Tracker) *PdpClient {
+	if tracker == nil {
+		tracker = monitoring.NewNoOpTracker()
+	}
 	return &PdpClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 		baseUrl: baseUrl,
+		tracker: tracker,
 	}
 }
 
@@ -55,7 +60,9 @@ func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (*P
 		req.Header.Set("X-Trace-ID", traceID)
 	}
 
+	start := time.Now()
 	response, err := p.httpClient.Do(req)
+	p.tracker.RecordExternalCall("policy-decision-point", "decide", time.Since(start), err)
 	if err != nil {
 		// handle error
 		logger.Log.Error("Failed to make PDP request", "error", err)
