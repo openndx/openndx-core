@@ -13,8 +13,18 @@ import (
 	"gorm.io/gorm"
 )
 
+// setupTestDB creates a real PostgreSQL database connection for integration-style tests.
+// NOTE: These tests use real database connections because they test handler behavior
+// with actual database operations. All database testing is done via integration tests
+// in tests/integration/.
+//
+// These tests will be skipped if a database connection is not available.
 func setupTestDB(t *testing.T) *gorm.DB {
-	return testhelpers.SetupTestDB(t)
+	db := testhelpers.SetupPostgresTestDB(t)
+	if db == nil {
+		t.SkipNow()
+	}
+	return db
 }
 
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
@@ -560,7 +570,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 				ApplicationID:  "",
 				RequiredFields: []models.PolicyDecisionRequestRecord{},
 			},
-			expectedStatus: http.StatusOK, // Handler doesn't validate, service will handle
+			expectedStatus: http.StatusBadRequest, // Handler validates required fields
 		},
 		{
 			name: "Service error - schema not found",
@@ -692,6 +702,24 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/",
 			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Invalid path - three segments",
+			method:         http.MethodPost,
+			path:           "/api/v1/policy/metadata/extra/segment",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "PATCH method not allowed",
+			method:         http.MethodPatch,
+			path:           "/api/v1/policy/metadata",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "OPTIONS method not allowed",
+			method:         http.MethodOptions,
+			path:           "/api/v1/policy/metadata",
+			expectedStatus: http.StatusMethodNotAllowed,
 		},
 	}
 

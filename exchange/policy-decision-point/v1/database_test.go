@@ -52,8 +52,12 @@ func TestNewDatabaseConfig_WithConfig(t *testing.T) {
 	assert.Equal(t, "disable", dbConfig.SSLMode)
 }
 
+// TestConnectGormDB_WithSQLite tests connection pool configuration using SQLite in-memory database.
+// This is a unit test that uses SQLite in-memory (not a real PostgreSQL connection) to test
+// connection pool configuration logic without requiring a real database.
 func TestConnectGormDB_WithSQLite(t *testing.T) {
-	// Use SQLite for testing instead of PostgreSQL
+	// Use SQLite in-memory for testing instead of PostgreSQL
+	// This is acceptable for unit tests as it's not a real network connection
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	defer func() {
@@ -90,17 +94,6 @@ func TestConnectGormDB_WithSQLite(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestConnectGormDB_InvalidConnection(t *testing.T) {
-	config := &DatabaseConfig{
-		Host:     "invalid-host",
-		Port:     "5432",
-		Username: "invalid-user",
-		Password: "invalid-password",
-		Database: "invalid-db",
-		SSLMode:  "disable",
-	}
-
-	_, err := ConnectGormDB(config)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to connect")
-}
+// NOTE: Tests for ConnectGormDB with real database connections have been moved to
+// tests/integration/database/pdp_database_test.go as integration tests.
+// Unit tests should not use real database connections.

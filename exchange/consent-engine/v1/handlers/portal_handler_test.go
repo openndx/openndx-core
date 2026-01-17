@@ -15,10 +15,10 @@ import (
 // setUserEmailInContext is a test helper to set user email in context
 // Uses the same context key as middleware.auth.go (userEmailKey = "userEmail")
 func setUserEmailInContext(ctx context.Context, email string) context.Context {
-	return context.WithValue(ctx, contextKey("userEmail"), email)
+	type contextKey string
+	const userEmailKey contextKey = "userEmail"
+	return context.WithValue(ctx, userEmailKey, email)
 }
-
-type contextKey string
 
 func TestPortalHandler_HealthCheck(t *testing.T) {
 	handler := &PortalHandler{consentService: nil}

@@ -119,3 +119,126 @@ func GetPolicyMetadataCount(t *testing.T, db *gorm.DB) int64 {
 
 	return count
 }
+
+// DBConfig holds database configuration for test setup
+type DBConfig struct {
+	Port     string
+	Database string
+	Password string
+}
+
+// WithTestDBEnv sets up environment variables for a specific test database and returns a cleanup function.
+// This helper eliminates code duplication across test files.
+//
+// Example:
+//
+//	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
+//	    Port:     "5433",
+//	    Database: "policy_db",
+//	    Password: "password",
+//	})
+//	defer cleanup()
+func WithTestDBEnv(t *testing.T, config DBConfig) func() {
+	originalPort := os.Getenv("TEST_DB_PORT")
+	originalDB := os.Getenv("TEST_DB_DATABASE")
+	originalPassword := os.Getenv("TEST_DB_PASSWORD")
+
+	os.Setenv("TEST_DB_PORT", config.Port)
+	os.Setenv("TEST_DB_DATABASE", config.Database)
+	if config.Password != "" {
+		if originalPassword == "" {
+			os.Setenv("TEST_DB_PASSWORD", config.Password)
+		}
+	}
+
+	return func() {
+		if originalPort != "" {
+			os.Setenv("TEST_DB_PORT", originalPort)
+		} else {
+			os.Unsetenv("TEST_DB_PORT")
+		}
+		if originalDB != "" {
+			os.Setenv("TEST_DB_DATABASE", originalDB)
+		} else {
+			os.Unsetenv("TEST_DB_DATABASE")
+		}
+		if originalPassword == "" && config.Password != "" {
+			os.Unsetenv("TEST_DB_PASSWORD")
+		}
+	}
+}
+
+// SetupConsentDB creates a PostgreSQL connection to the Consent Engine test database.
+// This is a convenience wrapper around SetupPostgresTestDB with Consent Engine defaults.
+// Returns nil if connection cannot be established (test will be skipped).
+func SetupConsentDB(t *testing.T) *gorm.DB {
+	cleanup := WithTestDBEnv(t, DBConfig{
+		Port:     "5434",
+		Database: "consent_db",
+		Password: "password",
+	})
+	defer cleanup()
+
+	return SetupPostgresTestDB(t)
+}
+
+// CleanupConsentRecord removes a consent record from the database.
+// This is a helper function to reduce code duplication in consent tests.
+func CleanupConsentRecord(t *testing.T, consentID string) {
+	if consentID == "" {
+		return
+	}
+
+	db := SetupConsentDB(t)
+	if db == nil {
+		t.Logf("Skipping cleanup for consent %s: database not available", consentID)
+		return
+	}
+
+	if err := db.Exec("DELETE FROM consent_records WHERE consent_id = ?", consentID).Error; err != nil {
+		t.Logf("Warning: failed to cleanup consent %s: %v", consentID, err)
+	} else {
+		t.Logf("Cleaned up consent: %s", consentID)
+	}
+}
+
+// SetupPDPDB creates a PostgreSQL connection to the Policy Decision Point test database.
+// This is a convenience wrapper around SetupPostgresTestDB with PDP defaults.
+func SetupPDPDB(t *testing.T) *gorm.DB {
+	cleanup := WithTestDBEnv(t, DBConfig{
+		Port:     "5433",
+		Database: "policy_db",
+		Password: "password",
+	})
+	defer cleanup()
+
+	return SetupPostgresTestDB(t)
+}
+
+// WithTestDBEnvFull sets up multiple environment variables for test database configuration.
+// This is used for tests that need to override multiple DB connection parameters.
+//
+// Example:
+//
+//	cleanup := testutils.WithTestDBEnvFull(t, map[string]string{
+//	    "TEST_DB_HOST": "invalid-host",
+//	    "TEST_DB_PORT": "5432",
+//	})
+//	defer cleanup()
+func WithTestDBEnvFull(t *testing.T, envVars map[string]string) func() {
+	originals := make(map[string]string)
+	for key := range envVars {
+		originals[key] = os.Getenv(key)
+		os.Setenv(key, envVars[key])
+	}
+
+	return func() {
+		for key, originalValue := range originals {
+			if originalValue != "" {
+				os.Setenv(key, originalValue)
+			} else {
+				os.Unsetenv(key)
+			}
+		}
+	}
+}

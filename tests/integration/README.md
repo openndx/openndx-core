@@ -43,16 +43,39 @@ docker compose -f docker-compose.test.yml down -v
 
 ## Test Structure
 
+### Directory Structure
+
 ```
 tests/integration/
-├── graphql_flow_test.go        # GraphQL workflow tests
-├── services_integration_test.go # Service health checks
-├── docker-compose.test.yml     # Test services configuration
+├── README.md                    # This file
+├── docker-compose.test.yml     # Docker Compose configuration for tests
+├── docker-compose.db.yml       # Database-only Docker Compose configuration
+├── go.mod                      # Go module definition
+├── go.sum                      # Go module checksums
+├── run-local-tests.sh          # Automated test script
 ├── schema.graphql              # GraphQL schema for tests
 ├── config.json                 # Orchestration Engine config
-└── testutils/                  # Test utilities
-    ├── db.go                   # Database helpers
-    └── http.go                 # HTTP client helpers
+├── init-consent-db.sql         # Consent database initialization script
+├── init-stats.sh               # Statistics initialization script
+├── graphql_flow_test.go        # GraphQL workflow tests
+├── services_integration_test.go # Service health checks
+├── audit_flow_integration_test.go # Audit flow integration tests
+├── audit_traceid_test.go       # Audit trace ID tests
+├── consent/                    # Consent Engine integration tests
+│   └── consent_test.go
+├── policy/                     # Policy Decision Point integration tests
+│   └── policy_test.go
+├── database/                  # Database connection integration tests
+│   ├── consent_database_test.go # Consent Engine database tests
+│   └── pdp_database_test.go    # Policy Decision Point database tests
+├── testutils/                  # Test utilities
+│   ├── db.go                   # Database helpers
+│   └── http.go                 # HTTP client helpers
+├── bin/                        # Compiled binaries (not committed)
+│   └── consent-engine
+└── mock-provider/              # Mock provider service
+    ├── Dockerfile
+    └── main.go
 ```
 
 ---
