@@ -2,16 +2,12 @@ package testhelpers
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/models"
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -65,38 +61,8 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-var envLoadOnce sync.Once
-
-// loadEnvOnce loads environment variables from .env.local file (once)
-func loadEnvOnce() {
-	envLoadOnce.Do(func() {
-		// Try to load .env.local file from current directory and parent directories
-		envFiles := []string{
-			".env.local",
-			"../.env.local",
-			"../../.env.local",
-			"../../../.env.local",
-		}
-
-		for _, envFile := range envFiles {
-			absPath, err := filepath.Abs(envFile)
-			if err != nil {
-				continue
-			}
-			if _, err := os.Stat(absPath); err != nil {
-				continue
-			}
-			if err := godotenv.Load(absPath); err == nil {
-				log.Printf("Loaded test environment from: %s", absPath)
-				return
-			}
-		}
-	})
-}
-
 // getEnvOrDefault returns the environment variable value or a default
 func getEnvOrDefault(key, defaultValue string) string {
-	loadEnvOnce() // Ensure .env.local is loaded
 	if value := os.Getenv(key); value != "" {
 		return value
 	}

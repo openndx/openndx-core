@@ -61,3 +61,15 @@ func TestEnvVars() map[string]string {
 		"DB_SSLMODE":  "disable",
 	}
 }
+
+// TestEnvVarsStandard returns standard environment variables for testing
+func TestEnvVarsStandard() map[string]string {
+	return map[string]string{
+		"DB_HOST":     "standard-host",
+		"DB_PORT":     "5434",
+		"DB_USERNAME": "standard-user",
+		"DB_PASSWORD": "standard-password",
+		"DB_NAME":     "standard-db",
+		"DB_SSLMODE":  "prefer",
+	}
+}

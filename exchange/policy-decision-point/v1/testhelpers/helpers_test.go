@@ -82,39 +82,39 @@ func TestIsDBNotExistError(t *testing.T) {
 
 func TestIsDBNotExistError_VariousErrors(t *testing.T) {
 	tests := []struct {
-		name    string
-		errMsg  string
-		want    bool
+		name   string
+		errMsg string
+		want   bool
 	}{
 		{
-			name:    "Error with 'does not exist'",
-			errMsg:  "database 'testdb' does not exist",
-			want:    true,
+			name:   "Error with 'does not exist'",
+			errMsg: "database 'testdb' does not exist",
+			want:   true,
 		},
 		{
-			name:    "Error with '3D000'",
-			errMsg:  "error code 3D000: database not found",
-			want:    true,
+			name:   "Error with '3D000'",
+			errMsg: "error code 3D000: database not found",
+			want:   true,
 		},
 		{
-			name:    "Error with both patterns",
-			errMsg:  "database does not exist (3D000)",
-			want:    true,
+			name:   "Error with both patterns",
+			errMsg: "database does not exist (3D000)",
+			want:   true,
 		},
 		{
-			name:    "Connection refused",
-			errMsg:  "connection refused",
-			want:    false,
+			name:   "Connection refused",
+			errMsg: "connection refused",
+			want:   false,
 		},
 		{
-			name:    "Authentication failed",
-			errMsg:  "password authentication failed",
-			want:    false,
+			name:   "Authentication failed",
+			errMsg: "password authentication failed",
+			want:   false,
 		},
 		{
-			name:    "Empty error message",
-			errMsg:  "",
-			want:    false,
+			name:   "Empty error message",
+			errMsg: "",
+			want:   false,
 		},
 	}
 
@@ -134,27 +134,6 @@ type testError struct {
 
 func (e *testError) Error() string {
 	return e.message
-}
-
-func TestSetupDatabase_WithValidDB(t *testing.T) {
-	// Use SQLite in-memory database for testing setupDatabase
-	// Note: SQLite doesn't support PostgreSQL-specific features (UUID, enums)
-	// so migration will fail, but we can test the error handling path
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	defer func() {
-		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
-		}
-	}()
-
-	// Test setupDatabase - will fail migration but tests the error path
-	result := setupDatabase(t, db)
-	// Migration will fail with SQLite (PostgreSQL-specific features), so result may be nil
-	// This tests the error handling in setupDatabase
-	if result == nil {
-		t.Skip("Migration failed (expected with SQLite) - tests error path")
-	}
 }
 
 func TestCleanupTestData_WithValidDB(t *testing.T) {

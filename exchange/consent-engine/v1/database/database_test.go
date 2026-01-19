@@ -11,11 +11,11 @@ import (
 
 func TestNewDatabaseConfig(t *testing.T) {
 	// Clear environment variables
-	os.Unsetenv("CHOREO_OPENDIF_DATABASE_HOSTNAME")
-	os.Unsetenv("CHOREO_OPENDIF_DATABASE_PORT")
-	os.Unsetenv("CHOREO_OPENDIF_DATABASE_USERNAME")
-	os.Unsetenv("CHOREO_OPENDIF_DATABASE_PASSWORD")
-	os.Unsetenv("CHOREO_OPENDIF_DATABASE_DATABASENAME")
+	os.Unsetenv("DB_HOST")
+	os.Unsetenv("DB_PORT")
+	os.Unsetenv("DB_USERNAME")
+	os.Unsetenv("DB_PASSWORD")
+	os.Unsetenv("DB_NAME")
 	os.Unsetenv("DB_SSLMODE")
 
 	dbConfigs := &config.DBConfigs{
@@ -42,18 +42,18 @@ func TestNewDatabaseConfig(t *testing.T) {
 }
 
 func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
-	os.Setenv("CHOREO_OPENDIF_DATABASE_HOSTNAME", "test-host")
-	os.Setenv("CHOREO_OPENDIF_DATABASE_PORT", "5433")
-	os.Setenv("CHOREO_OPENDIF_DATABASE_USERNAME", "test-user")
-	os.Setenv("CHOREO_OPENDIF_DATABASE_PASSWORD", "test-password")
-	os.Setenv("CHOREO_OPENDIF_DATABASE_DATABASENAME", "test-db")
+	os.Setenv("DB_HOST", "test-host")
+	os.Setenv("DB_PORT", "5433")
+	os.Setenv("DB_USERNAME", "test-user")
+	os.Setenv("DB_PASSWORD", "test-password")
+	os.Setenv("DB_NAME", "test-db")
 	os.Setenv("DB_SSLMODE", "require")
 	defer func() {
-		os.Unsetenv("CHOREO_OPENDIF_DATABASE_HOSTNAME")
-		os.Unsetenv("CHOREO_OPENDIF_DATABASE_PORT")
-		os.Unsetenv("CHOREO_OPENDIF_DATABASE_USERNAME")
-		os.Unsetenv("CHOREO_OPENDIF_DATABASE_PASSWORD")
-		os.Unsetenv("CHOREO_OPENDIF_DATABASE_DATABASENAME")
+		os.Unsetenv("DB_HOST")
+		os.Unsetenv("DB_PORT")
+		os.Unsetenv("DB_USERNAME")
+		os.Unsetenv("DB_PASSWORD")
+		os.Unsetenv("DB_NAME")
 		os.Unsetenv("DB_SSLMODE")
 	}()
 

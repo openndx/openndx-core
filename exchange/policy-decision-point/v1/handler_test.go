@@ -13,21 +13,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB creates a real PostgreSQL database connection for integration-style tests.
-// NOTE: These tests use real database connections because they test handler behavior
-// with actual database operations. All database testing is done via integration tests
-// in tests/integration/.
-//
-// These tests will be skipped if a database connection is not available.
+// setupTestDB creates an in-memory SQLite database for unit testing.
 func setupTestDB(t *testing.T) *gorm.DB {
-	db := testhelpers.SetupPostgresTestDB(t)
-	if db == nil {
-		t.SkipNow()
-	}
-	return db
+	return testhelpers.SetupTestDB(t)
 }
 
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -41,6 +33,7 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -54,6 +47,7 @@ func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -653,7 +647,7 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			name:           "POST /api/v1/policy/decide",
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/decide",
-			expectedStatus: http.StatusOK, // Endpoint exists, will process request
+			expectedStatus: http.StatusBadRequest, // Endpoint exists, but empty body fails validation (applicationId required)
 		},
 		{
 			name:           "GET /api/v1/policy/metadata - Method not allowed",
