@@ -51,23 +51,23 @@ type PolicyMetadataCreateRequestRecord struct {
 }
 
 type PolicyMetadataCreateRequest struct {
-	SchemaID string                           `json:"schemaId"`
+	SchemaID string                              `json:"schemaId"`
 	Records  []PolicyMetadataCreateRequestRecord `json:"records"`
 }
 
 type PolicyMetadataResponse struct {
-	ID                string            `json:"id"`
-	SchemaID          string            `json:"schemaId"`
-	FieldName         string            `json:"fieldName"`
-	DisplayName       *string           `json:"displayName,omitempty"`
-	Description       *string           `json:"description,omitempty"`
-	Source            string            `json:"source"`
-	IsOwner           bool              `json:"isOwner"`
-	AccessControlType string            `json:"accessControlType"`
+	ID                string                 `json:"id"`
+	SchemaID          string                 `json:"schemaId"`
+	FieldName         string                 `json:"fieldName"`
+	DisplayName       *string                `json:"displayName,omitempty"`
+	Description       *string                `json:"description,omitempty"`
+	Source            string                 `json:"source"`
+	IsOwner           bool                   `json:"isOwner"`
+	AccessControlType string                 `json:"accessControlType"`
 	AllowList         map[string]interface{} `json:"allowList"`
-	Owner             *string           `json:"owner,omitempty"`
-	CreatedAt         string            `json:"createdAt"`
-	UpdatedAt         string            `json:"updatedAt"`
+	Owner             *string                `json:"owner,omitempty"`
+	CreatedAt         string                 `json:"createdAt"`
+	UpdatedAt         string                 `json:"updatedAt"`
 }
 
 type PolicyMetadataCreateResponse struct {
@@ -189,8 +189,7 @@ func TestPolicy_CreateMetadata_InvalidJSON(t *testing.T) {
 }
 
 // TestPolicy_CreateMetadata_MissingSchemaID tests validation error for missing schemaId
-// NOTE: Currently the handler doesn't validate empty schemaId, so this test verifies the actual behavior.
-// If validation is added to the handler, this test should expect 400 Bad Request.
+// The handler validates empty schemaId and returns 400 Bad Request.
 func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 	req := PolicyMetadataCreateRequest{
 		SchemaID: "", // Missing schemaId
@@ -211,11 +210,15 @@ func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Currently handler doesn't validate, so it may succeed or fail depending on service logic
-	// Accept either 201 (if service allows empty schemaId) or 400/500 (if service rejects it)
-	// This documents current behavior - validation should be added to handler
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Unexpected status code: %d (expected 201, 400, or 500)", resp.StatusCode)
+	// Handler validates empty schemaId and returns 400 Bad Request
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected 400 Bad Request for empty schemaId")
+
+	// Verify error message
+	var errorResp map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&errorResp)
+	require.NoError(t, err)
+	if errorMsg, ok := errorResp["error"].(string); ok {
+		assert.Contains(t, errorMsg, "schemaId", "Error message should mention schemaId")
 	}
 }
 
@@ -529,4 +532,3 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 		cleanupPolicyMetadata(t, schemaID)
 	})
 }
-

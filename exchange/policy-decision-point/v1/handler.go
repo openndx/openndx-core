@@ -75,6 +75,12 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate required fields
+	if strings.TrimSpace(req.SchemaID) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "schemaId is required and cannot be empty")
+		return
+	}
+
 	resp, err := h.policyService.CreatePolicyMetadata(&req)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
