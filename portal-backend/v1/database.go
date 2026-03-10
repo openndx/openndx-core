@@ -59,7 +59,8 @@ func ConnectGormDB(config *DatabaseConfig) (*gorm.DB, error) {
 	gormLogger := logger.Default.LogMode(logger.Warn)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: gormLogger,
+		Logger:                                   gormLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
