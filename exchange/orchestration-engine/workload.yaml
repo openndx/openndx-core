@@ -1,0 +1,55 @@
+apiVersion: openchoreo.dev/v1alpha1
+
+metadata:
+  name: ndx-orchestration-engine
+
+endpoints:
+  - name: api
+    port: 4000
+    type: GraphQL
+    visibility:
+      - external
+
+connections:
+  - component: ndx-consent-engine
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: CONSENT_ENGINE_URL
+  - component: ndx-pdp
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: PDP_URL
+  - component: ndx-audit-service
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: AUDIT_SERVICE_URL
+
+configurations:
+  env:
+    - name: SERVER_PORT
+      value: "4000"
+    - name: SERVER_HOST
+      value: 0.0.0.0
+    - name: LOG_LEVEL
+      value: info
+    - name: ENVIRONMENT
+      value: production
+  files:
+    - name: config.json
+      mountPath: /app
+      value: |
+        {
+          "environment": "production",
+          "ceUrl": "http://ndx-consent-engine:8081/internal/api/v1",
+          "pdpUrl": "http://ndx-pdp:8082",
+          "auditConfig": {
+            "serviceUrl": "http://ndx-audit-service:3001",
+            "actorType": "SERVICE",
+            "actorId": "orchestration-engine"
+          },
+          "providers": [],
+          "trustUpstream": true
+        }

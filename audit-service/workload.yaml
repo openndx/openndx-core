@@ -1,0 +1,43 @@
+apiVersion: openchoreo.dev/v1alpha1
+
+metadata:
+  name: ndx-audit-service
+
+endpoints:
+  - name: api
+    port: 3001
+    type: REST
+
+configurations:
+  env:
+    - name: PORT
+      value: "3001"
+    - name: DB_TYPE
+      value: postgres
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: host
+    - name: DB_PORT
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: port
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: password
+    - name: DB_NAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: database
+    - name: LOG_LEVEL
+      value: info
