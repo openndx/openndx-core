@@ -1,4 +1,4 @@
-module github.com/gov-dx-sandbox/exchange/shared/monitoring
+module github.com/OpenDIF/opendif-core/exchange/shared/monitoring
 
 go 1.24.6
 

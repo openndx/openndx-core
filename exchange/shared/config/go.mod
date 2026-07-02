@@ -1,3 +1,3 @@
-module github.com/gov-dx-sandbox/exchange/shared/config
+module github.com/OpenDIF/opendif-core/exchange/shared/config
 
 go 1.21

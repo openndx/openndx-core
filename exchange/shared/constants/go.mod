@@ -1,3 +1,3 @@
-module github.com/gov-dx-sandbox/exchange/shared/constants
+module github.com/OpenDIF/opendif-core/exchange/shared/constants
 
 go 1.24.6
