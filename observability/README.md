@@ -95,7 +95,6 @@ Ensure all Go services are running and connected to the `opendif-network`:
 - Consent Engine (port 8081)
 - Policy Decision Point (port 8082)
 - Portal Backend (port 3000)
-- Audit Service (port 3001)
 
 ---
 
@@ -250,7 +249,7 @@ sum by (external_target, external_operation) (rate(external_call_errors_total[5m
 
 **Service Availability:**
 ```promql
-up{job=~"orchestration-engine|consent-engine|policy-decision-point|portal-backend|audit-service"}
+up{job=~"orchestration-engine|consent-engine|policy-decision-point|portal-backend"}
 ```
 
 ---

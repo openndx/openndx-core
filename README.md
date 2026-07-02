@@ -20,7 +20,7 @@ A comprehensive data exchange platform consisting of multiple microservices and 
 ### Optional Components
 
 - **Observability Stack** (`observability/`) - Metrics collection and visualization (Prometheus, Grafana)
-- **Audit Service** (`audit-service/`) - Audit logging and event tracking (optional, services function normally without it)
+- **Audit Service** ([LSFLK/argus](https://github.com/LSFLK/argus)) - Audit logging and event tracking (optional, services function normally without it)
 
 ## How to Deploy
 
@@ -72,7 +72,6 @@ This command will:
    - orchestration-engine
    - policy-decision-point
    - consent-engine
-   - audit-service
    - portal-backend
 
 3. **Setup Frontend Services** - Installs npm dependencies (`npm ci`) for:

@@ -114,40 +114,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract metadata for Audit Service
-        id: meta-audit
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}/audit-service
-          tags: |
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'push' }}
-            type=semver,pattern={{major}},enable=${{ github.event_name == 'push' }}
-            type=raw,value=${{ steps.version.outputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=raw,value=latest
-            type=sha,format=long
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.description=Audit Service for tracking and logging events
-            org.opencontainers.image.licenses=Apache-2.0
-            org.opencontainers.image.version=${{ steps.version.outputs.tag }}
-
-      - name: Build and push Audit Service
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./audit-service/Dockerfile
-          push: ${{ steps.dry-run.outputs.enabled == 'true' }}
-          tags: ${{ steps.meta-audit.outputs.tags }}
-          labels: ${{ steps.meta-audit.outputs.labels }}
-          build-args: |
-            SERVICE_PATH=audit-service
-            BUILD_VERSION=${{ steps.version.outputs.tag }}
-            BUILD_TIME=${{ steps.build-time.outputs.build_time }}
-            GIT_COMMIT=${{ env.GIT_COMMIT }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Extract metadata for Policy Decision Point
         id: meta-pdp
         uses: docker/metadata-action@v5
@@ -348,17 +314,6 @@ jobs:
           severity: "CRITICAL,HIGH"
           ignore-unfixed: false
 
-      - name: Run Trivy vulnerability scanner - Audit Service
-        if: steps.dry-run.outputs.enabled == 'true'
-        uses: aquasecurity/trivy-action@master
-        continue-on-error: true
-        with:
-          image-ref: ${{ fromJSON(steps.meta-audit.outputs.json).tags[0] }}
-          format: "sarif"
-          output: "trivy-audit-service.sarif"
-          severity: "CRITICAL,HIGH"
-          ignore-unfixed: false
-
       - name: Run Trivy vulnerability scanner - Policy Decision Point
         if: steps.dry-run.outputs.enabled == 'true'
         uses: aquasecurity/trivy-action@master
@@ -431,7 +386,6 @@ jobs:
         with:
           sarif_file: |
             trivy-portal-backend.sarif
-            trivy-audit-service.sarif
             trivy-policy-decision-point.sarif
             trivy-consent-engine.sarif
             trivy-orchestration-engine.sarif
@@ -451,7 +405,6 @@ jobs:
             This release includes Docker images for all services and portals:
 
             - **Portal Backend**: `${{ fromJSON(steps.meta-portal.outputs.json).tags[0] }}`
-            - **Audit Service**: `${{ fromJSON(steps.meta-audit.outputs.json).tags[0] }}`
             - **Policy Decision Point**: `${{ fromJSON(steps.meta-pdp.outputs.json).tags[0] }}`
             - **Consent Engine**: `${{ fromJSON(steps.meta-consent.outputs.json).tags[0] }}`
             - **Orchestration Engine**: `${{ fromJSON(steps.meta-orchestration.outputs.json).tags[0] }}`
@@ -463,7 +416,6 @@ jobs:
 
             ```bash
             docker pull ${{ fromJSON(steps.meta-portal.outputs.json).tags[0] }}
-            docker pull ${{ fromJSON(steps.meta-audit.outputs.json).tags[0] }}
             docker pull ${{ fromJSON(steps.meta-pdp.outputs.json).tags[0] }}
             docker pull ${{ fromJSON(steps.meta-consent.outputs.json).tags[0] }}
             docker pull ${{ fromJSON(steps.meta-orchestration.outputs.json).tags[0] }}
@@ -489,7 +441,6 @@ jobs:
             echo "| Service | Image |" >> $GITHUB_STEP_SUMMARY
             echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| Portal Backend | \`${{ fromJSON(steps.meta-portal.outputs.json).tags[0] }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| Audit Service | \`${{ fromJSON(steps.meta-audit.outputs.json).tags[0] }}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| Policy Decision Point | \`${{ fromJSON(steps.meta-pdp.outputs.json).tags[0] }}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| Consent Engine | \`${{ fromJSON(steps.meta-consent.outputs.json).tags[0] }}\` |" >> $GITHUB_STEP_SUMMARY
             echo "| Orchestration Engine | \`${{ fromJSON(steps.meta-orchestration.outputs.json).tags[0] }}\` |" >> $GITHUB_STEP_SUMMARY

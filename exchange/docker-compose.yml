@@ -4,10 +4,10 @@
 # This stack is self-contained: it starts a PostgreSQL database so the
 # services can be tested end-to-end with a single `docker compose up --build`.
 #
-# Note: Audit Service is optional and can be deployed separately.
-#       See audit-service/docker-compose.yml for standalone deployment.
-#       The orchestration-engine reads its audit configuration from
-#       config.json and functions normally without the audit-service.
+# Note: Audit Service is optional and lives in its own repo now:
+#       https://github.com/LSFLK/argus
+#       Services will function normally without audit-service when
+#       AUDIT_SERVICE_URL is not set or ENABLE_AUDIT=false.
 
 services:
   postgres:

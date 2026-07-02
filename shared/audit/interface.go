@@ -4,7 +4,7 @@ import "context"
 
 // Auditor is the primary interface for audit logging operations.
 // This interface provides a clean abstraction for audit capabilities,
-// making it easy to swap implementations when audit-service moves to its own repository.
+// decoupling callers from the audit service implementation (https://github.com/LSFLK/argus).
 //
 // Implementations should handle:
 // - Asynchronous logging (fire-and-forget)

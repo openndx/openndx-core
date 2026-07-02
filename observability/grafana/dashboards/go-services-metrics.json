@@ -169,7 +169,7 @@
       },
       "targets": [
         {
-          "expr": "up{job=~\"orchestration-engine|consent-engine|policy-decision-point|portal-backend|audit-service\"}",
+          "expr": "up{job=~\"orchestration-engine|consent-engine|policy-decision-point|portal-backend\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }

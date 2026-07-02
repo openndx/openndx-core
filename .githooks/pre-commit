@@ -20,7 +20,6 @@ echo -e "${BLUE}=== OpenDIF Pre-commit Validation ===${NC}\n"
 get_service_path() {
     case "$1" in
         portal-backend) echo "portal-backend" ;;
-        audit-service) echo "audit-service" ;;
         orchestration-engine) echo "exchange/orchestration-engine" ;;
         consent-engine) echo "exchange/consent-engine" ;;
         policy-decision-point) echo "exchange/policy-decision-point" ;;
@@ -32,7 +31,7 @@ get_service_path() {
 }
 
 # All available services
-ALL_SERVICES="portal-backend audit-service orchestration-engine consent-engine policy-decision-point member-portal admin-portal consent-portal"
+ALL_SERVICES="portal-backend orchestration-engine consent-engine policy-decision-point member-portal admin-portal consent-portal"
 
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)

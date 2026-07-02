@@ -14,7 +14,7 @@ git push origin v1.0.0
 ```
 
 This triggers the **Release** workflow which:
-1.  Builds Docker images for all **8 services** (Backend + Frontend).
+1.  Builds Docker images for all **7 services** (Backend + Frontend).
 2.  Pushes tags: `v1.0.0`, `v1.0`, `v1`, `latest`, and `sha-<commit>`.
 3.  Scans images with Trivy.
 4.  Creates a GitHub Release with changelogs.
@@ -29,7 +29,6 @@ All images are published to **ghcr.io/opendif/opendif-core/**:
 | Category | Service | Image Name |
 | :--- | :--- | :--- |
 | **Backend** | Portal Backend | `portal-backend` |
-| | Audit Service | `audit-service` |
 | | Policy Decision Point | `policy-decision-point` |
 | | Consent Engine | `consent-engine` |
 | | Orchestration Engine | `orchestration-engine` |

@@ -44,12 +44,3 @@ scrape_configs:
           service: 'portal-backend'
           port: '3000'
 
-  - job_name: audit-service
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - audit-service:3001
-        labels:
-          service: 'audit-service'
-          port: '3001'
-
