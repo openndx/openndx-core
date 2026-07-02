@@ -3,14 +3,11 @@ module github.com/gov-dx-sandbox/exchange/consent-engine
 go 1.24.6
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702074442-13c5fdc4f37d
+	github.com/OpenDIF/opendif-core/exchange/shared/utils v0.0.0-20260702074442-13c5fdc4f37d
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
-	github.com/gov-dx-sandbox/exchange/shared/utils v0.0.0
-)
-
-require (
-	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/gov-dx-sandbox/exchange/shared/monitoring v0.0.0
 	github.com/stretchr/testify v1.11.1
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
@@ -57,7 +54,3 @@ require (
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/gov-dx-sandbox/exchange/shared/monitoring => ../shared/monitoring
-
-replace github.com/gov-dx-sandbox/exchange/shared/utils => ../shared/utils

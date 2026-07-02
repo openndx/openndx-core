@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
+	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
 	"github.com/gov-dx-sandbox/exchange/consent-engine/internal/config"
-	"github.com/gov-dx-sandbox/exchange/shared/monitoring"
-	"github.com/gov-dx-sandbox/exchange/shared/utils"
 
 	// V1 API imports
 	v1auth "github.com/gov-dx-sandbox/exchange/consent-engine/v1/auth"
