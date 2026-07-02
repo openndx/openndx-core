@@ -39,7 +39,7 @@ Before deploying OpenDIF, you must configure an Identity Provider (IdP) to handl
 
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/open-dif/opendif-core.git
+    git clone https://github.com/OpenDIF/opendif-core.git
     cd opendif-core
     ```
 
