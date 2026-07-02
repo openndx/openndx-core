@@ -74,9 +74,10 @@ func (c *Client) LogEvent(ctx context.Context, event *AuditLogRequest) {
 		return
 	}
 
-	// Log asynchronously (fire-and-forget) using background context
-	// Using background context ensures the request completes even if the original context is cancelled
-	go c.logEvent(context.Background(), event)
+	// Log asynchronously (fire-and-forget). Detach from the request's cancellation
+	// and deadline via context.WithoutCancel so the audit call completes even after
+	// the originating request finishes, while preserving context values (e.g. tracing metadata).
+	go c.logEvent(context.WithoutCancel(ctx), event)
 }
 
 // logEvent sends the audit event to the audit service API

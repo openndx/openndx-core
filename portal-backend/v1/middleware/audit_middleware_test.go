@@ -14,7 +14,7 @@ import (
 	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
 )
 
-// mockAuditClient implements audit.AuditClient interface for testing
+// mockAuditClient implements audit.Auditor interface for testing
 type mockAuditClient struct {
 	enabled         bool
 	receivedEvents  []*audit.AuditLogRequest
@@ -133,7 +133,7 @@ func TestAuditMiddleware_ThreadSafety(t *testing.T) {
 				url = "" // Mix enabled and disabled instances
 			}
 
-			var client audit.AuditClient
+			var client audit.Auditor
 			if url != "" {
 				client = newMockAuditClient(true)
 			} else {

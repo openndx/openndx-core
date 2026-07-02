@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
@@ -63,9 +62,10 @@ func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID
 		AdditionalMetadata: additionalMetadata,
 	}
 
-	// Log asynchronously (fire-and-forget) using background context
-	// If r.Context() is used, it may be cancelled before the audit log is sent
-	client.LogEvent(context.Background(), auditRequest)
+	// Log asynchronously (fire-and-forget). Pass the request context so tracing
+	// metadata can propagate; the Auditor implementation is responsible for
+	// detaching from request cancellation as needed.
+	client.LogEvent(r.Context(), auditRequest)
 }
 
 // extractActorInfoFromRequest extracts actor information from the request
