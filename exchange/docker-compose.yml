@@ -10,8 +10,8 @@
 services:
   policy-decision-point:
     build:
-      context: .
-      dockerfile: policy-decision-point/Dockerfile
+      context: ./policy-decision-point
+      dockerfile: Dockerfile
       args:
         SERVICE_PATH: policy-decision-point
         BUILD_VERSION: ${BUILD_VERSION:-dev}

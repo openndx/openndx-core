@@ -3,15 +3,13 @@ module github.com/gov-dx-sandbox/exchange/policy-decision-point
 go 1.24.6
 
 require (
+	github.com/OpenDIF/opendif-core/exchange/shared/utils v0.0.0-20260702054005-b41f3c6376d8
 	github.com/google/uuid v1.6.0
-	github.com/gov-dx-sandbox/exchange/shared/utils v0.0.0
 	github.com/stretchr/testify v1.10.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
 )
-
-replace github.com/gov-dx-sandbox/exchange/shared/utils => ../shared/utils
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
