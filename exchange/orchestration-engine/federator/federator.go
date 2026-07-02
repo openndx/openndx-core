@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
+	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/auth"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/consent"
@@ -22,8 +24,6 @@ import (
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/policy"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/provider"
 	"github.com/google/uuid"
-	"github.com/gov-dx-sandbox/exchange/shared/monitoring"
-	auditpkg "github.com/gov-dx-sandbox/shared/audit"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/source"

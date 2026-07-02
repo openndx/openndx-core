@@ -66,8 +66,8 @@ services:
 
   orchestration-engine:
     build:
-      context: .
-      dockerfile: orchestration-engine/Dockerfile
+      context: ./orchestration-engine
+      dockerfile: Dockerfile
       args:
         SERVICE_PATH: orchestration-engine
         BUILD_VERSION: ${BUILD_VERSION:-dev}

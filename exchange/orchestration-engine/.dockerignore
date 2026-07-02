@@ -1,4 +1,5 @@
 # Orchestration Engine Config File and Config Template
+# (config is provided at runtime via mount/env, never baked into the image)
 config.example.json
 config.json
 
@@ -11,6 +12,16 @@ obj/
 *.dylib
 *.test
 
+# Test & coverage artifacts
+coverage.out
+coverage.html
+
+# Docs & API spec (not embedded; not copied into the final image)
+README.md
+HOW_TO_TEST.md
+PROVIDER_CONFIGURATION.md
+openapi.yaml
+
 # Environment variables
 .env.*
 
@@ -19,3 +30,13 @@ vendor/
 
 # Hosting Platform files
 .choreo/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

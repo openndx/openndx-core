@@ -7,13 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/middleware"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/provider"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/server"
-	auditclient "github.com/gov-dx-sandbox/shared/audit"
 )
 
 func main() {
@@ -32,8 +32,8 @@ func main() {
 
 	// Initialize audit middleware
 	// All configuration comes from config.json for consistency
-	auditClient := auditclient.NewClient(config.AuditConfig.ServiceURL)
-	auditclient.InitializeGlobalAudit(auditClient)
+	auditClient := audit.NewClient(config.AuditConfig.ServiceURL)
+	audit.InitializeGlobalAudit(auditClient)
 
 	// Initialize audit configuration (actorType, actorID)
 	// Note: targetType is determined per API call, not from global config

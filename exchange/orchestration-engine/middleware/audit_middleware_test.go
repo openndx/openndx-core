@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	auditpkg "github.com/gov-dx-sandbox/shared/audit"
+	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
 )
 
 // mockAuditClient implements auditpkg.AuditClient interface for testing

@@ -7,18 +7,14 @@ RUN apk add --no-cache git ca-certificates
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files and source code
-COPY exchange/orchestration-engine/go.mod exchange/orchestration-engine/go.sum ./
-COPY exchange/orchestration-engine/ .
-
-# Copy shared packages from exchange/shared (monitoring, config, utils, constants)
-COPY exchange/shared/ /shared/
-
-# Copy root shared packages (audit) - no overlap with exchange/shared
-COPY shared/ /shared/
-
-# Download dependencies
+# Copy go mod files first for better layer caching
+COPY go.mod go.sum ./
+# Shared modules (github.com/OpenDIF/opendif-core/...) are now published and
+# fetched from the module proxy, so no local shared source needs to be copied.
 RUN go mod download
+
+# Copy source code (this layer is invalidated only on code changes)
+COPY . .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o orchestration-engine .

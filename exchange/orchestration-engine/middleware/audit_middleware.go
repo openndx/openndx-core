@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
+	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
 	"github.com/google/uuid"
-	"github.com/gov-dx-sandbox/exchange/shared/monitoring"
-	auditpkg "github.com/gov-dx-sandbox/shared/audit"
 )
 
 // auditConfig holds the audit configuration values

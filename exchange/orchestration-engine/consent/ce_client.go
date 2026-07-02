@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/gov-dx-sandbox/exchange/shared/monitoring"
 )
 
 // CEServiceClient represents a client to interact with the Consent Engine service
