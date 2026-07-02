@@ -118,25 +118,6 @@ func TestGetEnv(t *testing.T) {
 }
 
 func TestGetDatabaseConnectionString(t *testing.T) {
-	t.Run("Choreo environment variables set", func(t *testing.T) {
-		os.Setenv("CHOREO_DB_OE_HOSTNAME", "choreo-host")
-		os.Setenv("CHOREO_DB_OE_PORT", "5433")
-		os.Setenv("CHOREO_DB_OE_USERNAME", "choreo-user")
-		os.Setenv("CHOREO_DB_OE_PASSWORD", "choreo-password")
-		os.Setenv("CHOREO_DB_OE_DATABASENAME", "choreo-db")
-		defer func() {
-			os.Unsetenv("CHOREO_DB_OE_HOSTNAME")
-			os.Unsetenv("CHOREO_DB_OE_PORT")
-			os.Unsetenv("CHOREO_DB_OE_USERNAME")
-			os.Unsetenv("CHOREO_DB_OE_PASSWORD")
-			os.Unsetenv("CHOREO_DB_OE_DATABASENAME")
-		}()
-
-		connStr := getDatabaseConnectionString()
-		expected := "host=choreo-host port=5433 user=choreo-user password=choreo-password dbname=choreo-db sslmode=require"
-		assert.Equal(t, expected, connStr)
-	})
-
 	t.Run("Standard environment variables set", func(t *testing.T) {
 		os.Setenv("DB_HOST", "standard-host")
 		os.Setenv("DB_PORT", "5434")
@@ -179,11 +160,6 @@ func TestGetDatabaseConnectionString(t *testing.T) {
 	})
 
 	t.Run("No environment variables set (defaults)", func(t *testing.T) {
-		os.Unsetenv("CHOREO_DB_OE_HOSTNAME")
-		os.Unsetenv("CHOREO_DB_OE_PORT")
-		os.Unsetenv("CHOREO_DB_OE_USERNAME")
-		os.Unsetenv("CHOREO_DB_OE_PASSWORD")
-		os.Unsetenv("CHOREO_DB_OE_DATABASENAME")
 		os.Unsetenv("DB_HOST")
 		os.Unsetenv("DB_PORT")
 		os.Unsetenv("DB_USER")

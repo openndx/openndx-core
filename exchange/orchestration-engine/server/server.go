@@ -210,34 +210,16 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 // getDatabaseConnectionString returns the database connection string from environment variables
 func getDatabaseConnectionString() string {
-	// Check for Choreo environment variables first
-	choreoHost := os.Getenv("CHOREO_DB_OE_HOSTNAME")
-	choreoUser := os.Getenv("CHOREO_DB_OE_USERNAME")
-	choreoPassword := os.Getenv("CHOREO_DB_OE_PASSWORD")
-	choreoDB := os.Getenv("CHOREO_DB_OE_DATABASENAME")
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "5432")
+	user := getEnv("DB_USER", "postgres")
+	password := getEnv("DB_PASSWORD", "")
+	dbname := getEnv("DB_NAME", "orchestration_engine")
+	sslmode := getEnv("DB_SSLMODE", "disable")
 
-	// Use Choreo variables if available, otherwise fall back to standard environment variables
-	var host, port, user, password, dbname, sslmode string
-
-	if choreoHost != "" {
-		host = choreoHost
-		port = getEnv("CHOREO_DB_OE_PORT", "5432")
-		user = choreoUser
-		password = choreoPassword
-		dbname = choreoDB
-		sslmode = "require" // Choreo typically requires SSL
-	} else {
-		host = getEnv("DB_HOST", "localhost")
-		port = getEnv("DB_PORT", "5432")
-		user = getEnv("DB_USER", "postgres")
-		password = getEnv("DB_PASSWORD", "")
-		dbname = getEnv("DB_NAME", "orchestration_engine")
-		sslmode = getEnv("DB_SSLMODE", "disable")
-
-		// Require password from environment - no default
-		if password == "" {
-			logger.Log.Warn("DB_PASSWORD not set - database connection may fail")
-		}
+	// Require password from environment - no default
+	if password == "" {
+		logger.Log.Warn("DB_PASSWORD not set - database connection may fail")
 	}
 
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

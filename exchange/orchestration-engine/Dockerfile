@@ -34,10 +34,6 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/orchestration-engine .
 
-
-# Install wget for health checks
-RUN apk --no-cache add wget
-
 # Create config directory
 RUN mkdir -p /app/config && \
     chown -R appuser:appuser /app
@@ -45,26 +41,8 @@ RUN mkdir -p /app/config && \
 # Switch to non-root user
 USER appuser
 
-# Environment variables with defaults
-ENV SERVER_PORT=4000
-ENV SERVER_HOST=0.0.0.0
-ENV LOG_LEVEL=info
-ENV CONFIG_FILE=/app/config.json
-
-# Database Configuration (PostgreSQL example)
-ENV DB_HOST=localhost
-ENV DB_PORT=5432
-ENV DB_USER=user
-ENV DB_PASSWORD=password
-ENV DB_NAME=orchestration_db
-ENV DB_SSLMODE=disable
-
 # Expose port
 EXPOSE 4000
-
-# Health check (adjust endpoint as needed)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:${SERVER_PORT}/health || exit 1
 
 # Run the server
 CMD ["./orchestration-engine"]
