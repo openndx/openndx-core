@@ -58,7 +58,7 @@ jobs:
         id: build-push
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ env.SERVICE_PATH }}
           file: ${{ env.SERVICE_PATH }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

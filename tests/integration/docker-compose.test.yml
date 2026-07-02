@@ -37,8 +37,8 @@ services:
   # Consent Engine Service
   consent-engine:
     build:
-      context: ../..
-      dockerfile: exchange/consent-engine/Dockerfile
+      context: ../../exchange/consent-engine
+      dockerfile: Dockerfile
     environment:
       PORT: 8081
       LOG_LEVEL: info

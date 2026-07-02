@@ -5,7 +5,7 @@ import (
 	"flag"
 	"time"
 
-	"github.com/gov-dx-sandbox/exchange/shared/utils"
+	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
 )
 
 // Config holds all configuration for a service

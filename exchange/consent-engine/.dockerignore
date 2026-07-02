@@ -1,0 +1,26 @@
+# Only Go source + go.mod/go.sum are needed to build the binary.
+# Keep the build context small and cache-stable by excluding everything else.
+
+# Test & coverage artifacts
+coverage.out
+coverage.html
+*.test
+
+# Docs & API spec (not embedded; not copied into the final image)
+README.md
+openapi.yaml
+
+# Local environment / secrets
+.env
+.env.*
+*.env
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

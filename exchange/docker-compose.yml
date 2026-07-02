@@ -39,8 +39,8 @@ services:
 
   consent-engine:
     build:
-      context: .
-      dockerfile: consent-engine/Dockerfile
+      context: ./consent-engine
+      dockerfile: Dockerfile
       args:
         SERVICE_PATH: consent-engine
         BUILD_VERSION: ${BUILD_VERSION:-dev}
