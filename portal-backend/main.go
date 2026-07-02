@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/gov-dx-sandbox/portal-backend/shared/utils"
 	v1 "github.com/gov-dx-sandbox/portal-backend/v1"
 	v1handlers "github.com/gov-dx-sandbox/portal-backend/v1/handlers"
 	v1middleware "github.com/gov-dx-sandbox/portal-backend/v1/middleware"
 	v1models "github.com/gov-dx-sandbox/portal-backend/v1/models"
-	auditclient "github.com/gov-dx-sandbox/shared/audit"
 	"github.com/joho/godotenv"
 )
 
@@ -115,8 +115,8 @@ func main() {
 	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false
 	// or if CHOREO_AUDIT_CONNECTION_SERVICEURL is not provided
 	auditServiceURL := utils.GetEnvOrDefault("CHOREO_AUDIT_CONNECTION_SERVICEURL", "http://localhost:3001")
-	auditClient := auditclient.NewClient(auditServiceURL)
-	auditclient.InitializeGlobalAudit(auditClient)
+	auditClient := audit.NewClient(auditServiceURL)
+	audit.InitializeGlobalAudit(auditClient)
 
 	// Apply middleware chain (CORS -> JWT Auth -> Authorization) to the API mux ONLY
 	protectedAPIHandler := corsMiddleware(

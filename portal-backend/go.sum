@@ -1,5 +1,7 @@
 github.com/DATA-DOG/go-sqlmock v1.5.2 h1:OcvFkGmslmlZibjAjaHm3L//6LiuBgolP7OputlJIzU=
 github.com/DATA-DOG/go-sqlmock v1.5.2/go.mod h1:88MAG/4G7SMwSE3CeA0ZKzrT5CiOU3OJ+JlNzwDqpNU=
+github.com/OpenDIF/opendif-core/shared/audit v0.0.0-20260702135451-a897215dde39 h1:nsZHnO7ZDncC7ByPGyS7Pm4BX67bE0MsEwhkz+RAoGc=
+github.com/OpenDIF/opendif-core/shared/audit v0.0.0-20260702135451-a897215dde39/go.mod h1:O3gRvxopCQa/b/IBPINRG+LjKWqFVz2g80e5Kz0YQXI=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883 h1:bvNMNQO63//z+xNgfBlViaCIJKLlCJ6/fmUseuG0wVQ=

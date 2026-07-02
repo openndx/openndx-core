@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/gov-dx-sandbox/portal-backend/v1/models"
 	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
-	auditpkg "github.com/gov-dx-sandbox/shared/audit"
 )
 
-// mockAuditClient implements auditpkg.AuditClient interface for testing
+// mockAuditClient implements audit.AuditClient interface for testing
 type mockAuditClient struct {
 	enabled         bool
-	receivedEvents  []*auditpkg.AuditLogRequest
+	receivedEvents  []*audit.AuditLogRequest
 	mu              sync.Mutex
 	requestReceived chan bool
 }
@@ -25,12 +25,12 @@ type mockAuditClient struct {
 func newMockAuditClient(enabled bool) *mockAuditClient {
 	return &mockAuditClient{
 		enabled:         enabled,
-		receivedEvents:  make([]*auditpkg.AuditLogRequest, 0),
+		receivedEvents:  make([]*audit.AuditLogRequest, 0),
 		requestReceived: make(chan bool, 1),
 	}
 }
 
-func (m *mockAuditClient) LogEvent(ctx context.Context, event *auditpkg.AuditLogRequest) {
+func (m *mockAuditClient) LogEvent(ctx context.Context, event *audit.AuditLogRequest) {
 	m.mu.Lock()
 	m.receivedEvents = append(m.receivedEvents, event)
 	m.mu.Unlock()
@@ -46,12 +46,12 @@ func (m *mockAuditClient) IsEnabled() bool {
 
 func TestAuditMiddleware_Initialization(t *testing.T) {
 	// Reset global state for this test
-	auditpkg.ResetGlobalAuditMiddleware()
+	audit.ResetGlobalAuditMiddleware()
 
 	// Test with audit enabled
 	mockClient1 := newMockAuditClient(true)
-	auditpkg.InitializeGlobalAudit(mockClient1)
-	auditMiddleware := auditpkg.GetGlobalAuditMiddleware()
+	audit.InitializeGlobalAudit(mockClient1)
+	auditMiddleware := audit.GetGlobalAuditMiddleware()
 	if auditMiddleware.Client() == nil {
 		t.Error("Expected audit middleware to have client when provided")
 	}
@@ -60,10 +60,10 @@ func TestAuditMiddleware_Initialization(t *testing.T) {
 	}
 
 	// Test with audit disabled (create new instance, but global should already be set)
-	auditpkg.ResetGlobalAuditMiddleware()
+	audit.ResetGlobalAuditMiddleware()
 	mockClient2 := newMockAuditClient(false)
-	auditpkg.InitializeGlobalAudit(mockClient2)
-	auditMiddleware2 := auditpkg.GetGlobalAuditMiddleware()
+	audit.InitializeGlobalAudit(mockClient2)
+	auditMiddleware2 := audit.GetGlobalAuditMiddleware()
 	if auditMiddleware2.Client() == nil {
 		t.Error("Expected audit middleware to have client instance even when disabled")
 	}
@@ -74,11 +74,11 @@ func TestAuditMiddleware_Initialization(t *testing.T) {
 
 func TestLogAuditEvent_GlobalFunction(t *testing.T) {
 	// Reset global state for this test
-	auditpkg.ResetGlobalAuditMiddleware()
+	audit.ResetGlobalAuditMiddleware()
 
 	// Initialize global audit middleware
 	mockClient := newMockAuditClient(true)
-	auditpkg.InitializeGlobalAudit(mockClient)
+	audit.InitializeGlobalAudit(mockClient)
 
 	// Test that LogAuditEvent doesn't panic when called
 	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
@@ -117,7 +117,7 @@ func TestLogAudit_ProcessesWriteOperations(t *testing.T) {
 
 func TestAuditMiddleware_ThreadSafety(t *testing.T) {
 	// Reset global state for this test
-	auditpkg.ResetGlobalAuditMiddleware()
+	audit.ResetGlobalAuditMiddleware()
 
 	const numGoroutines = 10
 	var wg sync.WaitGroup
@@ -133,20 +133,20 @@ func TestAuditMiddleware_ThreadSafety(t *testing.T) {
 				url = "" // Mix enabled and disabled instances
 			}
 
-			var client auditpkg.AuditClient
+			var client audit.AuditClient
 			if url != "" {
 				client = newMockAuditClient(true)
 			} else {
 				client = newMockAuditClient(false)
 			}
-			auditpkg.InitializeGlobalAudit(client)
+			audit.InitializeGlobalAudit(client)
 		}(i)
 	}
 
 	wg.Wait()
 
 	// Verify that the global instance was set
-	globalMiddleware := auditpkg.GetGlobalAuditMiddleware()
+	globalMiddleware := audit.GetGlobalAuditMiddleware()
 	if globalMiddleware == nil {
 		t.Error("Expected global audit middleware to be set")
 	}
@@ -163,7 +163,7 @@ func TestAuditMiddleware_ThreadSafety(t *testing.T) {
 
 func TestLogAuditEvent_WithoutInitialization(t *testing.T) {
 	// Reset global state to ensure no global instance
-	auditpkg.ResetGlobalAuditMiddleware()
+	audit.ResetGlobalAuditMiddleware()
 
 	// Test LogAuditEvent when global middleware is not initialized
 	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
@@ -192,7 +192,7 @@ func TestLogAudit_SendsRequest(t *testing.T) {
 	defer server.Close()
 
 	// For this test, we need to use the real shared/audit client since we're testing HTTP
-	sharedClient := auditpkg.NewClient(server.URL)
+	sharedClient := audit.NewClient(server.URL)
 
 	// Create request with authenticated user in context
 	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)

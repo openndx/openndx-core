@@ -5,13 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	auditpkg "github.com/gov-dx-sandbox/shared/audit"
 )
 
 // LogAudit logs an audit event for portal-backend operations by extracting request info and creating an audit log
-func LogAudit(client auditpkg.AuditClient, r *http.Request, resource string, resourceID *string, status string) {
-	// Skip if audit client is not enabled
+func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID *string, status string) {
+	// Skip if audit client is not set or not enabled
 	if client == nil || !client.IsEnabled() {
 		return
 	}
@@ -45,13 +45,13 @@ func LogAudit(client auditpkg.AuditClient, r *http.Request, resource string, res
 
 	// Create audit event using shared/audit DTO
 	// Use shared utilities for timestamp and metadata marshaling
-	timestamp := auditpkg.CurrentTimestamp()
-	additionalMetadata := auditpkg.MarshalMetadata(map[string]interface{}{
+	timestamp := audit.CurrentTimestamp()
+	additionalMetadata := audit.MarshalMetadata(map[string]interface{}{
 		"resource":   resource,
 		"resourceId": resourceID,
 	})
 
-	auditRequest := &auditpkg.AuditLogRequest{
+	auditRequest := &audit.AuditLogRequest{
 		TraceID:            nil, // No trace ID for standalone management events
 		Timestamp:          timestamp,
 		EventType:          eventType,
@@ -122,7 +122,7 @@ func extractActorInfoFromRequest(r *http.Request) (actorType string, actorID *st
 
 // LogAuditEvent - global function for easy access from handlers
 func LogAuditEvent(r *http.Request, resource string, resourceID *string, status string) {
-	globalMiddleware := auditpkg.GetGlobalAuditMiddleware()
+	globalMiddleware := audit.GetGlobalAuditMiddleware()
 	if globalMiddleware != nil {
 		LogAudit(globalMiddleware.Client(), r, resource, resourceID, status)
 	} else {
