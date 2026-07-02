@@ -43,7 +43,6 @@ func main() {
 
 	// Log IDP configuration (for future use)
 	slog.Info("IDP configuration",
-		"org_name", cfg.IDPConfig.OrgName,
 		"issuer", cfg.IDPConfig.Issuer,
 		"audience", cfg.IDPConfig.Audience,
 		"jwks_url", cfg.IDPConfig.JwksURL)
