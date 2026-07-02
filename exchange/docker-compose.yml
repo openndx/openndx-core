@@ -13,7 +13,6 @@ services:
       context: ./policy-decision-point
       dockerfile: Dockerfile
       args:
-        SERVICE_PATH: policy-decision-point
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
         GIT_COMMIT: ${GIT_COMMIT:-local}
@@ -27,12 +26,6 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=policy-decision-point
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
     networks:
       - opendif-network
@@ -42,7 +35,6 @@ services:
       context: ./consent-engine
       dockerfile: Dockerfile
       args:
-        SERVICE_PATH: consent-engine
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
         GIT_COMMIT: ${GIT_COMMIT:-local}
@@ -54,12 +46,6 @@ services:
       - PORT=8081
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=${LOG_FORMAT:-text}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
     networks:
       - opendif-network
@@ -69,7 +55,6 @@ services:
       context: ./orchestration-engine
       dockerfile: Dockerfile
       args:
-        SERVICE_PATH: orchestration-engine
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
         GIT_COMMIT: ${GIT_COMMIT:-local}
@@ -86,7 +71,7 @@ services:
       - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
       - ENABLE_AUDIT=${ENABLE_AUDIT:-true}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
