@@ -1244,15 +1244,18 @@ func TestSchemaSubmissionEndpoints_EdgeCases(t *testing.T) {
 func TestNewV1Handler(t *testing.T) {
 	t.Run("NewV1Handler_MissingPDPURL", func(t *testing.T) {
 		originalURL := os.Getenv("PDP_SERVICE_URL")
+
 		defer func() {
 			if originalURL != "" {
 				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
 				os.Unsetenv("PDP_SERVICE_URL")
+
 			}
 		}()
 
 		os.Unsetenv("PDP_SERVICE_URL")
+
 
 		// Set IDP env vars to pass IDP check
 		os.Setenv("IDP_BASE_URL", "https://example.com")
@@ -1271,6 +1274,7 @@ func TestNewV1Handler(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, handler)
 		assert.Contains(t, err.Error(), "PDP_SERVICE_URL")
+
 	})
 
 	t.Run("NewV1Handler_Success", func(t *testing.T) {
@@ -1284,6 +1288,7 @@ func TestNewV1Handler(t *testing.T) {
 				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
 				os.Unsetenv("PDP_SERVICE_URL")
+
 			}
 			if originalBaseURL != "" {
 				os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1337,6 +1342,7 @@ func TestNewV1Handler(t *testing.T) {
 				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
 				os.Unsetenv("PDP_SERVICE_URL")
+
 			}
 			if originalBaseURL != "" {
 				os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1382,6 +1388,7 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 	db := services.SetupSQLiteTestDB(t)
 
 	originalURL := os.Getenv("PDP_SERVICE_URL")
+
 	originalBaseURL := os.Getenv("IDP_BASE_URL")
 	originalClientID := os.Getenv("IDP_CLIENT_ID")
 	originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
@@ -1390,6 +1397,7 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 			os.Setenv("PDP_SERVICE_URL", originalURL)
 		} else {
 			os.Unsetenv("PDP_SERVICE_URL")
+
 		}
 		if originalBaseURL != "" {
 			os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1409,6 +1417,7 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 	}()
 
 	os.Setenv("PDP_SERVICE_URL", "http://localhost:9999")
+
 	os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
 	os.Setenv("IDP_CLIENT_ID", "test-client-id")
 	os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")

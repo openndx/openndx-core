@@ -80,7 +80,6 @@ func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 			}
 		}
 	}
-
 	clientID := os.Getenv("IDP_CLIENT_ID")
 	clientSecret := os.Getenv("IDP_CLIENT_SECRET")
 
