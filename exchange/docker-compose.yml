@@ -1,13 +1,39 @@
 # Exchange Services - Environment-based Configuration
-# Usage: docker compose --env-file .env.local up --build
-#       docker compose --env-file .env.production up --build
+# Usage: docker compose up --build
+#
+# This stack is self-contained: it starts a PostgreSQL database so the
+# services can be tested end-to-end with a single `docker compose up --build`.
 #
 # Note: Audit Service is optional and can be deployed separately.
 #       See audit-service/docker-compose.yml for standalone deployment.
-#       Services will function normally without audit-service when
-#       AUDIT_SERVICE_URL is not set or ENABLE_AUDIT=false.
+#       The orchestration-engine reads its audit configuration from
+#       config.json and functions normally without the audit-service.
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-${ENVIRONMENT:-local}
+    environment:
+      - POSTGRES_USER=${DB_USER:-exchange}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-exchange}
+      # Default database; the additional per-service databases are created
+      # by init-db.sql on first startup.
+      - POSTGRES_DB=${DB_USER:-exchange}
+    ports:
+      - "${PORT_DB:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-exchange}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - opendif-network
+
   policy-decision-point:
     build:
       context: ./policy-decision-point
@@ -26,6 +52,17 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=policy-decision-point
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
+      # Database configuration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USERNAME=${DB_USER:-exchange}
+      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_NAME=${DB_NAME_PDP:-pdp}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - RUN_MIGRATION=${RUN_MIGRATION:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - opendif-network
@@ -46,6 +83,18 @@ services:
       - PORT=8081
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=${LOG_FORMAT:-text}
+      - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      # Database configuration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USERNAME=${DB_USER:-exchange}
+      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_NAME=${DB_NAME_CE:-consent_engine}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - RUN_MIGRATION=${RUN_MIGRATION:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - opendif-network
@@ -68,8 +117,22 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=orchestration-engine
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
-      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
-      - ENABLE_AUDIT=${ENABLE_AUDIT:-true}
+      # Database configuration (orchestration-engine uses DB_USER)
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-exchange}
+      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_NAME=${DB_NAME_OE:-orchestration_engine}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+    volumes:
+      - ./orchestration-engine/config.docker.json:/app/config.json:ro
+    extra_hosts:
+      # Lets the container reach mock providers running on the host
+      # (resolves host.docker.internal on Linux too).
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/health"]
       interval: 30s
@@ -80,7 +143,9 @@ services:
     networks:
       - opendif-network
 
+volumes:
+  postgres-data:
+
 networks:
   opendif-network:
     name: opendif-network
-    external: true
