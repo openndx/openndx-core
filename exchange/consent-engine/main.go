@@ -78,16 +78,16 @@ func main() {
 	v1PortalHandler := v1handlers.NewPortalHandler(v1ConsentService)
 
 	slog.Info("JWT verifier configuration",
-		"org_name", cfg.IDPConfig.OrgName,
+		"client_id", cfg.IDPConfig.ClientID,
 		"issuer", cfg.IDPConfig.Issuer,
 		"audience", cfg.IDPConfig.Audience,
 		"jwks_url", cfg.IDPConfig.JwksUrl)
 
 	v1JWTVerifier, err := v1auth.NewJWTVerifier(v1auth.JWTVerifierConfig{
-		JWKSUrl:      cfg.IDPConfig.JwksUrl,
-		Issuer:       cfg.IDPConfig.Issuer,
-		Audience:     cfg.IDPConfig.Audience,
-		Organization: cfg.IDPConfig.OrgName,
+		JWKSUrl:  cfg.IDPConfig.JwksUrl,
+		Issuer:   cfg.IDPConfig.Issuer,
+		Audience: cfg.IDPConfig.Audience,
+		ClientID: cfg.IDPConfig.ClientID,
 	})
 	if err != nil {
 		slog.Error("Failed to initialize V1 JWT verifier", "error", err)

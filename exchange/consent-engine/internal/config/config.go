@@ -45,7 +45,7 @@ type IDPConfig struct {
 	Issuer   string
 	JwksUrl  string
 	Audience string
-	OrgName  string
+	ClientID string
 }
 
 // DBConfigs holds database configuration
@@ -76,11 +76,12 @@ func LoadConfig(serviceName string) *Config {
 	// Parse flags
 	flag.Parse()
 
-	// Reading IDP Configs
-	orgName := utils.GetEnvOrDefault("IDP_ORG_NAME", "YOUR_ORG_NAME")
-	userIssuer := utils.GetEnvOrDefault("IDP_ISSUER", "https://api.asgardeo.io/t/"+orgName+"/oauth2/token")
-	userAudience := utils.GetEnvOrDefault("IDP_AUDIENCE", "YOUR_AUDIENCE")
-	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "https://api.asgardeo.io/t/"+orgName+"/oauth2/jwks")
+	// Reading IDP Configs (generic across IdPs; each check is applied by the
+	// verifier only when its value is configured)
+	userIssuer := utils.GetEnvOrDefault("IDP_ISSUER", "")
+	userAudience := utils.GetEnvOrDefault("IDP_AUDIENCE", "")
+	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "")
+	userClientID := utils.GetEnvOrDefault("IDP_CLIENT_ID", "")
 
 	// Reading DB Configs
 	dbHost := utils.GetEnvOrDefault("DB_HOST", "localhost")
@@ -122,7 +123,7 @@ func LoadConfig(serviceName string) *Config {
 			Issuer:   userIssuer,
 			JwksUrl:  userJwksURL,
 			Audience: userAudience,
-			OrgName:  orgName,
+			ClientID: userClientID,
 		},
 		DBConfigs: DBConfigs{
 			Host:     dbHost,

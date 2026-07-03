@@ -30,12 +30,14 @@ type JSONWebKey struct {
 	E   string `json:"e"`   // Exponent
 }
 
-// JWTVerifierConfig holds configuration for the JWT verifier
+// JWTVerifierConfig holds configuration for the JWT verifier.
+// Each check is applied only when its value is configured (non-empty), so the
+// verifier stays generic across identity providers.
 type JWTVerifierConfig struct {
-	JWKSUrl      string
-	Issuer       string
-	Audience     string
-	Organization string
+	JWKSUrl  string
+	Issuer   string
+	Audience string
+	ClientID string
 }
 
 // JWTVerifier handles JWT token verification
@@ -199,67 +201,54 @@ func (jv *JWTVerifier) getPublicKey(kid string) (*rsa.PublicKey, error) {
 	return key, nil
 }
 
-// VerifyToken verifies a JWT token and returns the parsed token
+// VerifyToken verifies a JWT token and returns the parsed token.
+//
+// Standard registered claims are validated by the jwt/v5 parser: the RS256
+// signing method, the signature (via the JWKS key func), expiry/not-before, and
+// — when configured — the issuer and audience. Audience validation natively
+// accepts both the string and array (RFC 7519) forms. The only non-standard,
+// optional check is client_id; there is deliberately no IdP-specific claim (e.g.
+// organization) so the verifier stays generic across identity providers.
 func (jv *JWTVerifier) VerifyToken(tokenString string) (*jwt.Token, error) {
-	// Parse and verify the token
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Verify signing method
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		// Get key ID from token header
+	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		kid, ok := token.Header["kid"].(string)
 		if !ok {
 			return nil, fmt.Errorf("token missing 'kid' header")
 		}
-
-		// Get the public key
 		return jv.getPublicKey(kid)
-	})
+	}
+
+	// Build parser options; issuer/audience are enforced only when configured.
+	opts := []jwt.ParserOption{jwt.WithValidMethods([]string{"RS256"})}
+	if jv.config.Issuer != "" {
+		opts = append(opts, jwt.WithIssuer(jv.config.Issuer))
+	}
+	if jv.config.Audience != "" {
+		opts = append(opts, jwt.WithAudience(jv.config.Audience))
+	}
+
+	token, err := jwt.Parse(tokenString, keyFunc, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("token verification failed: %w", err)
 	}
-
 	if !token.Valid {
 		return nil, fmt.Errorf("token is invalid")
 	}
 
-	// Verify claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
-	issVal, ok := claims["iss"]
-	if !ok {
-		return nil, fmt.Errorf("issuer (iss) claim is missing")
-	}
-	iss, ok := issVal.(string)
-	if !ok {
-		return nil, fmt.Errorf("issuer (iss) claim is not a string: got type %T", issVal)
-	}
-	if iss != jv.config.Issuer {
-		return nil, fmt.Errorf("invalid issuer: expected %s, got %s", jv.config.Issuer, iss)
-	}
-
-	// Verify audience
-	if audVal, ok := claims["aud"]; !ok {
-		return nil, fmt.Errorf("audience (aud) claim is missing")
-	} else {
-		aud, ok := audVal.(string)
-		if !ok {
-			return nil, fmt.Errorf("audience (aud) claim is not a string: got type %T", audVal)
+	// Verify client_id when configured. Prefer the "client_id" claim, falling
+	// back to "azp" for IdPs that use it.
+	if jv.config.ClientID != "" {
+		cid, _ := claims["client_id"].(string)
+		if cid == "" {
+			cid, _ = claims["azp"].(string)
 		}
-		if aud != jv.config.Audience {
-			return nil, fmt.Errorf("invalid audience: expected %s, got %s", jv.config.Audience, aud)
-		}
-	}
-
-	// Verify organization if specified
-	if jv.config.Organization != "" {
-		if org, ok := claims["org_name"].(string); !ok || org != jv.config.Organization {
-			return nil, fmt.Errorf("invalid organization: expected %s, got %v", jv.config.Organization, claims["org_name"])
+		if cid != jv.config.ClientID {
+			return nil, fmt.Errorf("invalid client_id: expected %s, got %v", jv.config.ClientID, claims["client_id"])
 		}
 	}
 
