@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,9 +21,14 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		// Mock PDP
+		// Mock PDP, capturing the allow-list request body so we can assert the key.
+		var capturedAllowList models.AllowListUpdateRequest
 		mockTransport := &MockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
+				if req.Body != nil {
+					body, _ := io.ReadAll(req.Body)
+					_ = json.Unmarshal(body, &capturedAllowList)
+				}
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewBufferString(`{"records": [{"id": "policy_1"}]}`)),
@@ -66,6 +72,10 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 			assert.Equal(t, req.ApplicationName, resp.ApplicationName)
 			assert.Equal(t, req.MemberID, resp.MemberID)
 		}
+
+		// The PDP allow-list must be keyed by the IdP OIDC client_id (the identity OE
+		// presents from the token), not the portal's random ApplicationID UUID. See #447.
+		assert.Equal(t, "mock-client-id", capturedAllowList.ApplicationID)
 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})

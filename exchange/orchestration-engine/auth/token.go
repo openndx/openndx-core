@@ -520,29 +520,12 @@ func parseAndValidateToken(tokenString string, trustUpstream bool, validator *To
 }
 
 // GetConsumerJwtFromToken validates and parses JWT token from HTTP request
-func GetConsumerJwtFromToken(env string, jwtConfig *configs.JWTConfig, trustUpstream bool, r *http.Request) (*ConsumerAssertion, error) {
-	return GetConsumerJwtFromTokenWithValidator(env, jwtConfig, trustUpstream, r, nil)
+func GetConsumerJwtFromToken(jwtConfig *configs.JWTConfig, trustUpstream bool, r *http.Request) (*ConsumerAssertion, error) {
+	return GetConsumerJwtFromTokenWithValidator(jwtConfig, trustUpstream, r, nil)
 }
 
 // GetConsumerJwtFromTokenWithValidator validates and parses JWT token with optional cached validator
-func GetConsumerJwtFromTokenWithValidator(env string, jwtConfig *configs.JWTConfig, trustUpstream bool, r *http.Request, validator *TokenValidator) (*ConsumerAssertion, error) {
-	if env == "development" {
-		// Return dummy values in local environment / development for ease of testing
-		// Bypass all validation and parsing
-		// WARNING: This should NEVER be used in production
-		// TODO: Remove this bypass by implementing proper test token generation and validation
-		logger.Log.Warn("Using development mode bypass for token validation")
-		return &ConsumerAssertion{
-			ApplicationID: "passport-app",
-			ClientID:      "passport-app",
-			Subscriber:    "passport-app",
-			Iss:           "https://idp.example.com",
-			Aud:           []string{"https://api.example.com"},
-			Exp:           time.Now().Add(time.Hour).Unix(),
-			Iat:           time.Now().Unix(),
-		}, nil
-	}
-
+func GetConsumerJwtFromTokenWithValidator(jwtConfig *configs.JWTConfig, trustUpstream bool, r *http.Request, validator *TokenValidator) (*ConsumerAssertion, error) {
 	// Extract token from request
 	tokenString, err := extractTokenFromRequest(r)
 	if err != nil {
@@ -580,17 +563,14 @@ func GetConsumerJwtFromTokenWithValidator(env string, jwtConfig *configs.JWTConf
 		return nil, err
 	}
 
-	// Extract application_id if present, otherwise use client_id as fallback
-	// TODO: In the future, ApplicationID should be fetched from an internal token service
-	// that maps client_id to application_id. For now, we use client_id as a fallback.
-	applicationID, ok := claims[ClaimApplicationId].(string)
-	if !ok || applicationID == "" {
-		applicationID = clientID // Use client_id when application_id is not present
-	}
+	// The application identity used across the exchange is standardized on the OIDC
+	// client_id. The PDP allow-list is keyed by client_id (see portal-backend
+	// application_service.go), so OE presents the same client_id when asking the PDP
+	// for a decision. See issue #447.
 
 	// Build and return ConsumerAssertion
 	return &ConsumerAssertion{
-		ApplicationID: applicationID,
+		ApplicationID: clientID,
 		ClientID:      clientID,
 		Subscriber:    subscriber,
 		Iss:           iss,

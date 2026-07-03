@@ -28,32 +28,6 @@ func createUnsignedTestToken(claims jwt.MapClaims) string {
 	return tokenString
 }
 
-func TestGetConsumerJwtFromToken_LocalEnvironment(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-
-	result, err := GetConsumerJwtFromToken("development", nil, true, req)
-	if err != nil {
-		t.Errorf("Expected no error in development environment, got: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Expected non-nil result in development environment")
-	}
-
-	expected := &ConsumerAssertion{
-		ClientID:   "passport-app",
-		Subscriber: "passport-app",
-		Iss:        "https://idp.example.com",
-	}
-
-	if result.ClientID != expected.ClientID {
-		t.Errorf("Expected ClientID %s, got %s", expected.ClientID, result.ClientID)
-	}
-	if result.Subscriber != expected.Subscriber {
-		t.Errorf("Expected Subscriber %s, got %s", expected.Subscriber, result.Subscriber)
-	}
-}
-
 func TestGetConsumerJwtFromToken_AuthorizationHeader(t *testing.T) {
 	claims := jwt.MapClaims{
 		ClaimIss:      "https://idp.test.com",
@@ -69,7 +43,7 @@ func TestGetConsumerJwtFromToken_AuthorizationHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
@@ -93,7 +67,7 @@ func TestGetConsumerJwtFromToken_MissingAuthorizationHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	// No Authorization header set
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when Authorization header is missing")
@@ -110,7 +84,7 @@ func TestGetConsumerJwtFromToken_InvalidBearerScheme(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Basic sometoken")
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when Bearer scheme is not used")
@@ -127,7 +101,7 @@ func TestGetConsumerJwtFromToken_EmptyToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer ")
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when token is empty")
@@ -147,7 +121,7 @@ func TestGetConsumerJwtFromToken_TokenSizeLimit(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+largeToken)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when token exceeds size limit")
@@ -171,7 +145,7 @@ func TestGetConsumerJwtFromToken_MissingClientId(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when client_id is missing")
@@ -192,7 +166,7 @@ func TestGetConsumerJwtFromToken_ExpiredToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when token is expired")
@@ -214,7 +188,7 @@ func TestGetConsumerJwtFromToken_NbfFuture(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when token is not yet valid (nbf)")
@@ -237,7 +211,7 @@ func TestGetConsumerJwtFromToken_AzpFallback(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
@@ -259,7 +233,7 @@ func TestGetConsumerJwtFromToken_MissingExp(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when exp claim is missing")
@@ -344,7 +318,7 @@ func TestGetConsumerJwtFromToken_InvalidTemporalClaimTypes(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			req.Header.Set("Authorization", "Bearer "+tokenString)
 
-			result, err := GetConsumerJwtFromToken("production", nil, true, req)
+			result, err := GetConsumerJwtFromToken(nil, true, req)
 
 			if err == nil {
 				t.Errorf("Expected error for %s", tc.name)
@@ -376,7 +350,7 @@ func TestGetConsumerJwtFromToken_InvalidIssuer(t *testing.T) {
 		ExpectedIssuer: "https://expected-issuer.com",
 	}
 
-	result, err := GetConsumerJwtFromToken("production", jwtConfig, true, req)
+	result, err := GetConsumerJwtFromToken(jwtConfig, true, req)
 
 	if err == nil {
 		t.Error("Expected error when issuer doesn't match")
@@ -403,7 +377,7 @@ func TestGetConsumerJwtFromToken_InvalidAudience(t *testing.T) {
 		ValidAudiences: []string{"https://api1.com", "https://api2.com"},
 	}
 
-	result, err := GetConsumerJwtFromToken("production", jwtConfig, true, req)
+	result, err := GetConsumerJwtFromToken(jwtConfig, true, req)
 
 	if err == nil {
 		t.Error("Expected error when audience doesn't match any valid audience")
@@ -430,7 +404,7 @@ func TestGetConsumerJwtFromToken_StringAudience(t *testing.T) {
 		ValidAudiences: []string{"https://api-string.com"},
 	}
 
-	result, err := GetConsumerJwtFromToken("production", jwtConfig, true, req)
+	result, err := GetConsumerJwtFromToken(jwtConfig, true, req)
 	if err != nil {
 		t.Errorf("Expected no error for string audience, got: %v", err)
 	}
@@ -454,7 +428,7 @@ func TestGetConsumerJwtFromToken_MissingSubscriber(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when both sub and azp are missing")
@@ -479,7 +453,7 @@ func TestGetConsumerJwtFromToken_EmptyClientId(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 
 	if err == nil {
 		t.Error("Expected error when client_id is empty")
@@ -492,12 +466,11 @@ func TestGetConsumerJwtFromToken_EmptyClientId(t *testing.T) {
 	}
 }
 
-func TestGetConsumerJwtFromToken_ApplicationIdFallback(t *testing.T) {
+func TestGetConsumerJwtFromToken_ApplicationIDIsClientID(t *testing.T) {
 	claims := jwt.MapClaims{
 		ClaimClientId: "test-client",
 		ClaimSub:      "subscriber",
 		ClaimExp:      float64(time.Now().Add(time.Hour).Unix()),
-		// Missing application_id - should fall back to client_id
 	}
 
 	tokenString := createUnsignedTestToken(claims)
@@ -505,7 +478,7 @@ func TestGetConsumerJwtFromToken_ApplicationIdFallback(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
@@ -513,11 +486,13 @@ func TestGetConsumerJwtFromToken_ApplicationIdFallback(t *testing.T) {
 		t.Fatal("Expected non-nil result")
 	}
 	if result.ApplicationID != "test-client" {
-		t.Errorf("Expected ApplicationID to fallback to client_id 'test-client', got '%s'", result.ApplicationID)
+		t.Errorf("Expected ApplicationID to equal client_id 'test-client', got '%s'", result.ApplicationID)
 	}
 }
 
-func TestGetConsumerJwtFromToken_ApplicationIdPresent(t *testing.T) {
+// The application identity is standardized on client_id; any application_id claim
+// in the token is intentionally ignored (see issue #447).
+func TestGetConsumerJwtFromToken_ApplicationIdClaimIgnored(t *testing.T) {
 	claims := jwt.MapClaims{
 		ClaimClientId:      "test-client",
 		ClaimApplicationId: "test-app-123",
@@ -530,15 +505,15 @@ func TestGetConsumerJwtFromToken_ApplicationIdPresent(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
-	if result.ApplicationID != "test-app-123" {
-		t.Errorf("Expected ApplicationID 'test-app-123', got '%s'", result.ApplicationID)
+	if result.ApplicationID != "test-client" {
+		t.Errorf("Expected ApplicationID to equal client_id 'test-client' (application_id ignored), got '%s'", result.ApplicationID)
 	}
 }
 
@@ -559,7 +534,7 @@ func TestGetConsumerJwtFromToken_MissingIssuerWhenRequired(t *testing.T) {
 		ExpectedIssuer: "https://required-issuer.com",
 	}
 
-	result, err := GetConsumerJwtFromToken("production", jwtConfig, true, req)
+	result, err := GetConsumerJwtFromToken(jwtConfig, true, req)
 
 	if err == nil {
 		t.Error("Expected error when issuer is required but missing")
@@ -589,7 +564,7 @@ func TestGetConsumerJwtFromToken_EmptyAudience(t *testing.T) {
 		ValidAudiences: []string{"https://api.com"},
 	}
 
-	result, err := GetConsumerJwtFromToken("production", jwtConfig, true, req)
+	result, err := GetConsumerJwtFromToken(jwtConfig, true, req)
 
 	if err == nil {
 		t.Error("Expected error when audience is empty but validation is required")
@@ -616,7 +591,7 @@ func TestGetConsumerJwtFromToken_NoAudienceValidationWhenNotConfigured(t *testin
 	req.Header.Set("Authorization", "Bearer "+tokenString)
 
 	// No jwtConfig means no audience validation
-	result, err := GetConsumerJwtFromToken("production", nil, true, req)
+	result, err := GetConsumerJwtFromToken(nil, true, req)
 	if err != nil {
 		t.Errorf("Expected no error when audience validation is not configured, got: %v", err)
 	}
@@ -947,7 +922,7 @@ func TestGetConsumerJwtFromTokenWithValidator_WithValidator(t *testing.T) {
 	// Create empty validator for trustUpstream=true scenario
 	validator := &TokenValidator{}
 
-	result, err := GetConsumerJwtFromTokenWithValidator("production", nil, true, req, validator)
+	result, err := GetConsumerJwtFromTokenWithValidator(nil, true, req, validator)
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
