@@ -79,6 +79,9 @@ func (s *ApplicationService) CreateApplication(ctx context.Context, req *models.
 	// ApplicationID UUID. This is the identifier the Orchestration Engine extracts
 	// from the IdP-issued token (via the client_id fallback) when asking the PDP for
 	// a decision, so both sides must agree on it. See issue #447.
+	if application.IdpClientID == nil {
+		return nil, fmt.Errorf("cannot update allow list: application IdpClientID is nil")
+	}
 	policyReq := models.AllowListUpdateRequest{
 		ApplicationID: *application.IdpClientID,
 		Records:       application.SelectedFields,
