@@ -59,10 +59,12 @@ type JWTVerifier struct {
 func NewJWTVerifier(config JWTVerifierConfig) (*JWTVerifier, error) {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	if config.InsecureSkipVerify {
-		httpClient.Transport = &http.Transport{
-			// #nosec G402 -- opt-in via config, dev-only for self-signed IdP certs; default is false.
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		// Clone the default transport to preserve connection pooling, keep-alives
+		// and proxy settings, overriding only TLS verification.
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		// #nosec G402 -- opt-in via config, dev-only for self-signed IdP certs; default is false.
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		httpClient.Transport = transport
 	}
 
 	verifier := &JWTVerifier{
