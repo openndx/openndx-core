@@ -81,13 +81,15 @@ func main() {
 		"client_id", cfg.IDPConfig.ClientID,
 		"issuer", cfg.IDPConfig.Issuer,
 		"audience", cfg.IDPConfig.Audience,
-		"jwks_url", cfg.IDPConfig.JwksUrl)
+		"jwks_url", cfg.IDPConfig.JwksUrl,
+		"jwks_insecure_skip_verify", cfg.IDPConfig.InsecureSkipVerify)
 
 	v1JWTVerifier, err := v1auth.NewJWTVerifier(v1auth.JWTVerifierConfig{
-		JWKSUrl:  cfg.IDPConfig.JwksUrl,
-		Issuer:   cfg.IDPConfig.Issuer,
-		Audience: cfg.IDPConfig.Audience,
-		ClientID: cfg.IDPConfig.ClientID,
+		JWKSUrl:            cfg.IDPConfig.JwksUrl,
+		Issuer:             cfg.IDPConfig.Issuer,
+		Audience:           cfg.IDPConfig.Audience,
+		ClientID:           cfg.IDPConfig.ClientID,
+		InsecureSkipVerify: cfg.IDPConfig.InsecureSkipVerify,
 	})
 	if err != nil {
 		slog.Error("Failed to initialize V1 JWT verifier", "error", err)

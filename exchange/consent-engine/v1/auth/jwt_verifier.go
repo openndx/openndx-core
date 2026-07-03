@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -38,6 +39,10 @@ type JWTVerifierConfig struct {
 	Issuer   string
 	Audience string
 	ClientID string
+	// InsecureSkipVerify disables TLS certificate verification for the JWKS
+	// fetch. Intended only for local/dev IdPs using self-signed certs; leave
+	// false in production.
+	InsecureSkipVerify bool
 }
 
 // JWTVerifier handles JWT token verification
@@ -52,13 +57,19 @@ type JWTVerifier struct {
 
 // NewJWTVerifier creates a new JWT verifier instance
 func NewJWTVerifier(config JWTVerifierConfig) (*JWTVerifier, error) {
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	if config.InsecureSkipVerify {
+		httpClient.Transport = &http.Transport{
+			// #nosec G402 -- opt-in via config, dev-only for self-signed IdP certs; default is false.
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	verifier := &JWTVerifier{
-		config: config,
-		keys:   make(map[string]*rsa.PublicKey),
-		logger: slog.Default(),
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		config:     config,
+		keys:       make(map[string]*rsa.PublicKey),
+		logger:     slog.Default(),
+		httpClient: httpClient,
 	}
 
 	// Initial fetch of JWKS (non-blocking to prevent startup failure)

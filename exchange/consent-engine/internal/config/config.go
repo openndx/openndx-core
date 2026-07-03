@@ -3,6 +3,7 @@ package config
 
 import (
 	"flag"
+	"strconv"
 	"time"
 
 	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
@@ -46,6 +47,9 @@ type IDPConfig struct {
 	JwksUrl  string
 	Audience string
 	ClientID string
+	// InsecureSkipVerify skips TLS verification on the JWKS fetch. Dev-only
+	// (e.g. a self-signed local IdP); leave false in production.
+	InsecureSkipVerify bool
 }
 
 // DBConfigs holds database configuration
@@ -82,6 +86,8 @@ func LoadConfig(serviceName string) *Config {
 	userAudience := utils.GetEnvOrDefault("IDP_AUDIENCE", "")
 	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "")
 	userClientID := utils.GetEnvOrDefault("IDP_CLIENT_ID", "")
+	// Dev-only: skip TLS verification on the JWKS fetch (self-signed local IdP).
+	jwksInsecureSkipVerify, _ := strconv.ParseBool(utils.GetEnvOrDefault("IDP_JWKS_INSECURE_SKIP_VERIFY", "false"))
 
 	// Reading DB Configs
 	dbHost := utils.GetEnvOrDefault("DB_HOST", "localhost")
@@ -120,10 +126,11 @@ func LoadConfig(serviceName string) *Config {
 			RateLimit:  *rateLimit,
 		},
 		IDPConfig: IDPConfig{
-			Issuer:   userIssuer,
-			JwksUrl:  userJwksURL,
-			Audience: userAudience,
-			ClientID: userClientID,
+			Issuer:             userIssuer,
+			JwksUrl:            userJwksURL,
+			Audience:           userAudience,
+			ClientID:           userClientID,
+			InsecureSkipVerify: jwksInsecureSkipVerify,
 		},
 		DBConfigs: DBConfigs{
 			Host:     dbHost,

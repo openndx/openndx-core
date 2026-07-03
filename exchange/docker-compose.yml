@@ -84,6 +84,12 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=${LOG_FORMAT:-text}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      # IDP configuration (JWT verification for portal endpoints)
+      - IDP_ISSUER=${IDP_ISSUER:-}
+      - IDP_AUDIENCE=${IDP_AUDIENCE:-}
+      - IDP_CLIENT_ID=${IDP_CLIENT_ID:-}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-}
+      - IDP_JWKS_INSECURE_SKIP_VERIFY=${IDP_JWKS_INSECURE_SKIP_VERIFY:-false}
       # Database configuration
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}

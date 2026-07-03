@@ -175,3 +175,48 @@ func TestVerifyTokenAndExtractEmail_MissingEmailFails(t *testing.T) {
 	_, err := v.VerifyTokenAndExtractEmail(signToken(t, priv, claims))
 	assert.Error(t, err)
 }
+
+// newTLSTestVerifier serves the JWKS over a self-signed HTTPS server (like a
+// dev IdP), so JWKS fetches fail TLS verification unless InsecureSkipVerify is set.
+func newTLSTestVerifier(t *testing.T, cfg JWTVerifierConfig) (*JWTVerifier, *rsa.PrivateKey) {
+	t.Helper()
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	jwks := JWKS{Keys: []JSONWebKey{{
+		Kid: testKID,
+		Kty: "RSA",
+		Use: "sig",
+		N:   base64.RawURLEncoding.EncodeToString(priv.PublicKey.N.Bytes()),
+		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.PublicKey.E)).Bytes()),
+	}}}
+	body, err := json.Marshal(jwks)
+	require.NoError(t, err)
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg.JWKSUrl = srv.URL
+	v, err := NewJWTVerifier(cfg)
+	require.NoError(t, err)
+	return v, priv
+}
+
+func TestVerifyToken_SelfSignedJWKSFailsWithoutSkipVerify(t *testing.T) {
+	cfg := fullConfig() // InsecureSkipVerify defaults to false
+	v, priv := newTLSTestVerifier(t, cfg)
+	_, err := v.VerifyToken(signToken(t, priv, baseClaims()))
+	assert.Error(t, err) // JWKS fetch fails TLS verification -> cannot verify
+}
+
+func TestVerifyToken_SelfSignedJWKSPassesWithSkipVerify(t *testing.T) {
+	cfg := fullConfig()
+	cfg.InsecureSkipVerify = true
+	v, priv := newTLSTestVerifier(t, cfg)
+	email, err := v.VerifyTokenAndExtractEmail(signToken(t, priv, baseClaims()))
+	require.NoError(t, err)
+	assert.Equal(t, "nayana@opensource.lk", email)
+}
