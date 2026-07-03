@@ -248,7 +248,7 @@ func (jv *JWTVerifier) VerifyToken(tokenString string) (*jwt.Token, error) {
 			cid, _ = claims["azp"].(string)
 		}
 		if cid != jv.config.ClientID {
-			return nil, fmt.Errorf("invalid client_id: expected %s, got %v", jv.config.ClientID, claims["client_id"])
+			return nil, fmt.Errorf("invalid client_id: expected %s, got %q", jv.config.ClientID, cid)
 		}
 	}
 
