@@ -95,9 +95,10 @@ install-hooks:
 		echo "❌ Error: .githooks directory not found"; \
 		exit 1; \
 	fi
-	@mkdir -p .git/hooks
-	@cp .githooks/pre-commit .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
+	@HOOKS_DIR=$$(git rev-parse --git-path hooks 2>/dev/null || echo ".git/hooks"); \
+	mkdir -p "$$HOOKS_DIR"; \
+	cp .githooks/pre-commit "$$HOOKS_DIR/pre-commit"; \
+	chmod +x "$$HOOKS_DIR/pre-commit"
 	@echo "✅ Git hooks installed successfully"
 	@echo "📍 Pre-commit hook will now run automatically on every commit"
 	@echo "💡 To bypass temporarily, use: git commit --no-verify"
