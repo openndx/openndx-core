@@ -77,7 +77,7 @@ func main() {
 
 	jwtConfig := v1middleware.JWTAuthConfig{
 		JWKSURL:        utils.GetEnvOrDefault("ASGARDEO_JWKS_URL", asgardeoBaseURL+"/oauth2/jwks"),
-		ExpectedIssuer: utils.GetEnvOrDefault("ASGARDEO_TOKEN_URL", asgardeoBaseURL+"/oauth2/token"),
+		ExpectedIssuer: utils.GetEnvOrDefault("ASGARDEO_ISSUER", utils.GetEnvOrDefault("ASGARDEO_TOKEN_URL", asgardeoBaseURL+"/oauth2/token")),
 		ValidClientIDs: validClientIDs,
 		OrgName:        utils.GetEnvOrDefault("ASGARDEO_ORG_NAME", ""),
 		Timeout:        10 * time.Second,
