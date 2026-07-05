@@ -53,8 +53,12 @@ func main() {
 	// Setup JWT Authentication middleware
 	// Validate required environment variables first
 	asgardeoBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-	if asgardeoBaseURL == "" {
-		slog.Error("ASGARDEO_BASE_URL environment variable is required")
+	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
+	issuerURL := os.Getenv("ASGARDEO_ISSUER")
+	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+
+	if asgardeoBaseURL == "" && (jwksURL == "" || (issuerURL == "" && tokenURL == "")) {
+		slog.Error("ASGARDEO_BASE_URL environment variable is required unless ASGARDEO_JWKS_URL and either ASGARDEO_ISSUER or ASGARDEO_TOKEN_URL are explicitly configured")
 		os.Exit(1)
 	}
 
