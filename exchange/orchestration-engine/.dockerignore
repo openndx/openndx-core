@@ -1,6 +1,7 @@
 # Orchestration Engine Config File and Config Template
 # (config is provided at runtime via mount/env, never baked into the image)
 config.example.json
+config.docker.json
 config.json
 
 # Go build files
