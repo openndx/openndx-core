@@ -91,26 +91,22 @@ func ConnectGormDB(config *DatabaseConfig) (*gorm.DB, error) {
 	if os.Getenv("RUN_MIGRATION") == "true" {
 		slog.Info("Running GORM auto-migration for V1 models")
 		// To avoid issues with GORM creating foreign keys before referenced tables exist,
-		// we migrate the models individually in strict dependency order:
-		// 1. Member (referenced by Schema, SchemaSubmission, Application, ApplicationSubmission)
-		if err = db.AutoMigrate(&models.Member{}); err != nil {
-			return nil, fmt.Errorf("failed to run auto-migration for Member: %w", err)
+		// we migrate the models individually in strict dependency order.
+		orderedModels := []struct {
+			name  string
+			model interface{}
+		}{
+			{"Member", &models.Member{}},
+			{"Schema", &models.Schema{}},
+			{"Application", &models.Application{}},
+			{"SchemaSubmission", &models.SchemaSubmission{}},
+			{"ApplicationSubmission", &models.ApplicationSubmission{}},
 		}
-		// 2. Schema (referenced by SchemaSubmission)
-		if err = db.AutoMigrate(&models.Schema{}); err != nil {
-			return nil, fmt.Errorf("failed to run auto-migration for Schema: %w", err)
-		}
-		// 3. Application (referenced by ApplicationSubmission)
-		if err = db.AutoMigrate(&models.Application{}); err != nil {
-			return nil, fmt.Errorf("failed to run auto-migration for Application: %w", err)
-		}
-		// 4. SchemaSubmission (references Member and Schema)
-		if err = db.AutoMigrate(&models.SchemaSubmission{}); err != nil {
-			return nil, fmt.Errorf("failed to run auto-migration for SchemaSubmission: %w", err)
-		}
-		// 5. ApplicationSubmission (references Member and Application)
-		if err = db.AutoMigrate(&models.ApplicationSubmission{}); err != nil {
-			return nil, fmt.Errorf("failed to run auto-migration for ApplicationSubmission: %w", err)
+
+		for _, m := range orderedModels {
+			if err = db.AutoMigrate(m.model); err != nil {
+				return nil, fmt.Errorf("failed to run auto-migration for %s: %w", m.name, err)
+			}
 		}
 		slog.Info("GORM auto-migration completed successfully")
 	} else {
