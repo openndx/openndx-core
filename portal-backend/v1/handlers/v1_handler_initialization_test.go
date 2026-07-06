@@ -15,6 +15,9 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
 	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
 	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
+	originalJWKS := os.Getenv("ASGARDEO_JWKS_URL")
+	originalIssuer := os.Getenv("ASGARDEO_ISSUER")
+	originalTokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
 	originalPDPURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
 	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
@@ -23,6 +26,9 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 		os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
 		os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
 		os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
+		os.Setenv("ASGARDEO_JWKS_URL", originalJWKS)
+		os.Setenv("ASGARDEO_ISSUER", originalIssuer)
+		os.Setenv("ASGARDEO_TOKEN_URL", originalTokenURL)
 		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalPDPURL)
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
 	}()
@@ -31,14 +37,13 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	os.Unsetenv("ASGARDEO_BASE_URL")
 	os.Unsetenv("ASGARDEO_CLIENT_ID")
 	os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+	os.Unsetenv("ASGARDEO_JWKS_URL")
+	os.Unsetenv("ASGARDEO_ISSUER")
+	os.Unsetenv("ASGARDEO_TOKEN_URL")
 	os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
 	os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 	// Test missing IDP config (NewIdpAPIProvider fails)
-	// Note: idpfactory.NewIdpAPIProvider checks for config but might not error immediately if fields are optional?
-	// Actually it returns error if ProviderType is invalid or required fields missing depending on provider.
-	// Asgardeo provider requires BaseURL.
-
 	// We need a DB connection
 	db := services.SetupSQLiteTestDB(t)
 
@@ -139,4 +144,45 @@ func TestGetUserMemberID_Caching(t *testing.T) {
 	id, err = testHandler.handler.getUserMemberID(req, user)
 	assert.NoError(t, err)
 	assert.Equal(t, memberID, id)
+}
+
+func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
+	// Save current env vars
+	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
+	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
+	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
+	originalJWKS := os.Getenv("ASGARDEO_JWKS_URL")
+	originalIssuer := os.Getenv("ASGARDEO_ISSUER")
+	originalTokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+	originalPDPURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+
+	// Restore env vars after test
+	defer func() {
+		os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
+		os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
+		os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
+		os.Setenv("ASGARDEO_JWKS_URL", originalJWKS)
+		os.Setenv("ASGARDEO_ISSUER", originalIssuer)
+		os.Setenv("ASGARDEO_TOKEN_URL", originalTokenURL)
+		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalPDPURL)
+		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
+	}()
+
+	// Unset ASGARDEO_BASE_URL
+	os.Unsetenv("ASGARDEO_BASE_URL")
+
+	// Configure standard OIDC
+	os.Setenv("ASGARDEO_JWKS_URL", "https://example.com/oauth2/jwks")
+	os.Setenv("ASGARDEO_ISSUER", "https://example.com")
+	os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
+	os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
+	os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://pdp:8080")
+	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
+
+	db := services.SetupSQLiteTestDB(t)
+
+	handler, err := NewV1Handler(db)
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
 }

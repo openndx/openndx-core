@@ -67,11 +67,25 @@ func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 	}
 	// Create the NewIdpProvider
 	baseURL := os.Getenv("ASGARDEO_BASE_URL")
+	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
+	issuerURL := os.Getenv("ASGARDEO_ISSUER")
+	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+
+	if baseURL == "" {
+		if jwksURL != "" && (issuerURL != "" || tokenURL != "") {
+			if issuerURL != "" {
+				baseURL = issuerURL
+			} else {
+				baseURL = tokenURL
+			}
+		}
+	}
+
 	clientID := os.Getenv("ASGARDEO_CLIENT_ID")
 	clientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
 
 	if baseURL == "" || clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("failed to create IDP provider: missing required environment variables (ASGARDEO_BASE_URL, ASGARDEO_CLIENT_ID, ASGARDEO_CLIENT_SECRET)")
+		return nil, fmt.Errorf("failed to create IDP provider: missing required environment variables (ASGARDEO_BASE_URL, or ASGARDEO_JWKS_URL and ASGARDEO_ISSUER/ASGARDEO_TOKEN_URL, along with ASGARDEO_CLIENT_ID and ASGARDEO_CLIENT_SECRET)")
 	}
 
 	idpProvider, err := idpfactory.NewIdpAPIProvider(idpfactory.FactoryConfig{
