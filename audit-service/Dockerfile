@@ -51,8 +51,4 @@ EXPOSE 3001
 ENV CONFIG_DIR=/app/config
 ENV ENVIRONMENT=production
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3001}/health || exit 1
-
 CMD ["./service_binary"]
