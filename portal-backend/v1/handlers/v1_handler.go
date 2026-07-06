@@ -100,9 +100,12 @@ func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 	}
 	memberService := services.NewMemberService(db, idpProvider)
 
-	pdpServiceURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+	pdpServiceURL := os.Getenv("PDP_SERVICEURL")
 	if pdpServiceURL == "" {
-		return nil, fmt.Errorf("CHOREO_PDP_CONNECTION_SERVICEURL environment variable not set")
+		pdpServiceURL = os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+	}
+	if pdpServiceURL == "" {
+		return nil, fmt.Errorf("PDP_SERVICEURL or CHOREO_PDP_CONNECTION_SERVICEURL environment variable not set")
 	}
 
 	pdpServiceAPIKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")

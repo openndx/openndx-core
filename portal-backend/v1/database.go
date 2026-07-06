@@ -29,11 +29,11 @@ type DatabaseConfig struct {
 // NewDatabaseConfig creates a new GORM database configuration for V1
 func NewDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
-		Host:            getEnvOrDefault("CHOREO_OPENDIF_DB_HOSTNAME", "localhost"),
-		Port:            getEnvOrDefault("CHOREO_OPENDIF_DB_PORT", "5432"),
-		Username:        getEnvOrDefault("CHOREO_OPENDIF_DB_USERNAME", "postgres"),
-		Password:        getEnvOrDefault("CHOREO_OPENDIF_DB_PASSWORD", "password"),
-		Database:        getEnvOrDefault("CHOREO_OPENDIF_DB_DATABASENAME", "testdb2"),
+		Host:            getEnvOrDefault("DB_HOST", getEnvOrDefault("CHOREO_OPENDIF_DB_HOSTNAME", "localhost")),
+		Port:            getEnvOrDefault("DB_PORT", getEnvOrDefault("CHOREO_OPENDIF_DB_PORT", "5432")),
+		Username:        getEnvOrDefault("DB_USERNAME", getEnvOrDefault("CHOREO_OPENDIF_DB_USERNAME", "postgres")),
+		Password:        getEnvOrDefault("DB_PASSWORD", getEnvOrDefault("CHOREO_OPENDIF_DB_PASSWORD", "password")),
+		Database:        getEnvOrDefault("DB_NAME", getEnvOrDefault("CHOREO_OPENDIF_DB_DATABASENAME", "testdb2")),
 		SSLMode:         getEnvOrDefault("DB_SSLMODE", "require"),
 		MaxOpenConns:    25,
 		MaxIdleConns:    5,
