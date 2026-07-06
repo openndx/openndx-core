@@ -122,8 +122,8 @@ func main() {
 
 	// Initialize Audit system
 	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false
-	// or if AUDIT_SERVICE_URL (or fallback CHOREO_AUDIT_CONNECTION_SERVICEURL) is not provided
-	auditServiceURL := utils.GetEnvOrDefault("AUDIT_SERVICE_URL", utils.GetEnvOrDefault("CHOREO_AUDIT_CONNECTION_SERVICEURL", ""))
+	// or if AUDIT_SERVICE_URL is not provided
+	auditServiceURL := os.Getenv("AUDIT_SERVICE_URL")
 	auditClient := audit.NewClient(auditServiceURL)
 	audit.InitializeGlobalAudit(auditClient)
 
