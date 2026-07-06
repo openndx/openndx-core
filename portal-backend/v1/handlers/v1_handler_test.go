@@ -1243,13 +1243,13 @@ func TestSchemaSubmissionEndpoints_EdgeCases(t *testing.T) {
 // TestNewV1Handler tests the NewV1Handler constructor
 func TestNewV1Handler(t *testing.T) {
 	t.Run("NewV1Handler_MissingPDPURL", func(t *testing.T) {
-		originalURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICEURL", originalURL)
 			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+				os.Unsetenv("PDP_SERVICEURL")
 			}
 			if originalKey != "" {
 				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
@@ -1258,7 +1258,7 @@ func TestNewV1Handler(t *testing.T) {
 			}
 		}()
 
-		os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+		os.Unsetenv("PDP_SERVICEURL")
 		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 		// Set IDP env vars to pass IDP check
@@ -1277,17 +1277,17 @@ func TestNewV1Handler(t *testing.T) {
 		handler, err := NewV1Handler(db)
 		assert.Error(t, err)
 		assert.Nil(t, handler)
-		assert.Contains(t, err.Error(), "CHOREO_PDP_CONNECTION_SERVICEURL")
+		assert.Contains(t, err.Error(), "PDP_SERVICEURL")
 	})
 
 	t.Run("NewV1Handler_MissingPDPKey", func(t *testing.T) {
-		originalURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICEURL", originalURL)
 			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+				os.Unsetenv("PDP_SERVICEURL")
 			}
 			if originalKey != "" {
 				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
@@ -1296,7 +1296,7 @@ func TestNewV1Handler(t *testing.T) {
 			}
 		}()
 
-		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://localhost:9999")
+		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 		// Set IDP env vars to pass IDP check
@@ -1319,7 +1319,7 @@ func TestNewV1Handler(t *testing.T) {
 	})
 
 	t.Run("NewV1Handler_Success", func(t *testing.T) {
-		originalURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 		originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
 		originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
@@ -1327,9 +1327,9 @@ func TestNewV1Handler(t *testing.T) {
 		originalScopes := os.Getenv("ASGARDEO_SCOPES")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICEURL", originalURL)
 			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+				os.Unsetenv("PDP_SERVICEURL")
 			}
 			if originalKey != "" {
 				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
@@ -1358,7 +1358,7 @@ func TestNewV1Handler(t *testing.T) {
 			}
 		}()
 
-		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://localhost:9999")
+		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
 		os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
 		os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
@@ -1379,7 +1379,7 @@ func TestNewV1Handler(t *testing.T) {
 	})
 
 	t.Run("NewV1Handler_WithEmptyScopes", func(t *testing.T) {
-		originalURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 		originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
 		originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
@@ -1387,9 +1387,9 @@ func TestNewV1Handler(t *testing.T) {
 		originalScopes := os.Getenv("ASGARDEO_SCOPES")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICEURL", originalURL)
 			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+				os.Unsetenv("PDP_SERVICEURL")
 			}
 			if originalKey != "" {
 				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
@@ -1418,7 +1418,7 @@ func TestNewV1Handler(t *testing.T) {
 			}
 		}()
 
-		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://localhost:9999")
+		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
 		os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
 		os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
@@ -1440,16 +1440,16 @@ func TestNewV1Handler(t *testing.T) {
 func TestV1Handler_SetupV1Routes(t *testing.T) {
 	db := services.SetupSQLiteTestDB(t)
 
-	originalURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+	originalURL := os.Getenv("PDP_SERVICEURL")
 	originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
 	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
 	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
 	defer func() {
 		if originalURL != "" {
-			os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalURL)
+			os.Setenv("PDP_SERVICEURL", originalURL)
 		} else {
-			os.Unsetenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+			os.Unsetenv("PDP_SERVICEURL")
 		}
 		if originalKey != "" {
 			os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
@@ -1473,7 +1473,7 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 		}
 	}()
 
-	os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://localhost:9999")
+	os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
 	os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
 	os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
