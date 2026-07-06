@@ -102,4 +102,3 @@ func TestV1Router_ApplyCORS(t *testing.T) {
 	// CORS headers should be set
 	assert.NotEmpty(t, w.Header().Get("Access-Control-Allow-Origin"))
 }
-

@@ -142,7 +142,7 @@ func SetupPostgresTestDB(t *testing.T) *gorm.DB {
 
 				// Close admin connection properly
 				if sqlDB, err := adminDB.DB(); err == nil {
-					sqlDB.Close()
+					_ = sqlDB.Close()
 				}
 
 				// Now try connecting to the test database again

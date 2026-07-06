@@ -10,6 +10,7 @@ import (
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/models"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/testhelpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -253,7 +254,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 						},
 					},
 				}
-				handler.policyService.CreatePolicyMetadata(&initialReq)
+				_, err := handler.policyService.CreatePolicyMetadata(&initialReq)
+				require.NoError(t, err)
 			}
 
 			body, _ := json.Marshal(tt.requestBody)
@@ -291,7 +293,8 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 			},
 		},
 	}
-	handler.policyService.CreatePolicyMetadata(&createReq)
+	_, err := handler.policyService.CreatePolicyMetadata(&createReq)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string

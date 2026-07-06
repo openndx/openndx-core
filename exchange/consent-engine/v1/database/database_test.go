@@ -11,12 +11,12 @@ import (
 
 func TestNewDatabaseConfig(t *testing.T) {
 	// Clear environment variables
-	os.Unsetenv("DB_HOST")
-	os.Unsetenv("DB_PORT")
-	os.Unsetenv("DB_USERNAME")
-	os.Unsetenv("DB_PASSWORD")
-	os.Unsetenv("DB_NAME")
-	os.Unsetenv("DB_SSLMODE")
+	_ = os.Unsetenv("DB_HOST")
+	_ = os.Unsetenv("DB_PORT")
+	_ = os.Unsetenv("DB_USERNAME")
+	_ = os.Unsetenv("DB_PASSWORD")
+	_ = os.Unsetenv("DB_NAME")
+	_ = os.Unsetenv("DB_SSLMODE")
 
 	dbConfigs := &config.DBConfigs{
 		Host:     "localhost",
@@ -42,19 +42,19 @@ func TestNewDatabaseConfig(t *testing.T) {
 }
 
 func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
-	os.Setenv("DB_HOST", "test-host")
-	os.Setenv("DB_PORT", "5433")
-	os.Setenv("DB_USERNAME", "test-user")
-	os.Setenv("DB_PASSWORD", "test-password")
-	os.Setenv("DB_NAME", "test-db")
-	os.Setenv("DB_SSLMODE", "require")
+	_ = os.Setenv("DB_HOST", "test-host")
+	_ = os.Setenv("DB_PORT", "5433")
+	_ = os.Setenv("DB_USERNAME", "test-user")
+	_ = os.Setenv("DB_PASSWORD", "test-password")
+	_ = os.Setenv("DB_NAME", "test-db")
+	_ = os.Setenv("DB_SSLMODE", "require")
 	defer func() {
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_USERNAME")
-		os.Unsetenv("DB_PASSWORD")
-		os.Unsetenv("DB_NAME")
-		os.Unsetenv("DB_SSLMODE")
+		_ = os.Unsetenv("DB_HOST")
+		_ = os.Unsetenv("DB_PORT")
+		_ = os.Unsetenv("DB_USERNAME")
+		_ = os.Unsetenv("DB_PASSWORD")
+		_ = os.Unsetenv("DB_NAME")
+		_ = os.Unsetenv("DB_SSLMODE")
 	}()
 
 	dbConfigs := &config.DBConfigs{
@@ -78,4 +78,3 @@ func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
 // NOTE: Tests for ConnectGormDB with real database connections have been moved to
 // tests/integration/database/database_test.go as integration tests.
 // Unit tests should not use real database connections.
-

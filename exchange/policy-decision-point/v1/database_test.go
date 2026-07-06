@@ -62,7 +62,7 @@ func TestConnectGormDB_WithSQLite(t *testing.T) {
 	require.NoError(t, err)
 	defer func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	}()
 

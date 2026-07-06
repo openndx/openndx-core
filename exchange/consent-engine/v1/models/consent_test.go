@@ -191,4 +191,3 @@ func TestConsentRecord_ToConsentResponsePortalView_NoAppName(t *testing.T) {
 
 	assert.Nil(t, response.AppName)
 }
-

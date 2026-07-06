@@ -37,14 +37,14 @@ func WithEnvVars(t *testing.T, vars map[string]string) func() {
 	original := make(map[string]string)
 	for key, value := range vars {
 		original[key] = os.Getenv(key)
-		os.Setenv(key, value)
+		_ = os.Setenv(key, value)
 	}
 	return func() {
 		for key, origValue := range original {
 			if origValue == "" {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			} else {
-				os.Setenv(key, origValue)
+				_ = os.Setenv(key, origValue)
 			}
 		}
 	}

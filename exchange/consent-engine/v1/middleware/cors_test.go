@@ -11,7 +11,7 @@ import (
 
 func TestDefaultCORSConfig(t *testing.T) {
 	// Clear environment variable
-	os.Unsetenv("CORS_ALLOWED_ORIGINS")
+	_ = os.Unsetenv("CORS_ALLOWED_ORIGINS")
 
 	config := DefaultCORSConfig("http://localhost:5173")
 
@@ -150,7 +150,7 @@ func TestCORSMiddleware_WildcardWithCredentials_Panic(t *testing.T) {
 }
 
 func TestNewCORSMiddleware(t *testing.T) {
-	os.Unsetenv("CORS_ALLOWED_ORIGINS")
+	_ = os.Unsetenv("CORS_ALLOWED_ORIGINS")
 
 	middleware := NewCORSMiddleware("http://localhost:5173")
 	assert.NotNil(t, middleware)

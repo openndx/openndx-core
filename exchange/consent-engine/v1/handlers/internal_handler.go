@@ -100,7 +100,7 @@ func (h *InternalHandler) CreateConsent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	// Parse request body
 	var req models.CreateConsentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

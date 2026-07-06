@@ -21,9 +21,9 @@ func createTestJWTVerifier(t *testing.T, privateKey *rsa.PrivateKey, issuer, aud
 	// Create a mock JWKS server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Create JWKS response
-		nBytes := privateKey.PublicKey.N.Bytes()
+		nBytes := privateKey.N.Bytes()
 		eBytes := make([]byte, 4)
-		e := privateKey.PublicKey.E
+		e := privateKey.E
 		for i := len(eBytes) - 1; i >= 0; i-- {
 			eBytes[i] = byte(e)
 			e >>= 8
@@ -42,7 +42,7 @@ func createTestJWTVerifier(t *testing.T, privateKey *rsa.PrivateKey, issuer, aud
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(jwks)
+		_ = json.NewEncoder(w).Encode(jwks)
 	}))
 	t.Cleanup(server.Close)
 
@@ -261,4 +261,3 @@ func TestGetUserEmailFromContext_WrongType(t *testing.T) {
 	assert.False(t, ok)
 	assert.Empty(t, email)
 }
-

@@ -12,8 +12,8 @@ import (
 
 func TestGetEnvOrDefault(t *testing.T) {
 	// Test with existing env var
-	os.Setenv("TEST_ENV_VAR", "test-value")
-	defer os.Unsetenv("TEST_ENV_VAR")
+	_ = os.Setenv("TEST_ENV_VAR", "test-value")
+	defer func() { _ = os.Unsetenv("TEST_ENV_VAR") }()
 
 	value := getEnvOrDefault("TEST_ENV_VAR", "default-value")
 	assert.Equal(t, "test-value", value)
@@ -21,7 +21,7 @@ func TestGetEnvOrDefault(t *testing.T) {
 
 func TestGetEnvOrDefault_DefaultValue(t *testing.T) {
 	// Ensure env var is not set
-	os.Unsetenv("NONEXISTENT_VAR")
+	_ = os.Unsetenv("NONEXISTENT_VAR")
 
 	value := getEnvOrDefault("NONEXISTENT_VAR", "default-value")
 	assert.Equal(t, "default-value", value)
@@ -144,7 +144,7 @@ func TestCleanupTestData_WithValidDB(t *testing.T) {
 	require.NoError(t, err)
 	defer func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	}()
 
