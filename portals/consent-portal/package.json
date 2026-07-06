@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@asgardeo/react": "^0.6.16",
     "@tailwindcss/vite": "^4.1.12",
     "lucide-react": "^0.544.0",
     "oidc-client-ts": "^3.4.1",

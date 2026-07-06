@@ -3,15 +3,6 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Declare build arguments for environment variables
-# These are needed at build time for Vite to embed them in the bundle
-ARG VITE_PORT=5173
-ARG VITE_BASE_PATH=/
-
-# Set as environment variables for the build process
-ENV VITE_PORT=${VITE_PORT}
-ENV VITE_BASE_PATH=${VITE_BASE_PATH}
-
 # Copy package files
 COPY package.json package-lock.json ./
 
@@ -21,7 +12,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application (Vite will use the environment variables)
+# Build the application (config is injected at runtime, not build time)
 RUN npm run build
 
 # Serve Stage
@@ -38,12 +29,12 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Set default environment variables (can be overridden at runtime)
-ENV VITE_API_URL=""
-ENV VITE_CLIENT_ID=""
-ENV VITE_BASE_URL=""
-ENV VITE_SCOPE=""
-ENV VITE_SIGN_IN_REDIRECT_URL=""
-ENV VITE_SIGN_OUT_REDIRECT_URL=""
+ENV CONSENT_ENGINE_URL=""
+ENV IDP_CLIENT_ID=""
+ENV IDP_BASE_URL=""
+ENV IDP_SCOPE=""
+ENV IDP_SIGN_IN_REDIRECT_URL=""
+ENV IDP_SIGN_OUT_REDIRECT_URL=""
 
 # Expose port 80
 EXPOSE 80

@@ -103,7 +103,7 @@ verify_portal() {
             required_vars=("VITE_API_URL" "VITE_LOGS_URL" "VITE_IDP_CLIENT_ID" "VITE_IDP_BASE_URL" "VITE_IDP_SCOPE" "VITE_IDP_ADMIN_ROLE")
             ;;
         "consent-portal")
-            required_vars=("apiUrl" "VITE_CLIENT_ID" "VITE_BASE_URL" "VITE_SCOPE")
+            required_vars=("consentEngineUrl" "idpClientId" "idpBaseUrl" "idpScope" "idpSignInRedirectUrl" "idpSignOutRedirectUrl")
             ;;
         "member-portal")
             required_vars=("apiUrl" "logsUrl" "VITE_CLIENT_ID" "VITE_BASE_URL" "VITE_SCOPE")
@@ -155,12 +155,12 @@ verify_portal "admin-portal" "$ADMIN_CONFIG_PATH" "admin-portal/index.html" "$(g
 # 2. Consent Portal
 CONSENT_CONFIG_PATH="consent-portal/public/config.js"
 CONSENT_CONFIG_CONTENT="window.configs = {
-  apiUrl: '${TEST_API_URL}',
-  VITE_CLIENT_ID: '${TEST_CLIENT_ID}',
-  VITE_BASE_URL: '${TEST_BASE_URL}',
-  VITE_SCOPE: '${TEST_SCOPE}',
-  signInRedirectURL: '${TEST_SIGN_IN_REDIRECT}',
-  signOutRedirectURL: '${TEST_SIGN_OUT_REDIRECT}'
+  consentEngineUrl: '${TEST_API_URL}',
+  idpClientId: '${TEST_CLIENT_ID}',
+  idpBaseUrl: '${TEST_BASE_URL}',
+  idpScope: '${TEST_SCOPE}',
+  idpSignInRedirectUrl: '${TEST_SIGN_IN_REDIRECT}',
+  idpSignOutRedirectUrl: '${TEST_SIGN_OUT_REDIRECT}'
 };"
 
 create_config "Consent Portal" "$CONSENT_CONFIG_PATH" "$CONSENT_CONFIG_CONTENT"

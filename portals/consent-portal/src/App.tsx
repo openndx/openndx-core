@@ -5,21 +5,6 @@ import LoginPage from "./pages/LoginPage.tsx";
 import SuccessPage from "./pages/SuccessPage.tsx";
 import UnauthorizedPage from "./pages/UnauthorizedPage.tsx";
 
-// Extend Window interface to include config
-declare global {
-  interface Window {
-    configs: {
-      apiUrl: string;
-      VITE_CLIENT_ID: string;
-      VITE_BASE_URL: string;
-      VITE_SCOPE: string;
-      signInRedirectURL: string;
-      signOutRedirectURL: string;
-      organizationHandle: string;
-    };
-  }
-}
-
 function App() {
   return (
     <Routes>
