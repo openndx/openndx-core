@@ -154,7 +154,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "",
 				Records:  []models.PolicyMetadataCreateRequestRecord{},
 			},
-			expectedStatus: http.StatusCreated, // Handler doesn't validate, service will handle
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name: "Service error - invalid field configuration",
@@ -635,7 +635,7 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			name:           "POST /api/v1/policy/metadata",
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusCreated, // Endpoint exists, will process request
+			expectedStatus: http.StatusBadRequest, // Empty body fails validation (schemaId required)
 		},
 		{
 			name:           "POST /api/v1/policy/update-allowlist",

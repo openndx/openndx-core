@@ -47,10 +47,9 @@ func createTestJWTVerifier(t *testing.T, privateKey *rsa.PrivateKey, issuer, aud
 	t.Cleanup(server.Close)
 
 	config := auth.JWTVerifierConfig{
-		JWKSUrl:      server.URL,
-		Issuer:       issuer,
-		Audience:     audience,
-		Organization: "test-org",
+		JWKSUrl:  server.URL,
+		Issuer:   issuer,
+		Audience: audience,
 	}
 
 	verifier, err := auth.NewJWTVerifier(config)
