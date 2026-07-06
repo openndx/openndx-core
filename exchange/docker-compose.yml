@@ -130,6 +130,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-exchange}
       - DB_NAME=${DB_NAME_OE:-orchestration_engine}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-}
+      - ENABLE_AUDIT=${ENABLE_AUDIT:-false}
     volumes:
       - ./orchestration-engine/config.docker.json:/app/config.json:ro
     extra_hosts:

@@ -121,9 +121,9 @@ func main() {
 	authorizationMiddleware := v1middleware.NewAuthorizationMiddlewareWithConfig(authConfig)
 
 	// Initialize Audit system
-	// Services will work without auditing - gracefully degrades if
-	// AUDIT_SERVICE_URL is not provided
-	auditServiceURL := utils.GetEnvOrDefault("AUDIT_SERVICE_URL", "http://localhost:3001")
+	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false
+	// or if AUDIT_SERVICE_URL (or fallback CHOREO_AUDIT_CONNECTION_SERVICEURL) is not provided
+	auditServiceURL := utils.GetEnvOrDefault("AUDIT_SERVICE_URL", utils.GetEnvOrDefault("CHOREO_AUDIT_CONNECTION_SERVICEURL", ""))
 	auditClient := audit.NewClient(auditServiceURL)
 	audit.InitializeGlobalAudit(auditClient)
 

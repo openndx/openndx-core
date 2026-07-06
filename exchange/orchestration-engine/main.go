@@ -31,7 +31,11 @@ func main() {
 	}
 
 	// Initialize audit middleware
-	// All configuration comes from config.json for consistency
+	// Allow environment variable override for runtime configuration
+	envAuditURL := os.Getenv("AUDIT_SERVICE_URL")
+	if envAuditURL != "" {
+		config.AuditConfig.ServiceURL = envAuditURL
+	}
 	auditClient := audit.NewClient(config.AuditConfig.ServiceURL)
 	audit.InitializeGlobalAudit(auditClient)
 
