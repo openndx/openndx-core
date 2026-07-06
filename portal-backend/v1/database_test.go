@@ -31,6 +31,15 @@ func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
 	os.Setenv("DB_NAME", "test-db")
 	os.Setenv("DB_SSLMODE", "disable")
 
+	t.Cleanup(func() {
+		os.Unsetenv("DB_HOST")
+		os.Unsetenv("DB_PORT")
+		os.Unsetenv("DB_USERNAME")
+		os.Unsetenv("DB_PASSWORD")
+		os.Unsetenv("DB_NAME")
+		os.Unsetenv("DB_SSLMODE")
+	})
+
 	config := NewDatabaseConfig()
 	assert.Equal(t, "test-host", config.Host)
 	assert.Equal(t, "5434", config.Port)
@@ -38,14 +47,6 @@ func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
 	assert.Equal(t, "test-pass", config.Password)
 	assert.Equal(t, "test-db", config.Database)
 	assert.Equal(t, "disable", config.SSLMode)
-
-	// Cleanup env vars
-	os.Unsetenv("DB_HOST")
-	os.Unsetenv("DB_PORT")
-	os.Unsetenv("DB_USERNAME")
-	os.Unsetenv("DB_PASSWORD")
-	os.Unsetenv("DB_NAME")
-	os.Unsetenv("DB_SSLMODE")
 }
 
 func TestGetEnvOrDefault(t *testing.T) {
