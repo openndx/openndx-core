@@ -57,9 +57,15 @@ func main() {
 	issuerURL := os.Getenv("ASGARDEO_ISSUER")
 	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
 
-	if asgardeoBaseURL == "" && (jwksURL == "" || (issuerURL == "" && tokenURL == "")) {
-		slog.Error("ASGARDEO_BASE_URL environment variable is required unless ASGARDEO_JWKS_URL and either ASGARDEO_ISSUER or ASGARDEO_TOKEN_URL are explicitly configured")
-		os.Exit(1)
+	if asgardeoBaseURL == "" {
+		if jwksURL == "" {
+			slog.Error("ASGARDEO_JWKS_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			os.Exit(1)
+		}
+		if issuerURL == "" && tokenURL == "" {
+			slog.Error("Either ASGARDEO_ISSUER or ASGARDEO_TOKEN_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			os.Exit(1)
+		}
 	}
 
 	// Support multiple valid client IDs for different portals
