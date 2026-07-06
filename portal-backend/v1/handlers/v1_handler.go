@@ -59,17 +59,17 @@ func (h *V1Handler) getUserMemberID(r *http.Request, user *models.AuthenticatedU
 // NewV1Handler creates a new V1 handler
 func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 	// Get scopes from environment variable, fallback to default if not set
-	asgScopesEnv := os.Getenv("ASGARDEO_SCOPES")
+	scopesEnv := os.Getenv("IDP_SCOPES")
 	var scopes []string
-	if asgScopesEnv != "" {
+	if scopesEnv != "" {
 		// Split by space to handle multiple scopes
-		scopes = strings.Fields(asgScopesEnv)
+		scopes = strings.Fields(scopesEnv)
 	}
 	// Create the NewIdpProvider
-	baseURL := os.Getenv("ASGARDEO_BASE_URL")
-	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
-	issuerURL := os.Getenv("ASGARDEO_ISSUER")
-	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+	baseURL := os.Getenv("IDP_BASE_URL")
+	jwksURL := os.Getenv("IDP_JWKS_URL")
+	issuerURL := os.Getenv("IDP_ISSUER")
+	tokenURL := os.Getenv("IDP_TOKEN_URL")
 
 	if baseURL == "" {
 		if jwksURL != "" && (issuerURL != "" || tokenURL != "") {
@@ -81,11 +81,11 @@ func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 		}
 	}
 
-	clientID := os.Getenv("ASGARDEO_CLIENT_ID")
-	clientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
+	clientID := os.Getenv("IDP_CLIENT_ID")
+	clientSecret := os.Getenv("IDP_CLIENT_SECRET")
 
 	if baseURL == "" || clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("failed to create IDP provider: missing required environment variables (ASGARDEO_BASE_URL, or ASGARDEO_JWKS_URL and ASGARDEO_ISSUER/ASGARDEO_TOKEN_URL, along with ASGARDEO_CLIENT_ID and ASGARDEO_CLIENT_SECRET)")
+		return nil, fmt.Errorf("failed to create IDP provider: missing required environment variables (IDP_BASE_URL, or IDP_JWKS_URL and IDP_ISSUER/IDP_TOKEN_URL, along with IDP_CLIENT_ID and IDP_CLIENT_SECRET)")
 	}
 
 	idpProvider, err := idpfactory.NewIdpAPIProvider(idpfactory.FactoryConfig{

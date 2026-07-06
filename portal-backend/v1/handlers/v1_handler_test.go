@@ -1262,12 +1262,12 @@ func TestNewV1Handler(t *testing.T) {
 		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 		// Set IDP env vars to pass IDP check
-		os.Setenv("ASGARDEO_BASE_URL", "https://example.com")
-		os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
-		os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
-		defer os.Unsetenv("ASGARDEO_BASE_URL")
-		defer os.Unsetenv("ASGARDEO_CLIENT_ID")
-		defer os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+		os.Setenv("IDP_BASE_URL", "https://example.com")
+		os.Setenv("IDP_CLIENT_ID", "client-id")
+		os.Setenv("IDP_CLIENT_SECRET", "client-secret")
+		defer os.Unsetenv("IDP_BASE_URL")
+		defer os.Unsetenv("IDP_CLIENT_ID")
+		defer os.Unsetenv("IDP_CLIENT_SECRET")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1300,12 +1300,12 @@ func TestNewV1Handler(t *testing.T) {
 		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 		// Set IDP env vars to pass IDP check
-		os.Setenv("ASGARDEO_BASE_URL", "https://example.com")
-		os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
-		os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
-		defer os.Unsetenv("ASGARDEO_BASE_URL")
-		defer os.Unsetenv("ASGARDEO_CLIENT_ID")
-		defer os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+		os.Setenv("IDP_BASE_URL", "https://example.com")
+		os.Setenv("IDP_CLIENT_ID", "client-id")
+		os.Setenv("IDP_CLIENT_SECRET", "client-secret")
+		defer os.Unsetenv("IDP_BASE_URL")
+		defer os.Unsetenv("IDP_CLIENT_ID")
+		defer os.Unsetenv("IDP_CLIENT_SECRET")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1321,10 +1321,10 @@ func TestNewV1Handler(t *testing.T) {
 	t.Run("NewV1Handler_Success", func(t *testing.T) {
 		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-		originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-		originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
-		originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
-		originalScopes := os.Getenv("ASGARDEO_SCOPES")
+		originalBaseURL := os.Getenv("IDP_BASE_URL")
+		originalClientID := os.Getenv("IDP_CLIENT_ID")
+		originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
+		originalScopes := os.Getenv("IDP_SCOPES")
 		defer func() {
 			if originalURL != "" {
 				os.Setenv("PDP_SERVICEURL", originalURL)
@@ -1337,33 +1337,33 @@ func TestNewV1Handler(t *testing.T) {
 				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 			}
 			if originalBaseURL != "" {
-				os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
+				os.Setenv("IDP_BASE_URL", originalBaseURL)
 			} else {
-				os.Unsetenv("ASGARDEO_BASE_URL")
+				os.Unsetenv("IDP_BASE_URL")
 			}
 			if originalClientID != "" {
-				os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
+				os.Setenv("IDP_CLIENT_ID", originalClientID)
 			} else {
-				os.Unsetenv("ASGARDEO_CLIENT_ID")
+				os.Unsetenv("IDP_CLIENT_ID")
 			}
 			if originalClientSecret != "" {
-				os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
+				os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
 			} else {
-				os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+				os.Unsetenv("IDP_CLIENT_SECRET")
 			}
 			if originalScopes != "" {
-				os.Setenv("ASGARDEO_SCOPES", originalScopes)
+				os.Setenv("IDP_SCOPES", originalScopes)
 			} else {
-				os.Unsetenv("ASGARDEO_SCOPES")
+				os.Unsetenv("IDP_SCOPES")
 			}
 		}()
 
 		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
-		os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
-		os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
-		os.Setenv("ASGARDEO_CLIENT_SECRET", "test-client-secret")
-		os.Setenv("ASGARDEO_SCOPES", "scope1 scope2 scope3")
+		os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
+		os.Setenv("IDP_CLIENT_ID", "test-client-id")
+		os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")
+		os.Setenv("IDP_SCOPES", "scope1 scope2 scope3")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1381,10 +1381,10 @@ func TestNewV1Handler(t *testing.T) {
 	t.Run("NewV1Handler_WithEmptyScopes", func(t *testing.T) {
 		originalURL := os.Getenv("PDP_SERVICEURL")
 		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-		originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-		originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
-		originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
-		originalScopes := os.Getenv("ASGARDEO_SCOPES")
+		originalBaseURL := os.Getenv("IDP_BASE_URL")
+		originalClientID := os.Getenv("IDP_CLIENT_ID")
+		originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
+		originalScopes := os.Getenv("IDP_SCOPES")
 		defer func() {
 			if originalURL != "" {
 				os.Setenv("PDP_SERVICEURL", originalURL)
@@ -1397,33 +1397,33 @@ func TestNewV1Handler(t *testing.T) {
 				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 			}
 			if originalBaseURL != "" {
-				os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
+				os.Setenv("IDP_BASE_URL", originalBaseURL)
 			} else {
-				os.Unsetenv("ASGARDEO_BASE_URL")
+				os.Unsetenv("IDP_BASE_URL")
 			}
 			if originalClientID != "" {
-				os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
+				os.Setenv("IDP_CLIENT_ID", originalClientID)
 			} else {
-				os.Unsetenv("ASGARDEO_CLIENT_ID")
+				os.Unsetenv("IDP_CLIENT_ID")
 			}
 			if originalClientSecret != "" {
-				os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
+				os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
 			} else {
-				os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+				os.Unsetenv("IDP_CLIENT_SECRET")
 			}
 			if originalScopes != "" {
-				os.Setenv("ASGARDEO_SCOPES", originalScopes)
+				os.Setenv("IDP_SCOPES", originalScopes)
 			} else {
-				os.Unsetenv("ASGARDEO_SCOPES")
+				os.Unsetenv("IDP_SCOPES")
 			}
 		}()
 
 		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
-		os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
-		os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
-		os.Setenv("ASGARDEO_CLIENT_SECRET", "test-client-secret")
-		os.Unsetenv("ASGARDEO_SCOPES")
+		os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
+		os.Setenv("IDP_CLIENT_ID", "test-client-id")
+		os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")
+		os.Unsetenv("IDP_SCOPES")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1442,9 +1442,9 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 
 	originalURL := os.Getenv("PDP_SERVICEURL")
 	originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
-	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
+	originalBaseURL := os.Getenv("IDP_BASE_URL")
+	originalClientID := os.Getenv("IDP_CLIENT_ID")
+	originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
 	defer func() {
 		if originalURL != "" {
 			os.Setenv("PDP_SERVICEURL", originalURL)
@@ -1457,27 +1457,27 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 			os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 		}
 		if originalBaseURL != "" {
-			os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
+			os.Setenv("IDP_BASE_URL", originalBaseURL)
 		} else {
-			os.Unsetenv("ASGARDEO_BASE_URL")
+			os.Unsetenv("IDP_BASE_URL")
 		}
 		if originalClientID != "" {
-			os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
+			os.Setenv("IDP_CLIENT_ID", originalClientID)
 		} else {
-			os.Unsetenv("ASGARDEO_CLIENT_ID")
+			os.Unsetenv("IDP_CLIENT_ID")
 		}
 		if originalClientSecret != "" {
-			os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
+			os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
 		} else {
-			os.Unsetenv("ASGARDEO_CLIENT_SECRET")
+			os.Unsetenv("IDP_CLIENT_SECRET")
 		}
 	}()
 
 	os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
 	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
-	os.Setenv("ASGARDEO_BASE_URL", "https://api.asgardeo.io/t/testorg")
-	os.Setenv("ASGARDEO_CLIENT_ID", "test-client-id")
-	os.Setenv("ASGARDEO_CLIENT_SECRET", "test-client-secret")
+	os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
+	os.Setenv("IDP_CLIENT_ID", "test-client-id")
+	os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")
 
 	handler, err := NewV1Handler(db)
 	if err != nil {
