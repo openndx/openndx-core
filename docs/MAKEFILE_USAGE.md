@@ -19,7 +19,6 @@ make quality-check portal-backend
 The following Go services are available for quality checks:
 
 - `portal-backend` - Main Portal Backend
-- `audit-service` - Audit logging service
 - `orchestration-engine` - Data orchestration engine
 - `consent-engine` - Consent management engine
 - `policy-decision-point` - Policy decision service
@@ -69,7 +68,7 @@ make format <service-name>
 
 ```bash
 make format portal-backend
-make format audit-service
+make format orchestration-engine
 ```
 
 Formats Go code using:
@@ -120,7 +119,7 @@ make test <service-name>
 **Examples:**
 
 ```bash
-make test audit-service
+make test portal-backend
 make test consent-engine
 ```
 

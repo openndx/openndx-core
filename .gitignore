@@ -44,11 +44,9 @@ mocks/mock-dmt/Config.toml
 **/consent-engine/consent-engine
 **/orchestration-engine/orchestration-engine
 **/portal-backend/portal-backend
-**/audit-service/audit-service
 
 # Database files
 **/*.db
-audit-service/data/
 
 # Allow .choreo directories for WSO2 Choreo deployment
 !**/.choreo/

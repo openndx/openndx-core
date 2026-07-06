@@ -91,7 +91,6 @@ make quality-check <service-name>
 Available services:
 
 - `portal-backend`
-- `audit-service`
 - `orchestration-engine`
 - `consent-engine`
 - `policy-decision-point`
@@ -319,7 +318,6 @@ ls -d */go.mod | sed 's|/go.mod||' | grep -v '^go.mod$'
 Valid service names:
 
 - `portal-backend`
-- `audit-service`
 - `exchange/orchestration-engine` (use `orchestration-engine`)
 - `exchange/consent-engine` (use `consent-engine`)
 - `exchange/policy-decision-point` (use `policy-decision-point`)

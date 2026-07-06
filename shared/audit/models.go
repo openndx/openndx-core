@@ -5,7 +5,7 @@ import (
 )
 
 // AuditLogRequest represents the request payload for creating an audit log
-// Services like orchestration-engine and portal-backend can use this without importing audit-service
+// Services like orchestration-engine and portal-backend can use this without importing the audit service (https://github.com/LSFLK/argus)
 type AuditLogRequest struct {
 	// Trace & Correlation
 	TraceID *string `json:"traceId,omitempty"` // UUID string, nullable for standalone events

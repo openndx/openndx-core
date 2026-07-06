@@ -10,7 +10,6 @@ Run on every PR when service code changes. Perform code quality checks and tests
 
 | Workflow                             | Service               | Triggers On                                    |
 | ------------------------------------ | --------------------- | ---------------------------------------------- |
-| `audit-service-validate.yml`         | Audit Service         | Changes to `audit-service/**`                  |
 | `consent-engine-validate.yml`        | Consent Engine        | Changes to `exchange/consent-engine/**`        |
 | `orchestration-engine-validate.yml`  | Orchestration Engine  | Changes to `exchange/orchestration-engine/**`  |
 | `policy-decision-point-validate.yml` | Policy Decision Point | Changes to `exchange/policy-decision-point/**` |
@@ -30,7 +29,6 @@ Run only when Dockerfiles are modified. Optimizes CI time by skipping Docker bui
 
 | Workflow                                    | Triggers On                                            |
 | ------------------------------------------- | ------------------------------------------------------ |
-| `audit-service-docker-validate.yml`         | Changes to `audit-service/Dockerfile`                  |
 | `consent-engine-docker-validate.yml`        | Changes to `exchange/consent-engine/Dockerfile`        |
 | `orchestration-engine-docker-validate.yml`  | Changes to `exchange/orchestration-engine/Dockerfile`  |
 | `policy-decision-point-docker-validate.yml` | Changes to `exchange/policy-decision-point/Dockerfile` |
@@ -48,7 +46,6 @@ Build and publish Docker images to GitHub Container Registry when code is merged
 
 | Workflow                            | Service               | Image                                          |
 | ----------------------------------- | --------------------- | ---------------------------------------------- |
-| `audit-service-publish.yml`         | Audit Service         | `ghcr.io/{owner}/{repo}/audit-service`         |
 | `consent-engine-publish.yml`        | Consent Engine        | `ghcr.io/{owner}/{repo}/consent-engine`        |
 | `orchestration-engine-publish.yml`  | Orchestration Engine  | `ghcr.io/{owner}/{repo}/orchestration-engine`  |
 | `policy-decision-point-publish.yml` | Policy Decision Point | `ghcr.io/{owner}/{repo}/policy-decision-point` |

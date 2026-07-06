@@ -13,7 +13,6 @@ help:
 	@echo "Services:"
 	@echo "  Go Services:"
 	@echo "    - portal-backend"
-	@echo "    - audit-service"
 	@echo "    - orchestration-engine"
 	@echo "    - consent-engine"
 	@echo "    - policy-decision-point"
@@ -60,7 +59,6 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Service paths
 portal_backend_PATH := portal-backend
-AUDIT_SERVICE_PATH := audit-service
 ORCHESTRATION_ENGINE_PATH := exchange/orchestration-engine
 CONSENT_ENGINE_PATH := exchange/consent-engine
 POLICY_DECISION_POINT_PATH := exchange/policy-decision-point
@@ -70,7 +68,7 @@ ADMIN_PORTAL_PATH := portals/admin-portal
 CONSENT_PORTAL_PATH := portals/consent-portal
 
 # Go services list
-GO_SERVICES := portal-backend audit-service orchestration-engine consent-engine policy-decision-point
+GO_SERVICES := portal-backend orchestration-engine consent-engine policy-decision-point
 FRONTEND_SERVICES := member-portal admin-portal consent-portal
 
 # =============================================================================
@@ -120,7 +118,6 @@ setup:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="setup-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="setup-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="setup-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="setup-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="setup-go-service" ;; \
@@ -156,7 +153,6 @@ validate-build:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="validate-build-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="validate-build-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="validate-build-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="validate-build-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="validate-build-go-service" ;; \
@@ -197,7 +193,6 @@ validate-test:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="validate-test-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="validate-test-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="validate-test-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="validate-test-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="validate-test-go-service" ;; \
@@ -228,7 +223,6 @@ validate-docker-build:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)" ;; \
@@ -361,7 +355,6 @@ format:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)" ;; \
@@ -374,7 +367,6 @@ lint:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)" ;; \
@@ -387,7 +379,6 @@ staticcheck:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)" ;; \
@@ -400,7 +391,6 @@ security:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)" ;; \
@@ -413,7 +403,6 @@ quality-check:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="quality-check-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="quality-check-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="quality-check-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="quality-check-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="quality-check-go-service" ;; \
@@ -429,7 +418,6 @@ check-lint:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="check-lint-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="check-lint-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="check-lint-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="check-lint-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="check-lint-go-service" ;; \
@@ -461,7 +449,6 @@ run:
 	@SERVICE_NAME="$(word 2,$(MAKECMDGOALS))"; \
 	case "$$SERVICE_NAME" in \
 		portal-backend) SERVICE_PATH="$(portal_backend_PATH)"; TARGET="run-go-service" ;; \
-		audit-service) SERVICE_PATH="$(AUDIT_SERVICE_PATH)"; TARGET="run-go-service" ;; \
 		orchestration-engine) SERVICE_PATH="$(ORCHESTRATION_ENGINE_PATH)"; TARGET="run-go-service" ;; \
 		consent-engine) SERVICE_PATH="$(CONSENT_ENGINE_PATH)"; TARGET="run-go-service" ;; \
 		policy-decision-point) SERVICE_PATH="$(POLICY_DECISION_POINT_PATH)"; TARGET="run-go-service" ;; \

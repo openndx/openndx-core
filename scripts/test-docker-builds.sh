@@ -64,12 +64,6 @@ echo ""
 # Keep track of overall status
 OVERALL_STATUS=0
 
-# Build audit-service
-if ! build_service "audit-service" "audit-service/Dockerfile" "audit-service"; then
-    OVERALL_STATUS=1
-fi
-echo ""
-
 # Build orchestration-engine
 if ! build_service "orchestration-engine" "exchange/orchestration-engine/Dockerfile" "exchange/orchestration-engine"; then
     OVERALL_STATUS=1
