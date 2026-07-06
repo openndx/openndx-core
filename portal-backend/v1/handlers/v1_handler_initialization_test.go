@@ -155,7 +155,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 	originalJWKS := os.Getenv("ASGARDEO_JWKS_URL")
 	originalIssuer := os.Getenv("ASGARDEO_ISSUER")
 	originalTokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
-	originalPDPURL := os.Getenv("CHOREO_PDP_CONNECTION_SERVICEURL")
+	originalPDPURLStd := os.Getenv("PDP_SERVICEURL")
 	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
 
 	// Restore env vars after test
@@ -166,7 +166,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 		os.Setenv("ASGARDEO_JWKS_URL", originalJWKS)
 		os.Setenv("ASGARDEO_ISSUER", originalIssuer)
 		os.Setenv("ASGARDEO_TOKEN_URL", originalTokenURL)
-		os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", originalPDPURL)
+		os.Setenv("PDP_SERVICEURL", originalPDPURLStd)
 		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
 	}()
 
@@ -178,7 +178,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 	os.Setenv("ASGARDEO_ISSUER", "https://example.com")
 	os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
 	os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
-	os.Setenv("CHOREO_PDP_CONNECTION_SERVICEURL", "http://pdp:8080")
+	os.Setenv("PDP_SERVICEURL", "http://pdp:8080")
 	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
 
 	db := services.SetupSQLiteTestDB(t)
