@@ -58,7 +58,6 @@ func TestJWTAuthConfig_Validate(t *testing.T) {
 				JWKSURL:        "https://example.com/jwks",
 				ExpectedIssuer: "https://example.com",
 				ValidClientIDs: []string{"client-1"},
-				OrgName:        "org-1",
 			},
 			wantErr: false,
 		},
@@ -123,7 +122,6 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 		JWKSURL:        jwksServer.URL,
 		ExpectedIssuer: "https://example.com",
 		ValidClientIDs: []string{"client-1"},
-		OrgName:        "org-1",
 	}
 
 	middleware := NewJWTAuthMiddleware(config)
@@ -148,7 +146,6 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 				claims := jwt.MapClaims{
 					"iss":       "https://example.com",
 					"aud":       "client-1",
-					"org_name":  "org-1",
 					"email":     "test@example.com",
 					"sub":       "user-1",
 					"exp":       time.Now().Add(time.Hour).Unix(),
@@ -185,12 +182,11 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 			name: "Expired Token",
 			setupRequest: func() *http.Request {
 				claims := jwt.MapClaims{
-					"iss":      "https://example.com",
-					"aud":      "client-1",
-					"org_name": "org-1",
-					"email":    "test@example.com",
-					"sub":      "user-1",
-					"exp":      time.Now().Add(-time.Hour).Unix(),
+					"iss":   "https://example.com",
+					"aud":   "client-1",
+					"email": "test@example.com",
+					"sub":   "user-1",
+					"exp":   time.Now().Add(-time.Hour).Unix(),
 				}
 				token := createToken(claims, privKey, kid)
 				req := httptest.NewRequest("GET", "/api/v1/resource", nil)
@@ -203,12 +199,11 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 			name: "Invalid Issuer",
 			setupRequest: func() *http.Request {
 				claims := jwt.MapClaims{
-					"iss":      "https://wrong-issuer.com",
-					"aud":      "client-1",
-					"org_name": "org-1",
-					"email":    "test@example.com",
-					"sub":      "user-1",
-					"exp":      time.Now().Add(time.Hour).Unix(),
+					"iss":   "https://wrong-issuer.com",
+					"aud":   "client-1",
+					"email": "test@example.com",
+					"sub":   "user-1",
+					"exp":   time.Now().Add(time.Hour).Unix(),
 				}
 				token := createToken(claims, privKey, kid)
 				req := httptest.NewRequest("GET", "/api/v1/resource", nil)
@@ -221,12 +216,11 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 			name: "Invalid Audience",
 			setupRequest: func() *http.Request {
 				claims := jwt.MapClaims{
-					"iss":      "https://example.com",
-					"aud":      "wrong-client",
-					"org_name": "org-1",
-					"email":    "test@example.com",
-					"sub":      "user-1",
-					"exp":      time.Now().Add(time.Hour).Unix(),
+					"iss":   "https://example.com",
+					"aud":   "wrong-client",
+					"email": "test@example.com",
+					"sub":   "user-1",
+					"exp":   time.Now().Add(time.Hour).Unix(),
 				}
 				token := createToken(claims, privKey, kid)
 				req := httptest.NewRequest("GET", "/api/v1/resource", nil)
