@@ -17,7 +17,6 @@ type UserClaims struct {
 	PhoneNumber string              `json:"phone_number"`
 	Roles       FlexibleStringSlice `json:"roles"`
 	Groups      FlexibleStringSlice `json:"groups"`
-	OrgName     string              `json:"org_name"`
 	IdpUserID   string              `json:"sub"` // Subject is typically the user ID from IdP
 	// Standard JWT claims - using int64 for Unix timestamps
 	Issuer    string              `json:"iss"`
@@ -75,7 +74,6 @@ type AuthenticatedUser struct {
 	PhoneNumber string    `json:"phoneNumber"`
 	Roles       []Role    `json:"roles"`
 	Groups      []string  `json:"groups"`
-	OrgName     string    `json:"orgName"`
 	IssuedAt    time.Time `json:"issuedAt"`
 	ExpiresAt   time.Time `json:"expiresAt"`
 
@@ -271,7 +269,6 @@ func NewAuthenticatedUser(claims *UserClaims) (*AuthenticatedUser, error) {
 		PhoneNumber: claims.PhoneNumber,
 		Roles:       roles,
 		Groups:      claims.Groups.ToStringSlice(),
-		OrgName:     claims.OrgName,
 		IssuedAt:    issuedAt,
 		ExpiresAt:   expiresAt,
 		permissions: permissions,

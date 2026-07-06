@@ -41,7 +41,6 @@ type JWTAuthMiddleware struct {
 	jwksURL        string
 	expectedIssuer string
 	validClientIDs []string
-	orgName        string
 	httpClient     *http.Client
 
 	// Protected by keysMutex to prevent race conditions
@@ -56,7 +55,6 @@ type JWTAuthConfig struct {
 	JWKSURL        string
 	ExpectedIssuer string
 	ValidClientIDs []string // Multiple valid client IDs for different portals
-	OrgName        string
 	Timeout        time.Duration
 }
 
@@ -95,7 +93,6 @@ func NewJWTAuthMiddleware(config JWTAuthConfig) *JWTAuthMiddleware {
 		jwksURL:        config.JWKSURL,
 		expectedIssuer: config.ExpectedIssuer,
 		validClientIDs: config.ValidClientIDs,
-		orgName:        config.OrgName,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -253,10 +250,6 @@ func (j *JWTAuthMiddleware) validateStandardClaims(claims *models.UserClaims) er
 		return fmt.Errorf("invalid audience: expected one of %v, got %v", j.validClientIDs, claims.Audience)
 	}
 
-	// Validate organization name if configured
-	if j.orgName != "" && claims.OrgName != j.orgName {
-		return fmt.Errorf("invalid org_name: expected %s, got %s", j.orgName, claims.OrgName)
-	}
 
 	// Validate required fields
 	if claims.Email == "" {

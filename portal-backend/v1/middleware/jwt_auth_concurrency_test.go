@@ -14,7 +14,6 @@ func TestJWTAuthMiddleware_ThreadSafety(t *testing.T) {
 		JWKSURL:        "https://example.com/.well-known/jwks.json",
 		ExpectedIssuer: "https://example.com",
 		ValidClientIDs: []string{"test-client"},
-		OrgName:        "test-org",
 		Timeout:        5 * time.Second,
 	}
 
@@ -109,7 +108,6 @@ func TestJWTAuthMiddleware_KeyUpdateAtomicity(t *testing.T) {
 		JWKSURL:        "https://example.com/.well-known/jwks.json",
 		ExpectedIssuer: "https://example.com",
 		ValidClientIDs: []string{"test-client"},
-		OrgName:        "test-org",
 		Timeout:        5 * time.Second,
 	}
 
@@ -180,7 +178,6 @@ func BenchmarkJWTAuthMiddleware_ConcurrentKeyAccess(b *testing.B) {
 		JWKSURL:        "https://example.com/.well-known/jwks.json",
 		ExpectedIssuer: "https://example.com",
 		ValidClientIDs: []string{"test-client"},
-		OrgName:        "test-org",
 		Timeout:        5 * time.Second,
 	}
 

@@ -14,7 +14,6 @@ func TestAuthenticatedUser_GetPermissions_Caching(t *testing.T) {
 		IdpUserID: "admin-123",
 		Roles:     FlexibleStringSlice{"OpenDIF_Admin"},
 		Groups:    []string{"admins"},
-		OrgName:   "test-org",
 	}
 
 	// Create authenticated user
