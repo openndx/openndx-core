@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	auditpkg "github.com/LSFLK/argus/pkg/audit"
 	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
-	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/auth"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/consent"

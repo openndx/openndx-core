@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
+	"crypto"
 	"sync"
 	"testing"
 	"time"
 
-	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
+	auditpkg "github.com/LSFLK/argus/pkg/audit"
 )
 
 // mockAuditClient implements auditpkg.AuditClient interface for testing
@@ -26,7 +26,7 @@ func newMockAuditClient(enabled bool) *mockAuditClient {
 	}
 }
 
-func (m *mockAuditClient) LogEvent(ctx context.Context, event *auditpkg.AuditLogRequest) {
+func (m *mockAuditClient) LogEvent(ctx context.Context, event *auditpkg.AuditLogRequest) bool {
 	m.mu.Lock()
 	m.receivedEvents = append(m.receivedEvents, event)
 	m.mu.Unlock()
@@ -34,6 +34,25 @@ func (m *mockAuditClient) LogEvent(ctx context.Context, event *auditpkg.AuditLog
 	case m.requestReceived <- true:
 	default:
 	}
+	return true
+}
+
+func (m *mockAuditClient) SignEvent(ctx context.Context, event *auditpkg.AuditLogRequest) error {
+	return nil
+}
+
+func (m *mockAuditClient) SignMessageBytes(ctx context.Context, message []byte) (string, error) {
+	return "", nil
+}
+
+func (m *mockAuditClient) LogSignedEvent(ctx context.Context, event *auditpkg.AuditLogRequest) {}
+
+func (m *mockAuditClient) VerifyIntegrity(event *auditpkg.AuditLogRequest, publicKey crypto.PublicKey) (bool, error) {
+	return true, nil
+}
+
+func (m *mockAuditClient) Close(ctx context.Context) error {
+	return nil
 }
 
 func (m *mockAuditClient) IsEnabled() bool {
@@ -54,14 +73,16 @@ func TestLogAuditEvent(t *testing.T) {
 	traceID := "550e8400-e29b-41d4-a716-446655440000"
 	eventType := "POLICY_CHECK"
 	testRequest := &auditpkg.AuditLogRequest{
-		TraceID:         &traceID,
-		Timestamp:       time.Now().UTC().Format(time.RFC3339),
-		EventType:       &eventType,
-		Status:          auditpkg.StatusSuccess,
-		ActorType:       "SERVICE",
-		ActorID:         "orchestration-engine",
-		TargetType:      "SERVICE",
-		RequestMetadata: json.RawMessage(`{"appId": "test-app-123"}`),
+		TraceID:    &traceID,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+		EventType:  eventType,
+		Status:     auditpkg.StatusSuccess,
+		ActorType:  "SERVICE",
+		ActorID:    "orchestration-engine",
+		TargetType: "SERVICE",
+		Metadata: map[string]interface{}{
+			"appId": "test-app-123",
+		},
 	}
 
 	// Call LogAuditEvent from shared package
@@ -109,7 +130,7 @@ func TestLogAuditEventWhenNotConfigured(t *testing.T) {
 	testRequest := &auditpkg.AuditLogRequest{
 		TraceID:    &traceID,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
-		EventType:  &eventType,
+		EventType:  eventType,
 		Status:     auditpkg.StatusSuccess,
 		ActorType:  "SERVICE",
 		ActorID:    "orchestration-engine",
@@ -135,7 +156,7 @@ func TestLogAuditEventWhenGlobalMiddlewareNotInitialized(t *testing.T) {
 	testRequest := &auditpkg.AuditLogRequest{
 		TraceID:    &traceID,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
-		EventType:  &eventType,
+		EventType:  eventType,
 		Status:     auditpkg.StatusSuccess,
 		ActorType:  "SERVICE",
 		ActorID:    "orchestration-engine",

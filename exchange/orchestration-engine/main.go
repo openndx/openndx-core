@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/OpenDIF/opendif-core/shared/audit"
+	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
@@ -36,7 +36,14 @@ func main() {
 	if envAuditURL != "" {
 		config.AuditConfig.ServiceURL = envAuditURL
 	}
-	auditClient := audit.NewClient(config.AuditConfig.ServiceURL)
+	apiKey := os.Getenv("ARGUS_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("ARGUS_AUTH_TOKEN")
+	}
+	auditClient := audit.NewClient(audit.Config{
+		BaseURL: config.AuditConfig.ServiceURL,
+		APIKey:  apiKey,
+	})
 	audit.InitializeGlobalAudit(auditClient)
 
 	// Initialize audit configuration (actorType, actorID)

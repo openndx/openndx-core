@@ -130,8 +130,9 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-exchange}
       - DB_NAME=${DB_NAME_OE:-orchestration_engine}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
-      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-}
+      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
       - ENABLE_AUDIT=${ENABLE_AUDIT:-false}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
     volumes:
       - ./orchestration-engine/config.docker.json:/app/config.json:ro
     extra_hosts:
@@ -147,6 +148,31 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+    networks:
+      - opendif-network
+
+  audit-service:
+    build:
+      context: https://github.com/LSFLK/argus.git#v1.0.1
+      dockerfile: Dockerfile
+    container_name: audit-service-${ENVIRONMENT:-local}
+    ports:
+      - "${PORT_AUDIT:-3001}:3001"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-exchange}
+      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_NAME=audit
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - PORT=3001
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - opendif-network

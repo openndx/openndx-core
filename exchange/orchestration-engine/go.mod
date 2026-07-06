@@ -1,11 +1,11 @@
 module github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine
 
-go 1.25.0
+go 1.24.6
 
 require (
+	github.com/LSFLK/argus/pkg/audit v0.0.0-20260622104753-c28bd76815b0
 	github.com/MicahParks/keyfunc/v3 v3.7.0
 	github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702091746-b79410856362
-	github.com/OpenDIF/opendif-core/shared/audit v0.0.0-20260702093141-48fb08e44cce
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
