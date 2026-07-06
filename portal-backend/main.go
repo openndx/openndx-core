@@ -53,9 +53,19 @@ func main() {
 	// Setup JWT Authentication middleware
 	// Validate required environment variables first
 	asgardeoBaseURL := os.Getenv("ASGARDEO_BASE_URL")
+	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
+	issuerURL := os.Getenv("ASGARDEO_ISSUER")
+	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+
 	if asgardeoBaseURL == "" {
-		slog.Error("ASGARDEO_BASE_URL environment variable is required")
-		os.Exit(1)
+		if jwksURL == "" {
+			slog.Error("ASGARDEO_JWKS_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			os.Exit(1)
+		}
+		if issuerURL == "" && tokenURL == "" {
+			slog.Error("Either ASGARDEO_ISSUER or ASGARDEO_TOKEN_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			os.Exit(1)
+		}
 	}
 
 	// Support multiple valid client IDs for different portals
@@ -77,7 +87,7 @@ func main() {
 
 	jwtConfig := v1middleware.JWTAuthConfig{
 		JWKSURL:        utils.GetEnvOrDefault("ASGARDEO_JWKS_URL", asgardeoBaseURL+"/oauth2/jwks"),
-		ExpectedIssuer: utils.GetEnvOrDefault("ASGARDEO_TOKEN_URL", asgardeoBaseURL+"/oauth2/token"),
+		ExpectedIssuer: utils.GetEnvOrDefault("ASGARDEO_ISSUER", utils.GetEnvOrDefault("ASGARDEO_TOKEN_URL", asgardeoBaseURL+"/oauth2/token")),
 		ValidClientIDs: validClientIDs,
 		OrgName:        utils.GetEnvOrDefault("ASGARDEO_ORG_NAME", ""),
 		Timeout:        10 * time.Second,
