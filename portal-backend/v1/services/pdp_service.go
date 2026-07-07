@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gov-dx-sandbox/portal-backend/v1/models"
@@ -17,24 +18,19 @@ import (
 type PDPService struct {
 	// baseURL is the endpoint of the PDP
 	baseURL string
-	// apiKey is the Choreo API key for internal auth
-	apiKey string
 	// HTTPClient is used to make requests to the PDP
 	HTTPClient *http.Client
 }
 
-// NewPDPService creates a new instance of PDPService
-func NewPDPService(baseURL string, apiKey string) *PDPService {
+// NewPDPService creates a new instance of PDPService.
+// The PDP is reached through a trusted API gateway, so no API key is required.
+func NewPDPService(baseURL string) *PDPService {
+	// Trim any trailing slash to avoid double slashes in constructed URLs.
+	baseURL = strings.TrimSuffix(baseURL, "/")
 	return &PDPService{
 		baseURL:    baseURL,
-		apiKey:     apiKey,
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
 	}
-}
-
-// setAuthHeader is a helper function to add the Choreo API key
-func (s *PDPService) setAuthHeader(req *http.Request) {
-	req.Header.Set("apikey", s.apiKey)
 }
 
 // CreatePolicyMetadata sends a request to create policy metadata in the PDP
@@ -60,7 +56,6 @@ func (s *PDPService) CreatePolicyMetadata(schemaId string, sdl string) (*models.
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	s.setAuthHeader(httpReq)
 
 	// Send request to PDP
 	resp, err := s.HTTPClient.Do(httpReq)
@@ -112,7 +107,6 @@ func (s *PDPService) UpdateAllowList(request models.AllowListUpdateRequest) (*mo
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	s.setAuthHeader(httpReq)
 
 	// Send request
 	slog.Debug("Sending allow list update request to PDP", "url", url, "applicationId", request.ApplicationID)

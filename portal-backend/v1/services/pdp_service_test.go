@@ -14,13 +14,11 @@ import (
 
 func TestNewPDPService(t *testing.T) {
 	baseURL := "http://localhost:8082"
-	apiKey := "test-api-key"
 
-	service := NewPDPService(baseURL, apiKey)
+	service := NewPDPService(baseURL)
 
 	assert.NotNil(t, service)
 	assert.Equal(t, baseURL, service.baseURL)
-	assert.Equal(t, apiKey, service.apiKey)
 	assert.NotNil(t, service.HTTPClient)
 	assert.Equal(t, 10*time.Second, service.HTTPClient.Timeout)
 }
@@ -48,7 +46,6 @@ func TestPDPService_CreatePolicyMetadata_Success(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/api/v1/policy/metadata", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "test-api-key", r.Header.Get("apikey"))
 
 		// Verify request body
 		var req models.PolicyMetadataCreateRequest
@@ -67,7 +64,7 @@ func TestPDPService_CreatePolicyMetadata_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	// Use a simple SDL for testing (valid GraphQL without custom directives)
 	sdl := `
@@ -87,7 +84,7 @@ func TestPDPService_CreatePolicyMetadata_Success(t *testing.T) {
 }
 
 func TestPDPService_CreatePolicyMetadata_InvalidSDL(t *testing.T) {
-	service := NewPDPService("http://localhost:8082", "test-api-key")
+	service := NewPDPService("http://localhost:8082")
 
 	// Use invalid SDL
 	invalidSDL := "invalid graphql syntax {"
@@ -106,7 +103,7 @@ func TestPDPService_CreatePolicyMetadata_Non200Status(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	sdl := `
 		type Person {
@@ -129,7 +126,7 @@ func TestPDPService_CreatePolicyMetadata_InvalidJSONResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	sdl := `
 		type Person {
@@ -145,7 +142,7 @@ func TestPDPService_CreatePolicyMetadata_InvalidJSONResponse(t *testing.T) {
 
 func TestPDPService_CreatePolicyMetadata_NetworkError(t *testing.T) {
 	// Use an invalid URL to simulate network error
-	service := NewPDPService("http://invalid-host:9999", "test-api-key")
+	service := NewPDPService("http://invalid-host:9999")
 
 	sdl := `
 		type Person {
@@ -176,7 +173,6 @@ func TestPDPService_UpdateAllowList_Success(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/api/v1/policy/update-allowlist", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "test-api-key", r.Header.Get("apikey"))
 
 		// Verify request body
 		var req models.AllowListUpdateRequest
@@ -196,7 +192,7 @@ func TestPDPService_UpdateAllowList_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	request := models.AllowListUpdateRequest{
 		ApplicationID: applicationID,
@@ -225,7 +221,7 @@ func TestPDPService_UpdateAllowList_Non200Status(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	request := models.AllowListUpdateRequest{
 		ApplicationID: "test-app",
@@ -253,7 +249,7 @@ func TestPDPService_UpdateAllowList_InvalidJSONResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewPDPService(server.URL, "test-api-key")
+	service := NewPDPService(server.URL)
 
 	request := models.AllowListUpdateRequest{
 		ApplicationID: "test-app",
@@ -274,7 +270,7 @@ func TestPDPService_UpdateAllowList_InvalidJSONResponse(t *testing.T) {
 
 func TestPDPService_UpdateAllowList_NetworkError(t *testing.T) {
 	// Use an invalid URL to simulate network error
-	service := NewPDPService("http://invalid-host:9999", "test-api-key")
+	service := NewPDPService("http://invalid-host:9999")
 
 	request := models.AllowListUpdateRequest{
 		ApplicationID: "test-app",
@@ -310,17 +306,6 @@ func TestPDPService_UpdateAllowList_MarshalError(t *testing.T) {
 	// We'll just verify the request is valid
 	_, err := json.Marshal(request)
 	assert.NoError(t, err, "Request should be marshallable")
-}
-
-func TestPDPService_setAuthHeader(t *testing.T) {
-	service := NewPDPService("http://localhost:8082", "test-api-key")
-
-	req, err := http.NewRequest("GET", "http://localhost:8082/health", nil)
-	require.NoError(t, err)
-
-	service.setAuthHeader(req)
-
-	assert.Equal(t, "test-api-key", req.Header.Get("apikey"))
 }
 
 // Helper function to create string pointers

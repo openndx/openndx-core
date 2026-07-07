@@ -31,11 +31,11 @@ Create a `.env` file:
 
 ```bash
 # Database Configuration
-CHOREO_DB_portal_backend_HOSTNAME=localhost
-CHOREO_DB_portal_backend_PORT=5432
-CHOREO_DB_portal_backend_USERNAME=postgres
-CHOREO_DB_portal_backend_PASSWORD=your_password
-CHOREO_DB_portal_backend_DATABASENAME=portal_backend
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+DB_NAME=portal_backend
 
 # JWT Authentication (Required)
 IDP_BASE_URL=https://api.asgardeo.io/t/your-org
@@ -43,13 +43,12 @@ IDP_MEMBER_PORTAL_CLIENT_ID=your_member_client_id
 IDP_ADMIN_PORTAL_CLIENT_ID=your_admin_client_id
 
 # Policy Decision Point
-CHOREO_PDP_CONNECTION_SERVICEURL=http://localhost:8082
-CHOREO_PDP_CONNECTION_CHOREOAPIKEY=your_pdp_key
+PDP_SERVICE_URL=http://localhost:8082
 
-# Optional: Asgardeo Management (for member creation)
+# Optional: IDP Management (for member creation)
 IDP_CLIENT_ID=management_client_id
 IDP_CLIENT_SECRET=management_client_secret
-IDP_SCOPES="internal_user_mgt_create internal_user_mgt_list"
+IDP_SCOPE="internal_user_mgt_create internal_user_mgt_list"
 ```
 
 ### 2. Run the Service
@@ -215,7 +214,7 @@ docker build -t portal-backend .
 
 # Run container
 docker run -p 3000:3000 \
-  -e CHOREO_DB_portal_backend_HOSTNAME=host.docker.internal \
+  -e DB_HOST=host.docker.internal \
   --env-file .env \
   portal-backend
 ```

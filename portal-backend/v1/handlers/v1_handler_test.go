@@ -179,7 +179,7 @@ func NewTestV1HandlerWithMockPDP(t *testing.T, db *gorm.DB) *V1Handler {
 
 	// For testing, we'll use a real PDPService but skip actual HTTP calls
 	// In a real test, you'd use a test HTTP server
-	mockPDP := services.NewPDPService("http://localhost:8082", "test-api-key")
+	mockPDP := services.NewPDPService("http://localhost:8082")
 
 	// Note: In a real scenario, you'd set up a test HTTP server to handle PDP requests
 	// For now, the tests will need to handle PDP failures gracefully or skip PDP-dependent operations
@@ -1243,23 +1243,16 @@ func TestSchemaSubmissionEndpoints_EdgeCases(t *testing.T) {
 // TestNewV1Handler tests the NewV1Handler constructor
 func TestNewV1Handler(t *testing.T) {
 	t.Run("NewV1Handler_MissingPDPURL", func(t *testing.T) {
-		originalURL := os.Getenv("PDP_SERVICEURL")
-		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+		originalURL := os.Getenv("PDP_SERVICE_URL")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("PDP_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
-				os.Unsetenv("PDP_SERVICEURL")
-			}
-			if originalKey != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
-			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+				os.Unsetenv("PDP_SERVICE_URL")
 			}
 		}()
 
-		os.Unsetenv("PDP_SERVICEURL")
-		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+		os.Unsetenv("PDP_SERVICE_URL")
 
 		// Set IDP env vars to pass IDP check
 		os.Setenv("IDP_BASE_URL", "https://example.com")
@@ -1277,64 +1270,20 @@ func TestNewV1Handler(t *testing.T) {
 		handler, err := NewV1Handler(db)
 		assert.Error(t, err)
 		assert.Nil(t, handler)
-		assert.Contains(t, err.Error(), "PDP_SERVICEURL")
-	})
-
-	t.Run("NewV1Handler_MissingPDPKey", func(t *testing.T) {
-		originalURL := os.Getenv("PDP_SERVICEURL")
-		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-		defer func() {
-			if originalURL != "" {
-				os.Setenv("PDP_SERVICEURL", originalURL)
-			} else {
-				os.Unsetenv("PDP_SERVICEURL")
-			}
-			if originalKey != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
-			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-			}
-		}()
-
-		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
-		os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-
-		// Set IDP env vars to pass IDP check
-		os.Setenv("IDP_BASE_URL", "https://example.com")
-		os.Setenv("IDP_CLIENT_ID", "client-id")
-		os.Setenv("IDP_CLIENT_SECRET", "client-secret")
-		defer os.Unsetenv("IDP_BASE_URL")
-		defer os.Unsetenv("IDP_CLIENT_ID")
-		defer os.Unsetenv("IDP_CLIENT_SECRET")
-
-		db := services.SetupSQLiteTestDB(t)
-		if db == nil {
-			return
-		}
-
-		handler, err := NewV1Handler(db)
-		assert.Error(t, err)
-		assert.Nil(t, handler)
-		assert.Contains(t, err.Error(), "CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+		assert.Contains(t, err.Error(), "PDP_SERVICE_URL")
 	})
 
 	t.Run("NewV1Handler_Success", func(t *testing.T) {
-		originalURL := os.Getenv("PDP_SERVICEURL")
-		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+		originalURL := os.Getenv("PDP_SERVICE_URL")
 		originalBaseURL := os.Getenv("IDP_BASE_URL")
 		originalClientID := os.Getenv("IDP_CLIENT_ID")
 		originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
-		originalScopes := os.Getenv("IDP_SCOPES")
+		originalScopes := os.Getenv("IDP_SCOPE")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("PDP_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
-				os.Unsetenv("PDP_SERVICEURL")
-			}
-			if originalKey != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
-			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+				os.Unsetenv("PDP_SERVICE_URL")
 			}
 			if originalBaseURL != "" {
 				os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1352,18 +1301,17 @@ func TestNewV1Handler(t *testing.T) {
 				os.Unsetenv("IDP_CLIENT_SECRET")
 			}
 			if originalScopes != "" {
-				os.Setenv("IDP_SCOPES", originalScopes)
+				os.Setenv("IDP_SCOPE", originalScopes)
 			} else {
-				os.Unsetenv("IDP_SCOPES")
+				os.Unsetenv("IDP_SCOPE")
 			}
 		}()
 
-		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
+		os.Setenv("PDP_SERVICE_URL", "http://localhost:9999")
 		os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
 		os.Setenv("IDP_CLIENT_ID", "test-client-id")
 		os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")
-		os.Setenv("IDP_SCOPES", "scope1 scope2 scope3")
+		os.Setenv("IDP_SCOPE", "scope1 scope2 scope3")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1379,22 +1327,16 @@ func TestNewV1Handler(t *testing.T) {
 	})
 
 	t.Run("NewV1Handler_WithEmptyScopes", func(t *testing.T) {
-		originalURL := os.Getenv("PDP_SERVICEURL")
-		originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+		originalURL := os.Getenv("PDP_SERVICE_URL")
 		originalBaseURL := os.Getenv("IDP_BASE_URL")
 		originalClientID := os.Getenv("IDP_CLIENT_ID")
 		originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
-		originalScopes := os.Getenv("IDP_SCOPES")
+		originalScopes := os.Getenv("IDP_SCOPE")
 		defer func() {
 			if originalURL != "" {
-				os.Setenv("PDP_SERVICEURL", originalURL)
+				os.Setenv("PDP_SERVICE_URL", originalURL)
 			} else {
-				os.Unsetenv("PDP_SERVICEURL")
-			}
-			if originalKey != "" {
-				os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
-			} else {
-				os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+				os.Unsetenv("PDP_SERVICE_URL")
 			}
 			if originalBaseURL != "" {
 				os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1412,18 +1354,17 @@ func TestNewV1Handler(t *testing.T) {
 				os.Unsetenv("IDP_CLIENT_SECRET")
 			}
 			if originalScopes != "" {
-				os.Setenv("IDP_SCOPES", originalScopes)
+				os.Setenv("IDP_SCOPE", originalScopes)
 			} else {
-				os.Unsetenv("IDP_SCOPES")
+				os.Unsetenv("IDP_SCOPE")
 			}
 		}()
 
-		os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
+		os.Setenv("PDP_SERVICE_URL", "http://localhost:9999")
 		os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
 		os.Setenv("IDP_CLIENT_ID", "test-client-id")
 		os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")
-		os.Unsetenv("IDP_SCOPES")
+		os.Unsetenv("IDP_SCOPE")
 
 		db := services.SetupSQLiteTestDB(t)
 		if db == nil {
@@ -1440,21 +1381,15 @@ func TestNewV1Handler(t *testing.T) {
 func TestV1Handler_SetupV1Routes(t *testing.T) {
 	db := services.SetupSQLiteTestDB(t)
 
-	originalURL := os.Getenv("PDP_SERVICEURL")
-	originalKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	originalURL := os.Getenv("PDP_SERVICE_URL")
 	originalBaseURL := os.Getenv("IDP_BASE_URL")
 	originalClientID := os.Getenv("IDP_CLIENT_ID")
 	originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
 	defer func() {
 		if originalURL != "" {
-			os.Setenv("PDP_SERVICEURL", originalURL)
+			os.Setenv("PDP_SERVICE_URL", originalURL)
 		} else {
-			os.Unsetenv("PDP_SERVICEURL")
-		}
-		if originalKey != "" {
-			os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalKey)
-		} else {
-			os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+			os.Unsetenv("PDP_SERVICE_URL")
 		}
 		if originalBaseURL != "" {
 			os.Setenv("IDP_BASE_URL", originalBaseURL)
@@ -1473,8 +1408,7 @@ func TestV1Handler_SetupV1Routes(t *testing.T) {
 		}
 	}()
 
-	os.Setenv("PDP_SERVICEURL", "http://localhost:9999")
-	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "test-key")
+	os.Setenv("PDP_SERVICE_URL", "http://localhost:9999")
 	os.Setenv("IDP_BASE_URL", "https://api.asgardeo.io/t/testorg")
 	os.Setenv("IDP_CLIENT_ID", "test-client-id")
 	os.Setenv("IDP_CLIENT_SECRET", "test-client-secret")

@@ -59,7 +59,7 @@ func (h *V1Handler) getUserMemberID(r *http.Request, user *models.AuthenticatedU
 // NewV1Handler creates a new V1 handler
 func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 	// Get scopes from environment variable, fallback to default if not set
-	scopesEnv := os.Getenv("IDP_SCOPES")
+	scopesEnv := os.Getenv("IDP_SCOPE")
 	var scopes []string
 	if scopesEnv != "" {
 		// Split by space to handle multiple scopes
@@ -100,17 +100,15 @@ func NewV1Handler(db *gorm.DB) (*V1Handler, error) {
 	}
 	memberService := services.NewMemberService(db, idpProvider)
 
-	pdpServiceURL := os.Getenv("PDP_SERVICEURL")
+	pdpServiceURL := os.Getenv("PDP_SERVICE_URL")
 	if pdpServiceURL == "" {
-		return nil, fmt.Errorf("PDP_SERVICEURL environment variable not set")
+		return nil, fmt.Errorf("PDP_SERVICE_URL environment variable not set")
+	}
+	if !strings.HasPrefix(pdpServiceURL, "http://") && !strings.HasPrefix(pdpServiceURL, "https://") {
+		return nil, fmt.Errorf("PDP_SERVICE_URL must start with http:// or https://")
 	}
 
-	pdpServiceAPIKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
-	if pdpServiceAPIKey == "" {
-		return nil, fmt.Errorf("CHOREO_PDP_CONNECTION_CHOREOAPIKEY environment variable not set")
-	}
-
-	pdpService := services.NewPDPService(pdpServiceURL, pdpServiceAPIKey)
+	pdpService := services.NewPDPService(pdpServiceURL)
 	slog.Info("PDP Service URL", "url", pdpServiceURL)
 
 	return &V1Handler{

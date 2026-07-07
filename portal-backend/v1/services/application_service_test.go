@@ -36,7 +36,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 				}, nil
 			},
 		}
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
 		mockIDP := &MockIDP{}
@@ -94,7 +94,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 				}, nil
 			},
 		}
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
 		mockIDP := &MockIDP{}
@@ -136,7 +136,7 @@ func TestApplicationService_UpdateApplication(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -175,7 +175,7 @@ func TestApplicationService_UpdateApplication(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -203,7 +203,7 @@ func TestApplicationService_GetApplication(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -234,7 +234,7 @@ func TestApplicationService_GetApplication(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -257,7 +257,7 @@ func TestApplicationService_GetApplications(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -288,7 +288,7 @@ func TestApplicationService_GetApplications(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -321,7 +321,7 @@ func TestApplicationService_CreateApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -360,7 +360,7 @@ func TestApplicationService_CreateApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -393,7 +393,7 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -427,7 +427,7 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -460,7 +460,7 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 				}, nil
 			},
 		}
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
 		mockIDP := &MockIDP{}
@@ -508,7 +508,7 @@ func TestApplicationService_GetApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -543,7 +543,7 @@ func TestApplicationService_GetApplicationSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -566,7 +566,7 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -594,7 +594,7 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -624,7 +624,7 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -657,7 +657,7 @@ func TestApplicationService_CreateApplication_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -707,7 +707,7 @@ func TestApplicationService_UpdateApplication_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -748,7 +748,7 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -792,7 +792,7 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -824,7 +824,7 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -859,7 +859,7 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -885,7 +885,7 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
@@ -911,7 +911,7 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		mockIDP := &MockIDP{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 

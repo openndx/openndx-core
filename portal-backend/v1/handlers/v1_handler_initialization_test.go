@@ -18,8 +18,7 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	originalJWKS := os.Getenv("IDP_JWKS_URL")
 	originalIssuer := os.Getenv("IDP_ISSUER")
 	originalTokenURL := os.Getenv("IDP_TOKEN_URL")
-	originalPDPURLStd := os.Getenv("PDP_SERVICEURL")
-	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	originalPDPURLStd := os.Getenv("PDP_SERVICE_URL")
 
 	// Restore env vars after test
 	defer func() {
@@ -29,8 +28,7 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 		os.Setenv("IDP_JWKS_URL", originalJWKS)
 		os.Setenv("IDP_ISSUER", originalIssuer)
 		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICEURL", originalPDPURLStd)
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
+		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
 	}()
 
 	// Unset env vars
@@ -40,8 +38,7 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	os.Unsetenv("IDP_JWKS_URL")
 	os.Unsetenv("IDP_ISSUER")
 	os.Unsetenv("IDP_TOKEN_URL")
-	os.Unsetenv("PDP_SERVICEURL")
-	os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	os.Unsetenv("PDP_SERVICE_URL")
 
 	// Test missing IDP config (NewIdpAPIProvider fails)
 
@@ -63,21 +60,12 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	handler, err = NewV1Handler(db)
 	assert.Error(t, err)
 	assert.Nil(t, handler)
-	assert.Contains(t, err.Error(), "PDP_SERVICEURL environment variable not set")
+	assert.Contains(t, err.Error(), "PDP_SERVICE_URL environment variable not set")
 
 	// Set PDP URL (standard)
-	os.Setenv("PDP_SERVICEURL", "http://pdp:8080")
+	os.Setenv("PDP_SERVICE_URL", "http://pdp:8080")
 
-	// Case 3: Missing PDP Key
-	handler, err = NewV1Handler(db)
-	assert.Error(t, err)
-	assert.Nil(t, handler)
-	assert.Contains(t, err.Error(), "CHOREO_PDP_CONNECTION_CHOREOAPIKEY environment variable not set")
-
-	// Set PDP Key
-	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
-
-	// Case 4: Success
+	// Case 3: Success
 	handler, err = NewV1Handler(db)
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
@@ -155,8 +143,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 	originalJWKS := os.Getenv("IDP_JWKS_URL")
 	originalIssuer := os.Getenv("IDP_ISSUER")
 	originalTokenURL := os.Getenv("IDP_TOKEN_URL")
-	originalPDPURLStd := os.Getenv("PDP_SERVICEURL")
-	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	originalPDPURLStd := os.Getenv("PDP_SERVICE_URL")
 
 	// Restore env vars after test
 	defer func() {
@@ -166,8 +153,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 		os.Setenv("IDP_JWKS_URL", originalJWKS)
 		os.Setenv("IDP_ISSUER", originalIssuer)
 		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICEURL", originalPDPURLStd)
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
+		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
 	}()
 
 	// Unset IDP_BASE_URL
@@ -178,8 +164,7 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 	os.Setenv("IDP_ISSUER", "https://example.com")
 	os.Setenv("IDP_CLIENT_ID", "client-id")
 	os.Setenv("IDP_CLIENT_SECRET", "client-secret")
-	os.Setenv("PDP_SERVICEURL", "http://pdp:8080")
-	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
+	os.Setenv("PDP_SERVICE_URL", "http://pdp:8080")
 
 	db := services.SetupSQLiteTestDB(t)
 
