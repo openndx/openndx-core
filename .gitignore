@@ -47,7 +47,3 @@ mocks/mock-dmt/Config.toml
 
 # Database files
 **/*.db
-
-# Allow .choreo directories for WSO2 Choreo deployment
-!**/.choreo/
-!**/.choreo/**
