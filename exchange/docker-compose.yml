@@ -1,5 +1,5 @@
 # Exchange Services - Environment-based Configuration
-# Usage: docker compose up --build
+# Usage: cp .env.example .env && docker compose up --build
 #
 # This stack is self-contained: it starts a PostgreSQL database so the
 # services can be tested end-to-end with a single `docker compose up --build`.
@@ -123,10 +123,10 @@ services:
       - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=orchestration-engine
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
-      # Database configuration (orchestration-engine uses DB_USER)
+      # Database configuration
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
-      - DB_USER=${DB_USER:-exchange}
+      - DB_USERNAME=${DB_USER:-exchange}
       - DB_PASSWORD=${DB_PASSWORD:-exchange}
       - DB_NAME=${DB_NAME_OE:-orchestration_engine}
       - DB_SSLMODE=${DB_SSLMODE:-disable}

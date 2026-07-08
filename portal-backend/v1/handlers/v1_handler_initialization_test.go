@@ -22,13 +22,41 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 
 	// Restore env vars after test
 	defer func() {
-		os.Setenv("IDP_BASE_URL", originalBaseURL)
-		os.Setenv("IDP_CLIENT_ID", originalClientID)
-		os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
-		os.Setenv("IDP_JWKS_URL", originalJWKS)
-		os.Setenv("IDP_ISSUER", originalIssuer)
-		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
+		if originalBaseURL != "" {
+			os.Setenv("IDP_BASE_URL", originalBaseURL)
+		} else {
+			os.Unsetenv("IDP_BASE_URL")
+		}
+		if originalClientID != "" {
+			os.Setenv("IDP_CLIENT_ID", originalClientID)
+		} else {
+			os.Unsetenv("IDP_CLIENT_ID")
+		}
+		if originalClientSecret != "" {
+			os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
+		} else {
+			os.Unsetenv("IDP_CLIENT_SECRET")
+		}
+		if originalJWKS != "" {
+			os.Setenv("IDP_JWKS_URL", originalJWKS)
+		} else {
+			os.Unsetenv("IDP_JWKS_URL")
+		}
+		if originalIssuer != "" {
+			os.Setenv("IDP_ISSUER", originalIssuer)
+		} else {
+			os.Unsetenv("IDP_ISSUER")
+		}
+		if originalTokenURL != "" {
+			os.Setenv("IDP_TOKEN_URL", originalTokenURL)
+		} else {
+			os.Unsetenv("IDP_TOKEN_URL")
+		}
+		if originalPDPURLStd != "" {
+			os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
+		} else {
+			os.Unsetenv("PDP_SERVICE_URL")
+		}
 	}()
 
 	// Unset env vars
@@ -147,13 +175,41 @@ func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 
 	// Restore env vars after test
 	defer func() {
-		os.Setenv("IDP_BASE_URL", originalBaseURL)
-		os.Setenv("IDP_CLIENT_ID", originalClientID)
-		os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
-		os.Setenv("IDP_JWKS_URL", originalJWKS)
-		os.Setenv("IDP_ISSUER", originalIssuer)
-		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
+		if originalBaseURL != "" {
+			os.Setenv("IDP_BASE_URL", originalBaseURL)
+		} else {
+			os.Unsetenv("IDP_BASE_URL")
+		}
+		if originalClientID != "" {
+			os.Setenv("IDP_CLIENT_ID", originalClientID)
+		} else {
+			os.Unsetenv("IDP_CLIENT_ID")
+		}
+		if originalClientSecret != "" {
+			os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
+		} else {
+			os.Unsetenv("IDP_CLIENT_SECRET")
+		}
+		if originalJWKS != "" {
+			os.Setenv("IDP_JWKS_URL", originalJWKS)
+		} else {
+			os.Unsetenv("IDP_JWKS_URL")
+		}
+		if originalIssuer != "" {
+			os.Setenv("IDP_ISSUER", originalIssuer)
+		} else {
+			os.Unsetenv("IDP_ISSUER")
+		}
+		if originalTokenURL != "" {
+			os.Setenv("IDP_TOKEN_URL", originalTokenURL)
+		} else {
+			os.Unsetenv("IDP_TOKEN_URL")
+		}
+		if originalPDPURLStd != "" {
+			os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
+		} else {
+			os.Unsetenv("PDP_SERVICE_URL")
+		}
 	}()
 
 	// Unset IDP_BASE_URL

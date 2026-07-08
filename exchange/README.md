@@ -195,12 +195,11 @@ make logs
 ### Environment Configuration
 
 ```bash
-# Local development
-docker compose --env-file .env.local up --build
-
-# Production testing
-docker compose --env-file .env.production up --build
+cp .env.example .env
+docker compose up --build
 ```
+
+(docker compose automatically loads a `.env` file from the working directory - no `--env-file` flag needed.)
 
 ### Testing
 
@@ -246,21 +245,17 @@ git add . && git commit -m "Deploy to Choreo" && git push
 
 ### Environment Variables
 
-**Local (`.env.local`):**
+Copy `.env.example` to `.env` and adjust for your environment:
 
-```bash
-ENVIRONMENT=local
-LOG_LEVEL=debug
-LOG_FORMAT=text
-```
-
-**Production (`.env.production`):**
-
-```bash
-ENVIRONMENT=production
-LOG_LEVEL=warn
-LOG_FORMAT=json
-```
+| Variable | Local example | Production example |
+| --- | --- | --- |
+| `ENVIRONMENT` | `local` | `production` |
+| `LOG_LEVEL` | `info` or `debug` | `warn` |
+| `LOG_FORMAT` | `text` | `json` |
+| `PORT_PDP` / `PORT_CE` / `PORT_OE` | `8082` / `8081` / `4000` | as needed |
+| `BUILD_VERSION` / `BUILD_TIME` / `GIT_COMMIT` | `dev` / local values | CI-provided values |
+| `OTEL_METRICS_EXPORTER` | `prometheus` | as needed |
+| `AUDIT_SERVICE_URL` / `ENABLE_AUDIT` | `http://audit-service:3001` / `true` | as needed |
 
 ## Scripts
 
