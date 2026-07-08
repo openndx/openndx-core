@@ -150,12 +150,7 @@ jobs:
           echo "🚀 Starting Consent Engine..."
           PORT=8081 \
           LOG_LEVEL=debug \
-          CHOREO_DB_CE_HOSTNAME=localhost \
-          CHOREO_DB_CE_PORT=5434 \
-          CHOREO_DB_CE_USERNAME=postgres \
-          CHOREO_DB_CE_PASSWORD=password \
-          CHOREO_DB_CE_DATABASENAME=consent_db \
-          DB_HOSTNAME=localhost \
+          DB_HOST=localhost \
           DB_PORT=5434 \
           DB_USERNAME=postgres \
           DB_PASSWORD=password \
