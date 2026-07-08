@@ -51,7 +51,7 @@ function App() {
 
   const fetchMemberInfoFromDB = async (idpUserId: string) => {
     try {
-      const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+      const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
       // fetch member info from API
       const url = new URL(`${baseUrl}/members`);
       url.searchParams.append('idpUserId', idpUserId);

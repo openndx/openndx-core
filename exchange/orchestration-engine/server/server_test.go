@@ -119,20 +119,12 @@ func TestGetEnv(t *testing.T) {
 
 func TestGetDatabaseConnectionString(t *testing.T) {
 	t.Run("Standard environment variables set", func(t *testing.T) {
-		os.Setenv("DB_HOST", "standard-host")
-		os.Setenv("DB_PORT", "5434")
-		os.Setenv("DB_USERNAME", "standard-user")
-		os.Setenv("DB_PASSWORD", "standard-password")
-		os.Setenv("DB_NAME", "standard-db")
-		os.Setenv("DB_SSLMODE", "prefer")
-		defer func() {
-			os.Unsetenv("DB_HOST")
-			os.Unsetenv("DB_PORT")
-			os.Unsetenv("DB_USERNAME")
-			os.Unsetenv("DB_PASSWORD")
-			os.Unsetenv("DB_NAME")
-			os.Unsetenv("DB_SSLMODE")
-		}()
+		t.Setenv("DB_HOST", "standard-host")
+		t.Setenv("DB_PORT", "5434")
+		t.Setenv("DB_USERNAME", "standard-user")
+		t.Setenv("DB_PASSWORD", "standard-password")
+		t.Setenv("DB_NAME", "standard-db")
+		t.Setenv("DB_SSLMODE", "prefer")
 
 		connStr := getDatabaseConnectionString()
 		expected := "host=standard-host port=5434 user=standard-user password=standard-password dbname=standard-db sslmode=prefer"
@@ -140,19 +132,12 @@ func TestGetDatabaseConnectionString(t *testing.T) {
 	})
 
 	t.Run("Standard environment variables with missing password", func(t *testing.T) {
-		os.Setenv("DB_HOST", "standard-host")
-		os.Setenv("DB_PORT", "5434")
-		os.Setenv("DB_USERNAME", "standard-user")
-		os.Setenv("DB_NAME", "standard-db")
-		os.Setenv("DB_SSLMODE", "prefer")
-		os.Unsetenv("DB_PASSWORD") // Ensure it's unset
-		defer func() {
-			os.Unsetenv("DB_HOST")
-			os.Unsetenv("DB_PORT")
-			os.Unsetenv("DB_USERNAME")
-			os.Unsetenv("DB_NAME")
-			os.Unsetenv("DB_SSLMODE")
-		}()
+		t.Setenv("DB_HOST", "standard-host")
+		t.Setenv("DB_PORT", "5434")
+		t.Setenv("DB_USERNAME", "standard-user")
+		t.Setenv("DB_NAME", "standard-db")
+		t.Setenv("DB_SSLMODE", "prefer")
+		t.Setenv("DB_PASSWORD", "")
 
 		connStr := getDatabaseConnectionString()
 		expected := "host=standard-host port=5434 user=standard-user password= dbname=standard-db sslmode=prefer"
@@ -160,12 +145,12 @@ func TestGetDatabaseConnectionString(t *testing.T) {
 	})
 
 	t.Run("No environment variables set (defaults)", func(t *testing.T) {
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_USERNAME")
-		os.Unsetenv("DB_PASSWORD")
-		os.Unsetenv("DB_NAME")
-		os.Unsetenv("DB_SSLMODE")
+		t.Setenv("DB_HOST", "")
+		t.Setenv("DB_PORT", "")
+		t.Setenv("DB_USERNAME", "")
+		t.Setenv("DB_PASSWORD", "")
+		t.Setenv("DB_NAME", "")
+		t.Setenv("DB_SSLMODE", "")
 
 		connStr := getDatabaseConnectionString()
 		expected := "host=localhost port=5432 user=postgres password= dbname=orchestration_engine sslmode=disable"

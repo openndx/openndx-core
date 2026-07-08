@@ -106,7 +106,7 @@ verify_portal() {
             required_vars=("consentEngineUrl" "idpClientId" "idpBaseUrl" "idpScope" "idpSignInRedirectUrl" "idpSignOutRedirectUrl")
             ;;
         "member-portal")
-            required_vars=("apiUrl" "logsUrl" "VITE_CLIENT_ID" "VITE_BASE_URL" "VITE_SCOPE")
+            required_vars=("API_URL" "LOGS_URL" "CLIENT_ID" "BASE_URL" "SCOPE")
             ;;
     esac
     
@@ -169,13 +169,13 @@ verify_portal "consent-portal" "$CONSENT_CONFIG_PATH" "consent-portal/index.html
 # 3. Member Portal
 MEMBER_CONFIG_PATH="member-portal/public/config.js"
 MEMBER_CONFIG_CONTENT="window.configs = {
-  apiUrl: '${TEST_API_URL}',
-  logsUrl: '${TEST_LOGS_URL}',
-  VITE_CLIENT_ID: '${TEST_CLIENT_ID}',
-  VITE_BASE_URL: '${TEST_BASE_URL}',
-  VITE_SCOPE: '${TEST_SCOPE}',
-  signInRedirectURL: '${TEST_SIGN_IN_REDIRECT}',
-  signOutRedirectURL: '${TEST_SIGN_OUT_REDIRECT}'
+  API_URL: '${TEST_API_URL}',
+  LOGS_URL: '${TEST_LOGS_URL}',
+  CLIENT_ID: '${TEST_CLIENT_ID}',
+  BASE_URL: '${TEST_BASE_URL}',
+  SCOPE: '${TEST_SCOPE}',
+  SIGN_IN_REDIRECT_URL: '${TEST_SIGN_IN_REDIRECT}',
+  SIGN_OUT_REDIRECT_URL: '${TEST_SIGN_OUT_REDIRECT}'
 };"
 
 create_config "Member Portal" "$MEMBER_CONFIG_PATH" "$MEMBER_CONFIG_CONTENT"

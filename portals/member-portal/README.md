@@ -72,13 +72,13 @@ cp .env.example .env
 
 ```js
 window.configs = {
-  apiUrl: 'http://localhost:3000',
-  logsUrl: 'http://localhost:3001',
-  VITE_CLIENT_ID: 'your_client_id',
-  VITE_BASE_URL: 'https://api.asgardeo.io/t/your-org',
-  VITE_SCOPE: 'openid,profile',
-  signInRedirectURL: 'http://localhost:5173',
-  signOutRedirectURL: 'http://localhost:5173',
+  API_URL: 'http://localhost:3000',
+  LOGS_URL: 'http://localhost:3001',
+  CLIENT_ID: 'your_client_id',
+  BASE_URL: 'https://api.asgardeo.io/t/your-org',
+  SCOPE: 'openid,profile',
+  SIGN_IN_REDIRECT_URL: 'http://localhost:5173',
+  SIGN_OUT_REDIRECT_URL: 'http://localhost:5173',
 };
 ```
 
