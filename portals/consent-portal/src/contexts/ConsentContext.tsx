@@ -42,7 +42,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingConsent, setIsFetchingConsent] = useState(false);
 
-  const CONSENT_ENGINE_PATH = window?.configs?.apiUrl;
+  const CONSENT_ENGINE_PATH = window?.configs?.consentEngineUrl;
 
   // 1. Handle Consent ID Extraction
   useEffect(() => {

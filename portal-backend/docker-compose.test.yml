@@ -22,11 +22,11 @@ services:
     environment:
       - ENVIRONMENT=test
       - PORT=3000
-      - CHOREO_DB_portal_backend_HOSTNAME=postgres-test
-      - CHOREO_DB_portal_backend_PORT=5432
-      - CHOREO_DB_portal_backend_USERNAME=test_user
-      - CHOREO_DB_portal_backend_PASSWORD=test_password
-      - CHOREO_DB_portal_backend_DATABASENAME=portal_backend_test
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USERNAME=test_user
+      - DB_PASSWORD=test_password
+      - DB_NAME=portal_backend_test
       - DB_SSLMODE=disable
     ports:
       - "3001:3000"

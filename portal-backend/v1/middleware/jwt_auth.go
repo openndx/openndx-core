@@ -250,7 +250,6 @@ func (j *JWTAuthMiddleware) validateStandardClaims(claims *models.UserClaims) er
 		return fmt.Errorf("invalid audience: expected one of %v, got %v", j.validClientIDs, claims.Audience)
 	}
 
-
 	// Validate required fields
 	if claims.Email == "" {
 		return fmt.Errorf("email claim is missing")

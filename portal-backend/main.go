@@ -52,28 +52,28 @@ func main() {
 
 	// Setup JWT Authentication middleware
 	// Validate required environment variables first
-	asgardeoBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
-	issuerURL := os.Getenv("ASGARDEO_ISSUER")
-	tokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
+	idpBaseURL := os.Getenv("IDP_BASE_URL")
+	jwksURL := os.Getenv("IDP_JWKS_URL")
+	issuerURL := os.Getenv("IDP_ISSUER")
+	tokenURL := os.Getenv("IDP_TOKEN_URL")
 
-	if asgardeoBaseURL == "" {
+	if idpBaseURL == "" {
 		if jwksURL == "" {
-			slog.Error("ASGARDEO_JWKS_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			slog.Error("IDP_JWKS_URL environment variable is required when IDP_BASE_URL is not set")
 			os.Exit(1)
 		}
 		if issuerURL == "" && tokenURL == "" {
-			slog.Error("Either ASGARDEO_ISSUER or ASGARDEO_TOKEN_URL environment variable is required when ASGARDEO_BASE_URL is not set")
+			slog.Error("Either IDP_ISSUER or IDP_TOKEN_URL environment variable is required when IDP_BASE_URL is not set")
 			os.Exit(1)
 		}
 	}
 
 	// Support multiple valid client IDs for different portals
-	memberPortalClientID := os.Getenv("ASGARDEO_MEMBER_PORTAL_CLIENT_ID")
-	adminPortalClientID := os.Getenv("ASGARDEO_ADMIN_PORTAL_CLIENT_ID")
+	memberPortalClientID := os.Getenv("IDP_MEMBER_PORTAL_CLIENT_ID")
+	adminPortalClientID := os.Getenv("IDP_ADMIN_PORTAL_CLIENT_ID")
 
 	if memberPortalClientID == "" && adminPortalClientID == "" {
-		slog.Error("At least one of ASGARDEO_MEMBER_PORTAL_CLIENT_ID or ASGARDEO_ADMIN_PORTAL_CLIENT_ID must be set")
+		slog.Error("At least one of IDP_MEMBER_PORTAL_CLIENT_ID or IDP_ADMIN_PORTAL_CLIENT_ID must be set")
 		os.Exit(1)
 	}
 
@@ -86,8 +86,8 @@ func main() {
 	}
 
 	jwtConfig := v1middleware.JWTAuthConfig{
-		JWKSURL:        utils.GetEnvOrDefault("ASGARDEO_JWKS_URL", asgardeoBaseURL+"/oauth2/jwks"),
-		ExpectedIssuer: utils.GetEnvOrDefault("ASGARDEO_ISSUER", utils.GetEnvOrDefault("ASGARDEO_TOKEN_URL", asgardeoBaseURL+"/oauth2/token")),
+		JWKSURL:        utils.GetEnvOrDefault("IDP_JWKS_URL", idpBaseURL+"/oauth2/jwks"),
+		ExpectedIssuer: utils.GetEnvOrDefault("IDP_ISSUER", utils.GetEnvOrDefault("IDP_TOKEN_URL", idpBaseURL+"/oauth2/token")),
 		ValidClientIDs: validClientIDs,
 		Timeout:        10 * time.Second,
 	}
@@ -121,9 +121,9 @@ func main() {
 	authorizationMiddleware := v1middleware.NewAuthorizationMiddlewareWithConfig(authConfig)
 
 	// Initialize Audit system
-	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false
-	// or if CHOREO_AUDIT_CONNECTION_SERVICEURL is not provided
-	auditServiceURL := utils.GetEnvOrDefault("CHOREO_AUDIT_CONNECTION_SERVICEURL", "http://localhost:3001")
+	// Services will work without auditing - gracefully degrades if
+	// AUDIT_SERVICE_URL is not provided
+	auditServiceURL := utils.GetEnvOrDefault("AUDIT_SERVICE_URL", "http://localhost:3001")
 	auditClient := audit.NewClient(auditServiceURL)
 	audit.InitializeGlobalAudit(auditClient)
 

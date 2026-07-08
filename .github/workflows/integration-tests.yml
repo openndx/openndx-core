@@ -1,9 +1,19 @@
 name: Integration Tests
 
 on:
-  # Run on pull requests to main only (validation before merge)
+  push:
+    branches: [main, int-test-fail-paths]
+    paths:
+      - "tests/integration/**"
+      - "exchange/orchestration-engine/**"
+      - "exchange/policy-decision-point/**"
+      - "exchange/consent-engine/**"
+      - "exchange/shared/**"
+      - "shared/**"
+      - ".github/workflows/integration-tests.yml"
+  # Run on pull requests to main or int-test-fail-paths
   pull_request:
-    branches: [main]
+    branches: [main, int-test-fail-paths]
     paths:
       - "tests/integration/**"
       - "exchange/orchestration-engine/**"
@@ -39,6 +49,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: false
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -139,12 +150,7 @@ jobs:
           echo "🚀 Starting Consent Engine..."
           PORT=8081 \
           LOG_LEVEL=debug \
-          CHOREO_DB_CE_HOSTNAME=localhost \
-          CHOREO_DB_CE_PORT=5434 \
-          CHOREO_DB_CE_USERNAME=postgres \
-          CHOREO_DB_CE_PASSWORD=password \
-          CHOREO_DB_CE_DATABASENAME=consent_db \
-          DB_HOSTNAME=localhost \
+          DB_HOST=localhost \
           DB_PORT=5434 \
           DB_USERNAME=postgres \
           DB_PASSWORD=password \

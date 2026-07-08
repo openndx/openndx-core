@@ -19,7 +19,7 @@ func TestSchemaService_UpdateSchema(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		schemaID := "sch_123"
@@ -58,7 +58,7 @@ func TestSchemaService_UpdateSchema(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find schema - not found
@@ -86,7 +86,7 @@ func TestSchemaService_GetSchema(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		schemaID := "sch_123"
@@ -114,7 +114,7 @@ func TestSchemaService_GetSchema(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find schema - not found
@@ -137,7 +137,7 @@ func TestSchemaService_GetSchemas(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find all schemas
@@ -158,7 +158,7 @@ func TestSchemaService_GetSchemas(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		memberID := "member-123"
@@ -186,7 +186,7 @@ func TestSchemaService_CreateSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		memberID := "member-123"
@@ -227,7 +227,7 @@ func TestSchemaService_CreateSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Check if member exists - not found
@@ -259,7 +259,7 @@ func TestSchemaService_UpdateSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		submissionID := "sub_123"
@@ -297,7 +297,7 @@ func TestSchemaService_UpdateSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find submission - not found
@@ -320,7 +320,7 @@ func TestSchemaService_UpdateSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		submissionID := "sub_123"
@@ -348,7 +348,7 @@ func TestSchemaService_GetSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		submissionID := "sub_123"
@@ -375,7 +375,7 @@ func TestSchemaService_GetSchemaSubmission(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find submission - not found
@@ -398,7 +398,7 @@ func TestSchemaService_GetSchemaSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		// Mock: Find all submissions (with Preload)
@@ -423,7 +423,7 @@ func TestSchemaService_GetSchemaSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		memberID := "member-123"
@@ -451,7 +451,7 @@ func TestSchemaService_GetSchemaSubmissions(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		statusFilter := []string{string(models.StatusApproved)}
@@ -493,7 +493,7 @@ func TestSchemaService_CreateSchema_EdgeCases(t *testing.T) {
 				}, nil
 			},
 		}
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
 		service := NewSchemaService(db, pdpService)
@@ -533,7 +533,7 @@ func TestSchemaService_CreateSchema_EdgeCases(t *testing.T) {
 				}, nil
 			},
 		}
-		pdpService := NewPDPService("http://mock-pdp", "mock-key")
+		pdpService := NewPDPService("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
 		service := NewSchemaService(db, pdpService)
@@ -567,7 +567,7 @@ func TestSchemaService_UpdateSchema_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		schemaID := "sch_123"
@@ -608,7 +608,7 @@ func TestSchemaService_UpdateSchema_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		schemaID := "sch_123"
@@ -654,7 +654,7 @@ func TestSchemaService_CreateSchemaSubmission_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		memberID := "member-123"
@@ -699,7 +699,7 @@ func TestSchemaService_CreateSchemaSubmission_EdgeCases(t *testing.T) {
 		db, mock, cleanup := SetupMockDB(t)
 		defer cleanup()
 
-		pdpService := NewPDPService("http://localhost:9999", "test-key")
+		pdpService := NewPDPService("http://localhost:9999")
 		service := NewSchemaService(db, pdpService)
 
 		memberID := "member-123"

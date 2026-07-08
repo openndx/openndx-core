@@ -133,4 +133,3 @@ func TestAuthenticatedUser_CachedMemberID(t *testing.T) {
 	assert.Equal(t, "mem-123", id)
 	assert.NoError(t, err)
 }
-

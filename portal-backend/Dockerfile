@@ -51,9 +51,5 @@ USER 10001
 # Expose port
 EXPOSE 3000
 
-# Set environment variables
-ENV CONFIG_DIR=/app/config
-ENV ENVIRONMENT=production
-
-# Run the application with environment-based flags
+# Run the application
 CMD ["./service_binary"]

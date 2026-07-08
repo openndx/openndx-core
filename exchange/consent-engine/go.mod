@@ -3,7 +3,6 @@ module github.com/gov-dx-sandbox/exchange/consent-engine
 go 1.24.6
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702074442-13c5fdc4f37d
 	github.com/OpenDIF/opendif-core/exchange/shared/utils v0.0.0-20260702074442-13c5fdc4f37d
 	github.com/golang-jwt/jwt/v5 v5.3.0

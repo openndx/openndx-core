@@ -358,7 +358,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 		ConsentRequiredFields:   consentRequiredFields,
 		UnauthorizedFields:      unauthorizedFields,
 		ExpiredFields:           expiredFields,
-		AppAuthorized:           !(len(unauthorizedFields) > 0),
+		AppAuthorized:           len(unauthorizedFields) == 0,
 		AppAccessExpired:        len(expiredFields) > 0,
 		AppRequiresOwnerConsent: len(consentRequiredFields) > 0,
 	}

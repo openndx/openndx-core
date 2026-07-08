@@ -129,7 +129,7 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 	var actionReq struct {
 		Action string `json:"action"`
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	if err := json.NewDecoder(r.Body).Decode(&actionReq); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, fmt.Sprintf("Invalid request body: %v", err))
 		return

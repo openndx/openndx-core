@@ -37,14 +37,14 @@ func WithEnvVars(t *testing.T, vars map[string]string) func() {
 	original := make(map[string]string)
 	for key, value := range vars {
 		original[key] = os.Getenv(key)
-		os.Setenv(key, value)
+		_ = os.Setenv(key, value)
 	}
 	return func() {
 		for key, origValue := range original {
 			if origValue == "" {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			} else {
-				os.Setenv(key, origValue)
+				_ = os.Setenv(key, origValue)
 			}
 		}
 	}
@@ -59,5 +59,17 @@ func TestEnvVars() map[string]string {
 		"DB_PASSWORD": "test-pass",
 		"DB_NAME":     "test-db",
 		"DB_SSLMODE":  "disable",
+	}
+}
+
+// TestEnvVarsStandard returns standard environment variables for testing
+func TestEnvVarsStandard() map[string]string {
+	return map[string]string{
+		"DB_HOST":     "standard-host",
+		"DB_PORT":     "5434",
+		"DB_USERNAME": "standard-user",
+		"DB_PASSWORD": "standard-password",
+		"DB_NAME":     "standard-db",
+		"DB_SSLMODE":  "prefer",
 	}
 }

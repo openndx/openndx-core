@@ -10,14 +10,17 @@ import (
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/models"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/testhelpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
+// setupTestDB creates an in-memory SQLite database for unit testing.
 func setupTestDB(t *testing.T) *gorm.DB {
 	return testhelpers.SetupTestDB(t)
 }
 
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -31,6 +34,7 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -44,6 +48,7 @@ func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
 }
 
 func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db)
 
@@ -150,7 +155,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "",
 				Records:  []models.PolicyMetadataCreateRequestRecord{},
 			},
-			expectedStatus: http.StatusCreated, // Handler doesn't validate, service will handle
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name: "Service error - invalid field configuration",
@@ -249,7 +254,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 						},
 					},
 				}
-				handler.policyService.CreatePolicyMetadata(&initialReq)
+				_, err := handler.policyService.CreatePolicyMetadata(&initialReq)
+				require.NoError(t, err)
 			}
 
 			body, _ := json.Marshal(tt.requestBody)
@@ -287,7 +293,8 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 			},
 		},
 	}
-	handler.policyService.CreatePolicyMetadata(&createReq)
+	_, err := handler.policyService.CreatePolicyMetadata(&createReq)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
@@ -560,7 +567,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 				ApplicationID:  "",
 				RequiredFields: []models.PolicyDecisionRequestRecord{},
 			},
-			expectedStatus: http.StatusOK, // Handler doesn't validate, service will handle
+			expectedStatus: http.StatusBadRequest, // Handler validates required fields
 		},
 		{
 			name: "Service error - schema not found",
@@ -631,7 +638,7 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			name:           "POST /api/v1/policy/metadata",
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusCreated, // Endpoint exists, will process request
+			expectedStatus: http.StatusBadRequest, // Empty body fails validation (schemaId required)
 		},
 		{
 			name:           "POST /api/v1/policy/update-allowlist",
@@ -643,7 +650,7 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			name:           "POST /api/v1/policy/decide",
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/decide",
-			expectedStatus: http.StatusOK, // Endpoint exists, will process request
+			expectedStatus: http.StatusBadRequest, // Endpoint exists, but empty body fails validation (applicationId required)
 		},
 		{
 			name:           "GET /api/v1/policy/metadata - Method not allowed",
@@ -692,6 +699,24 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/",
 			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "Invalid path - three segments",
+			method:         http.MethodPost,
+			path:           "/api/v1/policy/metadata/extra/segment",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "PATCH method not allowed",
+			method:         http.MethodPatch,
+			path:           "/api/v1/policy/metadata",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "OPTIONS method not allowed",
+			method:         http.MethodOptions,
+			path:           "/api/v1/policy/metadata",
+			expectedStatus: http.StatusMethodNotAllowed,
 		},
 	}
 

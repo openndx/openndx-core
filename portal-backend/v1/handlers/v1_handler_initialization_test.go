@@ -12,36 +12,33 @@ import (
 
 func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	// Save current env vars
-	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
-	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
-	originalJWKS := os.Getenv("ASGARDEO_JWKS_URL")
-	originalIssuer := os.Getenv("ASGARDEO_ISSUER")
-	originalTokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
-	originalPDPURLStd := os.Getenv("PDP_SERVICEURL")
-	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	originalBaseURL := os.Getenv("IDP_BASE_URL")
+	originalClientID := os.Getenv("IDP_CLIENT_ID")
+	originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
+	originalJWKS := os.Getenv("IDP_JWKS_URL")
+	originalIssuer := os.Getenv("IDP_ISSUER")
+	originalTokenURL := os.Getenv("IDP_TOKEN_URL")
+	originalPDPURLStd := os.Getenv("PDP_SERVICE_URL")
 
 	// Restore env vars after test
 	defer func() {
-		os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
-		os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
-		os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
-		os.Setenv("ASGARDEO_JWKS_URL", originalJWKS)
-		os.Setenv("ASGARDEO_ISSUER", originalIssuer)
-		os.Setenv("ASGARDEO_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICEURL", originalPDPURLStd)
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
+		os.Setenv("IDP_BASE_URL", originalBaseURL)
+		os.Setenv("IDP_CLIENT_ID", originalClientID)
+		os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
+		os.Setenv("IDP_JWKS_URL", originalJWKS)
+		os.Setenv("IDP_ISSUER", originalIssuer)
+		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
+		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
 	}()
 
 	// Unset env vars
-	os.Unsetenv("ASGARDEO_BASE_URL")
-	os.Unsetenv("ASGARDEO_CLIENT_ID")
-	os.Unsetenv("ASGARDEO_CLIENT_SECRET")
-	os.Unsetenv("ASGARDEO_JWKS_URL")
-	os.Unsetenv("ASGARDEO_ISSUER")
-	os.Unsetenv("ASGARDEO_TOKEN_URL")
-	os.Unsetenv("PDP_SERVICEURL")
-	os.Unsetenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	os.Unsetenv("IDP_BASE_URL")
+	os.Unsetenv("IDP_CLIENT_ID")
+	os.Unsetenv("IDP_CLIENT_SECRET")
+	os.Unsetenv("IDP_JWKS_URL")
+	os.Unsetenv("IDP_ISSUER")
+	os.Unsetenv("IDP_TOKEN_URL")
+	os.Unsetenv("PDP_SERVICE_URL")
 
 	// Test missing IDP config (NewIdpAPIProvider fails)
 
@@ -55,29 +52,20 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to create IDP provider")
 
 	// Set IDP config
-	os.Setenv("ASGARDEO_BASE_URL", "https://example.com")
-	os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
-	os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
+	os.Setenv("IDP_BASE_URL", "https://example.com")
+	os.Setenv("IDP_CLIENT_ID", "client-id")
+	os.Setenv("IDP_CLIENT_SECRET", "client-secret")
 
 	// Case 2: Missing PDP URL
 	handler, err = NewV1Handler(db)
 	assert.Error(t, err)
 	assert.Nil(t, handler)
-	assert.Contains(t, err.Error(), "PDP_SERVICEURL environment variable not set")
+	assert.Contains(t, err.Error(), "PDP_SERVICE_URL environment variable not set")
 
 	// Set PDP URL (standard)
-	os.Setenv("PDP_SERVICEURL", "http://pdp:8080")
+	os.Setenv("PDP_SERVICE_URL", "http://pdp:8080")
 
-	// Case 3: Missing PDP Key
-	handler, err = NewV1Handler(db)
-	assert.Error(t, err)
-	assert.Nil(t, handler)
-	assert.Contains(t, err.Error(), "CHOREO_PDP_CONNECTION_CHOREOAPIKEY environment variable not set")
-
-	// Set PDP Key
-	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
-
-	// Case 4: Success
+	// Case 3: Success
 	handler, err = NewV1Handler(db)
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
@@ -149,37 +137,34 @@ func TestGetUserMemberID_Caching(t *testing.T) {
 
 func TestNewV1Handler_StandardOIDC_WithoutBaseURL(t *testing.T) {
 	// Save current env vars
-	originalBaseURL := os.Getenv("ASGARDEO_BASE_URL")
-	originalClientID := os.Getenv("ASGARDEO_CLIENT_ID")
-	originalClientSecret := os.Getenv("ASGARDEO_CLIENT_SECRET")
-	originalJWKS := os.Getenv("ASGARDEO_JWKS_URL")
-	originalIssuer := os.Getenv("ASGARDEO_ISSUER")
-	originalTokenURL := os.Getenv("ASGARDEO_TOKEN_URL")
-	originalPDPURLStd := os.Getenv("PDP_SERVICEURL")
-	originalPDPKey := os.Getenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY")
+	originalBaseURL := os.Getenv("IDP_BASE_URL")
+	originalClientID := os.Getenv("IDP_CLIENT_ID")
+	originalClientSecret := os.Getenv("IDP_CLIENT_SECRET")
+	originalJWKS := os.Getenv("IDP_JWKS_URL")
+	originalIssuer := os.Getenv("IDP_ISSUER")
+	originalTokenURL := os.Getenv("IDP_TOKEN_URL")
+	originalPDPURLStd := os.Getenv("PDP_SERVICE_URL")
 
 	// Restore env vars after test
 	defer func() {
-		os.Setenv("ASGARDEO_BASE_URL", originalBaseURL)
-		os.Setenv("ASGARDEO_CLIENT_ID", originalClientID)
-		os.Setenv("ASGARDEO_CLIENT_SECRET", originalClientSecret)
-		os.Setenv("ASGARDEO_JWKS_URL", originalJWKS)
-		os.Setenv("ASGARDEO_ISSUER", originalIssuer)
-		os.Setenv("ASGARDEO_TOKEN_URL", originalTokenURL)
-		os.Setenv("PDP_SERVICEURL", originalPDPURLStd)
-		os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", originalPDPKey)
+		os.Setenv("IDP_BASE_URL", originalBaseURL)
+		os.Setenv("IDP_CLIENT_ID", originalClientID)
+		os.Setenv("IDP_CLIENT_SECRET", originalClientSecret)
+		os.Setenv("IDP_JWKS_URL", originalJWKS)
+		os.Setenv("IDP_ISSUER", originalIssuer)
+		os.Setenv("IDP_TOKEN_URL", originalTokenURL)
+		os.Setenv("PDP_SERVICE_URL", originalPDPURLStd)
 	}()
 
-	// Unset ASGARDEO_BASE_URL
-	os.Unsetenv("ASGARDEO_BASE_URL")
+	// Unset IDP_BASE_URL
+	os.Unsetenv("IDP_BASE_URL")
 
 	// Configure standard OIDC
-	os.Setenv("ASGARDEO_JWKS_URL", "https://example.com/oauth2/jwks")
-	os.Setenv("ASGARDEO_ISSUER", "https://example.com")
-	os.Setenv("ASGARDEO_CLIENT_ID", "client-id")
-	os.Setenv("ASGARDEO_CLIENT_SECRET", "client-secret")
-	os.Setenv("PDP_SERVICEURL", "http://pdp:8080")
-	os.Setenv("CHOREO_PDP_CONNECTION_CHOREOAPIKEY", "api-key")
+	os.Setenv("IDP_JWKS_URL", "https://example.com/oauth2/jwks")
+	os.Setenv("IDP_ISSUER", "https://example.com")
+	os.Setenv("IDP_CLIENT_ID", "client-id")
+	os.Setenv("IDP_CLIENT_SECRET", "client-secret")
+	os.Setenv("PDP_SERVICE_URL", "http://pdp:8080")
 
 	db := services.SetupSQLiteTestDB(t)
 

@@ -31,8 +31,8 @@ func newTestVerifier(t *testing.T, cfg JWTVerifierConfig) (*JWTVerifier, *rsa.Pr
 		Kid: testKID,
 		Kty: "RSA",
 		Use: "sig",
-		N:   base64.RawURLEncoding.EncodeToString(priv.PublicKey.N.Bytes()),
-		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.PublicKey.E)).Bytes()),
+		N:   base64.RawURLEncoding.EncodeToString(priv.N.Bytes()),
+		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.E)).Bytes()),
 	}}}
 	body, err := json.Marshal(jwks)
 	require.NoError(t, err)
@@ -188,8 +188,8 @@ func newTLSTestVerifier(t *testing.T, cfg JWTVerifierConfig) (*JWTVerifier, *rsa
 		Kid: testKID,
 		Kty: "RSA",
 		Use: "sig",
-		N:   base64.RawURLEncoding.EncodeToString(priv.PublicKey.N.Bytes()),
-		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.PublicKey.E)).Bytes()),
+		N:   base64.RawURLEncoding.EncodeToString(priv.N.Bytes()),
+		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(priv.E)).Bytes()),
 	}}}
 	body, err := json.Marshal(jwks)
 	require.NoError(t, err)

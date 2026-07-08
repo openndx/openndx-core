@@ -40,18 +40,17 @@ DB_SSLMODE=disable
 RUN_MIGRATION=true
 
 # JWT Authentication (Required)
-ASGARDEO_BASE_URL=https://api.asgardeo.io/t/your-org
-ASGARDEO_MEMBER_PORTAL_CLIENT_ID=your_member_client_id
-ASGARDEO_ADMIN_PORTAL_CLIENT_ID=your_admin_client_id
+IDP_BASE_URL=https://api.asgardeo.io/t/your-org
+IDP_MEMBER_PORTAL_CLIENT_ID=your_member_client_id
+IDP_ADMIN_PORTAL_CLIENT_ID=your_admin_client_id
 
 # Policy Decision Point
-PDP_SERVICEURL=http://localhost:8082
-CHOREO_PDP_CONNECTION_CHOREOAPIKEY=your_pdp_key
+PDP_SERVICE_URL=http://localhost:8082
 
-# Optional: Asgardeo Management (for member creation)
-ASGARDEO_CLIENT_ID=management_client_id
-ASGARDEO_CLIENT_SECRET=management_client_secret
-ASGARDEO_SCOPES="internal_user_mgt_create internal_user_mgt_list"
+# Optional: IDP Management (for member creation)
+IDP_CLIENT_ID=management_client_id
+IDP_CLIENT_SECRET=management_client_secret
+IDP_SCOPE="internal_user_mgt_create internal_user_mgt_list"
 ```
 
 ### 2. Run the Service
