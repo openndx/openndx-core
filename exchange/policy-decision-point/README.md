@@ -32,7 +32,7 @@ The PDP provides attribute-based access control (ABAC) with field-level permissi
 go mod download
 
 # Copy environment template
-cp .env.template .env
+cp .env.example .env
 
 # Edit .env with your database configuration
 # DB_HOST=localhost
@@ -55,7 +55,7 @@ The service runs on port 8082 by default.
 
 ### Environment Variables
 
-All configuration is done via environment variables. See `.env.template` for a complete list.
+All configuration is done via environment variables. See `.env.example` for a complete list.
 
 | Variable | Description | Default |
 |----------|-------------|---------|

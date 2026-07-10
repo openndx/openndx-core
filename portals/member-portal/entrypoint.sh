@@ -4,13 +4,13 @@ set -e
 # Generate config.js from environment variables at runtime
 cat > /usr/share/nginx/html/config.js << EOF
 window.configs = {
-  apiUrl: '${VITE_API_URL:-}',
-  logsUrl: '${VITE_LOGS_URL:-}',
-  VITE_CLIENT_ID: '${VITE_CLIENT_ID:-}',
-  VITE_BASE_URL: '${VITE_BASE_URL:-}',
-  VITE_SCOPE: '${VITE_SCOPE:-}',
-  signInRedirectURL: '${VITE_SIGN_IN_REDIRECT_URL:-}',
-  signOutRedirectURL: '${VITE_SIGN_OUT_REDIRECT_URL:-}'
+  API_URL: '${VITE_API_URL:-}',
+  LOGS_URL: '${VITE_LOGS_URL:-}',
+  CLIENT_ID: '${VITE_CLIENT_ID:-}',
+  BASE_URL: '${VITE_BASE_URL:-}',
+  SCOPE: '${VITE_SCOPE:-}',
+  SIGN_IN_REDIRECT_URL: '${VITE_SIGN_IN_REDIRECT_URL:-}',
+  SIGN_OUT_REDIRECT_URL: '${VITE_SIGN_OUT_REDIRECT_URL:-}'
 };
 EOF
 

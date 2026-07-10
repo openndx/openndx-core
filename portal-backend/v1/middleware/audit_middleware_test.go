@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/shared/audit"
+	"crypto"
+
+	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/gov-dx-sandbox/portal-backend/v1/models"
 	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
 )
@@ -30,7 +32,7 @@ func newMockAuditClient(enabled bool) *mockAuditClient {
 	}
 }
 
-func (m *mockAuditClient) LogEvent(ctx context.Context, event *audit.AuditLogRequest) {
+func (m *mockAuditClient) LogEvent(ctx context.Context, event *audit.AuditLogRequest) bool {
 	m.mu.Lock()
 	m.receivedEvents = append(m.receivedEvents, event)
 	m.mu.Unlock()
@@ -38,6 +40,25 @@ func (m *mockAuditClient) LogEvent(ctx context.Context, event *audit.AuditLogReq
 	case m.requestReceived <- true:
 	default:
 	}
+	return true
+}
+
+func (m *mockAuditClient) SignEvent(ctx context.Context, event *audit.AuditLogRequest) error {
+	return nil
+}
+
+func (m *mockAuditClient) SignMessageBytes(ctx context.Context, message []byte) (string, error) {
+	return "", nil
+}
+
+func (m *mockAuditClient) LogSignedEvent(ctx context.Context, event *audit.AuditLogRequest) {}
+
+func (m *mockAuditClient) VerifyIntegrity(event *audit.AuditLogRequest, publicKey crypto.PublicKey) (bool, error) {
+	return true, nil
+}
+
+func (m *mockAuditClient) Close(ctx context.Context) error {
+	return nil
 }
 
 func (m *mockAuditClient) IsEnabled() bool {
@@ -192,7 +213,11 @@ func TestLogAudit_SendsRequest(t *testing.T) {
 	defer server.Close()
 
 	// For this test, we need to use the real shared/audit client since we're testing HTTP
-	sharedClient := audit.NewClient(server.URL)
+	sharedClient := audit.NewClient(audit.Config{
+		BaseURL:       server.URL,
+		BatchSize:     1,
+		BatchInterval: 1 * time.Millisecond,
+	})
 
 	// Create request with authenticated user in context
 	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
@@ -242,8 +267,8 @@ func TestLogAudit_SendsRequest(t *testing.T) {
 	if receivedReq.Method != http.MethodPost {
 		t.Errorf("Expected POST request, got %s", receivedReq.Method)
 	}
-	if receivedReq.URL.Path != "/api/audit-logs" {
-		t.Errorf("Expected path /api/audit-logs, got %s", receivedReq.URL.Path)
+	if receivedReq.URL.Path != "/api/audit-logs/bulk" {
+		t.Errorf("Expected path /api/audit-logs/bulk, got %s", receivedReq.URL.Path)
 	}
 
 	// Verify body

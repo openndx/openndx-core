@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/OpenDIF/opendif-core/shared/audit"
+	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/gov-dx-sandbox/portal-backend/v1/models"
 )
 
@@ -37,29 +37,26 @@ func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID
 
 	// Set event type to MANAGEMENT_EVENT for portal operations
 	managementEventType := "MANAGEMENT_EVENT"
-	eventType := &managementEventType
 
 	// Set target type and ID
 	targetType := "RESOURCE"
 
-	// Create audit event using shared/audit DTO
-	// Use shared utilities for timestamp and metadata marshaling
+	// Create audit event using argus DTO
 	timestamp := audit.CurrentTimestamp()
-	additionalMetadata := audit.MarshalMetadata(map[string]interface{}{
-		"resource":   resource,
-		"resourceId": resourceID,
-	})
 
 	auditRequest := &audit.AuditLogRequest{
-		TraceID:            nil, // No trace ID for standalone management events
-		Timestamp:          timestamp,
-		EventType:          eventType,
-		EventAction:        &eventAction,
-		Status:             status,
-		ActorType:          actorType,
-		ActorID:            actorID,
-		TargetType:         targetType,
-		AdditionalMetadata: additionalMetadata,
+		TraceID:    nil, // No trace ID for standalone management events
+		Timestamp:  timestamp,
+		EventType:  managementEventType,
+		Action:     eventAction,
+		Status:     status,
+		ActorType:  actorType,
+		ActorID:    actorID,
+		TargetType: targetType,
+		TargetID:   resourceID,
+		Metadata: map[string]interface{}{
+			"resource": resource,
+		},
 	}
 
 	// Log asynchronously (fire-and-forget). Pass the request context so tracing

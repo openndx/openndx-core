@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/OpenDIF/opendif-core/shared/audit"
+	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
@@ -31,8 +31,19 @@ func main() {
 	}
 
 	// Initialize audit middleware
-	// All configuration comes from config.json for consistency
-	auditClient := audit.NewClient(config.AuditConfig.ServiceURL)
+	// Allow environment variable override for runtime configuration
+	envAuditURL := os.Getenv("AUDIT_SERVICE_URL")
+	if envAuditURL != "" {
+		config.AuditConfig.ServiceURL = envAuditURL
+	}
+	apiKey := os.Getenv("ARGUS_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("ARGUS_AUTH_TOKEN")
+	}
+	auditClient := audit.NewClient(audit.Config{
+		BaseURL: config.AuditConfig.ServiceURL,
+		APIKey:  apiKey,
+	})
 	audit.InitializeGlobalAudit(auditClient)
 
 	// Initialize audit configuration (actorType, actorID)

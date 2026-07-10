@@ -9,3 +9,4 @@
 SELECT 'CREATE DATABASE pdp' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pdp')\gexec
 SELECT 'CREATE DATABASE consent_engine' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'consent_engine')\gexec
 SELECT 'CREATE DATABASE orchestration_engine' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'orchestration_engine')\gexec
+SELECT 'CREATE DATABASE audit' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'audit')\gexec

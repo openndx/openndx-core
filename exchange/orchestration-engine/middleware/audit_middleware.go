@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
+	auditpkg "github.com/LSFLK/argus/pkg/audit"
 	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
-	auditpkg "github.com/OpenDIF/opendif-core/shared/audit"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
 	"github.com/google/uuid"
@@ -101,22 +101,25 @@ func LogAuditEvent(ctx context.Context, eventType string, targetID *string, targ
 	actorType := getAuditActorType()
 	actorID := getAuditActorID()
 
-	// Marshal metadata using shared utility
-	requestMetadataJSON := auditpkg.MarshalMetadata(requestMetadata)
-	responseMetadataJSON := auditpkg.MarshalMetadata(responseMetadata)
+	meta := make(map[string]interface{})
+	if len(requestMetadata) > 0 {
+		meta["requestMetadata"] = requestMetadata
+	}
+	if len(responseMetadata) > 0 {
+		meta["responseMetadata"] = responseMetadata
+	}
 
 	// Create audit request
 	auditRequest := &auditpkg.AuditLogRequest{
-		TraceID:          &traceID,
-		Timestamp:        auditpkg.CurrentTimestamp(),
-		EventType:        &eventType,
-		Status:           status,
-		ActorType:        actorType,
-		ActorID:          actorID,
-		TargetType:       targetType,
-		TargetID:         targetID,
-		RequestMetadata:  requestMetadataJSON,
-		ResponseMetadata: responseMetadataJSON,
+		TraceID:    &traceID,
+		Timestamp:  auditpkg.CurrentTimestamp(),
+		EventType:  eventType,
+		Status:     status,
+		ActorType:  actorType,
+		ActorID:    actorID,
+		TargetType: targetType,
+		TargetID:   targetID,
+		Metadata:   meta,
 	}
 
 	// Log the audit event asynchronously using the global audit package
@@ -210,20 +213,22 @@ func LogRequestReceived(ctx context.Context, eventType string, actorType string,
 	status := auditpkg.StatusSuccess
 
 	targetID := "SERVICE"
-	// Marshal metadata using shared utility
-	requestMetadataJSON := auditpkg.MarshalMetadata(requestMetadata)
+	meta := make(map[string]interface{})
+	if len(requestMetadata) > 0 {
+		meta["requestMetadata"] = requestMetadata
+	}
 
 	// Create audit request
 	auditRequest := &auditpkg.AuditLogRequest{
-		TraceID:         &traceID,
-		Timestamp:       auditpkg.CurrentTimestamp(),
-		EventType:       &eventType,
-		Status:          status,
-		ActorType:       actorType,
-		ActorID:         actorId,
-		TargetType:      "SERVICE",
-		TargetID:        &targetID,
-		RequestMetadata: requestMetadataJSON,
+		TraceID:    &traceID,
+		Timestamp:  auditpkg.CurrentTimestamp(),
+		EventType:  eventType,
+		Status:     status,
+		ActorType:  actorType,
+		ActorID:    actorId,
+		TargetType: "SERVICE",
+		TargetID:   &targetID,
+		Metadata:   meta,
 	}
 
 	// Log the audit event asynchronously using the global audit package

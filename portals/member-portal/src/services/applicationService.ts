@@ -10,7 +10,7 @@ import type {
 export class ApplicationService {
 
   static async getApprovedApplications(memberId: string): Promise<ApprovedApplication[]> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/applications`);
       url.searchParams.append('memberId', memberId);
@@ -40,7 +40,7 @@ export class ApplicationService {
   }
 
   static async getApplicationSubmissions(memberId: string): Promise<ApplicationSubmission[]> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/application-submissions`);
       url.searchParams.append('memberId', memberId);
@@ -72,7 +72,7 @@ export class ApplicationService {
   }
 
   static async registerApplication(registration: ApplicationRegistration): Promise<void> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/application-submissions`);
       const response = await fetch(url.toString(), {
@@ -113,7 +113,7 @@ export class ApplicationService {
   }
 
   // static async updateApplication(consumerId: string, applicationId: string, updates: Partial<ApplicationRegistration>): Promise<void> {
-  //   const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+  //   const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
   //   try {
   //     const response = await fetch(`${baseUrl}/consumers/${consumerId}/applications/${applicationId}`, {
   //       method: 'PUT',
@@ -132,7 +132,7 @@ export class ApplicationService {
   // }
 
   // static async deleteApplication(consumerId: string, applicationId: string): Promise<void> {
-  //   const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+  //   const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
   //   try {
   //     const response = await fetch(`${baseUrl}/consumers/${consumerId}/applications/${applicationId}`, {
   //       method: 'DELETE',

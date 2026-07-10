@@ -4,7 +4,6 @@ go 1.24.6
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/OpenDIF/opendif-core/shared/audit v0.0.0-20260702135451-a897215dde39
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
@@ -17,6 +16,7 @@ require (
 )
 
 require (
+	github.com/LSFLK/argus/pkg/audit v0.0.0-20260622104753-c28bd76815b0
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

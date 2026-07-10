@@ -27,7 +27,7 @@ The Portal Backend provides REST APIs for the Admin Portal and Member Portal, ha
 
 ### 1. Environment Setup
 
-Create a `.env` file:
+Copy `.env.example` to `.env` and update it:
 
 ```bash
 # Database Configuration
@@ -46,6 +46,7 @@ IDP_ADMIN_PORTAL_CLIENT_ID=your_admin_client_id
 
 # Policy Decision Point
 PDP_SERVICE_URL=http://localhost:8082
+
 
 # Optional: IDP Management (for member creation)
 IDP_CLIENT_ID=management_client_id
@@ -71,28 +72,10 @@ The service runs on port 3000 by default.
 
 ## Configuration
 
-### Database Configuration
-
-```bash
-DB_MAX_OPEN_CONNS=25              # Maximum open connections
-DB_MAX_IDLE_CONNS=5               # Maximum idle connections
-DB_CONN_MAX_LIFETIME=1h           # Connection maximum lifetime
-DB_QUERY_TIMEOUT=30s              # Query timeout duration
-```
-
-### JWT Security
-
-```bash
-JWT_VALIDATION_STRICT=true        # Strict JWT validation mode
-JWT_CACHE_DURATION=15m            # JWKS cache duration
-JWT_TIMEOUT=10s                   # Token validation timeout
-```
-
 ### Server Configuration
 
 ```bash
 PORT=3000                         # Server port (default: 3000)
-LOG_LEVEL=info                    # Logging level (debug, info, warn, error)
 CORS_ALLOWED_ORIGINS=*            # CORS allowed origins
 ```
 

@@ -103,7 +103,7 @@ export class SchemaService {
   }
 
   static async getApprovedSchemas(memberId: string): Promise<ApprovedSchema[]> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/schemas`);
       url.searchParams.append('memberId', memberId);
@@ -134,7 +134,7 @@ export class SchemaService {
   }
 
   static async getSchemaSubmissions(memberId: string): Promise<SchemaSubmission[]> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/schema-submissions`);
       url.searchParams.append('memberId', memberId);
@@ -168,7 +168,7 @@ export class SchemaService {
   }
 
   static async registerSchema(registration: SchemaRegistration): Promise<void> {
-    const baseUrl = window.configs.apiUrl || import.meta.env.VITE_BASE_PATH || '';
+    const baseUrl = window.configs.API_URL || import.meta.env.VITE_BASE_PATH || '';
     try {
       const url = new URL(`${baseUrl}/schema-submissions`);
       const response = await fetch(url.toString(), {

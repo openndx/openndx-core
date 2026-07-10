@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/shared/audit"
+	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/gov-dx-sandbox/portal-backend/shared/utils"
 	v1 "github.com/gov-dx-sandbox/portal-backend/v1"
 	v1handlers "github.com/gov-dx-sandbox/portal-backend/v1/handlers"
@@ -121,10 +121,17 @@ func main() {
 	authorizationMiddleware := v1middleware.NewAuthorizationMiddlewareWithConfig(authConfig)
 
 	// Initialize Audit system
-	// Services will work without auditing - gracefully degrades if
-	// AUDIT_SERVICE_URL is not provided
-	auditServiceURL := utils.GetEnvOrDefault("AUDIT_SERVICE_URL", "http://localhost:3001")
-	auditClient := audit.NewClient(auditServiceURL)
+	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false
+	// or if AUDIT_SERVICE_URL is not provided
+	auditServiceURL := os.Getenv("AUDIT_SERVICE_URL")
+	apiKey := os.Getenv("ARGUS_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("ARGUS_AUTH_TOKEN")
+	}
+	auditClient := audit.NewClient(audit.Config{
+		BaseURL: auditServiceURL,
+		APIKey:  apiKey,
+	})
 	audit.InitializeGlobalAudit(auditClient)
 
 	// Apply middleware chain (CORS -> JWT Auth -> Authorization) to the API mux ONLY
