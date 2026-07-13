@@ -23,7 +23,7 @@ paths:
                   message:
                     type: string
                 example:
-                  message: "OpenDIF Server is Healthy!"
+                  message: "OpenNDX Server is Healthy!"
   /sdl:
     get:
       summary: Get active GraphQL SDL

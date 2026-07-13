@@ -1,7 +1,7 @@
 services:
   prometheus:
     image: prom/prometheus:v2.55.1
-    container_name: opendif-prometheus
+    container_name: openndx-prometheus
     restart: unless-stopped
     ports:
       - "9091:9090"
@@ -16,11 +16,11 @@ services:
       - "--web.console.templates=/usr/share/prometheus/consoles"
       - "--web.enable-lifecycle"
     networks:
-      - opendif-network
+      - openndx-network
 
   grafana:
     image: grafana/grafana:11.2.0
-    container_name: opendif-grafana
+    container_name: openndx-grafana
     restart: unless-stopped
     ports:
       - "3002:3000"
@@ -34,7 +34,7 @@ services:
       - ./grafana/dashboards/:/var/lib/grafana/dashboards/
       - grafana-data:/var/lib/grafana
     networks:
-      - opendif-network
+      - openndx-network
     depends_on:
       - prometheus
 
@@ -43,7 +43,7 @@ volumes:
   grafana-data:
 
 networks:
-  opendif-network:
-    name: opendif-network
+  openndx-network:
+    name: openndx-network
     external: true
 

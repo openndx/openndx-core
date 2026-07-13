@@ -3,8 +3,8 @@ module github.com/gov-dx-sandbox/exchange/consent-engine
 go 1.24.6
 
 require (
-	github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702074442-13c5fdc4f37d
-	github.com/OpenDIF/opendif-core/exchange/shared/utils v0.0.0-20260702074442-13c5fdc4f37d
+	github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.0.0-20260702074442-13c5fdc4f37d
+	github.com/OpenNDX/openndx-core/exchange/shared/utils v0.0.0-20260702074442-13c5fdc4f37d
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
@@ -52,4 +52,9 @@ require (
 	google.golang.org/grpc v1.67.1 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace (
+	github.com/OpenNDX/openndx-core/exchange/shared/monitoring => ../shared/monitoring
+	github.com/OpenNDX/openndx-core/exchange/shared/utils => ../shared/utils
 )

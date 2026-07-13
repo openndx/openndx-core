@@ -18,9 +18,9 @@ const (
 type Role string
 
 const (
-	RoleAdmin  Role = "OpenDIF_Admin"  // Full access to all resources
-	RoleMember Role = "OpenDIF_Member" // Access to own resources and public endpoints
-	RoleSystem Role = "OpenDIF_System" // System-level access for internal services
+	RoleAdmin  Role = "OpenNDX_Admin"  // Full access to all resources
+	RoleMember Role = "OpenNDX_Member" // Access to own resources and public endpoints
+	RoleSystem Role = "OpenNDX_System" // System-level access for internal services
 )
 
 // Permission represents specific permissions

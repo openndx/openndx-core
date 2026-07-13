@@ -4,7 +4,7 @@ We welcome pull requests from the community! This guide will help ensure your co
 
 ## Before You Start
 
-1.   **Check for existing work:** Search [open pull requests](https://github.com/OpenDIF/opendif-mvp/pulls) to avoid duplicate work
+1.   **Check for existing work:** Search [open pull requests](https://github.com/OpenNDX/openndx-mvp/pulls) to avoid duplicate work
 2.   **Discuss major changes:** For significant changes, consider opening an issue first to discuss the approach
 3.   **Read the documentation:** Review the [Development Guide](development.md) to set up your environment
 
@@ -102,4 +102,4 @@ Before submitting, ensure:
 -   Check [Reporting Issues](reporting-issues.md) for bug reporting
 -   See [Code of Conduct](../../CODE_OF_CONDUCT.md) for community standards
 
-[View Open Pull Requests](https://github.com/OpenDIF/opendif-mvp/pulls)
+[View Open Pull Requests](https://github.com/OpenNDX/openndx-mvp/pulls)

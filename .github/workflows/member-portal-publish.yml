@@ -43,7 +43,7 @@ jobs:
                       type=sha,format=long
                   labels: |
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-                      org.opencontainers.image.description=Member Portal for OpenDIF
+                      org.opencontainers.image.description=Member Portal for OpenNDX
                       org.opencontainers.image.licenses=Apache-2.0
 
             - name: Build and push Docker image

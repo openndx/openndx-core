@@ -1,11 +1,11 @@
 # Admin Portal
 
-A React-based administrative dashboard for OpenDIF administrators to manage members, schemas, and system configurations.
+A React-based administrative dashboard for OpenNDX administrators to manage members, schemas, and system configurations.
 
 ## Overview
 
 The Admin Portal provides a user interface for administrators to:
-- Manage OpenDIF members (onboard/offboard)
+- Manage OpenNDX members (onboard/offboard)
 - Review and approve schema submissions
 - Monitor system health and audit logs
 - Configure system-wide settings

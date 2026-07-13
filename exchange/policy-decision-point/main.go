@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
+	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/internal/config"
 	v1 "github.com/gov-dx-sandbox/exchange/policy-decision-point/v1"
 )
