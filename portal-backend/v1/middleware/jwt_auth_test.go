@@ -153,7 +153,7 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 					"scope":     "read write",
 					"client_id": "client-1",
 					"username":  "testuser",
-					"roles":     []string{"OpenDIF_Member"},
+					"roles":     []string{"OpenNDX_Member"},
 				}
 				token := createToken(claims, privKey, kid)
 				req := httptest.NewRequest("GET", "/api/v1/resource", nil)

@@ -11,14 +11,15 @@ ARG GIT_COMMIT
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy go mod files first for better layer caching
-COPY go.mod go.sum ./
-# Shared modules (github.com/OpenDIF/opendif-core/...) are now published and
-# fetched from the module proxy, so no local shared source needs to be copied.
+# Copy go mod files and shared dependencies
+COPY exchange/consent-engine/go.mod exchange/consent-engine/go.sum ./exchange/consent-engine/
+COPY exchange/shared/ /app/exchange/shared/
+
+WORKDIR /app/exchange/consent-engine
 RUN go mod download
 
 # Copy source code (this layer is invalidated only on code changes)
-COPY . .
+COPY exchange/consent-engine/ ./
 
 # Build the application with build info from consent-engine directory
 RUN CGO_ENABLED=0 GOOS=linux go build \

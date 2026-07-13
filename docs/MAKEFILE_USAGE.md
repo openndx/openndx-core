@@ -1,6 +1,6 @@
 # Makefile Usage Guide
 
-This guide provides a quick reference for all available Makefile commands in the OpenDIF MVP project.
+This guide provides a quick reference for all available Makefile commands in the OpenNDX MVP project.
 
 > 📚 **For detailed code quality setup and troubleshooting**, see [LOCAL_CODE_QUALITY_SETUP.md](LOCAL_CODE_QUALITY_SETUP.md)
 

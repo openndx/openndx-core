@@ -1,6 +1,6 @@
-# Contributing to OpenDIF Core
+# Contributing to OpenNDX Core
 
-Thank you for your interest in contributing to the OpenDIF Core project! We welcome contributions from everyone and are grateful for your help in making this project better.
+Thank you for your interest in contributing to the OpenNDX Core project! We welcome contributions from everyone and are grateful for your help in making this project better.
 
 ## Code of Conduct
 
@@ -35,12 +35,12 @@ New to the project? Start with our [Development Guide](docs/contributing/develop
 
 If you have questions or want to discuss ideas:
 
--   Check our [Issues](https://github.com/OpenDIF/opendif-mvp/issues) to see if your question has been asked before
--   Open a new [Issue](https://github.com/OpenDIF/opendif-mvp/issues/new) for bugs or feature requests
--   Review open [Pull Requests](https://github.com/OpenDIF/opendif-mvp/pulls) to see what others are working on
+-   Check our [Issues](https://github.com/OpenNDX/openndx-mvp/issues) to see if your question has been asked before
+-   Open a new [Issue](https://github.com/OpenNDX/openndx-mvp/issues/new) for bugs or feature requests
+-   Review open [Pull Requests](https://github.com/OpenNDX/openndx-mvp/pulls) to see what others are working on
 
 ## Recognition
 
-Contributors will be recognized in our project documentation and release notes. Thank you for helping make OpenDIF Core better!
+Contributors will be recognized in our project documentation and release notes. Thank you for helping make OpenNDX Core better!
 
 We look forward to your contributions!

@@ -97,9 +97,9 @@ CORS_ALLOWED_ORIGINS=*            # CORS allowed origins
 ### Authentication & Authorization
 
 **Supported Roles:**
-- `OpenDIF_Admin` - Full system access
-- `OpenDIF_Member` - Standard user access to own resources
-- `OpenDIF_System` - System-level read access
+- `OpenNDX_Admin` - Full system access
+- `OpenNDX_Member` - Standard user access to own resources
+- `OpenNDX_System` - System-level read access
 
 **JWT Requirements:**
 - Issuer: Asgardeo identity provider

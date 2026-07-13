@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Consent Engine API v1
   description: |
-    Handles consent creation, approval, and management for the OpenDIF Data Exchange Platform.
+    Handles consent creation, approval, and management for the OpenNDX Data Exchange Platform.
     
     ## API Structure
     The API is divided into two main categories:
@@ -25,7 +25,7 @@ info:
     - The email from the decoded token matches the consent owner's email
   version: 1.0.0
   contact:
-    name: OpenDIF Team
+    name: OpenNDX Team
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0

@@ -1,5 +1,5 @@
 name: "🐞 Report a Bug"
-description: "Create new issue in LSFLK/OpenDIF: 🐞 Report a Bug"
+description: "Create new issue in LSFLK/OpenNDX: 🐞 Report a Bug"
 labels: ["Type/Bug"]
 body:
   - type: textarea

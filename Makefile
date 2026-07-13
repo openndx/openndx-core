@@ -1,11 +1,11 @@
-# OpenDIF - Comprehensive Makefile
+# OpenNDX - Comprehensive Makefile
 # This Makefile provides standardized commands for all services in the repository
 
 .PHONY: help install-hooks setup validate-build validate-test validate-docker-build check-lint run clean setup-all validate-build-all validate-test-all
 
 # Default target
 help:
-	@echo "OpenDIF - Available Commands"
+	@echo "OpenNDX - Available Commands"
 	@echo "=========================================="
 	@echo ""
 	@echo "Usage: make [COMMAND] [SERVICE]"

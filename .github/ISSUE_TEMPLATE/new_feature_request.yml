@@ -1,5 +1,5 @@
 name: "💡 New Feature Request"
-description: "Create new issue in LSFLK/OpenDIF: 💡 New Feature Request"
+description: "Create new issue in LSFLK/OpenNDX: 💡 New Feature Request"
 labels: ["Type/New Feature"]
 body:
   - type: textarea
