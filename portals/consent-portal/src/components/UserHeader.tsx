@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from "react-oidc-context";
+import { useAuth } from "../contexts/AuthContext";
 
 interface UserHeaderProps {
   userName: string | null;
@@ -8,10 +8,9 @@ interface UserHeaderProps {
 }
 
 const UserHeader: React.FC<UserHeaderProps> = ({ userName, onSignIn, onSignOut }) => {
-  const auth = useAuth();
-  const isSignedIn = auth.isAuthenticated;
+  const { isAuthenticated } = useAuth();
 
-  if (!isSignedIn) {
+  if (!isAuthenticated) {
     return (
       <div className="absolute top-4 right-4 flex items-center space-x-4 bg-white rounded-lg shadow-md px-4 py-2">
         <div className="text-sm text-gray-600">

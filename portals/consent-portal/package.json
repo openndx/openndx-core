@@ -10,12 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.1.12",
     "lucide-react": "^0.544.0",
-    "oidc-client-ts": "^3.4.1",
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
-    "react-oidc-context": "^3.3.0",
     "react-router-dom": "^7.10.1",
     "tailwindcss": "^4.1.12"
   },

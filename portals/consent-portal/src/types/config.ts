@@ -10,6 +10,10 @@ export interface AppConfig {
   // OAuth2 redirect URLs (must be registered with the IdP).
   idpSignInRedirectUrl: string;
   idpSignOutRedirectUrl: string;
+  // Google OAuth Client ID for direct Google Sign-In.
+  googleClientId: string;
+  // ThunderID token exchange endpoint URL.
+  thunderIdTokenUrl: string;
 }
 
 declare global {

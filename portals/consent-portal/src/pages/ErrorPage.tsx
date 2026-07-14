@@ -1,19 +1,16 @@
 import { AlertCircle } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { useAuth } from "react-oidc-context";
+import { useAuth } from '../contexts/AuthContext';
 import UserHeader from '../components/UserHeader';
 import { useConsent } from '../contexts/ConsentContext';
 
 const ErrorPage: React.FC = () => {
   const { error } = useConsent();
-  const auth = useAuth();
-  const isLoading = auth.isLoading;
-  const isSignedIn = auth.isAuthenticated;
-  const user = auth.user;
+  const { isAuthenticated, isLoading, userName, signIn, signOut } = useAuth();
 
   useEffect(() => {
-    console.log('Auth State:', { user, isLoading, isSignedIn });
-  }, [user, isLoading, isSignedIn]);
+    console.log('Auth State:', { isLoading, isAuthenticated });
+  }, [isLoading, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -29,9 +26,9 @@ const ErrorPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4 relative">
       <UserHeader
-        userName={user?.profile?.given_name || user?.profile?.name || user?.profile?.email || user?.profile?.preferred_username || user?.profile?.sub || null}
-        onSignIn={() => auth.signinRedirect()}
-        onSignOut={() => auth.signoutRedirect()}
+        userName={userName}
+        onSignIn={() => signIn()}
+        onSignOut={() => signOut()}
       />
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />

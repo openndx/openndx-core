@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useAuth } from "react-oidc-context";
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import { ConsentStatus } from "../constants/consentStatus";
 import { PortalAction } from "../constants/portalAction";
 import type { ConsentRecord } from "../types";
@@ -35,7 +35,6 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [consentRecord, setConsentRecord] = useState<ConsentRecord | null>(null);
   const [error, setError] = useState('');
   const [consentId, setConsentId] = useState<string | null>(() => {
-    // Initial state from localStorage or null
     return localStorage.getItem('consentId');
   });
 
@@ -56,28 +55,18 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
         localStorage.setItem('consentId', idFromUrl);
       }
     }
-    // If not in URL, we already initialized from localStorage in useState initializer.
   }, [location.search, consentId]);
 
 
   // 2. Fetch Consent when Auth is Ready + Consent ID is present
   useEffect(() => {
-    // Only attempt to fetch if:
-    // a) We are authenticated
-    // b) We have a consent ID
-    // c) We haven't fetched it yet (record is null) or we want to re-fetch on ID change
-    // d) We are not currently fetching
-
     if (auth.isLoading) return;
 
     if (!consentId) {
-      // No consent ID to fetch
       return;
     }
 
     if (!auth.isAuthenticated) {
-      // Not logged in, so we can't fetch yet. 
-      // The UI will likely show a Login button.
       return;
     }
 
@@ -92,10 +81,9 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       try {
         console.log('ConsentContext: Fetching consent record for:', consentId);
-        const token = auth.user?.access_token;
+        const token = auth.accessToken;
 
         if (!token) {
-          // Should not happen if isAuthenticated is true
           throw new Error("No access token available");
         }
 
@@ -114,7 +102,6 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
 
         const data: ConsentRecord = await response.json();
-        // Ensure the internal ID matches
         setConsentRecord({ ...data, consentId: consentId });
 
       } catch (err: unknown) {
@@ -129,7 +116,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     fetchConsent();
 
-  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.user, CONSENT_ENGINE_PATH, consentRecord, navigate]);
+  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.accessToken, CONSENT_ENGINE_PATH, navigate]);
 
   const handleConsentDecision = async (decision: PortalAction) => {
     if (!consentRecord || !consentRecord.consentId) return;
@@ -141,7 +128,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setIsSubmitting(true);
     try {
-      const token = auth.user?.access_token;
+      const token = auth.accessToken;
       if (!token) throw new Error("Not authenticated");
 
       const payload = {
@@ -188,7 +175,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const signIn = () => {
-    auth.signinRedirect();
+    navigate('/login');
   };
 
   return (
