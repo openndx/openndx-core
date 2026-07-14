@@ -32,7 +32,7 @@ docker compose up -d
 log "Starting exchange services..."
 cd ../exchange
 export DB_PASSWORD=${DB_PASSWORD:-password}
-export DB_HOST=${DB_HOST:-localhost}  # Required for orchestration-engine
+export DB_HOST=${DB_HOST:-pdp-db}  # Default to pdp-db service name for container communication
 
 # Start databases
 docker compose up -d pdp-db ce-db

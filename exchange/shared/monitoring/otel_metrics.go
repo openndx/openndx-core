@@ -406,14 +406,14 @@ func otelHTTPMetricsMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Record metrics with attributes
-		httpRequestsCounter.Add(context.Background(), 1,
+		httpRequestsCounter.Add(r.Context(), 1,
 			metric.WithAttributes(
 				semconv.HTTPRequestMethodKey.String(method),
 				semconv.HTTPRouteKey.String(route),
 				semconv.HTTPResponseStatusCodeKey.Int(rw.statusCode),
 			),
 		)
-		httpRequestDuration.Record(context.Background(), duration,
+		httpRequestDuration.Record(r.Context(), duration,
 			metric.WithAttributes(
 				semconv.HTTPRequestMethodKey.String(method),
 				semconv.HTTPRouteKey.String(route),

@@ -51,7 +51,8 @@ func NewProvider(serviceKey, serviceUrl, schemaID string, authConfig *auth.AuthC
 // PerformRequest performs the HTTP request to the provider with necessary authentication.
 func (p *Provider) PerformRequest(ctx context.Context, reqBody []byte) (resp *http.Response, err error) {
 	// 1. Create Request
-	req, err := http.NewRequestWithContext(ctx, "POST", p.ServiceUrl, bytes.NewBuffer(reqBody))
+	var req *http.Request
+	req, err = http.NewRequestWithContext(ctx, "POST", p.ServiceUrl, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
 	}

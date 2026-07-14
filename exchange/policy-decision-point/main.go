@@ -84,7 +84,7 @@ func main() {
 
 	// Monitor database connection pool metrics (USE metrics)
 	if monitoring.IsObservabilityEnabled() {
-		if err := monitoring.MonitorDBConnectionPool(v1SqlDB, "policy-decision-point"); err != nil {
+		if err := monitoring.MonitorDBConnectionPool(v1SqlDB); err != nil {
 			slog.Warn("Failed to monitor database connection pool", "error", err)
 		} else {
 			slog.Info("Database connection pool metrics registered successfully")

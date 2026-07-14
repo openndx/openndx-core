@@ -11,7 +11,7 @@ import (
 
 // MonitorDBConnectionPool registers OTel metrics for a database connection pool.
 // It creates observable gauges that periodically poll the sql.DBStats.
-func MonitorDBConnectionPool(db *sql.DB, serviceName string) error {
+func MonitorDBConnectionPool(db *sql.DB) error {
 	if db == nil {
 		return errors.New("database connection is nil")
 	}
