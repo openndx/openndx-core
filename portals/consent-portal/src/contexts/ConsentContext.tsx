@@ -35,7 +35,12 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [consentRecord, setConsentRecord] = useState<ConsentRecord | null>(null);
   const [error, setError] = useState('');
   const [consentId, setConsentId] = useState<string | null>(() => {
-    return localStorage.getItem('consentId');
+    try {
+      return localStorage.getItem('consentId');
+    } catch (e) {
+      console.warn('ConsentContext: Failed to read consentId from localStorage:', e);
+      return null;
+    }
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +57,11 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (idFromUrl !== consentId) {
         console.log('ConsentContext: Found consentId in URL, updating state and storage:', idFromUrl);
         setConsentId(idFromUrl);
-        localStorage.setItem('consentId', idFromUrl);
+        try {
+          localStorage.setItem('consentId', idFromUrl);
+        } catch (e) {
+          console.warn('ConsentContext: Failed to write consentId to localStorage:', e);
+        }
       }
     }
   }, [location.search, consentId]);
@@ -116,7 +125,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     fetchConsent();
 
-  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.accessToken, CONSENT_ENGINE_PATH, navigate]);
+  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.accessToken, CONSENT_ENGINE_PATH, consentRecord, navigate]);
 
   const handleConsentDecision = async (decision: PortalAction) => {
     if (!consentRecord || !consentRecord.consentId) return;
@@ -149,7 +158,11 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Success
-      localStorage.removeItem('consentId');
+      try {
+        localStorage.removeItem('consentId');
+      } catch (e) {
+        console.warn('ConsentContext: Failed to remove consentId from localStorage:', e);
+      }
       navigate('/success');
 
       // Delay closing or redirect logic

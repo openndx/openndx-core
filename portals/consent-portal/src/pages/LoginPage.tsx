@@ -63,6 +63,8 @@ const LoginPage: React.FC = () => {
               setGoogleError(null);
               if (credentialResponse.credential) {
                 handleGoogleCredential(credentialResponse.credential);
+              } else {
+                setGoogleError("No credential received from Google. Please try again.");
               }
             }}
             onError={() => {

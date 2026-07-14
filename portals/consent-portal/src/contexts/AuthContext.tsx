@@ -92,8 +92,13 @@ function loadPersistedAuth(): AuthState {
         error: null,
       };
     }
-  } catch {
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  } catch (error) {
+    console.warn("[Auth] Failed to load from sessionStorage:", error);
+    try {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+    } catch {
+      // Ignore storage access errors if sessionStorage is disabled
+    }
   }
 
   return defaultState;
@@ -172,11 +177,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         };
 
         // Persist to sessionStorage so page refreshes don't log the user out
-        sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(newState));
+        try {
+          sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(newState));
+        } catch (e) {
+          console.warn("[Auth] Failed to write to sessionStorage:", e);
+        }
         setState(newState);
       } catch (err) {
         console.error("[Auth] Authentication error:", err);
-        sessionStorage.removeItem(AUTH_SESSION_KEY);
+        try {
+          sessionStorage.removeItem(AUTH_SESSION_KEY);
+        } catch {
+          // Ignore storage access errors
+        }
         setState({
           isAuthenticated: false,
           isLoading: false,
@@ -200,7 +213,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Clear auth state but preserve consentId in localStorage so the user
     // can sign in with a different account and still access the same consent.
     // consentId is removed only on successful consent completion (in ConsentContext).
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
+    try {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+    } catch {
+      // Ignore storage access errors
+    }
     setState({
       isAuthenticated: false,
       isLoading: false,

@@ -1,15 +1,29 @@
 // Runtime configuration for the Consent Portal.
 //
-// Copy this file to `config.js` (which is gitignored) and adjust the values for
-// your environment. It is loaded as a plain <script> in index.html and exposed
-// on `window.configs`, so it can be swapped per-deployment without rebuilding.
-window.configs = {
-    // Base URL of the Consent Engine API.
-    consentEngineUrl: 'http://localhost:8081/api/v1',
+// QUICK START (local development):
+//   1. Copy this file:  cp public/config.example.js public/config.js
+//   2. Replace googleClientId with the real Google OAuth 2.0 Client ID
+//      from your Google Cloud Console.
+//   3. Run: npm run dev
+//
+// In development, Vite proxies /oauth2/token and /api/v1 to avoid CORS
+// (see vite.config.ts). Use relative paths as shown below.
+//
+// In production (Docker), entrypoint.sh generates config.js with absolute
+// URLs pointing to the actual ThunderID and Consent Engine endpoints.
+//
+// This file is loaded as a plain <script> in index.html and exposed on
+// `window.configs`. It is gitignored — config.example.js is the template.
 
-    // OIDC / IdP settings — used for RFC 8693 token exchange with ThunderID.
-    idpClientId: 'your_client_id',
-    idpBaseUrl: 'https://your-idp.example.com',
+window.configs = {
+    // Consent Engine API base URL.
+    // Development: proxied via Vite (see vite.config.ts → localhost:8081).
+    // Production:  set to the actual Consent Engine URL.
+    consentEngineUrl: '/api/v1',
+
+    // OIDC / IdP settings (ThunderID).
+    idpClientId: 'CONSENT_PORTAL_APP',
+    idpBaseUrl: 'https://localhost:8090',
     idpScope: 'openid profile email',
 
     // OAuth2 redirect URLs (must be registered with the IdP).
@@ -17,10 +31,12 @@ window.configs = {
     idpSignOutRedirectUrl: 'http://localhost:5173',
 
     // Google OAuth 2.0 Client ID (from Google Cloud Console).
-    // Used by the GoogleLogin button to obtain a Google ID token.
+    // IMPORTANT: Add http://localhost:5173 to "Authorized JavaScript origins"
+    // (NOT "Authorized redirect URIs") in the Google Cloud Console.
     googleClientId: 'your_google_client_id.apps.googleusercontent.com',
 
     // ThunderID token endpoint for RFC 8693 token exchange.
-    // The SPA sends the Google ID token here to get a ThunderID access_token.
-    thunderIdTokenUrl: 'https://localhost:8090/oauth2/token',
+    // Development: proxied via Vite (see vite.config.ts → localhost:8090).
+    // Production:  set to the actual ThunderID token URL.
+    thunderIdTokenUrl: '/oauth2/token',
 };
