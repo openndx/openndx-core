@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
 )
 

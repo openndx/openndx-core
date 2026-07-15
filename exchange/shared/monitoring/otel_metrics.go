@@ -24,24 +24,24 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
-// Custom OpenTelemetry attributes for OpenNDX-specific metrics.
-// These attributes use the "openndx." namespace prefix to distinguish them
+// Custom OpenTelemetry attributes for OpenDIF-specific metrics.
+// These attributes use the "opendif." namespace prefix to distinguish them
 // from standard OpenTelemetry semantic conventions.
 //
 // Custom Attributes:
-//   - openndx.business.action: The business action being performed (e.g., "consent_created", "policy_decision")
-//   - openndx.business.outcome: The outcome of the business action (e.g., "success", "failure", "allow", "deny")
-//   - openndx.external.target: The target system/service for external calls (e.g., "postgres", "redis", "external-api")
-//   - openndx.external.operation: The operation type for external calls (e.g., "query", "insert", "get", "set")
+//   - opendif.business.action: The business action being performed (e.g., "consent_created", "policy_decision")
+//   - opendif.business.outcome: The outcome of the business action (e.g., "success", "failure", "allow", "deny")
+//   - opendif.external.target: The target system/service for external calls (e.g., "postgres", "redis", "external-api")
+//   - opendif.external.operation: The operation type for external calls (e.g., "query", "insert", "get", "set")
 //
 // Standard semantic conventions (from semconv package) are used for HTTP metrics:
 //   - http.method, http.route, http.status_code (via semconv.HTTPRequestMethodKey, etc.)
 const (
-	// Attribute keys for custom OpenNDX metrics
-	attrBusinessAction    = "openndx.business.action"
-	attrBusinessOutcome   = "openndx.business.outcome"
-	attrExternalTarget    = "openndx.external.target"
-	attrExternalOperation = "openndx.external.operation"
+	// Attribute keys for custom OpenDIF metrics
+	attrBusinessAction    = "opendif.business.action"
+	attrBusinessOutcome   = "opendif.business.outcome"
+	attrExternalTarget    = "opendif.external.target"
+	attrExternalOperation = "opendif.external.operation"
 )
 
 var (
@@ -253,7 +253,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 	otel.SetMeterProvider(meterProvider)
 
 	// Create meter
-	meter := otel.Meter("openndx")
+	meter := otel.Meter("opendif")
 
 	// Create instruments
 	httpRequestsCounter, err = meter.Int64Counter(

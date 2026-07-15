@@ -227,7 +227,7 @@ func TestLogAudit_SendsRequest(t *testing.T) {
 	claims := &models.UserClaims{
 		IdpUserID: "test-user-id",
 		Email:     "test@example.com",
-		Roles:     models.FlexibleStringSlice([]string{"OpenNDX_Member"}),
+		Roles:     models.FlexibleStringSlice([]string{"OpenDIF_Member"}),
 		IssuedAt:  now,
 		ExpiresAt: now + 3600,
 	}

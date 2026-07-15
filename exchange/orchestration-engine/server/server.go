@@ -115,7 +115,7 @@ func SetupRouter(f *federator.Federator) *chi.Mux {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		resp := Response{Message: "OpenNDX Server is Healthy!"}
+		resp := Response{Message: "OpenDIF Server is Healthy!"}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(resp)
 		if err != nil {

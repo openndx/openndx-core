@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
+	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/models"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/v1/services"
 	"gorm.io/gorm"

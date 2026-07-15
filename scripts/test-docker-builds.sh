@@ -45,7 +45,7 @@ build_service() {
         --build-arg BUILD_VERSION="$BUILD_VERSION" \
         --build-arg BUILD_TIME="$BUILD_TIME" \
         --build-arg GIT_COMMIT="$GIT_COMMIT" \
-        --tag "openndx-core/$service_name:test" \
+        --tag "opendif-core/$service_name:test" \
         . ; then
         echo -e "${GREEN}✓ $service_name build succeeded${NC}"
         PASSED_SERVICES+=("$service_name")

@@ -1,6 +1,6 @@
 # Portals
 
-React-based portals for the OpenNDX platform.
+React-based portals for the OpenDIF platform.
 
 ## Portals
 

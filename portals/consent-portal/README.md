@@ -4,7 +4,7 @@ A citizen-facing React application that allows data owners to view, approve, or 
 
 ## Overview
 
-The Consent Portal is the interface where citizens (data owners) interact with OpenNDX to manage their data consents. It is typically accessed via a redirect from a data consumer application when consent is required.
+The Consent Portal is the interface where citizens (data owners) interact with OpenDIF to manage their data consents. It is typically accessed via a redirect from a data consumer application when consent is required.
 
 **Technology**: React + TypeScript + TailwindCSS + Vite
 

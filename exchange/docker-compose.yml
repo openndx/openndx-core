@@ -32,7 +32,7 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks:
-      - openndx-network
+      - opendif-network
 
   policy-decision-point:
     build:
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - openndx-network
+      - opendif-network
 
   consent-engine:
     build:
@@ -103,7 +103,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - openndx-network
+      - opendif-network
 
   orchestration-engine:
     build:
@@ -150,7 +150,7 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks:
-      - openndx-network
+      - opendif-network
 
   audit-service:
     build:
@@ -175,11 +175,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - openndx-network
+      - opendif-network
 
 volumes:
   postgres-data:
 
 networks:
-  openndx-network:
-    name: openndx-network
+  opendif-network:
+    name: opendif-network

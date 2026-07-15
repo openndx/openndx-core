@@ -22,7 +22,7 @@ func TestHealthEndpoint(t *testing.T) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		resp := Response{Message: "OpenNDX Server is Healthy!"}
+		resp := Response{Message: "OpenDIF Server is Healthy!"}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
@@ -37,7 +37,7 @@ func TestHealthEndpoint(t *testing.T) {
 	var response Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, "OpenNDX Server is Healthy!", response.Message)
+	assert.Equal(t, "OpenDIF Server is Healthy!", response.Message)
 }
 
 func TestHealthEndpoint_WrongMethod(t *testing.T) {
@@ -47,7 +47,7 @@ func TestHealthEndpoint_WrongMethod(t *testing.T) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		resp := Response{Message: "OpenNDX Server is Healthy!"}
+		resp := Response{Message: "OpenDIF Server is Healthy!"}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})

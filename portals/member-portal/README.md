@@ -1,6 +1,6 @@
 # Member Portal
 
-A React-based dashboard for OpenNDX members to manage their data schemas, applications, and integration settings.
+A React-based dashboard for OpenDIF members to manage their data schemas, applications, and integration settings.
 
 ## Overview
 

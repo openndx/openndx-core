@@ -24,7 +24,7 @@ func NewMemberService(db *gorm.DB, idp idp.IdentityProviderAPI) *MemberService {
 	return &MemberService{db: db, idp: idp}
 }
 
-// CreateMember creates a new Member and automatically adds them to the "OpenNDX_Members" group in the IDP.
+// CreateMember creates a new Member and automatically adds them to the "OpenDIF_Members" group in the IDP.
 // This ensures all newly created members are automatically assigned to the member group.
 func (s *MemberService) CreateMember(ctx context.Context, req *models.CreateMemberRequest) (*models.MemberResponse, error) {
 	// Create user in the IDP
@@ -47,7 +47,7 @@ func (s *MemberService) CreateMember(ctx context.Context, req *models.CreateMemb
 	}
 	slog.Info("Created user in IDP", "userID", createdUser.Id, "email", createdUser.Email)
 
-	// Automatically add user to "OpenNDX_Members" group in the IDP
+	// Automatically add user to "OpenDIF_Members" group in the IDP
 	// This is a core requirement: all new members must be assigned to the member group
 	groupMember := &idp.GroupMember{
 		Value:   createdUser.Id,
