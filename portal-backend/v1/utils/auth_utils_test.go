@@ -3,7 +3,7 @@ package utils
 import (
 	"testing"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 )
 
 func TestFindEndpointPermission(t *testing.T) {

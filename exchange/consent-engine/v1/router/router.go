@@ -3,11 +3,11 @@ package router
 import (
 	"net/http"
 
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/auth"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/handlers"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/middleware"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/auth"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/handlers"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/middleware"
 
-	sharedUtils "github.com/OpenDIF/opendif-core/exchange/shared/utils"
+	sharedUtils "github.com/OpenNDX/openndx-core/exchange/shared/utils"
 )
 
 // V1Router handles all V1 API route registration

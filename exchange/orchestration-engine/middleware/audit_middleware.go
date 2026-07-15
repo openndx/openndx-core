@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	auditpkg "github.com/LSFLK/argus/pkg/audit"
-	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
 	"github.com/google/uuid"
 )
 

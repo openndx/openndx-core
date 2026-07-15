@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/auth"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

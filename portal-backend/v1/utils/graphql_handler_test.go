@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/vektah/gqlparser/v2/ast"
 )

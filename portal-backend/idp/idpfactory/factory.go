@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gov-dx-sandbox/portal-backend/idp"
-	"github.com/gov-dx-sandbox/portal-backend/idp/asgardeo"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp/asgardeo"
 )
 
 type FactoryConfig struct {

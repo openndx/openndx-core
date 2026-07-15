@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
-	"github.com/gov-dx-sandbox/exchange/policy-decision-point/internal/config"
-	v1 "github.com/gov-dx-sandbox/exchange/policy-decision-point/v1"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/config"
+	v1 "github.com/OpenNDX/openndx-core/exchange/policy-decision-point/v1"
+	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 )
 
 // Build information - set during build

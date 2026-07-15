@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

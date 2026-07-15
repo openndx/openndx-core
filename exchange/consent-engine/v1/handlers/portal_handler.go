@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/middleware"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/models"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/services"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/utils"
 	"github.com/google/uuid"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/middleware"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/models"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/services"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/utils"
 )
 
 // PortalHandler handles external API requests (authentication required)

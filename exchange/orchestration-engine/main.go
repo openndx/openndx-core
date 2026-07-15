@@ -8,12 +8,12 @@ import (
 	"syscall"
 
 	"github.com/LSFLK/argus/pkg/audit"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/middleware"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/provider"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/server"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/configs"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/federator"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/middleware"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/provider"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/server"
 )
 
 func main() {

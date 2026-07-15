@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/federator"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/federator"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/visitor"
 )

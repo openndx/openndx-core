@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/auth"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/policy"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/provider"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/auth"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/configs"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/policy"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

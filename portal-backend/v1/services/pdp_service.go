@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/utils"
 )
 
 // PDPService handles communication with the Policy Decision Point

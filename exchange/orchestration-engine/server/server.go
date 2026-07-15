@@ -9,13 +9,13 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/auth"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/database"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/handlers"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/services"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/auth"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/database"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/federator"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/handlers"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/services"
 	"github.com/go-chi/chi/v5"
 )
 

@@ -1,4 +1,4 @@
-module github.com/gov-dx-sandbox/tests/integration
+module github.com/OpenNDX/openndx-core/tests/integration
 
 go 1.24.6
 

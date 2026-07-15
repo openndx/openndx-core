@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gov-dx-sandbox/tests/integration/testutils"
+	"github.com/OpenNDX/openndx-core/tests/integration/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

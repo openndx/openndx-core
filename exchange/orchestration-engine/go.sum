@@ -4,8 +4,8 @@ github.com/MicahParks/jwkset v0.11.0 h1:yc0zG+jCvZpWgFDFmvs8/8jqqVBG9oyIbmBtmjOh
 github.com/MicahParks/jwkset v0.11.0/go.mod h1:U2oRhRaLgDCLjtpGL2GseNKGmZtLs/3O7p+OZaL5vo0=
 github.com/MicahParks/keyfunc/v3 v3.7.0 h1:pdafUNyq+p3ZlvjJX1HWFP7MA3+cLpDtg69U3kITJGM=
 github.com/MicahParks/keyfunc/v3 v3.7.0/go.mod h1:z66bkCviwqfg2YUp+Jcc/xRE9IXLcMq6DrgV/+Htru0=
-github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702091746-b79410856362 h1:JYNpctKhGTH4evZ0FhqRTeh68ATRgzIw9eE9n4gUS7g=
-github.com/OpenDIF/opendif-core/exchange/shared/monitoring v0.0.0-20260702091746-b79410856362/go.mod h1:UV8Cf12gqfbmwsY2eZYB/NsaLx6tnX48gQXMuXZlA/E=
+github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.0.0-20260715091746-eb892d24b2e1 h1:IPqSw62kMOGrpJo2i7slDJfTp++RtxB3ueZ7uRiSGdg=
+github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.0.0-20260715091746-eb892d24b2e1/go.mod h1:pvzie/CSXDTvLjZE5HZwKluf1PEnxTvb3mEWcNAxk4Y=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=

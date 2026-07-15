@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gov-dx-sandbox/portal-backend/idp"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp"
 )
 
 type CreateGroupRequestBody struct {

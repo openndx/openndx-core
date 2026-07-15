@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

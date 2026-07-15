@@ -1,9 +1,9 @@
-module github.com/gov-dx-sandbox/exchange/policy-decision-point
+module github.com/OpenNDX/openndx-core/exchange/policy-decision-point
 
 go 1.24.6
 
 require (
-	github.com/OpenDIF/opendif-core/exchange/shared/utils v0.0.0-20260702054005-b41f3c6376d8
+	github.com/OpenNDX/openndx-core/exchange/shared/utils v0.0.0-20260715091746-eb892d24b2e1
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 	gorm.io/driver/postgres v1.6.0

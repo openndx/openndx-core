@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 )
 
 // AuthContextKey is the key used to store authentication context in request context

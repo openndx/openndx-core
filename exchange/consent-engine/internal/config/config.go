@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
+	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 )
 
 // Config holds all configuration for a service

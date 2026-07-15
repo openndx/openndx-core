@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
 )
 
 func init() {

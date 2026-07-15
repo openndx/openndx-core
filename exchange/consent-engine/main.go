@@ -6,16 +6,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
-	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/internal/config"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/config"
+	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
+	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 
 	// V1 API imports
-	v1auth "github.com/gov-dx-sandbox/exchange/consent-engine/v1/auth"
-	v1db "github.com/gov-dx-sandbox/exchange/consent-engine/v1/database"
-	v1handlers "github.com/gov-dx-sandbox/exchange/consent-engine/v1/handlers"
-	v1router "github.com/gov-dx-sandbox/exchange/consent-engine/v1/router"
-	v1services "github.com/gov-dx-sandbox/exchange/consent-engine/v1/services"
+	v1auth "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/auth"
+	v1db "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/database"
+	v1handlers "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/handlers"
+	v1router "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/router"
+	v1services "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/services"
 )
 
 // Build information - set during build

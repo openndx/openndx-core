@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gov-dx-sandbox/portal-backend/idp"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp"
 )
 
 type GetUserResponseBody struct {

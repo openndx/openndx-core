@@ -3,7 +3,7 @@ package federator
 import (
 	"testing"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/graphql"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/kinds"
 	"github.com/stretchr/testify/assert"

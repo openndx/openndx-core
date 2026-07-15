@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/auth"
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/handlers"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/auth"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/handlers"
 	"github.com/stretchr/testify/assert"
 )
 

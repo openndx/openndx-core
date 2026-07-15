@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/auth"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/auth"
 	"golang.org/x/oauth2/clientcredentials"
 )
 

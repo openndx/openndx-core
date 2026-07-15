@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/pkg/auth"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/auth"
 )
 
 func TestNewProviderHandler(t *testing.T) {

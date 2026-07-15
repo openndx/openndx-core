@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gov-dx-sandbox/exchange/consent-engine/v1/models"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/models"
 )
 
 // ErrorResponse represents a standardized error response

@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	"github.com/gov-dx-sandbox/portal-backend/v1/services"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/services"
 	"github.com/stretchr/testify/assert"
 )
 

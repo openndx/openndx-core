@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gov-dx-sandbox/exchange/consent-engine/internal/config"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 

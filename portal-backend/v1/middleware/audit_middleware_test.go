@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,11 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"crypto"
-
 	"github.com/LSFLK/argus/pkg/audit"
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/utils"
 )
 
 // mockAuditClient implements audit.Auditor interface for testing

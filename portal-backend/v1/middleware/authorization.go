@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	sharedutils "github.com/gov-dx-sandbox/portal-backend/shared/utils"
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	authutils "github.com/gov-dx-sandbox/portal-backend/v1/utils"
+	sharedutils "github.com/OpenNDX/openndx-core/portal-backend/shared/utils"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	authutils "github.com/OpenNDX/openndx-core/portal-backend/v1/utils"
 )
 
 // AuthorizationConfig configures the authorization middleware behavior

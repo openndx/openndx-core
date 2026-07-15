@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	"github.com/gov-dx-sandbox/portal-backend/v1/utils"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/utils"
 )
 
 // TestUser represents different test user personas for testing authorization scenarios.

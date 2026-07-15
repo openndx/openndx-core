@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/LSFLK/argus/pkg/audit"
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 )
 
 // LogAudit logs an audit event for portal-backend operations by extracting request info and creating an audit log

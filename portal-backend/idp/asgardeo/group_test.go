@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gov-dx-sandbox/portal-backend/idp"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/configs"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
 	"github.com/golang-jwt/jwt/v5"
 )
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

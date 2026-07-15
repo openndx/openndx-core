@@ -1,4 +1,4 @@
-module github.com/gov-dx-sandbox/portal-backend
+module github.com/OpenNDX/openndx-core/portal-backend
 
 go 1.24.6
 

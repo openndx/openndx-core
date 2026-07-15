@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gov-dx-sandbox/portal-backend/idp"
-	"github.com/gov-dx-sandbox/portal-backend/idp/idpfactory"
-	"github.com/gov-dx-sandbox/portal-backend/shared/utils"
-	"github.com/gov-dx-sandbox/portal-backend/v1/middleware"
-	"github.com/gov-dx-sandbox/portal-backend/v1/models"
-	"github.com/gov-dx-sandbox/portal-backend/v1/services"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp"
+	"github.com/OpenNDX/openndx-core/portal-backend/idp/idpfactory"
+	"github.com/OpenNDX/openndx-core/portal-backend/shared/utils"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/middleware"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/models"
+	"github.com/OpenNDX/openndx-core/portal-backend/v1/services"
 
 	"gorm.io/gorm"
 )

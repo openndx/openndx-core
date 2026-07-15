@@ -13,7 +13,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	authutils "github.com/gov-dx-sandbox/portal-backend/v1/utils"
+	authutils "github.com/OpenNDX/openndx-core/portal-backend/v1/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -1,7 +1,7 @@
 package federator
 
 import (
-	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/middleware"
+	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/middleware"
 )
 
 // convertToAuditFieldRecords converts ProviderLevelFieldRecord to audit package format
