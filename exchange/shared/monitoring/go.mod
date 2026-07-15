@@ -1,4 +1,4 @@
-module github.com/OpenDIF/opendif-core/exchange/shared/monitoring
+module github.com/OpenNDX/openndx-core/exchange/shared/monitoring
 
 go 1.24.6
 
