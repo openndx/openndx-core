@@ -380,18 +380,54 @@ jobs:
           severity: "CRITICAL,HIGH"
           ignore-unfixed: false
 
-      - name: Upload Trivy results to GitHub Security
-        if: steps.dry-run.outputs.enabled == 'true' && always()
+      - name: Upload Trivy results - Portal Backend
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-portal-backend.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: |
-            trivy-portal-backend.sarif
-            trivy-policy-decision-point.sarif
-            trivy-consent-engine.sarif
-            trivy-orchestration-engine.sarif
-            trivy-admin-portal.sarif
-            trivy-consent-portal.sarif
-            trivy-member-portal.sarif
+          sarif_file: trivy-portal-backend.sarif
+          category: portal-backend
+
+      - name: Upload Trivy results - Policy Decision Point
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-policy-decision-point.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-policy-decision-point.sarif
+          category: policy-decision-point
+
+      - name: Upload Trivy results - Consent Engine
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-consent-engine.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-consent-engine.sarif
+          category: consent-engine
+
+      - name: Upload Trivy results - Orchestration Engine
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-orchestration-engine.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-orchestration-engine.sarif
+          category: orchestration-engine
+
+      - name: Upload Trivy results - Admin Portal
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-admin-portal.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-admin-portal.sarif
+          category: admin-portal
+
+      - name: Upload Trivy results - Consent Portal
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-consent-portal.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-consent-portal.sarif
+          category: consent-portal
+
+      - name: Upload Trivy results - Member Portal
+        if: always() && steps.dry-run.outputs.enabled == 'true' && hashFiles('trivy-member-portal.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-member-portal.sarif
+          category: member-portal
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
