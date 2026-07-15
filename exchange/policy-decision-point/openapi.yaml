@@ -7,8 +7,8 @@ info:
     The service uses database-driven metadata management and supports real-time policy updates.
   version: 1.0.0
   contact:
-    name: Gov DX Sandbox Team
-    email: support@gov-dx-sandbox.com
+    name: OpenNDX Team
+    email: support@openndx.dev
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT

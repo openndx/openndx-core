@@ -422,7 +422,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
 
 1. **For Exchange Services** - Use shared monitoring package:
    ```go
-   import "github.com/gov-dx-sandbox/exchange/shared/monitoring"
+   import "github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
    
    mux.Handle("/metrics", monitoring.Handler())
    handler := monitoring.HTTPMetricsMiddleware(mux)
@@ -430,7 +430,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
 
 2. **For Portal Backend** - Use middleware package:
    ```go
-   import v1middleware "github.com/gov-dx-sandbox/portal-backend/v1/middleware"
+   import v1middleware "github.com/OpenNDX/openndx-core/portal-backend/v1/middleware"
    
    topLevelMux.Handle("/metrics", v1middleware.MetricsHandler())
    topLevelMux.Handle("/api/v1/", v1middleware.MetricsMiddleware(handler))
