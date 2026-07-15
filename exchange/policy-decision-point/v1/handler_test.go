@@ -720,13 +720,16 @@ func TestHandler_handlePolicyService(t *testing.T) {
 		},
 	}
 
+	mux := http.NewServeMux()
+	handler.SetupRoutes(mux)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, bytes.NewBuffer([]byte("{}")))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.handlePolicyService(w, req)
+			mux.ServeHTTP(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())

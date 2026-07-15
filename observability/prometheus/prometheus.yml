@@ -35,12 +35,20 @@ scrape_configs:
           port: '8082'
 
   # Root Level Services
-  - job_name: portal-backend
+  - job_name: api-server-go
     metrics_path: /metrics
     static_configs:
       - targets:
-          - portal-backend:3000
+          - api-server-go:3000
         labels:
-          service: 'portal-backend'
+          service: 'api-server-go'
           port: '3000'
 
+  - job_name: audit-service
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - audit-service:3001
+        labels:
+          service: 'audit-service'
+          port: '3001'

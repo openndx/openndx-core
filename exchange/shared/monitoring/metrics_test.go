@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -424,6 +425,85 @@ func TestMultipleInitializations(t *testing.T) {
 	// Should still be initialized
 	if !IsInitialized() {
 		t.Error("Multiple initialization calls should not break initialization state")
+	}
+}
+
+// TestIsObservabilityEnabled tests the IsObservabilityEnabled function
+func TestIsObservabilityEnabled(t *testing.T) {
+	tests := []struct {
+		name                string
+		enableObservability string
+		otelMetricsEnabled  string
+		expected            bool
+	}{
+		{
+			name:                "Both enabled (default)",
+			enableObservability: "",
+			otelMetricsEnabled:  "",
+			expected:            true,
+		},
+		{
+			name:                "ENABLE_OBSERVABILITY=false disables",
+			enableObservability: "false",
+			otelMetricsEnabled:  "",
+			expected:            false,
+		},
+		{
+			name:                "OTEL_METRICS_ENABLED=false disables",
+			enableObservability: "",
+			otelMetricsEnabled:  "false",
+			expected:            false,
+		},
+		{
+			name:                "Both false disables",
+			enableObservability: "false",
+			otelMetricsEnabled:  "false",
+			expected:            false,
+		},
+		{
+			name:                "Both true enables",
+			enableObservability: "true",
+			otelMetricsEnabled:  "true",
+			expected:            true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original values
+			origEnable := os.Getenv("ENABLE_OBSERVABILITY")
+			origOtel := os.Getenv("OTEL_METRICS_ENABLED")
+
+			// Set test values
+			if tt.enableObservability != "" {
+				os.Setenv("ENABLE_OBSERVABILITY", tt.enableObservability)
+			} else {
+				os.Unsetenv("ENABLE_OBSERVABILITY")
+			}
+			if tt.otelMetricsEnabled != "" {
+				os.Setenv("OTEL_METRICS_ENABLED", tt.otelMetricsEnabled)
+			} else {
+				os.Unsetenv("OTEL_METRICS_ENABLED")
+			}
+
+			// Test (function doesn't depend on initOnce, so no reset needed)
+			result := IsObservabilityEnabled()
+			if result != tt.expected {
+				t.Errorf("IsObservabilityEnabled() = %v, want %v", result, tt.expected)
+			}
+
+			// Restore original values
+			if origEnable != "" {
+				os.Setenv("ENABLE_OBSERVABILITY", origEnable)
+			} else {
+				os.Unsetenv("ENABLE_OBSERVABILITY")
+			}
+			if origOtel != "" {
+				os.Setenv("OTEL_METRICS_ENABLED", origOtel)
+			} else {
+				os.Unsetenv("OTEL_METRICS_ENABLED")
+			}
+		})
 	}
 }
 

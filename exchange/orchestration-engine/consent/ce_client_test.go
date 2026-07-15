@@ -17,7 +17,7 @@ func init() {
 
 func TestNewCEServiceClient(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	client := NewCEServiceClient(baseURL)
+	client := NewCEServiceClient(baseURL, nil)
 
 	if client == nil {
 		t.Fatal("Expected non-nil CEServiceClient")
@@ -90,7 +90,7 @@ func TestCreateConsent_Success(t *testing.T) {
 	defer server.Close()
 
 	// Create client with mock server URL
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	// Prepare request
 	appName := "Test App"
@@ -152,7 +152,7 @@ func TestCreateConsent_Success(t *testing.T) {
 }
 
 func TestCreateConsent_MarshalError(t *testing.T) {
-	client := NewCEServiceClient("http://localhost:8080")
+	client := NewCEServiceClient("http://localhost:8080", nil)
 
 	// Create a request with an unmarshalable field (channel cannot be marshaled to JSON)
 	// Since our struct uses standard types, we'll test with a context that's already canceled
@@ -182,7 +182,7 @@ func TestCreateConsent_MarshalError(t *testing.T) {
 
 func TestCreateConsent_HTTPRequestError(t *testing.T) {
 	// Create client with invalid URL to trigger request error
-	client := NewCEServiceClient("http://invalid-url-that-does-not-exist:99999")
+	client := NewCEServiceClient("http://invalid-url-that-does-not-exist:99999", nil)
 
 	request := &CreateConsentRequest{
 		AppID: "test-app-id",
@@ -211,7 +211,7 @@ func TestCreateConsent_NonCreatedStatusCode(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	request := &CreateConsentRequest{
 		AppID: "test-app-id",
@@ -245,7 +245,7 @@ func TestCreateConsent_InvalidResponseBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	request := &CreateConsentRequest{
 		AppID: "test-app-id",
@@ -277,7 +277,7 @@ func TestCreateConsent_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	request := &CreateConsentRequest{
 		AppID: "test-app-id",
@@ -328,7 +328,7 @@ func TestCreateConsent_WithAllOptionalFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	appName := "Test App"
 	grantDuration := "P1Y"
@@ -392,7 +392,7 @@ func TestCreateConsent_WithMinimalFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewCEServiceClient(server.URL)
+	client := NewCEServiceClient(server.URL, nil)
 
 	request := &CreateConsentRequest{
 		AppID: "test-app-id",

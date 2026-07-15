@@ -79,6 +79,24 @@ Collects real-time metrics from all Go services for debugging performance and er
 
 ## Quick Start
 
+### Automated Setup and Verification
+
+Run the verification script to start everything and verify metrics are working:
+
+```bash
+cd observability
+./verify_observability_setup.sh
+```
+
+This script will:
+1. Start Prometheus and Grafana
+2. Start required services (Orchestration Engine, Policy Decision Point) with database
+3. Verify metrics endpoints are accessible
+4. Generate test traffic
+5. Check Prometheus targets and Grafana accessibility
+
+### Manual Setup
+
 ```bash
 cd observability
 docker compose up -d

@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/LSFLK/argus/pkg/audit"
+	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/configs"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/federator"
 	"github.com/ginaxu1/gov-dx-sandbox/exchange/orchestration-engine/logger"
@@ -53,9 +54,21 @@ func main() {
 		config.AuditConfig.ActorID,
 	)
 
+	// Initialize monitoring
+	var tracker monitoring.Tracker = monitoring.NewNoOpTracker()
+	if monitoring.IsObservabilityEnabled() {
+		monitoringConfig := monitoring.DefaultConfig("orchestration-engine")
+		if err := monitoring.Initialize(monitoringConfig); err != nil {
+			log.Printf("Failed to initialize monitoring (service will continue): %v", err)
+		} else {
+			tracker = monitoring.NewOTelTracker()
+			log.Printf("Monitoring initialized successfully for orchestration-engine")
+		}
+	}
+
 	providerHandler := provider.NewProviderHandler(config.GetProviders())
 
-	federationObject, err := federator.Initialize(ctx, config, providerHandler, nil)
+	federationObject, err := federator.Initialize(ctx, config, providerHandler, nil, tracker)
 	if err != nil {
 		log.Fatalf("Failed to initialize federator: %v", err)
 	}

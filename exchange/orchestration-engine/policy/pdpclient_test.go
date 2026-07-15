@@ -16,7 +16,7 @@ func init() {
 
 func TestNewPdpClient(t *testing.T) {
 	baseUrl := "http://localhost:8080"
-	client := NewPdpClient(baseUrl)
+	client := NewPdpClient(baseUrl, nil)
 
 	if client == nil {
 		t.Fatal("Expected non-nil PdpClient")
@@ -57,7 +57,7 @@ func TestMakePdpRequest_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -113,7 +113,7 @@ func TestMakePdpRequest_ConsentRequired(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -183,7 +183,7 @@ func TestMakePdpRequest_AppNotAuthorized(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -228,7 +228,7 @@ func TestMakePdpRequest_AppAccessExpired(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -255,7 +255,7 @@ func TestMakePdpRequest_AppAccessExpired(t *testing.T) {
 }
 
 func TestMakePdpRequest_NetworkError(t *testing.T) {
-	client := NewPdpClient("http://invalid-url-that-does-not-exist:9999")
+	client := NewPdpClient("http://invalid-url-that-does-not-exist:9999", nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -286,7 +286,7 @@ func TestMakePdpRequest_InvalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -317,7 +317,7 @@ func TestMakePdpRequest_ServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",
@@ -348,7 +348,7 @@ func TestMakePdpRequest_BadRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewPdpClient(server.URL)
+	client := NewPdpClient(server.URL, nil)
 
 	request := &PdpRequest{
 		AppId: "app456",

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
@@ -87,9 +88,28 @@ type Config struct {
 }
 
 // DefaultConfig returns a default configuration
+// Observability can be disabled by setting ENABLE_OBSERVABILITY=false or OTEL_METRICS_ENABLED=false
 func DefaultConfig(serviceName string) Config {
+	// Check if observability is explicitly disabled
+	enableObservability := getEnvBoolOrDefault("ENABLE_OBSERVABILITY", true)
+	otelMetricsEnabled := getEnvBoolOrDefault("OTEL_METRICS_ENABLED", true)
+
+	// If either flag is false, disable observability
+	observabilityEnabled := enableObservability && otelMetricsEnabled
+
+	var exporterType string
+	if !observabilityEnabled {
+		exporterType = "none"
+		slog.Info("Observability disabled via environment variable",
+			"service", serviceName,
+			"ENABLE_OBSERVABILITY", enableObservability,
+			"OTEL_METRICS_ENABLED", otelMetricsEnabled)
+	} else {
+		exporterType = getEnvOrDefault("OTEL_METRICS_EXPORTER", "prometheus")
+	}
+
 	return Config{
-		ExporterType:     getEnvOrDefault("OTEL_METRICS_EXPORTER", "prometheus"),
+		ExporterType:     exporterType,
 		ServiceName:      serviceName,
 		ServiceVersion:   getEnvOrDefault("SERVICE_VERSION", "dev"),
 		OTLPEndpoint:     getEnvOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
@@ -139,6 +159,8 @@ func initializeInternal(ctx context.Context, config Config) error {
 		// Use Prometheus exporter (default for local dev)
 		// Create a Prometheus registry for the exporter
 		reg := prometheus.NewRegistry()
+		reg.MustRegister(prometheus.NewGoCollector())
+		reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 		exporter, err := otelprom.New(otelprom.WithRegisterer(reg))
 		if err != nil {
 			return fmt.Errorf("failed to create Prometheus exporter: %w", err)
@@ -317,6 +339,12 @@ func initializeInternal(ctx context.Context, config Config) error {
 // For Prometheus exporter, this returns the Prometheus metrics endpoint
 // For OTLP exporter, this returns a simple status endpoint
 func otelHandler() http.Handler {
+	if !IsObservabilityEnabled() {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("# Metrics disabled\n"))
+		})
+	}
 	if atomic.LoadInt32(&initialized) == 0 || metricsHandler == nil {
 		// Fallback if not initialized
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -344,25 +372,48 @@ func otelHTTPMetricsMiddleware(next http.Handler) http.Handler {
 		// Call the next handler
 		next.ServeHTTP(rw, r)
 
-		// Record metrics
 		duration := time.Since(start).Seconds()
 		method := r.Method
 
-		// Normalize route, but use "unknown" for 404s to prevent cardinality explosion
-		route := normalizeRoute(r.URL.Path)
+		// Extract the registered route template safely
+		var route string
+
+		// 1. Check for Go 1.22+ http.ServeMux pattern (e.g., "GET /api/v1/consents/{consentId}")
+		if r.Pattern != "" {
+			parts := strings.SplitN(r.Pattern, " ", 2)
+			if len(parts) == 2 {
+				route = parts[1]
+			} else {
+				route = parts[0]
+			}
+		}
+
+		// 2. Check for Chi router pattern if Go ServeMux was not used (for OE)
+		if route == "" {
+			if chiCtx := chi.RouteContext(r.Context()); chiCtx != nil {
+				route = chiCtx.RoutePattern()
+			}
+		}
+
+		// 3. Fallback to legacy normalization
+		if route == "" {
+			route = normalizeRoute(r.URL.Path)
+		}
+
+		// Use "unknown" for 404s to prevent cardinality explosion on unmapped paths
 		if rw.statusCode == http.StatusNotFound {
 			route = "unknown"
 		}
 
 		// Record metrics with attributes
-		httpRequestsCounter.Add(context.Background(), 1,
+		httpRequestsCounter.Add(r.Context(), 1,
 			metric.WithAttributes(
 				semconv.HTTPRequestMethodKey.String(method),
 				semconv.HTTPRouteKey.String(route),
 				semconv.HTTPResponseStatusCodeKey.Int(rw.statusCode),
 			),
 		)
-		httpRequestDuration.Record(context.Background(), duration,
+		httpRequestDuration.Record(r.Context(), duration,
 			metric.WithAttributes(
 				semconv.HTTPRequestMethodKey.String(method),
 				semconv.HTTPRouteKey.String(route),

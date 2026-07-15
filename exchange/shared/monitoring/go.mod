@@ -5,6 +5,7 @@ go 1.24.6
 require (
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.20.5
+	github.com/go-chi/chi/v5 v5.2.3
 	go.opentelemetry.io/otel v1.32.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.32.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.54.0

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
 	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 	"github.com/gov-dx-sandbox/exchange/policy-decision-point/internal/config"
 	v1 "github.com/gov-dx-sandbox/exchange/policy-decision-point/v1"
@@ -25,6 +26,17 @@ func main() {
 
 	// Setup logging
 	utils.SetupLogging(cfg.Logging.Format, cfg.Logging.Level)
+
+	// Initialize monitoring/observability (optional - can be disabled via ENABLE_OBSERVABILITY=false)
+	// Services will continue to function normally even if observability is disabled
+	if monitoring.IsObservabilityEnabled() {
+		monitoringConfig := monitoring.DefaultConfig("policy-decision-point")
+		if err := monitoring.Initialize(monitoringConfig); err != nil {
+			slog.Warn("Failed to initialize monitoring (service will continue)", "error", err)
+		}
+	} else {
+		slog.Info("Observability disabled via environment variable")
+	}
 
 	slog.Info("Starting policy decision point",
 		"environment", cfg.Environment,
@@ -70,12 +82,24 @@ func main() {
 		}
 	}()
 
+	// Monitor database connection pool metrics (USE metrics)
+	if monitoring.IsObservabilityEnabled() {
+		if err := monitoring.MonitorDBConnectionPool(v1SqlDB); err != nil {
+			slog.Warn("Failed to monitor database connection pool", "error", err)
+		} else {
+			slog.Info("Database connection pool metrics registered successfully")
+		}
+	}
+
 	// Initialize V1 handlers
 	v1Handler := v1.NewHandler(gormDB)
 
 	// Setup routes
 	mux := http.NewServeMux()
 	v1Handler.SetupRoutes(mux) // V1 routes with /api/v1/policy/ prefix
+
+	// Metrics endpoint
+	mux.Handle("/metrics", monitoring.Handler())
 
 	// Health check endpoint
 	mux.Handle("/health", utils.PanicRecoveryMiddleware(utils.HealthHandler("policy-decision-point")))
@@ -150,6 +174,9 @@ func main() {
 		utils.RespondWithJSON(w, http.StatusOK, debugInfo)
 	})))
 
+	// Wrap with metrics middleware
+	handler := monitoring.HTTPMetricsMiddleware(mux)
+
 	// Create server configuration
 	serverConfig := &utils.ServerConfig{
 		Port:         cfg.Service.Port,
@@ -157,7 +184,7 @@ func main() {
 		WriteTimeout: cfg.Service.Timeout,
 		IdleTimeout:  60 * time.Second,
 	}
-	server := utils.CreateServer(serverConfig, mux)
+	server := utils.CreateServer(serverConfig, handler)
 
 	// Start server with graceful shutdown
 	if err := utils.StartServerWithGracefulShutdown(server, "policy-decision-point"); err != nil {

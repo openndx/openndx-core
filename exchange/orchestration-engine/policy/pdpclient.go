@@ -16,20 +16,25 @@ import (
 type PdpClient struct {
 	httpClient *http.Client
 	baseUrl    string
+	tracker    monitoring.Tracker
 }
 
 // NewPdpClient creates a new instance of PdpClient
-func NewPdpClient(baseUrl string) *PdpClient {
+func NewPdpClient(baseUrl string, tracker monitoring.Tracker) *PdpClient {
+	if tracker == nil {
+		tracker = monitoring.NewNoOpTracker()
+	}
 	return &PdpClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 		baseUrl: baseUrl,
+		tracker: tracker,
 	}
 }
 
 // MakePdpRequest sends a request to get a policy decision
-func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (*PdpResponse, error) {
+func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (pdpResponse *PdpResponse, err error) {
 	// Implement the logic to make a PDP request using p.httpClient
 	requestBody, err := json.Marshal(request)
 	if err != nil {
@@ -55,6 +60,11 @@ func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (*P
 		req.Header.Set("X-Trace-ID", traceID)
 	}
 
+	start := time.Now()
+	defer func() {
+		p.tracker.RecordExternalCall("policy-decision-point", "decide", time.Since(start), err)
+	}()
+
 	response, err := p.httpClient.Do(req)
 	if err != nil {
 		// handle error
@@ -65,21 +75,22 @@ func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (*P
 
 	if response.StatusCode != http.StatusOK {
 		var errorBody bytes.Buffer
-		if _, err := errorBody.ReadFrom(response.Body); err != nil {
-			logger.Log.Error("Failed to read error response body", "error", err)
+		if _, readErr := errorBody.ReadFrom(response.Body); readErr != nil {
+			logger.Log.Error("Failed to read error response body", "error", readErr)
 		}
 		errorMsg := errorBody.String()
 		logger.Log.Error("PDP request failed", "status", response.StatusCode, "response", errorMsg)
-		return nil, fmt.Errorf("PDP request failed, status code: %d, response: %s", response.StatusCode, errorMsg)
+		err = fmt.Errorf("PDP request failed, status code: %d, response: %s", response.StatusCode, errorMsg)
+		return nil, err
 	}
 
-	var pdpResponse PdpResponse
-	err = json.NewDecoder(response.Body).Decode(&pdpResponse)
+	pdpResponse = &PdpResponse{}
+	err = json.NewDecoder(response.Body).Decode(pdpResponse)
 	if err != nil {
 		// handle error
 		logger.Log.Error("Failed to decode PDP response", "error", err)
 		return nil, err
 	}
 
-	return &pdpResponse, nil
+	return pdpResponse, nil
 }
