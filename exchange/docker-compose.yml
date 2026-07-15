@@ -36,8 +36,8 @@ services:
 
   policy-decision-point:
     build:
-      context: ../
-      dockerfile: exchange/policy-decision-point/Dockerfile
+      context: ./policy-decision-point
+      dockerfile: Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
@@ -69,8 +69,8 @@ services:
 
   consent-engine:
     build:
-      context: ../
-      dockerfile: exchange/consent-engine/Dockerfile
+      context: ./consent-engine
+      dockerfile: Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
@@ -107,8 +107,8 @@ services:
 
   orchestration-engine:
     build:
-      context: ../
-      dockerfile: exchange/orchestration-engine/Dockerfile
+      context: ./orchestration-engine
+      dockerfile: Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
         BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
