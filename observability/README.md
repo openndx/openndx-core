@@ -1,4 +1,4 @@
-# Observability Stack for OpenDIF Core
+# Observability Stack for OpenNDX Core
 
 Local development stack: **Go Services** → **OpenTelemetry** → **Prometheus** → **Grafana**
 
@@ -90,7 +90,7 @@ docker compose up -d
 
 **Prerequisites:**
 
-Ensure all Go services are running and connected to the `opendif-network`:
+Ensure all Go services are running and connected to the `openndx-network`:
 - Orchestration Engine (port 4000)
 - Consent Engine (port 8081)
 - Policy Decision Point (port 8082)
@@ -158,7 +158,7 @@ export OTEL_METRICS_EXPORTER=none
 | `OTEL_METRICS_EXPORTER` | Exporter type: `prometheus`, `otlp`, or `none` | `prometheus` | `otlp` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint URL (required for `otlp` exporter) | - | `https://api.datadoghq.com/api/v2/otlp` |
 | `OTEL_EXPORTER_OTLP_HEADERS` | OTLP headers (e.g., API keys). Format: `key1=value1,key2=value2` | - | `DD-API-KEY=xxx,DD-SITE=datadoghq.com` |
-| `SERVICE_NAME` | Service name for metrics | `opendif-service` | `portal-backend` |
+| `SERVICE_NAME` | Service name for metrics | `openndx-service` | `portal-backend` |
 
 **Note:** For Docker Compose deployments, add these environment variables to your `docker-compose.yml`:
 
@@ -384,7 +384,7 @@ Prometheus periodically scrapes each service's `/metrics` endpoint:
 - **Interval**: Every 15 seconds (configurable in `prometheus.yml`)
 - **Method**: HTTP GET request to `http://<service>:<port>/metrics`
 - **Configuration**: Defined in `prometheus/prometheus.yml` as scrape jobs
-- **Network**: Uses Docker network (`opendif-network`) for service discovery
+- **Network**: Uses Docker network (`openndx-network`) for service discovery
 
 Example scrape config:
 ```yaml
@@ -449,17 +449,17 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
            port: 'PORT'
    ```
 
-4. **Ensure service is on `opendif-network`:**
+4. **Ensure service is on `openndx-network`:**
    In your service's `docker-compose.yml`:
    ```yaml
    services:
      your-service:
        networks:
-         - opendif-network
+         - openndx-network
    
    networks:
-     opendif-network:
-       name: opendif-network
+     openndx-network:
+       name: openndx-network
        external: true
    ```
 
@@ -507,7 +507,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
    ```
 
 3. Verify network connectivity:
-   - Ensure all services are on the same `opendif-network`
+   - Ensure all services are on the same `openndx-network`
    - Check service names match Prometheus configuration
 
 ### Grafana Can't Connect to Prometheus
@@ -518,7 +518,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
 
 1. Verify Prometheus is running: `curl http://localhost:9091/-/healthy`
 2. Check datasource URL in `grafana/provisioning/datasources/datasource.yml` (should be `http://prometheus:9090`)
-3. Ensure both containers are on the same Docker network (`opendif-network`)
+3. Ensure both containers are on the same Docker network (`openndx-network`)
 
 ### Network Issues
 
@@ -526,12 +526,12 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
 
 **Solutions:**
 
-1. Verify network exists: `docker network ls | grep opendif-network`
-2. Check service is on network: `docker network inspect opendif-network`
+1. Verify network exists: `docker network ls | grep openndx-network`
+2. Check service is on network: `docker network inspect openndx-network`
 3. Recreate network if needed:
    ```bash
    docker compose down
-   docker network rm opendif-network
+   docker network rm openndx-network
    docker compose up -d
    ```
 

@@ -1,5 +1,5 @@
 name: "🚀 Improvement Request"
-description: "Create new issue in LSFLK/OpenDIF: 🚀 Improvement Request"
+description: "Create new issue in LSFLK/OpenNDX: 🚀 Improvement Request"
 labels: ["Type/Improvement"]
 body:
   - type: textarea

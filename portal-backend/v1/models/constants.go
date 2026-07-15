@@ -4,8 +4,8 @@ package models
 type UserGroup string
 
 const (
-	UserGroupAdmin  UserGroup = "OpenDIF_Admin"
-	UserGroupMember UserGroup = "OpenDIF_Members"
+	UserGroupAdmin  UserGroup = "OpenNDX_Admin"
+	UserGroupMember UserGroup = "OpenNDX_Members"
 )
 
 // Status represents the status of submissions and applications

@@ -90,7 +90,7 @@ function App() {
           <Shield className="h-12 w-12 text-blue-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Portal</h1>
           <p className="text-gray-600 mb-4">
-            Sign in to access the OpenDIF Admin Portal.
+            Sign in to access the OpenNDX Admin Portal.
           </p>
           <button
             onClick={handleSignIn}

@@ -35,7 +35,7 @@ func TestSetupRouter_Health(t *testing.T) {
 	mux.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "OpenDIF Server is Healthy!")
+	assert.Contains(t, w.Body.String(), "OpenNDX Server is Healthy!")
 }
 
 func TestSetupRouter_SDL_Endpoints(t *testing.T) {

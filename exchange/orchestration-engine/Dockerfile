@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copy go mod files first for better layer caching
 COPY go.mod go.sum ./
-# Shared modules (github.com/OpenDIF/opendif-core/...) are now published and
+# Shared modules (github.com/OpenNDX/openndx-core/...) are now published and
 # fetched from the module proxy, so no local shared source needs to be copied.
 RUN go mod download
 

@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide will help you set up your local development environment for contributing to OpenDIF Core.
+This guide will help you set up your local development environment for contributing to OpenNDX Core.
 
 ## Prerequisites
 
@@ -15,13 +15,13 @@ Before you begin, ensure you have the following installed:
 
 1.  **Fork and clone the repository:**
     ```bash
-    git clone https://github.com/YOUR_USERNAME/opendif-mvp.git
-    cd opendif-mvp
+    git clone https://github.com/YOUR_USERNAME/openndx-core.git
+    cd openndx-core
     ```
 
 2.  **Add the upstream remote:**
     ```bash
-    git remote add upstream https://github.com/OpenDIF/opendif-mvp.git
+    git remote add upstream https://github.com/OpenNDX/openndx-core.git
     ```
 
 3.  **Run the setup script:**
@@ -121,7 +121,7 @@ Before submitting a pull request, ensure:
 ## Project Structure
 
 ```
-opendif-mvp/
+openndx-core/
 ├── exchange/              # Go backend services
 │   ├── orchestration-engine/
 │   ├── policy-decision-point/
@@ -138,7 +138,7 @@ opendif-mvp/
 
 ## Getting Help
 
--   Check existing [Issues](https://github.com/OpenDIF/opendif-mvp/issues)
+-   Check existing [Issues](https://github.com/OpenNDX/openndx-core/issues)
 -   Review [Pull Request Guidelines](pull-requests.md)
 -   See [Reporting Issues](reporting-issues.md) for bug reports
 

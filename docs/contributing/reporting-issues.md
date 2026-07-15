@@ -4,7 +4,7 @@ We use GitHub Issues to track bugs, feature requests, and improvements. Your det
 
 ## Before Creating an Issue
 
-1.   **Search existing issues:** Check [open issues](https://github.com/OpenDIF/opendif-mvp/issues) and [closed issues](https://github.com/OpenDIF/opendif-mvp/issues?q=is%3Aissue+is%3Aclosed) to see if your issue has already been reported
+1.   **Search existing issues:** Check [open issues](https://github.com/OpenNDX/openndx-core/issues) and [closed issues](https://github.com/OpenNDX/openndx-core/issues?q=is%3Aissue+is%3Aclosed) to see if your issue has already been reported
 2.   **Check documentation:** Review the README and relevant documentation to see if your question is answered
 3.   **Verify it's a bug:** For behavior questions, ensure it's actually a bug and not expected behavior
 
@@ -130,6 +130,6 @@ We use labels to categorize issues:
 
 ## Security Issues
 
-**Do not** report security vulnerabilities through public GitHub issues. Instead, please contact the maintainers directly or use GitHub's [private vulnerability reporting](https://github.com/OpenDIF/opendif-mvp/security/advisories/new) feature.
+**Do not** report security vulnerabilities through public GitHub issues. Instead, please contact the maintainers directly or use GitHub's [private vulnerability reporting](https://github.com/OpenNDX/openndx-core/security/advisories/new) feature.
 
-[Open a new issue](https://github.com/OpenDIF/opendif-mvp/issues/new)
+[Open a new issue](https://github.com/OpenNDX/openndx-core/issues/new)

@@ -72,6 +72,6 @@ func TestRole_IsValid(t *testing.T) {
 }
 
 func TestRole_String(t *testing.T) {
-	assert.Equal(t, "OpenDIF_Admin", RoleAdmin.String())
-	assert.Equal(t, "OpenDIF_Member", RoleMember.String())
+	assert.Equal(t, "OpenNDX_Admin", RoleAdmin.String())
+	assert.Equal(t, "OpenNDX_Member", RoleMember.String())
 }

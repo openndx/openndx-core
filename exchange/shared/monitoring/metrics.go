@@ -31,7 +31,7 @@ func ensureInitialized() {
 		// Try to get service name from environment or use default
 		serviceName := os.Getenv("SERVICE_NAME")
 		if serviceName == "" {
-			serviceName = "opendif-service"
+			serviceName = "openndx-service"
 		}
 
 		config := DefaultConfig(serviceName)

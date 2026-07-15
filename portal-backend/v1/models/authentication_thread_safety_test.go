@@ -13,7 +13,7 @@ func TestAuthenticatedUser_MemberIDCaching_ThreadSafety(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "threadtest@example.com",
 		IdpUserID: "thread-test-123",
-		Roles:     FlexibleStringSlice{"OpenDIF_Member"},
+		Roles:     FlexibleStringSlice{"OpenNDX_Member"},
 	}
 
 	user, err := NewAuthenticatedUser(claims)
@@ -85,7 +85,7 @@ func TestAuthenticatedUser_MemberIDCaching_BasicFunctionality(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "cachetest@example.com",
 		IdpUserID: "cache-test-123",
-		Roles:     FlexibleStringSlice{"OpenDIF_Member"},
+		Roles:     FlexibleStringSlice{"OpenNDX_Member"},
 	}
 
 	user, err := NewAuthenticatedUser(claims)

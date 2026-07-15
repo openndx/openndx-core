@@ -1,4 +1,4 @@
-# OpenDIF
+# OpenNDX
 
 A comprehensive data exchange platform consisting of multiple microservices and portals for secure data sharing and consent management.
 
@@ -13,8 +13,8 @@ A comprehensive data exchange platform consisting of multiple microservices and 
 
 ### Frontend Portals (React/TypeScript)
 
-- **Member Portal** - Management of `Data sources` or `Applications` by `OpenDIF Members`
-- **Admin Portal** - Administrative dashboard for the `OpenDIF Admins`
+- **Member Portal** - Management of `Data sources` or `Applications` by `OpenNDX Members`
+- **Admin Portal** - Administrative dashboard for the `OpenNDX Admins`
 - **Consent Portal** - Citizen-facing interface for data consent
 
 ### Optional Components
@@ -26,21 +26,21 @@ A comprehensive data exchange platform consisting of multiple microservices and 
 
 ### Prerequisites
 
-Before deploying OpenDIF, you must configure an Identity Provider (IdP) to handle authentication and authorization.
+Before deploying OpenNDX, you must configure an Identity Provider (IdP) to handle authentication and authorization.
 
 1.  **Configure IdP**: Set up an IdP (e.g., Asgardeo, Keycloak, Auth0) to manage users and roles.
 2.  **Create Users**: Create the necessary users in your IdP.
 3.  **Assign Roles**:
-    - Create a role named `opendif-admin`.
-    - Assign this role to users who require administrative access to the OpenDIF Admin Portal.
-    - Ensure other roles (e.g., `opendif-member`) are created and assigned as needed for Member Portal access.
+    - Create a role named `openndx-admin`.
+    - Assign this role to users who require administrative access to the OpenNDX Admin Portal.
+    - Ensure other roles (e.g., `openndx-member`) are created and assigned as needed for Member Portal access.
 
 ### Deployment Steps
 
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/OpenDIF/opendif-core.git
-    cd opendif-core
+    git clone https://github.com/OpenNDX/openndx-core.git
+    cd openndx-core
     ```
 
 2.  **Configure Environment**:
