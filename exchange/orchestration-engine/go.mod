@@ -5,7 +5,7 @@ go 1.24.6
 require (
 	github.com/LSFLK/argus/pkg/audit v0.0.0-20260622104753-c28bd76815b0
 	github.com/MicahParks/keyfunc/v3 v3.7.0
-	github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.0.0-20260702091746-b79410856362
+	github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.1.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
@@ -50,5 +50,3 @@ require (
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/OpenNDX/openndx-core/exchange/shared/monitoring => ../shared/monitoring

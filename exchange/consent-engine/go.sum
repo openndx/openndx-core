@@ -1,3 +1,7 @@
+github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.1.0 h1:eCCWowEV5xrCn+Fl6UyMKnTY9c6GZRiJUAp7rys6ax8=
+github.com/OpenNDX/openndx-core/exchange/shared/monitoring v0.1.0/go.mod h1:VgaYFteogJ2Zsid5pY/Q5qO8yb8mj7ocqoRqxSsb06c=
+github.com/OpenNDX/openndx-core/exchange/shared/utils v0.1.0 h1:1GK7/nLjPU6Rg0hva0cku1cNCzIvsMlUuBhFJnz7LgQ=
+github.com/OpenNDX/openndx-core/exchange/shared/utils v0.1.0/go.mod h1:Bxfg/TNBEhAWXWA0cQkTLUk7i5O6g9xcafS10l9zdA4=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=

@@ -3,7 +3,7 @@ module github.com/gov-dx-sandbox/exchange/policy-decision-point
 go 1.24.6
 
 require (
-	github.com/OpenNDX/openndx-core/exchange/shared/utils v0.0.0-20260702054005-b41f3c6376d8
+	github.com/OpenNDX/openndx-core/exchange/shared/utils v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 	gorm.io/driver/postgres v1.6.0
@@ -28,5 +28,3 @@ require (
 	golang.org/x/text v0.27.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/OpenNDX/openndx-core/exchange/shared/utils => ../shared/utils
