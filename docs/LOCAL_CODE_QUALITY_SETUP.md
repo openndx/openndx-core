@@ -1,10 +1,10 @@
 # Local Code Quality Setup Guide
 
-This guide describes how to set up and run comprehensive code quality checks locally for the OpenNDX MVP project.
+This guide describes how to set up and run comprehensive code quality checks locally for the OpenDIF MVP project.
 
 ## Overview
 
-The OpenNDX MVP project uses a comprehensive code quality system that includes:
+The OpenDIF MVP project uses a comprehensive code quality system that includes:
 
 - **Code Formatting** (gofumpt, goimports)
 - **Linting** (go vet, gofmt, staticcheck)
@@ -39,8 +39,8 @@ All quality checks are orchestrated through a centralized Makefile that automati
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/OpenNDX/openndx-mvp.git
-cd openndx-mvp
+git clone https://github.com/OpenDIF/opendif-mvp.git
+cd opendif-mvp
 ```
 
 ### 2. Install Go Quality Tools

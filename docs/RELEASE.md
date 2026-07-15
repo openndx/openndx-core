@@ -24,7 +24,7 @@ Go to **Actions** → **Release - Build and Publish All Services** → **Run wor
 
 ## Artifacts
 
-All images are published to **ghcr.io/openndx/openndx-core/**:
+All images are published to **ghcr.io/opendif/opendif-core/**:
 
 | Category | Service | Image Name |
 | :--- | :--- | :--- |
@@ -38,5 +38,5 @@ All images are published to **ghcr.io/openndx/openndx-core/**:
 
 ## Verification
 ```bash
-docker pull ghcr.io/openndx/openndx-core/portal-backend:v1.0.0
+docker pull ghcr.io/opendif/opendif-core/portal-backend:v1.0.0
 ```

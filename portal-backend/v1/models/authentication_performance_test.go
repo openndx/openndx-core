@@ -12,7 +12,7 @@ func TestAuthenticatedUser_GetPermissions_Caching(t *testing.T) {
 		FirstName: "Admin",
 		LastName:  "User",
 		IdpUserID: "admin-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Admin"},
+		Roles:     FlexibleStringSlice{"OpenDIF_Admin"},
 		Groups:    []string{"admins"},
 	}
 
@@ -60,7 +60,7 @@ func TestAuthenticatedUser_GetPermissions_Immutability(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "member@example.com",
 		IdpUserID: "member-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Member"},
+		Roles:     FlexibleStringSlice{"OpenDIF_Member"},
 	}
 
 	user, err := NewAuthenticatedUser(claims)
@@ -96,7 +96,7 @@ func TestAuthenticatedUser_MultipleRoles_PermissionMerging(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "multirole@example.com",
 		IdpUserID: "multi-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Member", "OpenNDX_System"},
+		Roles:     FlexibleStringSlice{"OpenDIF_Member", "OpenDIF_System"},
 	}
 
 	user, err := NewAuthenticatedUser(claims)
@@ -176,7 +176,7 @@ func BenchmarkGetPermissions_Cached(b *testing.B) {
 	claims := &UserClaims{
 		Email:     "admin@example.com",
 		IdpUserID: "admin-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Admin"},
+		Roles:     FlexibleStringSlice{"OpenDIF_Admin"},
 	}
 
 	user, err := NewAuthenticatedUser(claims)
@@ -219,7 +219,7 @@ func BenchmarkUserCreation_WithPermissionCaching(b *testing.B) {
 	claims := &UserClaims{
 		Email:     "admin@example.com",
 		IdpUserID: "admin-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Admin"},
+		Roles:     FlexibleStringSlice{"OpenDIF_Admin"},
 	}
 
 	b.ResetTimer()

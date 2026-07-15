@@ -35,7 +35,7 @@ curl -X GET http://localhost:4000/health
 **Result**: **PASSED**
 ```json
 {
-  "message": "OpenNDX Server is Healthy!"
+  "message": "OpenDIF Server is Healthy!"
 }
 ```
 

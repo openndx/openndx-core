@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
-	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
+	"github.com/OpenDIF/opendif-core/exchange/shared/monitoring"
+	"github.com/OpenDIF/opendif-core/exchange/shared/utils"
 	"github.com/gov-dx-sandbox/exchange/consent-engine/internal/config"
 
 	// V1 API imports

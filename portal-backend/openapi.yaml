@@ -10,9 +10,9 @@ info:
     
     ## Authorization  
     The API implements role-based access control (RBAC) with the following roles:
-    - **OpenNDX_Admin**: Full system access and management capabilities
-    - **OpenNDX_Member**: Standard user access to own resources only
-    - **OpenNDX_System**: System-level operations with read access
+    - **OpenDIF_Admin**: Full system access and management capabilities
+    - **OpenDIF_Member**: Standard user access to own resources only
+    - **OpenDIF_System**: System-level operations with read access
     
     ## Features
     - JWT authentication with Asgardeo integration
@@ -25,7 +25,7 @@ info:
     with enterprise-grade security and performance optimizations.
   version: 1.0.0
   contact:
-    name: OpenNDX Team
+    name: OpenDIF Team
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT

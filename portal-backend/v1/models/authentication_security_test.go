@@ -47,7 +47,7 @@ func TestNewAuthenticatedUser_ValidRoles(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "validroles@example.com",
 		IdpUserID: "validroles-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Member"}, // Valid role
+		Roles:     FlexibleStringSlice{"OpenDIF_Member"}, // Valid role
 	}
 
 	user, err := NewAuthenticatedUser(claims)
@@ -73,7 +73,7 @@ func TestNewAuthenticatedUser_MixedRoles(t *testing.T) {
 	claims := &UserClaims{
 		Email:     "mixedroles@example.com",
 		IdpUserID: "mixedroles-123",
-		Roles:     FlexibleStringSlice{"OpenNDX_Admin", "InvalidRole", "OpenNDX_Member"}, // Mixed roles
+		Roles:     FlexibleStringSlice{"OpenDIF_Admin", "InvalidRole", "OpenDIF_Member"}, // Mixed roles
 	}
 
 	user, err := NewAuthenticatedUser(claims)
