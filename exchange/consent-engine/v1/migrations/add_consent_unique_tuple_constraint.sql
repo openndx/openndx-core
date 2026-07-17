@@ -27,9 +27,10 @@ CREATE TABLE IF NOT EXISTS consent_records (
 );
 
 -- Create partial unique index for active consents (pending or approved)
--- This enforces that only one active consent can exist per (owner_id, app_id)
+-- status is intentionally kept only in the WHERE filter (not the key columns),
+-- so at most one active consent (pending OR approved) can exist per (owner_id, app_id).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_consent_active_unique
-    ON consent_records(owner_id, app_id, status)
+    ON consent_records(owner_id, app_id)
     WHERE status IN ('pending', 'approved');
 
 -- Create indexes for better query performance

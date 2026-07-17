@@ -25,8 +25,10 @@ type ConsentRecord struct {
 	// AppName is the name of the consumer application
 	AppName *string `gorm:"column:app_name;type:varchar(255);" json:"app_name,omitempty"`
 	// Status is the status of the consent record: pending, approved, rejected, expired, revoked
-	// Part of conditional unique constraint for active consents (pending/approved)
-	Status string `gorm:"column:status;type:varchar(50);not null;index:idx_consent_records_status;uniqueIndex:idx_consent_active_unique,where:status = 'pending' OR status = 'approved'" json:"status"`
+	// Filters the conditional unique constraint (via its WHERE clause) but is
+	// deliberately NOT part of the index key, so a single (owner_id, app_id) can
+	// have at most one active (pending OR approved) consent.
+	Status string `gorm:"column:status;type:varchar(50);not null;index:idx_consent_records_status" json:"status"`
 	// Type is the type of consent mechanism "realtime" or "offline"
 	Type string `gorm:"column:type;type:varchar(50);not null" json:"type"`
 	// CreatedAt is the timestamp when the consent record was created

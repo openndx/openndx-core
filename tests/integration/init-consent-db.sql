@@ -28,4 +28,6 @@ CREATE INDEX IF NOT EXISTS idx_consent_records_grant_expires_at ON consent_recor
 CREATE INDEX IF NOT EXISTS idx_consent_records_owner_app ON consent_records (owner_id, app_id);
 
 -- Create partial unique index for active consents
-CREATE UNIQUE INDEX IF NOT EXISTS idx_consent_active_unique ON consent_records (owner_id, app_id, status) WHERE status IN ('pending', 'approved');
+-- status is kept only in the WHERE filter (not the key) so at most one active
+-- consent (pending OR approved) can exist per (owner_id, app_id).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_consent_active_unique ON consent_records (owner_id, app_id) WHERE status IN ('pending', 'approved');
