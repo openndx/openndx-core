@@ -26,10 +26,9 @@ type ConsentField struct {
 }
 
 type ConsentRequirement struct {
-	Owner      string         `json:"owner"`
-	OwnerID    string         `json:"ownerId"`
-	OwnerEmail string         `json:"ownerEmail"`
-	Fields     []ConsentField `json:"fields"`
+	Owner   string         `json:"owner"`
+	OwnerID string         `json:"ownerId"`
+	Fields  []ConsentField `json:"fields"`
 }
 
 type CreateConsentRequest struct {
@@ -81,9 +80,8 @@ func TestConsent_CreateAndRetrieve(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: fieldName,
@@ -146,10 +144,9 @@ func TestConsent_InvalidRequest(t *testing.T) {
 			request: func() []byte {
 				req := map[string]interface{}{
 					"consentRequirement": map[string]interface{}{
-						"owner":      "citizen",
-						"ownerId":    "test-owner",
-						"ownerEmail": "test@example.com",
-						"fields":     []map[string]interface{}{},
+						"owner":   "citizen",
+						"ownerId": "test-owner",
+						"fields":  []map[string]interface{}{},
 					},
 				}
 				body, _ := json.Marshal(req)
@@ -174,9 +171,8 @@ func TestConsent_InvalidRequest(t *testing.T) {
 				req := map[string]interface{}{
 					"appId": "test-app",
 					"consentRequirement": map[string]interface{}{
-						"owner":      "citizen",
-						"ownerEmail": "test@example.com",
-						"fields":     []map[string]interface{}{},
+						"owner":  "citizen",
+						"fields": []map[string]interface{}{},
 					},
 				}
 				body, _ := json.Marshal(req)
@@ -190,10 +186,9 @@ func TestConsent_InvalidRequest(t *testing.T) {
 				req := CreateConsentRequest{
 					AppID: "test-app",
 					ConsentRequirement: ConsentRequirement{
-						Owner:      "citizen",
-						OwnerID:    "test-owner",
-						OwnerEmail: "test@example.com",
-						Fields:     []ConsentField{},
+						Owner:   "citizen",
+						OwnerID: "test-owner",
+						Fields:  []ConsentField{},
 					},
 				}
 				body, _ := json.Marshal(req)
@@ -226,9 +221,8 @@ func TestConsent_GetByConsumer(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",
@@ -285,9 +279,8 @@ func TestConsent_StatusUpdate(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",
@@ -354,9 +347,8 @@ func TestConsent_DatabaseVerification(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",
@@ -397,60 +389,21 @@ func TestConsent_DatabaseVerification(t *testing.T) {
 	})
 }
 
-// TestConsent_GetByOwnerEmail tests retrieving consent by owner email
-func TestConsent_GetByOwnerEmail(t *testing.T) {
+// TestConsent_GetByOwnerEmailNoLongerSupported verifies that lookups by the
+// removed ownerEmail query parameter are rejected: a user is identified only by
+// the canonical ownerId (UID), so ownerEmail alone no longer satisfies the
+// required owner identifier.
+func TestConsent_GetByOwnerEmailNoLongerSupported(t *testing.T) {
 	appID := "test-app-email-1"
-	ownerID := "test-owner-email-1"
-	ownerEmail := ownerID + "@example.com"
+	ownerEmail := "test-owner-email-1@example.com"
 
-	// Create consent
-	createReq := CreateConsentRequest{
-		AppID: appID,
-		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerEmail,
-			Fields: []ConsentField{
-				{
-					FieldName: "personInfo.name",
-					SchemaID:  "test-schema-123",
-				},
-			},
-		},
-	}
-
-	reqBody, err := json.Marshal(createReq)
-	require.NoError(t, err)
-
-	resp, err := http.Post(consentBaseURL+"/internal/api/v1/consents", "application/json", bytes.NewBuffer(reqBody))
+	// The ownerEmail parameter is no longer recognized; without ownerId the
+	// request is missing its required owner identifier and must return 400.
+	resp, err := http.Get(consentBaseURL + "/internal/api/v1/consents?ownerEmail=" + url.QueryEscape(ownerEmail) + "&appId=" + appID)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-
-	var createResponse CreateConsentResponse
-	err = json.NewDecoder(resp.Body).Decode(&createResponse)
-	require.NoError(t, err)
-
-	consentID := createResponse.ConsentID
-	require.NotEmpty(t, consentID)
-
-	// Cleanup
-	t.Cleanup(func() {
-		testutils.CleanupConsentRecord(t, consentID)
-	})
-
-	// Retrieve by owner email
-	resp, err = http.Get(consentBaseURL + "/internal/api/v1/consents?ownerEmail=" + url.QueryEscape(ownerEmail) + "&appId=" + appID)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Should return 200 OK")
-
-	var retrievedConsent CreateConsentResponse
-	err = json.NewDecoder(resp.Body).Decode(&retrievedConsent)
-	require.NoError(t, err)
-	assert.Equal(t, consentID, retrievedConsent.ConsentID, "Retrieved consent ID should match created consent")
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "ownerEmail lookups should return 400 Bad Request")
 }
 
 // TestConsent_MultipleFields tests creating consent with multiple fields
@@ -462,9 +415,8 @@ func TestConsent_MultipleFields(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",
@@ -530,9 +482,9 @@ func TestConsent_MissingAppId(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Should return 400 Bad Request for missing appId")
 }
 
-// TestConsent_MissingOwnerIdentifier tests GET request without ownerEmail or ownerId
+// TestConsent_MissingOwnerIdentifier tests GET request without ownerId
 func TestConsent_MissingOwnerIdentifier(t *testing.T) {
-	// Try to retrieve consent without ownerEmail or ownerId (required parameter)
+	// Try to retrieve consent without ownerId (required parameter)
 	resp, err := http.Get(consentBaseURL + "/internal/api/v1/consents?appId=test-app")
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -548,9 +500,8 @@ func TestConsent_DuplicateCreation(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",
@@ -616,9 +567,8 @@ func TestConsent_DifferentSchemas(t *testing.T) {
 	createReq := CreateConsentRequest{
 		AppID: appID,
 		ConsentRequirement: ConsentRequirement{
-			Owner:      "citizen",
-			OwnerID:    ownerID,
-			OwnerEmail: ownerID + "@example.com",
+			Owner:   "citizen",
+			OwnerID: ownerID,
 			Fields: []ConsentField{
 				{
 					FieldName: "personInfo.name",

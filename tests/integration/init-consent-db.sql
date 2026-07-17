@@ -2,7 +2,6 @@
 CREATE TABLE IF NOT EXISTS consent_records (
     consent_id uuid DEFAULT gen_random_uuid(),
     owner_id varchar(255) NOT NULL,
-    owner_email varchar(255) NOT NULL,
     app_id varchar(255) NOT NULL,
     app_name varchar(255),
     status varchar(50) NOT NULL,
@@ -21,7 +20,6 @@ CREATE TABLE IF NOT EXISTS consent_records (
 
 -- Create indices
 CREATE INDEX IF NOT EXISTS idx_consent_records_owner_id ON consent_records (owner_id);
-CREATE INDEX IF NOT EXISTS idx_consent_records_owner_email ON consent_records (owner_email);
 CREATE INDEX IF NOT EXISTS idx_consent_records_app_id ON consent_records (app_id);
 CREATE INDEX IF NOT EXISTS idx_consent_records_status ON consent_records (status);
 CREATE INDEX IF NOT EXISTS idx_consent_records_created_at ON consent_records (created_at);
@@ -30,4 +28,4 @@ CREATE INDEX IF NOT EXISTS idx_consent_records_grant_expires_at ON consent_recor
 CREATE INDEX IF NOT EXISTS idx_consent_records_owner_app ON consent_records (owner_id, app_id);
 
 -- Create partial unique index for active consents
-CREATE UNIQUE INDEX IF NOT EXISTS idx_consent_active_unique ON consent_records (owner_id, owner_email, app_id, status) WHERE status IN ('pending', 'approved');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_consent_active_unique ON consent_records (owner_id, app_id, status) WHERE status IN ('pending', 'approved');

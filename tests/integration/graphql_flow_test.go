@@ -371,13 +371,11 @@ func updatePDPAllowlist(t *testing.T, appID, schemaID, fieldName string) {
 
 // createConsent creates a consent record in the Consent Engine and returns the consent ID.
 func createConsent(t *testing.T, appID, schemaID, fieldName, ownerID string) string {
-	// Use testEmail for ownerEmail (required by V1 API)
 	consentReq := map[string]interface{}{
 		"appId": appID,
 		"consentRequirement": map[string]interface{}{
-			"owner":      "citizen",
-			"ownerId":    ownerID,
-			"ownerEmail": testEmail,
+			"owner":   "citizen",
+			"ownerId": ownerID,
 			"fields": []map[string]interface{}{
 				{
 					"fieldName": fieldName,
@@ -423,30 +421,30 @@ func createConsent(t *testing.T, appID, schemaID, fieldName, ownerID string) str
 }
 
 // approveConsent attempts to approve a consent record using PUT /api/v1/consents/{consentId} endpoint.
-// Requires JWT authentication with email claim matching the consent owner_email.
+// Requires JWT authentication with the subject claim matching the consent owner_id.
 // Note: The JWT verifier requires RSA-signed tokens. This function uses unsigned tokens for testing,
 // which will fail in environments where RSA-signed tokens are required. The function logs a warning
 // and returns without failing the test, as the test can proceed without explicit approval.
 func approveConsent(t *testing.T, consentID string) {
-	// Get the consent from DB to retrieve owner_email for JWT token
+	// Get the consent from DB to retrieve owner_id for the JWT subject
 	// (Internal API doesn't support getting by consentId directly)
 	db := getConsentDB(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	defer sqlDB.Close()
 
-	var ownerEmail string
-	err = db.Raw("SELECT owner_email FROM consent_records WHERE consent_id = ?", consentID).Scan(&ownerEmail).Error
-	require.NoError(t, err, "Failed to get consent owner_email from DB")
-	require.NotEmpty(t, ownerEmail, "Consent must have owner_email")
+	var ownerID string
+	err = db.Raw("SELECT owner_id FROM consent_records WHERE consent_id = ?", consentID).Scan(&ownerID).Error
+	require.NoError(t, err, "Failed to get consent owner_id from DB")
+	require.NotEmpty(t, ownerID, "Consent must have owner_id")
 
-	// Create JWT token with email claim matching the consent owner_email
+	// Create JWT token with the subject (sub) claim matching the consent owner_id
 	// Note: The JWT verifier requires RSA signing, but in test environments unsigned tokens
 	// may be accepted if the consent engine is configured appropriately
 	claims := jwt.MapClaims{
-		"email": ownerEmail,
-		"iss":   "https://accounts.google.com", // Required by JWT verifier
-		"aud":   "test-audience",               // Required by JWT verifier
+		"sub": ownerID,
+		"iss": "https://accounts.google.com", // Required by JWT verifier
+		"aud": "test-audience",               // Required by JWT verifier
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodNone, claims)
 	tokenString, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
@@ -566,13 +564,11 @@ func TestGraphQLFlow_SuccessPath(t *testing.T) {
 					}
 				}
 			}
-			// Check if error is CE_ERROR - this might indicate OE/CE API format mismatch
-			// OE uses old format (ConsentRequirement with OwnerEmail) but CE might expect new format
+			// Check if error is CE_ERROR - this might indicate an OE/CE API mismatch
 			firstError := errors[0].(map[string]interface{})
 			if ext, ok := firstError["extensions"].(map[string]interface{}); ok {
 				if code, ok := ext["code"].(string); ok && code == "CE_ERROR" {
-					t.Logf("WARNING: CE_ERROR detected. This may indicate OE/CE API format mismatch.")
-					t.Logf("OE uses old format (ConsentRequirement with OwnerEmail), CE may expect new format.")
+					t.Logf("WARNING: CE_ERROR detected. This may indicate an OE/CE API mismatch.")
 					// Don't fail the test - this is a known issue that needs OE code update
 					return
 				}
