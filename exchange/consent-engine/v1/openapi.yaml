@@ -75,7 +75,7 @@ paths:
         
         **Authorization:** Requires Bearer Token
         
-        **Ownership Verification:** The consent owner_email must match the email from the decoded token.
+        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
       operationId: getConsent
       tags:
         - External
@@ -155,7 +155,7 @@ paths:
         
         **Authorization:** Requires Bearer Token
         
-        **Ownership Verification:** The consent owner_email must match the email from the decoded token.
+        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
         
         **Valid Actions:**
         - `approve` - Approve the consent request
@@ -321,30 +321,22 @@ paths:
     get:
       summary: Get Consent by Owner and App
       description: |
-        Retrieves consent information by owner email/ID and application ID.
-        
+        Retrieves consent information by owner ID (the canonical UID) and application ID.
+
         **Query Parameters:**
-        - Either `ownerEmail` OR `ownerId` must be provided (not both)
+        - `ownerId` is required
         - `appId` is required
-        
+
         **Response:** Returns a simplified internal view of the consent record.
       operationId: getConsentInternal
       tags:
         - Internal
       security: []
       parameters:
-        - name: ownerEmail
-          in: query
-          required: false
-          description: The email address of the consent owner
-          schema:
-            type: string
-            format: email
-          example: "user@example.com"
         - name: ownerId
           in: query
-          required: false
-          description: The unique identifier of the consent owner
+          required: true
+          description: The canonical unique identifier (UID) of the consent owner
           schema:
             type: string
           example: "user123"
@@ -380,7 +372,7 @@ paths:
                   value:
                     error:
                       code: "BAD_REQUEST"
-                      message: "either ownerEmail or ownerId is required"
+                      message: "ownerId is required"
         '404':
           description: Consent not found
           content:
@@ -552,13 +544,8 @@ components:
           example: "citizen"
         ownerId:
           type: string
-          description: The unique identifier for the data owner
+          description: The canonical unique identifier (UID) for the data owner
           example: "user123"
-        ownerEmail:
-          type: string
-          format: email
-          description: The email address of the data owner
-          example: "user@example.com"
         fields:
           type: array
           description: List of fields requiring consent
@@ -567,7 +554,6 @@ components:
       required:
         - owner
         - ownerId
-        - ownerEmail
         - fields
 
     CreateConsentRequest:
@@ -616,7 +602,6 @@ components:
         consentRequirement:
           owner: "citizen"
           ownerId: "user123"
-          ownerEmail: "user@example.com"
           fields:
             - fieldName: "personInfo.name"
               schemaId: "schema-001"
@@ -686,13 +671,8 @@ components:
           example: "Passport Application"
         ownerId:
           type: string
-          description: The unique identifier of the data owner
+          description: The canonical unique identifier (UID) of the data owner
           example: "user123"
-        ownerEmail:
-          type: string
-          format: email
-          description: The email address of the data owner
-          example: "user@example.com"
         status:
           type: string
           enum: [pending, approved, rejected, expired, revoked]
@@ -721,7 +701,6 @@ components:
       required:
         - appId
         - ownerId
-        - ownerEmail
         - status
         - type
         - createdAt
@@ -731,7 +710,6 @@ components:
         appId: "app-12345"
         appName: "Passport Application"
         ownerId: "user123"
-        ownerEmail: "user@example.com"
         status: "pending"
         type: "realtime"
         createdAt: "2023-12-09T10:30:00Z"
