@@ -41,7 +41,7 @@ func (h *PortalHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 // GetConsent handles GET /api/v1/consents/:consentId
 // Authorization: Bearer Token
-// Verifies that consent.owner_email matches the email from the decoded token
+// Verifies that consent.owner_id matches the subject (UID) from the decoded token
 func (h *PortalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, models.ErrorCodeMethodNotAllowed, "Method not allowed")
@@ -61,10 +61,10 @@ func (h *PortalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract email from request context (set by auth middleware)
-	userEmail, ok := middleware.GetUserEmailFromContext(r.Context())
+	// Extract owner subject (UID) from request context (set by auth middleware)
+	ownerSubject, ok := middleware.GetOwnerSubjectFromContext(r.Context())
 	if !ok {
-		utils.RespondWithError(w, http.StatusUnauthorized, models.ErrorCodeUnauthorized, "User email not found in token")
+		utils.RespondWithError(w, http.StatusUnauthorized, models.ErrorCodeUnauthorized, "Owner identifier not found in token")
 		return
 	}
 
@@ -86,8 +86,8 @@ func (h *PortalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify that the consent owner email matches the authenticated user email
-	if consent.OwnerEmail != userEmail {
+	// Verify that the consent owner matches the authenticated user's subject (UID)
+	if consent.OwnerID != ownerSubject {
 		utils.RespondWithError(w, http.StatusForbidden, models.ErrorCodeForbidden, "Access denied: consent belongs to a different user")
 		return
 	}
@@ -97,7 +97,7 @@ func (h *PortalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 
 // UpdateConsent handles PUT /api/v1/consents/:consentId
 // Authorization: Bearer Token
-// Verifies that consent.owner_email matches the email from the decoded token
+// Verifies that consent.owner_id matches the subject (UID) from the decoded token
 // Body: { "action": "approve" | "reject" }
 func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
@@ -118,10 +118,10 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract email from request context (set by auth middleware)
-	userEmail, ok := middleware.GetUserEmailFromContext(r.Context())
+	// Extract owner subject (UID) from request context (set by auth middleware)
+	ownerSubject, ok := middleware.GetOwnerSubjectFromContext(r.Context())
 	if !ok {
-		utils.RespondWithError(w, http.StatusUnauthorized, models.ErrorCodeUnauthorized, "User email not found in token")
+		utils.RespondWithError(w, http.StatusUnauthorized, models.ErrorCodeUnauthorized, "Owner identifier not found in token")
 		return
 	}
 
@@ -159,8 +159,8 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify that the consent owner email matches the authenticated user email
-	if consent.OwnerEmail != userEmail {
+	// Verify that the consent owner matches the authenticated user's subject (UID)
+	if consent.OwnerID != ownerSubject {
 		utils.RespondWithError(w, http.StatusForbidden, models.ErrorCodeForbidden, "Access denied: consent belongs to a different user")
 		return
 	}
@@ -169,7 +169,7 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 	updateReq := models.ConsentPortalActionRequest{
 		ConsentID: consentID,
 		Action:    models.ConsentPortalAction(actionReq.Action),
-		UpdatedBy: userEmail,
+		UpdatedBy: ownerSubject,
 	}
 
 	if err := h.consentService.UpdateConsentStatusByPortalAction(r.Context(), updateReq); err != nil {

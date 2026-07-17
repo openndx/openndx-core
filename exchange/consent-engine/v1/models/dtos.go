@@ -25,10 +25,9 @@ func (a ConsentField) Equals(b ConsentField) bool {
 
 // ConsentRequirement represents a consent requirement for a specific owner
 type ConsentRequirement struct {
-	Owner      OwnerType      `json:"owner"`
-	OwnerID    string         `json:"ownerId"`
-	OwnerEmail string         `json:"ownerEmail"`
-	Fields     []ConsentField `json:"fields"`
+	Owner   OwnerType      `json:"owner"`
+	OwnerID string         `json:"ownerId"`
+	Fields  []ConsentField `json:"fields"`
 }
 
 // CreateConsentRequest defines the structure for creating a consent record
@@ -59,15 +58,14 @@ type ConsentResponseInternalView struct {
 // ConsentResponsePortalView represents the user-facing consent object for the UI.
 // Uses rich field information for better UX in the consent portal
 type ConsentResponsePortalView struct {
-	AppID      string         `json:"appId"`
-	AppName    *string        `json:"appName"`
-	OwnerID    string         `json:"ownerId"`
-	OwnerEmail string         `json:"ownerEmail"`
-	Status     ConsentStatus  `json:"status"`
-	Type       ConsentType    `json:"type"`
-	CreatedAt  time.Time      `json:"createdAt"`
-	UpdatedAt  time.Time      `json:"updatedAt"`
-	Fields     []ConsentField `json:"fields"` // Rich field information with display names and descriptions
+	AppID     string         `json:"appId"`
+	AppName   *string        `json:"appName"`
+	OwnerID   string         `json:"ownerId"`
+	Status    ConsentStatus  `json:"status"`
+	Type      ConsentType    `json:"type"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	Fields    []ConsentField `json:"fields"` // Rich field information with display names and descriptions
 }
 
 // ToConsentResponseInternalView converts a ConsentRecord to a simplified ConsentResponseInternalView.
@@ -96,14 +94,13 @@ func (cr *ConsentRecord) ToConsentResponseInternalView() ConsentResponseInternal
 // Returns rich field information including display names and descriptions for better UX
 func (cr *ConsentRecord) ToConsentResponsePortalView() ConsentResponsePortalView {
 	return ConsentResponsePortalView{
-		AppID:      cr.AppID,
-		AppName:    cr.AppName,
-		OwnerID:    cr.OwnerID,
-		OwnerEmail: cr.OwnerEmail,
-		Status:     ConsentStatus(cr.Status),
-		Type:       ConsentType(cr.Type),
-		CreatedAt:  cr.CreatedAt,
-		UpdatedAt:  cr.UpdatedAt,
-		Fields:     cr.Fields, // Now includes DisplayName, Description, and Owner for rich UI rendering
+		AppID:     cr.AppID,
+		AppName:   cr.AppName,
+		OwnerID:   cr.OwnerID,
+		Status:    ConsentStatus(cr.Status),
+		Type:      ConsentType(cr.Type),
+		CreatedAt: cr.CreatedAt,
+		UpdatedAt: cr.UpdatedAt,
+		Fields:    cr.Fields, // Now includes DisplayName, Description, and Owner for rich UI rendering
 	}
 }

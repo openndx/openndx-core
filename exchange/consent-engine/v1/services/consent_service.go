@@ -37,8 +37,8 @@ func (s *ConsentService) CreateConsentRecord(ctx context.Context, req models.Cre
 		return nil, fmt.Errorf("%w: %w", models.ErrConsentCreateFailed, err)
 	}
 
-	// First Check if a pending or approved consent already exists for the same (ownerID/ownerEmail, appID)
-	existingConsent, err := s.GetConsentInternalView(ctx, nil, &req.ConsentRequirement.OwnerID, &req.ConsentRequirement.OwnerEmail, &req.AppID)
+	// First Check if a pending or approved consent already exists for the same (ownerID, appID)
+	existingConsent, err := s.GetConsentInternalView(ctx, nil, &req.ConsentRequirement.OwnerID, &req.AppID)
 	if err == nil {
 		// An existing consent was found
 		if existingConsent.Status == string(models.StatusPending) || existingConsent.Status == string(models.StatusApproved) {
@@ -148,7 +148,6 @@ func (s *ConsentService) buildConsentRecord(req models.CreateConsentRequest) (*m
 	return &models.ConsentRecord{
 		ConsentID:        consentID,
 		OwnerID:          req.ConsentRequirement.OwnerID,
-		OwnerEmail:       req.ConsentRequirement.OwnerEmail,
 		AppID:            req.AppID,
 		AppName:          req.AppName,
 		Status:           string(models.StatusPending),
@@ -170,8 +169,8 @@ func getGrantDurationOrDefault(grantDuration *models.GrantDuration) models.Grant
 	return *grantDuration
 }
 
-// GetConsentInternalView retrieves a consent record by ID or by ((ownerID OR ownerEmail) AND appID) and returns its internal view
-func (s *ConsentService) GetConsentInternalView(ctx context.Context, consentID *string, ownerID *string, ownerEmail *string, appID *string) (*models.ConsentResponseInternalView, error) {
+// GetConsentInternalView retrieves a consent record by ID or by (ownerID AND appID) and returns its internal view
+func (s *ConsentService) GetConsentInternalView(ctx context.Context, consentID *string, ownerID *string, appID *string) (*models.ConsentResponseInternalView, error) {
 	var consentRecord models.ConsentRecord
 	query := s.db.WithContext(ctx).Model(&models.ConsentRecord{})
 
@@ -182,17 +181,12 @@ func (s *ConsentService) GetConsentInternalView(ctx context.Context, consentID *
 		}
 		query = query.Where("consent_id = ?", parsedConsentID)
 	} else if ownerID != nil && appID != nil {
-		// OwnerID gets priority over OwnerEmail if both are provided
 		query = query.Where("owner_id = ? AND app_id = ?", *ownerID, *appID)
-	} else if ownerEmail != nil && appID != nil {
-		// NOTE: This query on (owner_email, app_id) does not benefit from a composite index.
-		// If this query pattern is common or the table is large, consider adding a composite index on (owner_email, app_id)
-		query = query.Where("owner_email = ? AND app_id = ?", *ownerEmail, *appID)
 	} else {
-		return nil, fmt.Errorf("%w: either consentID or (ownerID/ownerEmail and appID) must be provided", models.ErrConsentGetFailed)
+		return nil, fmt.Errorf("%w: either consentID or (ownerID and appID) must be provided", models.ErrConsentGetFailed)
 	}
 
-	// There is a possibility of multiple records for (ownerID/ownerEmail, appID) if previous consents exist.
+	// There is a possibility of multiple records for (ownerID, appID) if previous consents exist.
 	// We fetch the latest one based on CreatedAt timestamp.
 	// We can safely assume CreatedAt is unique for active consents due to the conditional unique constraint.
 	query = query.Order("created_at DESC").Limit(1)
@@ -386,9 +380,6 @@ func validateCreateConsentRequest(req models.CreateConsentRequest) error {
 
 	if req.ConsentRequirement.OwnerID == "" {
 		return fmt.Errorf("consentRequirement.ownerId is required")
-	}
-	if req.ConsentRequirement.OwnerEmail == "" {
-		return fmt.Errorf("consentRequirement.ownerEmail is required")
 	}
 	if len(req.ConsentRequirement.Fields) == 0 {
 		return fmt.Errorf("consentRequirement.fields cannot be empty")

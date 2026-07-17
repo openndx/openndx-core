@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// setUserEmailInContext is a test helper to set user email in context
-// Uses the same context key as middleware.auth.go (userEmailKey = "userEmail")
-func setUserEmailInContext(ctx context.Context, email string) context.Context {
+// setOwnerSubjectInContext is a test helper to set the owner subject (UID) in context
+// Uses the same context key as middleware.auth.go (ownerSubjectKey = "ownerSubject")
+func setOwnerSubjectInContext(ctx context.Context, subject string) context.Context {
 	type contextKey string
-	const userEmailKey contextKey = "userEmail"
-	return context.WithValue(ctx, userEmailKey, email)
+	const ownerSubjectKey contextKey = "ownerSubject"
+	return context.WithValue(ctx, ownerSubjectKey, subject)
 }
 
 func TestPortalHandler_HealthCheck(t *testing.T) {
@@ -61,7 +61,7 @@ func TestPortalHandler_GetConsent_InvalidUUID(t *testing.T) {
 	handler := &PortalHandler{consentService: nil}
 
 	req := httptest.NewRequest("GET", "/api/v1/consents/invalid-uuid", nil)
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.GetConsent(w, req)
@@ -73,7 +73,7 @@ func TestPortalHandler_UpdateConsent_InvalidUUID(t *testing.T) {
 	handler := &PortalHandler{consentService: nil}
 
 	req := httptest.NewRequest("PUT", "/api/v1/consents/invalid-uuid", nil)
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.UpdateConsent(w, req)
@@ -89,7 +89,7 @@ func TestPortalHandler_UpdateConsent_InvalidAction(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("PUT", "/api/v1/consents/"+consentID, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.UpdateConsent(w, req)
@@ -102,7 +102,7 @@ func TestPortalHandler_UpdateConsent_MethodNotAllowed(t *testing.T) {
 
 	consentID := uuid.New().String()
 	req := httptest.NewRequest("GET", "/api/v1/consents/"+consentID, nil)
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.UpdateConsent(w, req)
@@ -121,7 +121,7 @@ func TestPortalHandler_UpdateConsent_RejectAction(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("PUT", "/api/v1/consents/"+consentID, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	// PathValue requires registered route, so this tests validation up to that point
@@ -137,7 +137,7 @@ func TestPortalHandler_UpdateConsent_InvalidBody(t *testing.T) {
 	consentID := uuid.New().String()
 	req := httptest.NewRequest("PUT", "/api/v1/consents/"+consentID, bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.UpdateConsent(w, req)
@@ -149,7 +149,7 @@ func TestPortalHandler_UpdateConsent_MissingConsentId(t *testing.T) {
 	handler := &PortalHandler{consentService: nil}
 
 	req := httptest.NewRequest("PUT", "/api/v1/consents/", nil)
-	req = req.WithContext(setUserEmailInContext(req.Context(), "user@example.com"))
+	req = req.WithContext(setOwnerSubjectInContext(req.Context(), "user-123"))
 	w := httptest.NewRecorder()
 
 	handler.UpdateConsent(w, req)

@@ -147,16 +147,15 @@ func TestConsentRecord_ToConsentResponseInternalView_PendingNoURL(t *testing.T) 
 func TestConsentRecord_ToConsentResponsePortalView(t *testing.T) {
 	appName := "Test App"
 	record := ConsentRecord{
-		ConsentID:  uuid.New(),
-		AppID:      "app-123",
-		AppName:    &appName,
-		OwnerID:    "owner-123",
-		OwnerEmail: "owner@example.com",
-		Status:     string(StatusApproved),
-		Type:       string(TypeRealtime),
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		Fields:     []ConsentField{{FieldName: "email", SchemaID: "schema-1", Owner: OwnerCitizen}},
+		ConsentID: uuid.New(),
+		AppID:     "app-123",
+		AppName:   &appName,
+		OwnerID:   "owner-123",
+		Status:    string(StatusApproved),
+		Type:      string(TypeRealtime),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Fields:    []ConsentField{{FieldName: "email", SchemaID: "schema-1", Owner: OwnerCitizen}},
 	}
 
 	response := record.ToConsentResponsePortalView()
@@ -165,7 +164,6 @@ func TestConsentRecord_ToConsentResponsePortalView(t *testing.T) {
 	assert.NotNil(t, response.AppName)
 	assert.Equal(t, appName, *response.AppName)
 	assert.Equal(t, record.OwnerID, response.OwnerID)
-	assert.Equal(t, record.OwnerEmail, response.OwnerEmail)
 	assert.Equal(t, ConsentStatus(record.Status), response.Status)
 	assert.Equal(t, ConsentType(record.Type), response.Type)
 	assert.Equal(t, record.CreatedAt, response.CreatedAt)
@@ -175,16 +173,15 @@ func TestConsentRecord_ToConsentResponsePortalView(t *testing.T) {
 
 func TestConsentRecord_ToConsentResponsePortalView_NoAppName(t *testing.T) {
 	record := ConsentRecord{
-		ConsentID:  uuid.New(),
-		AppID:      "app-123",
-		AppName:    nil,
-		OwnerID:    "owner-123",
-		OwnerEmail: "owner@example.com",
-		Status:     string(StatusApproved),
-		Type:       string(TypeRealtime),
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		Fields:     []ConsentField{},
+		ConsentID: uuid.New(),
+		AppID:     "app-123",
+		AppName:   nil,
+		OwnerID:   "owner-123",
+		Status:    string(StatusApproved),
+		Type:      string(TypeRealtime),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Fields:    []ConsentField{},
 	}
 
 	response := record.ToConsentResponsePortalView()

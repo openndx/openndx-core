@@ -16,8 +16,8 @@ import (
 type contextKey string
 
 const (
-	// userEmailKey is the context key for user email
-	userEmailKey contextKey = "userEmail"
+	// ownerSubjectKey is the context key for the authenticated owner's subject (UID)
+	ownerSubjectKey contextKey = "ownerSubject"
 )
 
 // JWTAuthMiddleware provides HTTP middleware for JWT authentication
@@ -56,27 +56,27 @@ func (m *JWTAuthMiddleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		// Verify token and extract email
-		email, err := m.verifier.VerifyTokenAndExtractEmail(tokenString)
+		// Verify token and extract the owner subject (UID)
+		subject, err := m.verifier.VerifyTokenAndExtractSubject(tokenString)
 		if err != nil {
 			slog.Warn("Token verification failed", "error", err)
 			utils.RespondWithError(w, http.StatusUnauthorized, models.ErrorCodeUnauthorized, "Invalid or expired token")
 			return
 		}
 
-		// Add email to request context
-		ctx := context.WithValue(r.Context(), userEmailKey, email)
+		// Add owner subject to request context
+		ctx := context.WithValue(r.Context(), ownerSubjectKey, subject)
 		r = r.WithContext(ctx)
 
-		slog.Debug("User authenticated", "email", email)
+		slog.Debug("User authenticated", "subject", subject)
 
 		// Call next handler
 		next.ServeHTTP(w, r)
 	})
 }
 
-// GetUserEmailFromContext extracts the user email from the request context
-func GetUserEmailFromContext(ctx context.Context) (string, bool) {
-	email, ok := ctx.Value(userEmailKey).(string)
-	return email, ok
+// GetOwnerSubjectFromContext extracts the authenticated owner's subject (UID) from the request context
+func GetOwnerSubjectFromContext(ctx context.Context) (string, bool) {
+	subject, ok := ctx.Value(ownerSubjectKey).(string)
+	return subject, ok
 }

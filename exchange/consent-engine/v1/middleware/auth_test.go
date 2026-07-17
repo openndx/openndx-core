@@ -94,11 +94,11 @@ func createTestJWTVerifier(t *testing.T, privateKey *rsa.PrivateKey, issuer, aud
 	return verifier
 }
 
-func createTestToken(t *testing.T, privateKey *rsa.PrivateKey, issuer, audience, email string) string {
+func createTestToken(t *testing.T, privateKey *rsa.PrivateKey, issuer, audience, subject string) string {
 	claims := jwt.MapClaims{
 		"iss":      issuer,
 		"aud":      audience,
-		"email":    email,
+		"sub":      subject,
 		"org_name": "test-org",
 		"exp":      time.Now().Add(time.Hour).Unix(),
 		"iat":      time.Now().Unix(),
@@ -131,7 +131,7 @@ func TestJWTAuthMiddleware_Authenticate_Success(t *testing.T) {
 	verifier := createTestJWTVerifier(t, privateKey, "test-issuer", "test-audience")
 	middleware := NewJWTAuthMiddleware(verifier)
 
-	token := createTestToken(t, privateKey, "test-issuer", "test-audience", "user@example.com")
+	token := createTestToken(t, privateKey, "test-issuer", "test-audience", "user-123")
 
 	req := httptest.NewRequest("GET", "/api/v1/consents/123", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -140,9 +140,9 @@ func TestJWTAuthMiddleware_Authenticate_Success(t *testing.T) {
 	nextCalled := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
-		email, ok := GetUserEmailFromContext(r.Context())
+		subject, ok := GetOwnerSubjectFromContext(r.Context())
 		assert.True(t, ok)
-		assert.Equal(t, "user@example.com", email)
+		assert.Equal(t, "user-123", subject)
 	})
 
 	middleware.Authenticate(next).ServeHTTP(w, req)
@@ -238,26 +238,26 @@ func TestJWTAuthMiddleware_Authenticate_InvalidToken(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-func TestGetUserEmailFromContext(t *testing.T) {
-	ctx := context.WithValue(context.Background(), userEmailKey, "user@example.com")
+func TestGetOwnerSubjectFromContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), ownerSubjectKey, "user-123")
 
-	email, ok := GetUserEmailFromContext(ctx)
+	subject, ok := GetOwnerSubjectFromContext(ctx)
 	assert.True(t, ok)
-	assert.Equal(t, "user@example.com", email)
+	assert.Equal(t, "user-123", subject)
 }
 
-func TestGetUserEmailFromContext_NotFound(t *testing.T) {
+func TestGetOwnerSubjectFromContext_NotFound(t *testing.T) {
 	ctx := context.Background()
 
-	email, ok := GetUserEmailFromContext(ctx)
+	subject, ok := GetOwnerSubjectFromContext(ctx)
 	assert.False(t, ok)
-	assert.Empty(t, email)
+	assert.Empty(t, subject)
 }
 
-func TestGetUserEmailFromContext_WrongType(t *testing.T) {
-	ctx := context.WithValue(context.Background(), userEmailKey, 123)
+func TestGetOwnerSubjectFromContext_WrongType(t *testing.T) {
+	ctx := context.WithValue(context.Background(), ownerSubjectKey, 123)
 
-	email, ok := GetUserEmailFromContext(ctx)
+	subject, ok := GetOwnerSubjectFromContext(ctx)
 	assert.False(t, ok)
-	assert.Empty(t, email)
+	assert.Empty(t, subject)
 }

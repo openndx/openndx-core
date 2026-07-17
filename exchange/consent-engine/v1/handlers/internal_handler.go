@@ -38,7 +38,7 @@ func (h *InternalHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetConsent handles GET /internal/api/v1/consents
-// Query parameters: ownerEmail & appId OR ownerId & appId
+// Query parameters: ownerId & appId
 // Returns: models.ConsentResponseInternalView
 func (h *InternalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -47,7 +47,6 @@ func (h *InternalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse query parameters
-	ownerEmail := r.URL.Query().Get("ownerEmail")
 	ownerID := r.URL.Query().Get("ownerId")
 	appID := r.URL.Query().Get("appId")
 
@@ -57,20 +56,13 @@ func (h *InternalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ownerEmail == "" && ownerID == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, "either ownerEmail or ownerId is required")
+	if ownerID == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, "ownerId is required")
 		return
 	}
 
 	// Get consent from service (context with timeout is propagated)
-	var consent *models.ConsentResponseInternalView
-	var err error
-
-	if ownerEmail != "" {
-		consent, err = h.consentService.GetConsentInternalView(r.Context(), nil, nil, &ownerEmail, &appID)
-	} else {
-		consent, err = h.consentService.GetConsentInternalView(r.Context(), nil, &ownerID, nil, &appID)
-	}
+	consent, err := h.consentService.GetConsentInternalView(r.Context(), nil, &ownerID, &appID)
 
 	if err != nil {
 		// Check if error is due to context cancellation or timeout

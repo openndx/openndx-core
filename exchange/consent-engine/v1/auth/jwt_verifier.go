@@ -268,8 +268,10 @@ func (jv *JWTVerifier) VerifyToken(tokenString string) (*jwt.Token, error) {
 	return token, nil
 }
 
-// VerifyTokenAndExtractEmail verifies the token and extracts the email claim
-func (jv *JWTVerifier) VerifyTokenAndExtractEmail(tokenString string) (string, error) {
+// VerifyTokenAndExtractSubject verifies the token and extracts the subject claim
+// that identifies the data owner (their canonical UID). The claim is the standard
+// OIDC "sub"; a later change makes which claim carries the UID configurable.
+func (jv *JWTVerifier) VerifyTokenAndExtractSubject(tokenString string) (string, error) {
 	token, err := jv.VerifyToken(tokenString)
 	if err != nil {
 		return "", err
@@ -280,10 +282,10 @@ func (jv *JWTVerifier) VerifyTokenAndExtractEmail(tokenString string) (string, e
 		return "", fmt.Errorf("invalid token claims")
 	}
 
-	email, ok := claims["email"].(string)
-	if !ok || email == "" {
-		return "", fmt.Errorf("email claim not found or empty in token")
+	subject, ok := claims["sub"].(string)
+	if !ok || subject == "" {
+		return "", fmt.Errorf("sub claim not found or empty in token")
 	}
 
-	return email, nil
+	return subject, nil
 }
