@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/config"
-	v1 "github.com/OpenNDX/openndx-core/exchange/policy-decision-point/v1"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/db"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/handler"
 	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 )
 
@@ -48,8 +49,8 @@ func main() {
 		"jwks_url", cfg.IDPConfig.JwksURL)
 
 	// Initialize V1 GORM database connection
-	v1DbConfig := v1.NewDatabaseConfig(&cfg.DBConfigs)
-	gormDB, err := v1.ConnectGormDB(v1DbConfig)
+	v1DbConfig := db.NewDatabaseConfig(&cfg.DBConfigs)
+	gormDB, err := db.ConnectGormDB(v1DbConfig)
 	if err != nil {
 		slog.Error("Failed to connect to GORM database", "error", err)
 		os.Exit(1)
@@ -71,7 +72,7 @@ func main() {
 	}()
 
 	// Initialize V1 handlers
-	v1Handler := v1.NewHandler(gormDB)
+	v1Handler := handler.NewHandler(gormDB)
 
 	// Setup routes
 	mux := http.NewServeMux()

@@ -1,4 +1,4 @@
-package v1
+package db
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/config"
-	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/v1/models"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

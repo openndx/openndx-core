@@ -1,12 +1,12 @@
-package v1
+package handler
 
 import (
 	"encoding/json"
 	"net/http"
 	"strings"
 
-	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/v1/models"
-	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/v1/services"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/models"
+	"github.com/OpenNDX/openndx-core/exchange/policy-decision-point/internal/services"
 	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 	"gorm.io/gorm"
 )

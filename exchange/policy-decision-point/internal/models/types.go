@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// GrantDuration represents the grant type enum
+// GrantDurationType represents the grant type enum
 type GrantDurationType string
 
 const (
