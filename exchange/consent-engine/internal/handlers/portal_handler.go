@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/middleware"
-	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/models"
-	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/services"
-	"github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/utils"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/middleware"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/models"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/services"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/utils"
 	"github.com/google/uuid"
 )
 

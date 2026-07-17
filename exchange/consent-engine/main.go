@@ -11,11 +11,11 @@ import (
 	"github.com/OpenNDX/openndx-core/exchange/shared/utils"
 
 	// V1 API imports
-	v1auth "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/auth"
-	v1db "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/database"
-	v1handlers "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/handlers"
-	v1router "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/router"
-	v1services "github.com/OpenNDX/openndx-core/exchange/consent-engine/v1/services"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/auth"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/database"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/handlers"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/router"
+	"github.com/OpenNDX/openndx-core/exchange/consent-engine/internal/services"
 )
 
 // Build information - set during build
@@ -41,8 +41,8 @@ func main() {
 
 	// Initialize V1 database connection
 	slog.Info("Initializing V1 database connection...")
-	v1DBConfig := v1db.NewDatabaseConfig(&cfg.DBConfigs)
-	v1DB, err := v1db.ConnectGormDB(v1DBConfig)
+	v1DBConfig := database.NewDatabaseConfig(&cfg.DBConfigs)
+	v1DB, err := database.ConnectGormDB(v1DBConfig)
 	if err != nil {
 		slog.Error("Failed to connect to V1 database", "error", err)
 		os.Exit(1)
@@ -67,15 +67,15 @@ func main() {
 	slog.Info("Using consent portal URL", "url", cfg.ConsentPortalUrl)
 
 	// Initialize V1 consent service
-	v1ConsentService, err := v1services.NewConsentService(v1DB, cfg.ConsentPortalUrl)
+	v1ConsentService, err := services.NewConsentService(v1DB, cfg.ConsentPortalUrl)
 	if err != nil {
 		slog.Error("Failed to initialize V1 consent service", "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize V1 handlers
-	v1InternalHandler := v1handlers.NewInternalHandler(v1ConsentService)
-	v1PortalHandler := v1handlers.NewPortalHandler(v1ConsentService)
+	v1InternalHandler := handlers.NewInternalHandler(v1ConsentService)
+	v1PortalHandler := handlers.NewPortalHandler(v1ConsentService)
 
 	slog.Info("JWT verifier configuration",
 		"client_id", cfg.IDPConfig.ClientID,
@@ -85,7 +85,7 @@ func main() {
 		"subject_claim", cfg.IDPConfig.SubjectClaim,
 		"jwks_insecure_skip_verify", cfg.IDPConfig.InsecureSkipVerify)
 
-	v1JWTVerifier, err := v1auth.NewJWTVerifier(v1auth.JWTVerifierConfig{
+	v1JWTVerifier, err := auth.NewJWTVerifier(auth.JWTVerifierConfig{
 		JWKSUrl:            cfg.IDPConfig.JwksUrl,
 		Issuer:             cfg.IDPConfig.Issuer,
 		Audience:           cfg.IDPConfig.Audience,
@@ -99,7 +99,7 @@ func main() {
 	}
 
 	// Initialize V1 router and register all V1 routes
-	v1Router := v1router.NewV1Router(cfg.Service.AllowedOrigins, v1InternalHandler, v1PortalHandler, v1JWTVerifier)
+	v1Router := router.NewV1Router(cfg.Service.AllowedOrigins, v1InternalHandler, v1PortalHandler, v1JWTVerifier)
 	mux := http.NewServeMux()
 
 	slog.Info("Registering V1 API routes")
