@@ -176,6 +176,31 @@ func TestVerifyTokenAndExtractSubject_MissingSubjectFails(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestVerifyTokenAndExtractSubject_DefaultsToSubWhenUnconfigured(t *testing.T) {
+	// fullConfig leaves SubjectClaim empty, so it falls back to "sub".
+	v, priv := newTestVerifier(t, fullConfig())
+	subject, err := v.VerifyTokenAndExtractSubject(signToken(t, priv, baseClaims()))
+	require.NoError(t, err)
+	assert.Equal(t, "user-123", subject)
+}
+
+func TestVerifyTokenAndExtractSubject_UsesConfiguredClaim(t *testing.T) {
+	cfg := fullConfig()
+	cfg.SubjectClaim = "email" // point the UID at a different claim
+	v, priv := newTestVerifier(t, cfg)
+	subject, err := v.VerifyTokenAndExtractSubject(signToken(t, priv, baseClaims()))
+	require.NoError(t, err)
+	assert.Equal(t, "nayana@opensource.lk", subject)
+}
+
+func TestVerifyTokenAndExtractSubject_ConfiguredClaimMissingFails(t *testing.T) {
+	cfg := fullConfig()
+	cfg.SubjectClaim = "individual_id" // claim not present in the token
+	v, priv := newTestVerifier(t, cfg)
+	_, err := v.VerifyTokenAndExtractSubject(signToken(t, priv, baseClaims()))
+	assert.Error(t, err)
+}
+
 // newTLSTestVerifier serves the JWKS over a self-signed HTTPS server (like a
 // dev IdP), so JWKS fetches fail TLS verification unless InsecureSkipVerify is set.
 func newTLSTestVerifier(t *testing.T, cfg JWTVerifierConfig) (*JWTVerifier, *rsa.PrivateKey) {

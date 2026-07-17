@@ -82,6 +82,7 @@ func main() {
 		"issuer", cfg.IDPConfig.Issuer,
 		"audience", cfg.IDPConfig.Audience,
 		"jwks_url", cfg.IDPConfig.JwksUrl,
+		"subject_claim", cfg.IDPConfig.SubjectClaim,
 		"jwks_insecure_skip_verify", cfg.IDPConfig.InsecureSkipVerify)
 
 	v1JWTVerifier, err := v1auth.NewJWTVerifier(v1auth.JWTVerifierConfig{
@@ -89,6 +90,7 @@ func main() {
 		Issuer:             cfg.IDPConfig.Issuer,
 		Audience:           cfg.IDPConfig.Audience,
 		ClientID:           cfg.IDPConfig.ClientID,
+		SubjectClaim:       cfg.IDPConfig.SubjectClaim,
 		InsecureSkipVerify: cfg.IDPConfig.InsecureSkipVerify,
 	})
 	if err != nil {

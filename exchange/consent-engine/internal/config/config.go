@@ -47,6 +47,9 @@ type IDPConfig struct {
 	JwksUrl  string
 	Audience string
 	ClientID string
+	// SubjectClaim is the token claim carrying the data owner's canonical UID
+	// (matched against the consent record's owner_id). Defaults to "sub".
+	SubjectClaim string
 	// InsecureSkipVerify skips TLS verification on the JWKS fetch. Dev-only
 	// (e.g. a self-signed local IdP); leave false in production.
 	InsecureSkipVerify bool
@@ -86,6 +89,8 @@ func LoadConfig(serviceName string) *Config {
 	userAudience := utils.GetEnvOrDefault("IDP_AUDIENCE", "")
 	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "")
 	userClientID := utils.GetEnvOrDefault("IDP_CLIENT_ID", "")
+	// Token claim carrying the owner UID matched against consent owner_id.
+	userSubjectClaim := utils.GetEnvOrDefault("IDP_SUBJECT_CLAIM", "sub")
 	// Dev-only: skip TLS verification on the JWKS fetch (self-signed local IdP).
 	jwksInsecureSkipVerify, _ := strconv.ParseBool(utils.GetEnvOrDefault("IDP_JWKS_INSECURE_SKIP_VERIFY", "false"))
 
@@ -130,6 +135,7 @@ func LoadConfig(serviceName string) *Config {
 			JwksUrl:            userJwksURL,
 			Audience:           userAudience,
 			ClientID:           userClientID,
+			SubjectClaim:       userSubjectClaim,
 			InsecureSkipVerify: jwksInsecureSkipVerify,
 		},
 		DBConfigs: DBConfigs{
