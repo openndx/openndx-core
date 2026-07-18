@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/services"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -138,12 +136,8 @@ func TestSchemaHandler_ActivateSchema_NoService(t *testing.T) {
 	handler := NewSchemaHandler(nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/sdl/versions/1.0.0/activate", nil)
+	req.SetPathValue("version", "1.0.0")
 	w := httptest.NewRecorder()
-
-	// Use chi router to set URL param
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("version", "1.0.0")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler.ActivateSchema(w, req)
 
@@ -162,11 +156,8 @@ func TestSchemaHandler_ActivateSchema_Success(t *testing.T) {
 	handler := NewSchemaHandler(mockService)
 
 	req := httptest.NewRequest(http.MethodPost, "/sdl/versions/1.0.0/activate", nil)
+	req.SetPathValue("version", "1.0.0")
 	w := httptest.NewRecorder()
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("version", "1.0.0")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler.ActivateSchema(w, req)
 

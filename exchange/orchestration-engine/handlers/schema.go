@@ -6,7 +6,6 @@ import (
 
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/services"
-	"github.com/go-chi/chi/v5"
 )
 
 // SchemaService defines the behavior SchemaHandler depends on.
@@ -129,8 +128,8 @@ func (h *SchemaHandler) ActivateSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract version from URL path (simplified)
-	version := chi.URLParam(r, "version")
+	// Extract version from URL path
+	version := r.PathValue("version")
 
 	err := h.schemaService.ActivateSchema(version)
 	if err != nil {

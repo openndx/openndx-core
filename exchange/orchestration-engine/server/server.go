@@ -16,7 +16,6 @@ import (
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/logger"
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/pkg/graphql"
 	"github.com/OpenNDX/openndx-core/exchange/orchestration-engine/services"
-	"github.com/go-chi/chi/v5"
 )
 
 type Response struct {
@@ -83,8 +82,8 @@ func RunServer(ctx context.Context, f *federator.Federator) {
 }
 
 // SetupRouter initializes the router and registers all endpoints
-func SetupRouter(f *federator.Federator) *chi.Mux {
-	mux := chi.NewRouter()
+func SetupRouter(f *federator.Federator) *http.ServeMux {
+	mux := http.NewServeMux()
 
 	// Initialize database connection
 	dbConnectionString := getDatabaseConnectionString()
@@ -110,11 +109,7 @@ func SetupRouter(f *federator.Federator) *chi.Mux {
 	// Set the schema service in the federator
 	f.SchemaService = schemaService
 	// /health route
-	mux.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		resp := Response{Message: "OpenNDX Server is Healthy!"}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(resp)
@@ -124,17 +119,17 @@ func SetupRouter(f *federator.Federator) *chi.Mux {
 	})
 
 	// Schema management routes
-	mux.Get("/sdl", schemaHandler.GetActiveSchema)
-	mux.Post("/sdl", schemaHandler.CreateSchema)
-	mux.Get("/sdl/versions", schemaHandler.GetSchemas)
-	mux.Post("/sdl/validate", schemaHandler.ValidateSDL)
-	mux.Post("/sdl/check-compatibility", schemaHandler.CheckCompatibility)
+	mux.HandleFunc("GET /sdl", schemaHandler.GetActiveSchema)
+	mux.HandleFunc("POST /sdl", schemaHandler.CreateSchema)
+	mux.HandleFunc("GET /sdl/versions", schemaHandler.GetSchemas)
+	mux.HandleFunc("POST /sdl/validate", schemaHandler.ValidateSDL)
+	mux.HandleFunc("POST /sdl/check-compatibility", schemaHandler.CheckCompatibility)
 
 	// Handle activation endpoint with proper path matching
-	mux.Post("/sdl/versions/{version}/activate", schemaHandler.ActivateSchema)
+	mux.HandleFunc("POST /sdl/versions/{version}/activate", schemaHandler.ActivateSchema)
 
 	// Publicly accessible Endpoints
-	mux.Post("/public/graphql", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /public/graphql", func(w http.ResponseWriter, r *http.Request) {
 		// Parse request body
 		var req graphql.Request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
