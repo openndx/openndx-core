@@ -12,10 +12,9 @@ type ConsentField struct {
 
 // ConsentRequirement represents a consent requirement for a specific owner
 type ConsentRequirement struct {
-	Owner      OwnerType      `json:"owner"`
-	OwnerID    string         `json:"ownerId"`
-	OwnerEmail string         `json:"ownerEmail"`
-	Fields     []ConsentField `json:"fields"`
+	Owner   OwnerType      `json:"owner"`
+	OwnerID string         `json:"ownerId"`
+	Fields  []ConsentField `json:"fields"`
 }
 
 // CreateConsentRequest defines the structure for creating a consent record
