@@ -412,8 +412,6 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 			return createErrorResponseWithCode("Consent required but consent engine not available", errors.CodeCEError)
 		}
 
-		ownerEmail := dataOwnerID // assuming dataOwnerID is ownerEmail for this example
-
 		// Map PDP response fields to Consent Engine request with all metadata
 		fields := make([]consent.ConsentField, len(pdpResponse.ConsentRequiredFields))
 		for i, f := range pdpResponse.ConsentRequiredFields {
@@ -434,10 +432,9 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 		ceRequest := &consent.CreateConsentRequest{
 			AppID: consumerInfo.ApplicationID,
 			ConsentRequirement: consent.ConsentRequirement{
-				Owner:      consent.OwnerCitizen,
-				OwnerID:    ownerEmail,
-				OwnerEmail: ownerEmail,
-				Fields:     fields,
+				Owner:   consent.OwnerCitizen,
+				OwnerID: dataOwnerID,
+				Fields:  fields,
 			},
 			ConsentType: &typeRealTime,
 		}
@@ -446,7 +443,7 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 
 		// Log consent check audit event
 		// Update context with traceID if one was generated
-		ctx = f.logConsentCheck(ctx, consumerInfo.ApplicationID, ownerEmail, ownerEmail, ceRequest, ceResp, err)
+		ctx = f.logConsentCheck(ctx, consumerInfo.ApplicationID, dataOwnerID, ceRequest, ceResp, err)
 
 		if err != nil {
 			logger.Log.Info("CE request failed", "error", err)
@@ -649,7 +646,7 @@ func (f *Federator) logPolicyCheck(ctx context.Context, applicationID string, re
 // logConsentCheck logs a CONSENT_CHECK event from orchestration-engine's perspective
 // This is called after making a request to the Consent Engine
 // Returns the updated context with traceID to ensure trace correlation
-func (f *Federator) logConsentCheck(ctx context.Context, applicationID, ownerEmail, ownerID string, req *consent.CreateConsentRequest, resp *consent.ConsentResponseInternalView, err error) context.Context {
+func (f *Federator) logConsentCheck(ctx context.Context, applicationID, ownerID string, req *consent.CreateConsentRequest, resp *consent.ConsentResponseInternalView, err error) context.Context {
 	targetID := "consent-engine"
 	status := auditpkg.StatusSuccess
 	requestMetadata := make(map[string]interface{})
@@ -657,9 +654,6 @@ func (f *Federator) logConsentCheck(ctx context.Context, applicationID, ownerEma
 
 	// Populate request metadata from request context
 	requestMetadata["applicationId"] = applicationID
-	if ownerEmail != "" {
-		requestMetadata["ownerEmail"] = ownerEmail
-	}
 	if ownerID != "" {
 		requestMetadata["ownerId"] = ownerID
 	}
