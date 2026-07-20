@@ -211,7 +211,7 @@ func TestLogAudit_SendsRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// For this test, we need to use the real shared/audit client since we're testing HTTP
+	// For this test, we need to use the real LSFLK/argus audit client since we're testing HTTP
 	sharedClient := audit.NewClient(audit.Config{
 		BaseURL:       server.URL,
 		BatchSize:     1,

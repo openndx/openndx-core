@@ -16,9 +16,6 @@ RUN apk add --no-cache git ca-certificates tzdata
 COPY portal-backend/go.mod portal-backend/go.sum ./
 COPY portal-backend/ ./
 
-# Copy shared audit package from root shared folder
-COPY shared/ /shared/
-
 # Download dependencies
 RUN go mod download
 
