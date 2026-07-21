@@ -1,0 +1,37 @@
+apiVersion: openchoreo.dev/v1alpha1
+
+metadata:
+  name: ndx-admin-portal
+
+endpoints:
+  - name: web
+    port: 80
+    type: HTTP
+    visibility:
+      - external
+
+connections:
+  - component: ndx-portal-backend
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: NDX_PORTAL_BACKEND_URL
+
+configurations:
+  env:
+    - name: VITE_API_URL
+      value: ""
+    - name: VITE_LOGS_URL
+      value: ""
+    - name: VITE_IDP_CLIENT_ID
+      value: NDX_ADMIN_PORTAL
+    - name: VITE_IDP_BASE_URL
+      value: http://thunder-service.thunder.svc.cluster.local:8090
+    - name: VITE_IDP_SCOPE
+      value: "openid profile email groups"
+    - name: VITE_IDP_ADMIN_ROLE
+      value: admin
+    - name: VITE_SIGN_IN_REDIRECT_URL
+      value: ""
+    - name: VITE_SIGN_OUT_REDIRECT_URL
+      value: ""

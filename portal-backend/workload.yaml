@@ -1,0 +1,73 @@
+apiVersion: openchoreo.dev/v1alpha1
+
+metadata:
+  name: ndx-portal-backend
+
+endpoints:
+  - name: api
+    port: 3000
+    type: REST
+    visibility:
+      - external
+
+connections:
+  - component: ndx-pdp
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: CHOREO_PDP_CONNECTION_SERVICEURL
+  - component: ndx-audit-service
+    endpoint: api
+    visibility: project
+    envBindings:
+      address: CHOREO_AUDIT_CONNECTION_SERVICEURL
+
+configurations:
+  env:
+    - name: PORT
+      value: "3000"
+    - name: CHOREO_OPENDIF_DB_HOSTNAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: host
+    - name: CHOREO_OPENDIF_DB_PORT
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: port
+    - name: CHOREO_OPENDIF_DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: username
+    - name: CHOREO_OPENDIF_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: password
+    - name: CHOREO_OPENDIF_DB_DATABASENAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: database
+    - name: DB_SSLMODE
+      value: disable
+    - name: RUN_MIGRATION
+      value: "true"
+    - name: AUTHORIZATION_MODE
+      value: fail_open_admin
+    - name: LOG_LEVEL
+      value: info
+    - name: ASGARDEO_BASE_URL
+      value: http://thunder-service.thunder.svc.cluster.local:8090
+    - name: ASGARDEO_CLIENT_ID
+      value: NDX_ADMIN_PORTAL
+    - name: ASGARDEO_CLIENT_SECRET
+      value: placeholder
+    - name: CHOREO_PDP_CONNECTION_CHOREOAPIKEY
+      value: placeholder
+    - name: ASGARDEO_MEMBER_PORTAL_CLIENT_ID
+      value: NDX_MEMBER_PORTAL
+    - name: ASGARDEO_ADMIN_PORTAL_CLIENT_ID
+      value: NDX_ADMIN_PORTAL

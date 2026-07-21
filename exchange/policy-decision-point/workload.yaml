@@ -1,0 +1,51 @@
+apiVersion: openchoreo.dev/v1alpha1
+
+metadata:
+  name: ndx-pdp
+
+endpoints:
+  - name: api
+    port: 8082
+    type: REST
+
+configurations:
+  env:
+    - name: PORT
+      value: "8082"
+    - name: ENVIRONMENT
+      value: production
+    - name: LOG_LEVEL
+      value: info
+    - name: LOG_FORMAT
+      value: json
+    - name: SERVICE_NAME
+      value: policy-decision-point
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: host
+    - name: DB_PORT
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: port
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: password
+    - name: DB_NAME
+      valueFrom:
+        secretKeyRef:
+          name: ndx-db-secrets
+          key: database
+    - name: DB_SSLMODE
+      value: disable
+    - name: RUN_MIGRATION
+      value: "true"
