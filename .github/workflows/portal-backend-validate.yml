@@ -72,13 +72,12 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ env.SERVICE_PATH }}
           file: ${{ env.SERVICE_PATH }}/Dockerfile
           push: false
           load: true
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}/portal-backend:pr-${{ github.event.pull_request.number || 'manual' }}
           build-args: |
-            SERVICE_PATH=${{ env.SERVICE_PATH }}
             BUILD_VERSION=${{ github.sha }}
             BUILD_TIME=${{ github.event.pull_request.updated_at || github.run_id || '2025-01-01T00:00:00Z' }}
             GIT_COMMIT=${{ github.sha }}
