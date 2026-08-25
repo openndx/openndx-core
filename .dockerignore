@@ -7,7 +7,6 @@ portals/
 **/node_modules/
 
 # Other service trees not (yet) part of this Go module
-portal-backend/
 audit-service/
 observability/
 
