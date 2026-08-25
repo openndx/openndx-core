@@ -1,10 +1,10 @@
 # Multi-stage Dockerfile for Portal Backend
-# Build from this directory: docker build -t portal-backend .
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
 # Build arguments
+ARG SERVICE_PATH=portal-backend
 ARG BUILD_VERSION=latest
 ARG BUILD_TIME
 ARG GIT_COMMIT
@@ -13,8 +13,8 @@ ARG GIT_COMMIT
 RUN apk add --no-cache git ca-certificates tzdata
 
 # Copy go mod files and source code
-COPY go.mod go.sum ./
-COPY . ./
+COPY portal-backend/go.mod portal-backend/go.sum ./
+COPY portal-backend/ ./
 
 # Download dependencies
 RUN go mod download

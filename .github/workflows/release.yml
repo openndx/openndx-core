@@ -90,7 +90,7 @@ jobs:
       matrix:
         service:
           - name: portal-backend
-            context: ./portal-backend
+            context: .
             dockerfile: ./portal-backend/Dockerfile
             image: portal-backend
             description: Portal Backend service for the Data Exchange platform
