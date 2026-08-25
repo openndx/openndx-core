@@ -266,8 +266,14 @@ func ParseExpiryTime(expiryStr string) (time.Duration, error) {
 	var duration time.Duration
 	switch unit {
 	case "d":
+		if isTime {
+			return 0, fmt.Errorf("unsupported date unit 'D' in time duration '%s'; use 'P...D' for days", expiryStr)
+		}
 		duration = 24 * time.Hour
 	case "h":
+		if isDate {
+			return 0, fmt.Errorf("unsupported time unit 'H' in date duration '%s'; use 'PT...H' for hours", expiryStr)
+		}
 		duration = time.Hour
 	case "m":
 		// Under the date prefix "P", "M" means months, which this parser
@@ -277,6 +283,9 @@ func ParseExpiryTime(expiryStr string) (time.Duration, error) {
 		}
 		duration = time.Minute
 	case "s":
+		if isDate {
+			return 0, fmt.Errorf("unsupported time unit 'S' in date duration '%s'; use 'PT...S' for seconds", expiryStr)
+		}
 		duration = time.Second
 	default:
 		return 0, fmt.Errorf("unsupported time unit: %s", unit)

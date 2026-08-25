@@ -44,6 +44,9 @@ func (h *Handler) GetProvider(serviceKey, schemaId string) (*Provider, bool) {
 	var p *Provider
 	exists := false
 	for _, provider := range h.Providers {
+		if provider == nil {
+			continue
+		}
 		if provider.ServiceKey == serviceKey && provider.SchemaID == schemaId {
 			p = provider
 			exists = true
@@ -55,13 +58,12 @@ func (h *Handler) GetProvider(serviceKey, schemaId string) (*Provider, bool) {
 
 // AddProvider adds a new provider to the handler.
 func (h *Handler) AddProvider(provider *Provider) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	if provider == nil || provider.ServiceKey == "" {
 		return
 	}
 
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.Providers = append(h.Providers, provider)
 	provider.Client = h.HttpClient
 }

@@ -158,6 +158,11 @@ func Initialize(ctx context.Context, configs *configs.Config, providerHandler *p
 				Auth:       p.Auth,
 			}
 
+			if p.ProviderKey == "" {
+				logger.Log.Warn("Skipping provider with empty key from the config file", "Provider Url", p.ProviderURL)
+				continue
+			}
+
 			if p.Auth != nil && p.Auth.Type == auth2.AuthTypeOAuth2 {
 				providerInstance.OAuth2Config = &clientcredentials.Config{
 					ClientID:     p.Auth.ClientID,
@@ -166,7 +171,6 @@ func Initialize(ctx context.Context, configs *configs.Config, providerHandler *p
 				}
 			}
 
-			// print service url
 			logger.Log.Info("Adding Provider from the Config File", "Provider Key", p.ProviderKey, "Provider Url", p.ProviderURL)
 			providerHandler.AddProvider(providerInstance)
 		}
