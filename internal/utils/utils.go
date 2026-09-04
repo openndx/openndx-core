@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -247,14 +249,32 @@ func GetEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-// ParseExpiryTime parses expiry time strings like "30d", "1h", "7d"
+// ParseExpiryTime parses expiry time strings including ISO-8601-style
+// "P30D" / "PT1H" prefixes, or a plain "30d" / "1h" / "15m" / "45s" form.
 func ParseExpiryTime(expiryStr string) (time.Duration, error) {
-	if len(expiryStr) < 2 {
+	// Normalize the string to lowercase and trim whitespace
+	normalized := strings.ToLower(strings.TrimSpace(expiryStr))
+
+	if len(normalized) == 0 {
 		return 0, fmt.Errorf("invalid expiry time format")
 	}
 
-	unit := expiryStr[len(expiryStr)-1:]
-	value := expiryStr[:len(expiryStr)-1]
+	isTime := strings.HasPrefix(normalized, "pt")
+	isDate := !isTime && strings.HasPrefix(normalized, "p")
+
+	// Strip ISO 8601 duration prefix
+	if isTime {
+		normalized = strings.TrimPrefix(normalized, "pt")
+	} else if isDate {
+		normalized = strings.TrimPrefix(normalized, "p")
+	}
+
+	if len(normalized) < 2 {
+		return 0, fmt.Errorf("invalid expiry time format")
+	}
+
+	unit := normalized[len(normalized)-1:]
+	valueStr := normalized[:len(normalized)-1]
 
 	var duration time.Duration
 	switch unit {
@@ -263,6 +283,10 @@ func ParseExpiryTime(expiryStr string) (time.Duration, error) {
 	case "h":
 		duration = time.Hour
 	case "m":
+		// Under date prefix "P", "M" represents months (unsupported)
+		if isDate {
+			return 0, fmt.Errorf("unsupported time unit 'M' (months) in date duration '%s'; use 'PT...M' for minutes or '...d' for days", expiryStr)
+		}
 		duration = time.Minute
 	case "s":
 		duration = time.Second
@@ -270,10 +294,21 @@ func ParseExpiryTime(expiryStr string) (time.Duration, error) {
 		return 0, fmt.Errorf("unsupported time unit: %s", unit)
 	}
 
-	// Parse the numeric value
-	var multiplier int
-	if _, err := fmt.Sscanf(value, "%d", &multiplier); err != nil {
-		return 0, fmt.Errorf("invalid numeric value: %s", value)
+	// Using strconv for strict 64-bit integer parsing instead of Sscanf
+	multiplier, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid numeric value: %s", valueStr)
+	}
+
+	// Guard against negative time
+	if multiplier < 0 {
+		return 0, fmt.Errorf("negative duration multiplier: %d", multiplier)
+	}
+
+	// Guard against integer overflow
+	maxMultiplier := int64(math.MaxInt64) / int64(duration)
+	if multiplier > maxMultiplier {
+		return 0, fmt.Errorf("expiry time exceeds maximum allowed duration and would cause an overflow")
 	}
 
 	return time.Duration(multiplier) * duration, nil
