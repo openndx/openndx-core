@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/LSFLK/argus/pkg/audit"
-	"github.com/joho/godotenv"
 	"github.com/openndx/openndx-core/internal/pb/database"
 	"github.com/openndx/openndx-core/internal/pb/handlers"
 	"github.com/openndx/openndx-core/internal/pb/middleware"
@@ -27,11 +26,6 @@ var (
 )
 
 func main() {
-	// Load .env file if it exists (optional - fails silently if not found).
-	// Checks cmd/pb/.env first (repo-root `go run ./cmd/pb` usage per the
-	// README) before falling back to ./.env (cwd == cmd/pb usage).
-	_ = godotenv.Load("cmd/pb/.env", ".env")
-
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 	slog.SetDefault(logger)
 
