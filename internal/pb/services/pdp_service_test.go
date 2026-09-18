@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

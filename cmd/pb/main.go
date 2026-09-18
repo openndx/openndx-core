@@ -12,11 +12,11 @@ import (
 
 	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/joho/godotenv"
+	"github.com/openndx/openndx-core/internal/pb/database"
+	"github.com/openndx/openndx-core/internal/pb/handlers"
+	"github.com/openndx/openndx-core/internal/pb/middleware"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/openndx/openndx-core/internal/pb/shared/utils"
-	v1 "github.com/openndx/openndx-core/internal/pb/v1"
-	v1handlers "github.com/openndx/openndx-core/internal/pb/v1/handlers"
-	v1middleware "github.com/openndx/openndx-core/internal/pb/v1/middleware"
-	v1models "github.com/openndx/openndx-core/internal/pb/v1/models"
 )
 
 // Build information - set during build
@@ -41,15 +41,15 @@ func main() {
 		"git_commit", GitCommit)
 
 	// Initialize GORM database connection for V1
-	v1DbConfig := v1.NewDatabaseConfig()
-	gormDB, err := v1.ConnectGormDB(v1DbConfig)
+	v1DbConfig := database.NewDatabaseConfig()
+	gormDB, err := database.ConnectGormDB(v1DbConfig)
 	if err != nil {
 		slog.Error("Failed to connect to GORM database", "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize V1 handlers
-	v1Handler, err := v1handlers.NewV1Handler(gormDB)
+	v1Handler, err := handlers.NewV1Handler(gormDB)
 	if err != nil {
 		slog.Error("Failed to initialize V1 handler", "error", err)
 		os.Exit(1)
@@ -60,7 +60,7 @@ func main() {
 	v1Handler.SetupV1Routes(apiMux) // All /api/v1/... routes go here
 
 	// Setup middleware chain
-	corsMiddleware := v1middleware.NewCORSMiddleware()
+	corsMiddleware := middleware.NewCORSMiddleware()
 
 	// Setup JWT Authentication middleware
 	// Validate required environment variables first
@@ -97,7 +97,7 @@ func main() {
 		validClientIDs = append(validClientIDs, adminPortalClientID)
 	}
 
-	jwtConfig := v1middleware.JWTAuthConfig{
+	jwtConfig := middleware.JWTAuthConfig{
 		JWKSURL:                utils.GetEnvOrDefault("IDP_JWKS_URL", idpBaseURL+"/oauth2/jwks"),
 		ExpectedIssuer:         utils.GetEnvOrDefault("IDP_ISSUER", utils.GetEnvOrDefault("IDP_TOKEN_URL", idpBaseURL+"/oauth2/token")),
 		ValidClientIDs:         validClientIDs,
@@ -111,27 +111,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	jwtAuthMiddleware := v1middleware.NewJWTAuthMiddleware(jwtConfig)
+	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(jwtConfig)
 
 	// Setup Authorization middleware with configurable security policy
 	authMode := utils.GetEnvOrDefault("AUTHORIZATION_MODE", "fail_open_admin_system")
 	strictMode := utils.GetEnvOrDefault("AUTHORIZATION_STRICT_MODE", "false") == "true"
 
-	var authConfig v1middleware.AuthorizationConfig
+	var authConfig middleware.AuthorizationConfig
 	switch authMode {
 	case "fail_closed":
-		authConfig.Mode = v1models.AuthorizationModeFailClosed
+		authConfig.Mode = models.AuthorizationModeFailClosed
 	case "fail_open_admin":
-		authConfig.Mode = v1models.AuthorizationModeFailOpenAdmin
+		authConfig.Mode = models.AuthorizationModeFailOpenAdmin
 	case "fail_open_admin_system":
-		authConfig.Mode = v1models.AuthorizationModeFailOpenAdminSystem
+		authConfig.Mode = models.AuthorizationModeFailOpenAdminSystem
 	default:
 		slog.Error("Invalid authorization mode. Valid options: fail_closed, fail_open_admin, fail_open_admin_system", "mode", authMode)
 		os.Exit(1)
 	}
 	authConfig.StrictMode = strictMode
 
-	authorizationMiddleware := v1middleware.NewAuthorizationMiddlewareWithConfig(authConfig)
+	authorizationMiddleware := middleware.NewAuthorizationMiddlewareWithConfig(authConfig)
 
 	// Initialize Audit system
 	// Services will work without auditing - gracefully degrades if disabled via ENABLE_AUDIT=false

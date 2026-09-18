@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 )
 
 // Client calls the Portal Backend management API using a bearer token.

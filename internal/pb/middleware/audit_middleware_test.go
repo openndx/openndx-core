@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/LSFLK/argus/pkg/audit"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	"github.com/openndx/openndx-core/internal/pb/v1/utils"
+	"github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/utils"
 )
 
 // mockAuditClient implements audit.Auditor interface for testing

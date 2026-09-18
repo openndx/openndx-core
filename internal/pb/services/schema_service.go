@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	"gorm.io/gorm"
 )
 

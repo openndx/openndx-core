@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )

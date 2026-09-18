@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/idp"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	"github.com/openndx/openndx-core/internal/pb/v1/services"
+	"github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"gorm.io/gorm"

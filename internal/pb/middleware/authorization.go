@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/openndx/openndx-core/internal/pb/models"
 	sharedutils "github.com/openndx/openndx-core/internal/pb/shared/utils"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	authutils "github.com/openndx/openndx-core/internal/pb/v1/utils"
+	"github.com/openndx/openndx-core/internal/pb/utils"
 )
 
 // AuthorizationConfig configures the authorization middleware behavior
@@ -49,7 +49,7 @@ func (a *AuthorizationMiddleware) AuthorizeRequest(next http.Handler) http.Handl
 		}
 
 		// Get authenticated user from context (should be set by JWT middleware)
-		user, err := authutils.RequireAuthentication(r)
+		user, err := utils.RequireAuthentication(r)
 		if err != nil {
 			slog.Warn("Authorization failed: user not authenticated", "path", r.URL.Path, "method", r.Method, "error", err)
 			sharedutils.RespondWithError(w, http.StatusUnauthorized, "Authentication required")
@@ -57,7 +57,7 @@ func (a *AuthorizationMiddleware) AuthorizeRequest(next http.Handler) http.Handl
 		}
 
 		// Find the endpoint permission requirement
-		endpointPermission, found := authutils.FindEndpointPermission(r.Method, r.URL.Path)
+		endpointPermission, found := utils.FindEndpointPermission(r.Method, r.URL.Path)
 		if !found {
 			// Handle undefined endpoints based on configuration
 			if a.handleUndefinedEndpoint(w, r, user) {
@@ -99,7 +99,7 @@ func (a *AuthorizationMiddleware) AuthorizeRequest(next http.Handler) http.Handl
 func (a *AuthorizationMiddleware) RequireRole(requiredRole models.Role) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := authutils.RequireRole(r, requiredRole)
+			user, err := utils.RequireRole(r, requiredRole)
 			if err != nil {
 				slog.Warn("Role requirement not met",
 					"required_role", requiredRole,
@@ -126,7 +126,7 @@ func (a *AuthorizationMiddleware) RequireRole(requiredRole models.Role) func(htt
 func (a *AuthorizationMiddleware) RequireAnyRole(requiredRoles ...models.Role) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := authutils.RequireAnyRole(r, requiredRoles...)
+			user, err := utils.RequireAnyRole(r, requiredRoles...)
 			if err != nil {
 				roleNames := make([]string, len(requiredRoles))
 				for i, role := range requiredRoles {
@@ -158,7 +158,7 @@ func (a *AuthorizationMiddleware) RequireAnyRole(requiredRoles ...models.Role) f
 func (a *AuthorizationMiddleware) RequirePermission(requiredPermission models.Permission) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := authutils.RequirePermission(r, requiredPermission)
+			user, err := utils.RequirePermission(r, requiredPermission)
 			if err != nil {
 				slog.Warn("Permission requirement not met",
 					"required_permission", requiredPermission,
@@ -203,7 +203,7 @@ func (a *AuthorizationMiddleware) RequireAdminOrSystemRole() func(http.Handler) 
 
 // CheckResourceOwnership is a helper function to be used in handlers to verify resource ownership
 func (a *AuthorizationMiddleware) CheckResourceOwnership(user *models.AuthenticatedUser, resourceOwnerIdpUserId string, permission models.Permission) bool {
-	return authutils.CanAccessResource(user, permission, resourceOwnerIdpUserId)
+	return utils.CanAccessResource(user, permission, resourceOwnerIdpUserId)
 }
 
 // handleUndefinedEndpoint handles access control for endpoints without explicit permission mappings
@@ -298,10 +298,10 @@ func (a *AuthorizationMiddleware) shouldSkipAuthorization(path string) bool {
 
 // GetUserFromRequest is a helper to extract the authenticated user from request context
 func GetUserFromRequest(r *http.Request) (*models.AuthenticatedUser, error) {
-	return authutils.GetAuthenticatedUser(r.Context())
+	return utils.GetAuthenticatedUser(r.Context())
 }
 
 // GetAuthContextFromRequest is a helper to extract the auth context from request context
 func GetAuthContextFromRequest(r *http.Request) (*models.AuthContext, error) {
-	return authutils.GetAuthContext(r.Context())
+	return utils.GetAuthContext(r.Context())
 }

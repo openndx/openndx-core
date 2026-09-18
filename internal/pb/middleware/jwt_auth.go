@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	sharedutils "github.com/openndx/openndx-core/internal/pb/shared/utils"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	authutils "github.com/openndx/openndx-core/internal/pb/v1/utils"
+	"github.com/openndx/openndx-core/internal/pb/utils"
 )
 
 // JWKS represents the JSON Web Key Set structure
@@ -121,7 +121,7 @@ func (j *JWTAuthMiddleware) AuthenticateJWT(next http.Handler) http.Handler {
 		}
 
 		// Extract token from Authorization header
-		tokenString, err := authutils.ExtractBearerToken(r)
+		tokenString, err := utils.ExtractBearerToken(r)
 		if err != nil {
 			slog.Warn("Failed to extract bearer token", "error", err, "path", r.URL.Path, "method", r.Method)
 			sharedutils.RespondWithError(w, http.StatusUnauthorized, "Invalid or missing authorization header")
@@ -144,8 +144,8 @@ func (j *JWTAuthMiddleware) AuthenticateJWT(next http.Handler) http.Handler {
 		}
 
 		// Add user and auth context to request context
-		ctx := authutils.SetAuthenticatedUser(r.Context(), user)
-		ctx = authutils.SetAuthContext(ctx, authCtx)
+		ctx := utils.SetAuthenticatedUser(r.Context(), user)
+		ctx = utils.SetAuthContext(ctx, authCtx)
 
 		// Log successful authentication
 		slog.Info("User authenticated successfully",

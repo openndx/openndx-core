@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openndx/openndx-core/internal/pb/utils"
 
-	authutils "github.com/openndx/openndx-core/internal/pb/v1/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -311,7 +311,7 @@ func TestJWTAuthMiddleware_AuthenticateJWT(t *testing.T) {
 
 				// Verify context is set for authenticated requests
 				if tt.expectedStatus == http.StatusOK && req.URL.Path != "/health" {
-					user, err := authutils.GetAuthenticatedUser(r.Context())
+					user, err := utils.GetAuthenticatedUser(r.Context())
 					assert.NoError(t, err)
 					assert.NotNil(t, user)
 					assert.Equal(t, "user-1", user.IdpUserID)

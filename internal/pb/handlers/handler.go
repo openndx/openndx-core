@@ -10,11 +10,10 @@ import (
 
 	"github.com/openndx/openndx-core/internal/pb/idp"
 	"github.com/openndx/openndx-core/internal/pb/idp/idpfactory"
+	"github.com/openndx/openndx-core/internal/pb/middleware"
+	"github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/services"
 	"github.com/openndx/openndx-core/internal/pb/shared/utils"
-	"github.com/openndx/openndx-core/internal/pb/v1/middleware"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	"github.com/openndx/openndx-core/internal/pb/v1/services"
-
 	"gorm.io/gorm"
 )
 

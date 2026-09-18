@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	"github.com/openndx/openndx-core/internal/pb/v1/services"
+	"github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/services"
 	"github.com/stretchr/testify/assert"
 )
 

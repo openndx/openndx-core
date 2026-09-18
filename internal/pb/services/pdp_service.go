@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
-	"github.com/openndx/openndx-core/internal/pb/v1/utils"
+	"github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/utils"
 )
 
 // PDPService handles communication with the Policy Decision Point

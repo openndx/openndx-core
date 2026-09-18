@@ -18,7 +18,7 @@ import (
 	"github.com/openndx/openndx-core/internal/cli/auth"
 	"github.com/openndx/openndx-core/internal/cli/pbclient"
 	"github.com/openndx/openndx-core/internal/cli/profile"
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 )
 
 // newHTTPClient builds an HTTP client for talking to the identity provider or

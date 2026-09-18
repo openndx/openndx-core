@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openndx/openndx-core/internal/pb/v1/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 )
 
 // AuthContextKey is the key used to store authentication context in request context
