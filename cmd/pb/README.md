@@ -27,6 +27,9 @@ The Portal Backend provides REST APIs for the Admin Portal and Member Portal, ha
 
 ### 1. Environment Setup
 
+> [!NOTE]
+> The Portal Backend no longer auto-loads a `.env` file at startup — variables must come from the process environment. Copy `cmd/pb/.env.example` to `cmd/pb/.env`, update it, then source it manually before running the service (see step 2).
+
 Copy `cmd/pb/.env.example` to `cmd/pb/.env` and update it:
 
 ```bash
@@ -57,7 +60,12 @@ IDP_SCOPE="internal_user_mgt_create internal_user_mgt_list"
 ### 2. Run the Service
 
 ```bash
-# Run the server (from the repo root)
+# Load cmd/pb/.env into the shell environment (from the repo root)
+set -a
+source cmd/pb/.env
+set +a
+
+# Run the server
 go run ./cmd/pb
 
 # Or build and run
