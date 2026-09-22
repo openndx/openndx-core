@@ -72,7 +72,7 @@ resources:
 # id ...b2) a `roles` claim value of "OpenNDX_Admin" once NDX_CLI requests the
 # `roles` scope (see that client's scopeClaims in application.yaml). The NAME
 # here is load-bearing: Portal Backend's authorization middleware
-# (internal/pb/v1/models/authorization.go) does an exact string match against
+# (internal/pb/models/authorization.go) does an exact string match against
 # "OpenNDX_Admin" — not against role IDs or permissions — so this role must be
 # named exactly that, unlike ThunderID's own built-in "Administrator" role
 # (a different name, for a different authorization domain — see users.yaml).

@@ -7,20 +7,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	models2 "github.com/openndx/openndx-core/internal/pb/models"
+	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateSchema_Success(t *testing.T) {
 	var capturedMethod, capturedPath string
-	var capturedBody models2.CreateSchemaRequest
+	var capturedBody models.CreateSchemaRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedMethod = r.Method
 		capturedPath = r.URL.Path
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&capturedBody))
 
-		resp := models2.SchemaResponse{
+		resp := models.SchemaResponse{
 			SchemaID:   "sch_new",
 			SchemaName: capturedBody.SchemaName,
 			Endpoint:   capturedBody.Endpoint,
@@ -33,12 +33,12 @@ func TestCreateSchema_Success(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	req := &models2.CreateSchemaRequest{
+	req := &models.CreateSchemaRequest{
 		SchemaName: "Citizen Info",
 		Endpoint:   "http://example.com/graphql",
 		MemberID:   "member-1",
-		Fields: []models2.PolicyMetadataCreateRequestRecord{
-			{FieldName: "email", AccessControlType: models2.AccessControlTypePublic, Source: models2.SourcePrimary},
+		Fields: []models.PolicyMetadataCreateRequestRecord{
+			{FieldName: "email", AccessControlType: models.AccessControlTypePublic, Source: models.SourcePrimary},
 		},
 	}
 
@@ -63,7 +63,7 @@ func TestCreateSchema_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	resp, err := client.CreateSchema(context.Background(), &models2.CreateSchemaRequest{
+	resp, err := client.CreateSchema(context.Background(), &models.CreateSchemaRequest{
 		SchemaName: "Bad Schema",
 		Endpoint:   "http://example.com/graphql",
 		MemberID:   "member-1",
@@ -76,14 +76,14 @@ func TestCreateSchema_ErrorResponse(t *testing.T) {
 
 func TestCreateMember_Success(t *testing.T) {
 	var capturedMethod, capturedPath string
-	var capturedBody models2.CreateMemberRequest
+	var capturedBody models.CreateMemberRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedMethod = r.Method
 		capturedPath = r.URL.Path
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&capturedBody))
 
-		resp := models2.MemberResponse{
+		resp := models.MemberResponse{
 			MemberID: "mem_new",
 			Name:     capturedBody.Name,
 			Email:    capturedBody.Email,
@@ -99,7 +99,7 @@ func TestCreateMember_Success(t *testing.T) {
 
 	client := NewClient(server.URL, "token")
 	idpUserID := "thunder-user-1"
-	req := &models2.CreateMemberRequest{
+	req := &models.CreateMemberRequest{
 		Name:        "New Member",
 		Email:       "new@example.com",
 		PhoneNumber: "+1234567890",
@@ -126,7 +126,7 @@ func TestCreateMember_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	resp, err := client.CreateMember(context.Background(), &models2.CreateMemberRequest{
+	resp, err := client.CreateMember(context.Background(), &models.CreateMemberRequest{
 		Name:        "New Member",
 		Email:       "new@example.com",
 		PhoneNumber: "+1234567890",
@@ -139,14 +139,14 @@ func TestCreateMember_ErrorResponse(t *testing.T) {
 
 func TestCreateApplication_Success(t *testing.T) {
 	var capturedMethod, capturedPath string
-	var capturedBody models2.CreateApplicationRequest
+	var capturedBody models.CreateApplicationRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedMethod = r.Method
 		capturedPath = r.URL.Path
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&capturedBody))
 
-		resp := models2.ApplicationResponse{
+		resp := models.ApplicationResponse{
 			ApplicationID:   "app_new",
 			ApplicationName: capturedBody.ApplicationName,
 			SelectedFields:  capturedBody.SelectedFields,
@@ -164,9 +164,9 @@ func TestCreateApplication_Success(t *testing.T) {
 	client := NewClient(server.URL, "token")
 	idpAppID := "thunder-app-1"
 	idpClientID := "THUNDER_CLIENT"
-	req := &models2.CreateApplicationRequest{
+	req := &models.CreateApplicationRequest{
 		ApplicationName: "New App",
-		SelectedFields: []models2.SelectedFieldRecord{
+		SelectedFields: []models.SelectedFieldRecord{
 			{FieldName: "email", SchemaID: "schema-1"},
 		},
 		MemberID:         "member-1",
@@ -194,9 +194,9 @@ func TestCreateApplication_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	resp, err := client.CreateApplication(context.Background(), &models2.CreateApplicationRequest{
+	resp, err := client.CreateApplication(context.Background(), &models.CreateApplicationRequest{
 		ApplicationName: "New App",
-		SelectedFields:  []models2.SelectedFieldRecord{{FieldName: "email", SchemaID: "schema-1"}},
+		SelectedFields:  []models.SelectedFieldRecord{{FieldName: "email", SchemaID: "schema-1"}},
 		MemberID:        "member-1",
 	})
 
@@ -213,10 +213,10 @@ func TestGetApplication_Success(t *testing.T) {
 		capturedPath = r.URL.Path
 		capturedMethod = r.Method
 
-		resp := models2.ApplicationResponse{
+		resp := models.ApplicationResponse{
 			ApplicationID:   "app_123",
 			ApplicationName: "Test App",
-			SelectedFields: []models2.SelectedFieldRecord{
+			SelectedFields: []models.SelectedFieldRecord{
 				{FieldName: "email", SchemaID: "schema-1"},
 			},
 			MemberID: "member-1",
@@ -263,7 +263,7 @@ func TestListApplications_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.String()
 		resp := map[string]any{
-			"items": []models2.ApplicationResponse{
+			"items": []models.ApplicationResponse{
 				{ApplicationID: "app_1", ApplicationName: "App One", MemberID: "member-1"},
 				{ApplicationID: "app_2", ApplicationName: "App Two", MemberID: "member-1"},
 			},
@@ -291,7 +291,7 @@ func TestListApplications_WithMemberFilter(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.String()
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": []models2.ApplicationResponse{}, "count": 0})
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": []models.ApplicationResponse{}, "count": 0})
 	}))
 	defer server.Close()
 
@@ -306,7 +306,7 @@ func TestListApplications_WithMemberFilter(t *testing.T) {
 func TestListApplications_EmptyResult(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": []models2.ApplicationResponse{}, "count": 0})
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": []models.ApplicationResponse{}, "count": 0})
 	}))
 	defer server.Close()
 
@@ -320,7 +320,7 @@ func TestListApplications_EmptyResult(t *testing.T) {
 
 func TestUpdateApplicationPolicy_Success(t *testing.T) {
 	var capturedAuth, capturedPath, capturedMethod string
-	var capturedBody models2.UpdateApplicationPolicyRequest
+	var capturedBody models.UpdateApplicationPolicyRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedAuth = r.Header.Get("Authorization")
@@ -328,7 +328,7 @@ func TestUpdateApplicationPolicy_Success(t *testing.T) {
 		capturedMethod = r.Method
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&capturedBody))
 
-		resp := models2.ApplicationResponse{
+		resp := models.ApplicationResponse{
 			ApplicationID:   "app_123",
 			ApplicationName: "Test App",
 			SelectedFields:  capturedBody.SelectedFields,
@@ -342,9 +342,9 @@ func TestUpdateApplicationPolicy_Success(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "test-token")
-	grantDuration := models2.GrantDurationTypeOneYear
-	req := &models2.UpdateApplicationPolicyRequest{
-		SelectedFields: []models2.SelectedFieldRecord{
+	grantDuration := models.GrantDurationTypeOneYear
+	req := &models.UpdateApplicationPolicyRequest{
+		SelectedFields: []models.SelectedFieldRecord{
 			{FieldName: "email", SchemaID: "schema-1"},
 		},
 		GrantDuration: &grantDuration,
@@ -355,7 +355,7 @@ func TestUpdateApplicationPolicy_Success(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, resp) {
 		assert.Equal(t, "app_123", resp.ApplicationID)
-		assert.Equal(t, req.SelectedFields, []models2.SelectedFieldRecord(resp.SelectedFields))
+		assert.Equal(t, req.SelectedFields, []models.SelectedFieldRecord(resp.SelectedFields))
 	}
 
 	assert.Equal(t, "Bearer test-token", capturedAuth)
@@ -369,13 +369,13 @@ func TestUpdateApplicationPolicy_TrimsTrailingSlashInBaseURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.Path
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(models2.ApplicationResponse{ApplicationID: "app_1"})
+		_ = json.NewEncoder(w).Encode(models.ApplicationResponse{ApplicationID: "app_1"})
 	}))
 	defer server.Close()
 
 	client := NewClient(server.URL+"/", "token")
-	_, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models2.UpdateApplicationPolicyRequest{
-		SelectedFields: []models2.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
+	_, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models.UpdateApplicationPolicyRequest{
+		SelectedFields: []models.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
 	})
 
 	assert.NoError(t, err)
@@ -390,8 +390,8 @@ func TestUpdateApplicationPolicy_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	resp, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models2.UpdateApplicationPolicyRequest{
-		SelectedFields: []models2.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
+	resp, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models.UpdateApplicationPolicyRequest{
+		SelectedFields: []models.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
 	})
 
 	assert.Error(t, err)
@@ -402,8 +402,8 @@ func TestUpdateApplicationPolicy_ErrorResponse(t *testing.T) {
 
 func TestUpdateApplicationPolicy_Unreachable(t *testing.T) {
 	client := NewClient("http://127.0.0.1:1", "token")
-	resp, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models2.UpdateApplicationPolicyRequest{
-		SelectedFields: []models2.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
+	resp, err := client.UpdateApplicationPolicy(context.Background(), "app_1", &models.UpdateApplicationPolicyRequest{
+		SelectedFields: []models.SelectedFieldRecord{{FieldName: "f", SchemaID: "s"}},
 	})
 
 	assert.Error(t, err)
