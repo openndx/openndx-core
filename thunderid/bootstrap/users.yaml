@@ -1,17 +1,128 @@
+# LOCAL-DEV ONLY: a "Citizen" user type carrying a `nic` attribute — the same
+# foundational-ID shape OE uses as its `foundationalIdArgName` (config.json) and
+# seeds as the consent record's OwnerID (federator.go's dataOwnerID, taken
+# verbatim from the query's `nic` argument). Consent-engine's owner-match is a
+# literal string compare against a JWT claim (IDP_SUBJECT_CLAIM, default "sub"
+# — see internal/ce/config/config.go), so for a citizen to be recognized as the
+# owner of a given `nic`, that exact value has to come back in their token.
+# Point consent-engine's IDP_SUBJECT_CLAIM at "nic" (see .env.example) and add
+# `nic` to the Consent Portal's token attribute lists (application.yaml) for
+# this to actually take effect — a schema field alone doesn't put it in a token.
+resource_type: user_type
+id: 01900000-0000-7000-8000-000000000032
+category: user
+name: Citizen
+ouHandle: default
+allowSelfRegistration: false
+systemAttributes:
+  display: username
+schema:
+  username:
+    type: string
+    displayName: Username
+    required: true
+    unique: true
+  nic:
+    type: string
+    displayName: National Identity Card Number
+    required: true
+    unique: true
+    regex: "^[0-9]{6}$"
+  email:
+    type: string
+    displayName: Email
+    required: false
+    regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+  name:
+    type: string
+    displayName: Full Name
+    required: false
+  given_name:
+    type: string
+    displayName: First Name
+    required: false
+  family_name:
+    type: string
+    displayName: Last Name
+    required: false
+  sub:
+    type: string
+    displayName: Subject
+    required: false
+  password:
+    type: string
+    displayName: Password
+    required: false
+    credential: true
+---
 # LOCAL-DEV ONLY: a sample citizen/data-owner account for testing the consent
-# portal's login and self-service flows without registering through the UI first.
+# portal's login and self-service flows without registering through the UI
+# first. Its `nic` is identical to the mock DRP/RGD record for "Suresh"
+# (dev/providers/{drp-api,rgd-api}/mock_data.json) — log in as this user on
+# the consent portal to approve a `personInfo(nic: "748213")` request
+# end-to-end.
 resource_type: user
 id: 01900000-0000-7000-8000-000000000031
-type: Person
+type: Citizen
 ouHandle: default
 attributes:
   username: suresh
   sub: suresh
+  nic: "748213"
   email: suresh@citizen.fl
-  name: Suresh Fernando
+  name: Suresh
   given_name: Suresh
-  family_name: Fernando
-  mobile_number: "+234564444456"
+credentials:
+  password: "1234"
+---
+# LOCAL-DEV ONLY: same as "suresh" above, but for the mock DRP/RGD record
+# "Ramesh" — log in as this user to approve a `personInfo(nic: "512346")`
+# request.
+resource_type: user
+id: 01900000-0000-7000-8000-000000000033
+type: Citizen
+ouHandle: default
+attributes:
+  username: ramesh
+  sub: ramesh
+  nic: "512346"
+  email: ramesh@citizen.fl
+  name: Ramesh
+  given_name: Ramesh
+credentials:
+  password: "1234"
+---
+# LOCAL-DEV ONLY: same as "suresh" above, but for the mock DRP/RGD record
+# "Naresh" — log in as this user to approve a `personInfo(nic: "398217")`
+# request.
+resource_type: user
+id: 01900000-0000-7000-8000-000000000034
+type: Citizen
+ouHandle: default
+attributes:
+  username: naresh
+  sub: naresh
+  nic: "398217"
+  email: naresh@citizen.fl
+  name: Naresh
+  given_name: Naresh
+credentials:
+  password: "1234"
+---
+# LOCAL-DEV ONLY: same as "suresh" above, but for the mock DRP/RGD record
+# "Gomesh" — log in as this user to approve a `personInfo(nic: "674529")`
+# request.
+resource_type: user
+id: 01900000-0000-7000-8000-000000000035
+type: Citizen
+ouHandle: default
+attributes:
+  username: gomesh
+  sub: gomesh
+  nic: "674529"
+  email: gomesh@citizen.fl
+  name: Gomesh
+  given_name: Gomesh
 credentials:
   password: "1234"
 ---

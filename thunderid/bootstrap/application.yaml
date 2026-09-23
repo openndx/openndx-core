@@ -61,6 +61,7 @@ recoveryFlowId: 01900000-0000-7000-8000-000000000067
 isRecoveryFlowEnabled: true
 allowedUserTypes:
   - Person
+  - Citizen
 inboundAuthConfig:
   - type: oauth2
     config:
@@ -87,6 +88,10 @@ inboundAuthConfig:
               - family_name
               - email
               - name
+              # Citizen-only attribute (thunderid/bootstrap/users.yaml). Needed
+              # in the access token so consent-engine's owner-id match
+              # (IDP_SUBJECT_CLAIM=nic) has something to compare against.
+              - nic
         idToken:
           validityPeriod: 3600
           userAttributes:
@@ -94,6 +99,7 @@ inboundAuthConfig:
             - family_name
             - email
             - name
+            - nic
       scopeClaims:
         profile:
           - name

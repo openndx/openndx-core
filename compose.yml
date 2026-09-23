@@ -165,6 +165,10 @@ services:
       - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-}
       - IDP_JWKS_URL=${IDP_JWKS_URL:-}
       - IDP_JWKS_INSECURE_SKIP_VERIFY=${IDP_JWKS_INSECURE_SKIP_VERIFY:-false}
+      # Token claim compared against a consent record's owner_id (defaults to
+      # "sub"). Set to "nic" to match OE's foundationalIdArgName — see
+      # thunderid/bootstrap/users.yaml's "Citizen" user_type.
+      - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-sub}
       # Database configuration
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
@@ -176,6 +180,47 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      thunderid:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  # Citizen-facing UI for approving/rejecting consent requests. Without this,
+  # a pending consent (PDP_NOT_ALLOWED -> CE_NOT_APPROVED) has no convenient
+  # way to be approved — see dev/README.md for the end-to-end flow.
+  consent-portal:
+    build:
+      # Dockerfile lives at apps/consent/Dockerfile but its COPY paths are
+      # relative to the pnpm workspace root, so the build context must be
+      # portals/, not portals/apps/consent/.
+      context: ./portals
+      dockerfile: apps/consent/Dockerfile
+    container_name: consent-portal-${ENVIRONMENT:-local}
+    ports:
+      - "${PORT_CONSENT_PORTAL:-5173}:80"
+    environment:
+      # These are fetched directly by the user's browser, not from inside the
+      # compose network, so they must be host-reachable (localhost) addresses,
+      # not container service names — config.js is generated at container
+      # startup from these env vars (entrypoint.sh), not baked in at build time.
+      - CONSENT_ENGINE_URL=http://localhost:${PORT_CE:-8081}/api/v1
+      - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
+      - IDP_BASE_URL=${IDP_PUBLIC_URL:-https://localhost:8090}
+      - IDP_SCOPE=openid profile email
+      - IDP_SIGN_IN_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      - IDP_SIGN_OUT_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+    depends_on:
+      consent-engine:
+        condition: service_started
+      thunderid:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
     networks:
       - openndx-network
@@ -210,6 +255,7 @@ services:
       - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
     volumes:
       - ./cmd/oe/config.docker.json:/app/config.json:ro
+      - ./cmd/oe/schema.graphql:/app/schema.graphql:ro
     extra_hosts:
       # Lets the container reach mock providers running on the host
       # (resolves host.docker.internal on Linux too).
