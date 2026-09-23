@@ -6,8 +6,8 @@
 # published images, not on that repo being checked out locally.
 #
 # Usage:
-#   docker compose -f dev/docker-compose.yml up -d
-#   docker compose -f dev/docker-compose.yml down
+#   docker compose -f dev/compose.yml up -d
+#   docker compose -f dev/compose.yml down
 #
 # See dev/README.md for the full walkthrough.
 

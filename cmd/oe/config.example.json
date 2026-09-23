@@ -1,6 +1,6 @@
 {
   "environment": "development",
-  "trustUpstream": false,
+  "trustUpstream": true,
   "foundationalIdArgName": "nic",
   "ceUrl": "http://localhost:8081",
   "pdpUrl": "http://localhost:8082",
@@ -47,10 +47,5 @@
       "sourceArgPath": "personInfo-nic",
       "targetArgPath": "rgd.getPersonInfo"
     }
-  ],
-  "jwt": {
-    "expectedIssuer": "https://idp.example.com/oauth2/token",
-    "validAudiences": ["your-client-id"],
-    "jwksUrl": "https://idp.example.com/oauth2/jwks"
-  }
+  ]
 }

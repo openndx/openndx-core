@@ -1,0 +1,5 @@
+# Configuration for the DRP API Adapter (dev sandbox).
+# "drp-api" resolves via Docker Compose's default network for this project.
+port = 9091
+serviceURL = "http://drp-api:9090"
+choreoApiKey = "your-api-key"
