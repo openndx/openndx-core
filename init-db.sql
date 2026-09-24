@@ -2,7 +2,7 @@
 -- Runs automatically on first Postgres container startup
 -- (mounted into /docker-entrypoint-initdb.d).
 --
--- The POSTGRES_USER (default: exchange) owns all databases.
+-- The POSTGRES_USER (default: postgres) owns all databases.
 
 -- Idempotent creation: skip databases that already exist so the script is
 -- safe to re-run manually (the postgres image only auto-runs it on first init).

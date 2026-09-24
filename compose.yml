@@ -1,32 +1,31 @@
-# Exchange Services - Environment-based Configuration
-# Usage: cp .env.example .env && docker compose up --build
+# OpenNDX - Local Development Stack
+# Usage: docker compose up --build
 #
-# This stack is self-contained: it starts a PostgreSQL database so the
-# services can be tested end-to-end with a single `docker compose up --build`.
+# This stack is self-contained: it starts PostgreSQL, ThunderID (IdP) and every
+# OpenNDX service, so it can be tested end-to-end with a single command. Every
+# variable below has a working local-dev default, so a `.env` file is optional —
+# see `.env.example` for what each one controls.
 #
-# Note: Audit Service is optional and lives in its own repo now:
-#       https://github.com/LSFLK/argus
-#       Services will function normally without audit-service when
-#       AUDIT_SERVICE_URL is not set or ENABLE_AUDIT=false.
+# Note: Audit Service (https://github.com/LSFLK/argus) is optional. Services
+#       function normally when it is not running or unreachable.
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres-${ENVIRONMENT:-local}
     environment:
-      - POSTGRES_USER=${DB_USER:-exchange}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-exchange}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-1234}
       # Just the server's initial connection database — postgres requires one.
-      # The actual per-service databases (pdp, consent_engine, orchestration_engine,
-      # audit) are hardcoded and created separately by init-db.sql on first startup.
+      # The actual per-service databases are created by init-db.sql on first startup.
       - POSTGRES_DB=postgres
     ports:
-      - "${PORT_DB:-5432}:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-exchange} -d ${DB_NAME:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -36,7 +35,7 @@ services:
       - openndx-network
 
   # -------------------------------------------------------------------
-  # 2. Identity Provider Core Services (Thunder Stack)
+  # Identity Provider (ThunderID)
   # -------------------------------------------------------------------
   # Stage A: Seed static database schemas from container image layer
   thunderid-db-init:
@@ -92,7 +91,7 @@ services:
       - thunderid-secrets:/opt/thunderid/config/secrets:ro
       - ./thunderid/deployment.yaml:/opt/thunderid/deployment.yaml
     healthcheck:
-      test: [ "CMD-SHELL", "curl -fsk -o /dev/null http://localhost:8090/health/readiness || exit 1" ]
+      test: ["CMD-SHELL", "curl -fs -o /dev/null http://localhost:8090/health/readiness || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -101,37 +100,39 @@ services:
       thunderid-setup:
         condition: service_completed_successfully
 
+  # -------------------------------------------------------------------
+  # OpenNDX services
+  # -------------------------------------------------------------------
+  # IDP_ISSUER is ThunderID's public URL (the `iss` it stamps into tokens), while
+  # IDP_JWKS_URL uses its compose-network address to actually reach the endpoint.
   policy-decision-point:
     build:
       context: .
       dockerfile: cmd/pdp/Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
-        BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
+        BUILD_TIME: ${BUILD_TIME:-}
         GIT_COMMIT: ${GIT_COMMIT:-local}
     container_name: pdp-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_PDP:-8082}:8082"
+      - "${PDP_PORT:-8082}:8082"
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-local}
       - PORT=8082
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=policy-decision-point
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
       # Database configuration
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USERNAME=${DB_USER:-exchange}
-      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
       - DB_NAME=${DB_NAME_PDP:-pdp}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
-      # IDP_AUDIENCE here is the OE resource server's identifier — kept separate
-      # from consent-engine's CONSENT_ENGINE_AUDIENCE, see resource.yaml.
-      - IDP_ISSUER=${IDP_PUBLIC_URL:-}
-      - IDP_AUDIENCE=${IDP_AUDIENCE:-}
-      - IDP_JWKS_URL=${IDP_JWKS_URL:-}
       - RUN_MIGRATION=${RUN_MIGRATION:-true}
+      # IDP configuration
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_AUDIENCE=${IDP_AUDIENCE:-http://api.openndx.local}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,38 +146,29 @@ services:
       dockerfile: cmd/ce/Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
-        BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
+        BUILD_TIME: ${BUILD_TIME:-}
         GIT_COMMIT: ${GIT_COMMIT:-local}
     container_name: ce-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_CE:-8081}:8081"
+      - "${CE_PORT:-8081}:8081"
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-local}
       - PORT=8081
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_FORMAT=${LOG_FORMAT:-text}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
-      # IDP configuration (JWT verification for portal endpoints)
-      # Deliberately its own audience, distinct from OE/PDP's IDP_AUDIENCE — see
-      # thunderid/bootstrap/resource.yaml for why sharing one would let a token
-      # minted for one API be replayed against the other.
-      - IDP_ISSUER=${IDP_PUBLIC_URL:-}
-      - IDP_AUDIENCE=${CONSENT_ENGINE_AUDIENCE:-}
-      - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-}
-      - IDP_JWKS_URL=${IDP_JWKS_URL:-}
-      - IDP_JWKS_INSECURE_SKIP_VERIFY=${IDP_JWKS_INSECURE_SKIP_VERIFY:-false}
-      # Token claim compared against a consent record's owner_id (defaults to
-      # "sub"). Set to "nic" to match OE's foundationalIdArgName — see
-      # thunderid/bootstrap/users.yaml's "Citizen" user_type.
-      - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-sub}
       # Database configuration
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USERNAME=${DB_USER:-exchange}
-      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
       - DB_NAME=${DB_NAME_CE:-consent_engine}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
       - RUN_MIGRATION=${RUN_MIGRATION:-true}
+      # IDP configuration (JWT verification for consent-portal tokens)
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_AUDIENCE=${CONSENT_ENGINE_AUDIENCE:-CONSENT_PORTAL}
+      - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
+      - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-nic}
     depends_on:
       postgres:
         condition: service_healthy
@@ -198,13 +190,13 @@ services:
       dockerfile: apps/consent/Dockerfile
     container_name: consent-portal-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_CONSENT_PORTAL:-5173}:80"
+      - "${CONSENT_PORTAL_PORT:-5173}:80"
     environment:
       # These are fetched directly by the user's browser, not from inside the
       # compose network, so they must be host-reachable (localhost) addresses,
       # not container service names — config.js is generated at container
       # startup from these env vars (entrypoint.sh), not baked in at build time.
-      - CONSENT_ENGINE_URL=http://localhost:${PORT_CE:-8081}/api/v1
+      - CONSENT_ENGINE_URL=http://localhost:${CE_PORT:-8081}/api/v1
       - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
       - IDP_BASE_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - IDP_SCOPE=openid profile email
@@ -231,34 +223,32 @@ services:
       dockerfile: cmd/oe/Dockerfile
       args:
         BUILD_VERSION: ${BUILD_VERSION:-dev}
-        BUILD_TIME: ${BUILD_TIME:-2025-09-09T16:30:00Z}
+        BUILD_TIME: ${BUILD_TIME:-}
         GIT_COMMIT: ${GIT_COMMIT:-local}
     container_name: oe-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_OE:-4000}:4000"
+      - "${OE_PORT:-4000}:4000"
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-local}
       - PORT=4000
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_FORMAT=${LOG_FORMAT:-text}
       - SERVICE_NAME=orchestration-engine
       - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
       # Database configuration
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USERNAME=${DB_USER:-exchange}
-      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
       - DB_NAME=${DB_NAME_OE:-orchestration_engine}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
+      # Audit (optional, degrades gracefully if unreachable)
       - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
-      - ENABLE_AUDIT=${ENABLE_AUDIT:-false}
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     volumes:
       - ./cmd/oe/config.docker.json:/app/config.json:ro
       - ./cmd/oe/schema.graphql:/app/schema.graphql:ro
     extra_hosts:
-      # Lets the container reach mock providers running on the host
-      # (resolves host.docker.internal on Linux too).
+      # Lets the container reach the mock providers from dev/compose.yml running
+      # on the host (resolves host.docker.internal on Linux too).
       - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
@@ -277,29 +267,28 @@ services:
     build:
       context: .
       dockerfile: cmd/pb/Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-local}
     container_name: pb-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_PB:-8083}:8083"
+      - "${PB_PORT:-8083}:8083"
     environment:
       - PORT=8083
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - PDP_SERVICE_URL=http://policy-decision-point:8082
       # Database configuration
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_USERNAME=${DB_USER:-exchange}
-      - DB_PASSWORD=${DB_PASSWORD:-exchange}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
       - DB_NAME=${DB_NAME_PB:-portal_backend}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
       - RUN_MIGRATION=${RUN_MIGRATION:-true}
-      - PDP_SERVICE_URL=http://policy-decision-point:8082
-      # IDP configuration for validating incoming JWTs (ndx CLI, portal frontends).
-      # IDP_ISSUER must match ThunderID's externally-visible public_url (the `iss`
-      # claim it stamps into tokens) — NOT the container-network address below,
-      # which is only used to actually reach the JWKS endpoint from inside the
-      # compose network.
+      # IDP configuration for validating incoming JWTs (ondx CLI, portal frontends)
       - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
-      - IDP_JWKS_URL=http://thunderid:8090/oauth2/jwks
-      - IDP_JWKS_INSECURE_SKIP_VERIFY=${IDP_JWKS_INSECURE_SKIP_VERIFY:-true}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
       - IDP_ADMIN_PORTAL_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
       # PB's own outbound calls to the IDP (creating application/user records —
       # POST /applications, POST /members) go through idpfactory, which only
@@ -309,17 +298,17 @@ services:
       # non-empty for PB to boot; against ThunderID those specific endpoints
       # (create application/member) will still fail, since ThunderID's admin
       # API isn't Asgardeo-shaped. Everything else (list/get applications,
-      # the policy-update endpoint the ndx CLI uses) doesn't call the IDP at
+      # the policy-update endpoint the ondx CLI uses) doesn't call the IDP at
       # all and works fine.
       - IDP_BASE_URL=http://thunderid:8090
       - IDP_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
-      - IDP_CLIENT_SECRET=${IDP_CLIENT_SECRET:-unused-thunderid-has-no-secret}
+      - IDP_CLIENT_SECRET=${IDP_CLIENT_SECRET:-1234}
       # Authorization
       - AUTHORIZATION_MODE=${AUTHORIZATION_MODE:-fail_open_admin_system}
       - AUTHORIZATION_STRICT_MODE=${AUTHORIZATION_STRICT_MODE:-false}
       # Audit (optional, degrades gracefully if unreachable)
       - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     depends_on:
       postgres:
         condition: service_healthy
@@ -335,18 +324,19 @@ services:
       dockerfile: Dockerfile
     container_name: audit-service-${ENVIRONMENT:-local}
     ports:
-      - "${PORT_AUDIT:-3001}:3001"
+      - "${AUDIT_PORT:-3001}:3001"
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-local}
+      - PORT=3001
+      # Database configuration
       - DB_TYPE=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USERNAME=${DB_USER:-exchange}
-      - DB_PASSWORD=${DB_PASSWORD:-exchange}
-      - DB_NAME=audit
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_AUDIT:-audit}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
-      - PORT=3001
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-test-audit-token}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     depends_on:
       postgres:
         condition: service_healthy

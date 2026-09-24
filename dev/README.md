@@ -34,7 +34,6 @@ and `oe` itself), which already knows how to reach the containers above via
 `host.docker.internal`:
 
 ```bash
-cp .env.example .env   # if you haven't already
 docker compose up --build
 ```
 
@@ -57,10 +56,10 @@ OE's GraphQL endpoint requires a consumer access token — even with `trustUpstr
 claim, it just skips verifying its signature itself (`internal/oe/auth/token.go`,
 `GetConsumerJwtFromTokenWithValidator`). Get one for the seeded M2M data-consumer
 client (`thunderid/bootstrap/application.yaml`, `DATA_CONSUMER`; secret is
-`DATA_CONSUMER_CLIENT_SECRET` from `.env`, default `devsecret`):
+`DATA_CONSUMER_CLIENT_SECRET`, default `1234`):
 
 ```bash
-TOKEN=$(curl -s -u "DATA_CONSUMER:devsecret" \
+TOKEN=$(curl -s -u "DATA_CONSUMER:1234" \
   -X POST http://localhost:8090/oauth2/token \
   -d grant_type=client_credentials \
   -d resource=http://api.openndx.local \
@@ -104,7 +103,7 @@ account (`thunderid/bootstrap/users.yaml`), password `1234` for all of them:
 | `gomesh` | `674529` |
 
 Each account's `nic` attribute is identical to its mock DRP/RGD record, and
-`IDP_SUBJECT_CLAIM=nic` (`.env.example`) tells consent-engine to match that
+`IDP_SUBJECT_CLAIM=nic` (the `compose.yml` default) tells consent-engine to match that
 claim against the consent record's owner id, so logging in as e.g. `suresh`
 is recognized as the owner of NIC `748213` and can approve a request for it.
 
@@ -116,7 +115,7 @@ It's an nginx-served static build; `config.js` is generated at container
 startup from env vars (`entrypoint.sh`), already wired to this stack's
 ThunderID/consent-engine.
 
-Open http://localhost:5173 (or `${PORT_CONSENT_PORTAL}` if you overrode it —
+Open http://localhost:5173 (or `${CONSENT_PORTAL_PORT}` if you overrode it —
 see `.env.example`).
 
 Don't use `portals/setup-portals.sh` for local testing here — it's a separate

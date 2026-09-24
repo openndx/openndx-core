@@ -75,8 +75,8 @@ Before deploying OpenNDX, you must configure an Identity Provider (IdP) to handl
     ```
 
 2.  **Configure Environment**:
-    - Copy the root `.env.example` to `.env` (`cp .env.example .env`).
-    - Update the `.env` file with your IdP configuration (Client IDs, Issuer URLs, etc.) and database credentials.
+    - Optional: the root `compose.yml` defaults every variable to a working local-dev value, including the bundled ThunderID IdP.
+    - To override any of them, copy the root `.env.example` to `.env` (`cp .env.example .env`) and edit only what you need.
 
 3.  **Build and Run**:
     - Use the provided Makefile to build and run services.
@@ -132,17 +132,18 @@ make quality-check <service>  # Run code quality checks
 
 ## Local Development Stack (Docker Compose)
 
-The repo root `compose.yml` brings up Postgres plus OE, PDP, CE, and the
-optional audit service — a self-contained stack for exercising the full request
-flow end-to-end without running each Go binary by hand.
+The repo root `compose.yml` brings up Postgres, ThunderID (IdP), OE, PDP, CE,
+Portal Backend, the consent portal, and the optional audit service — a
+self-contained stack for exercising the full request flow end-to-end without
+running each Go binary by hand.
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
-(docker compose automatically loads a `.env` file from the working directory —
-no `--env-file` flag needed.)
+Every variable has a working local-dev default, so no `.env` is needed. To
+override any of them, `cp .env.example .env` and edit only what you need —
+docker compose automatically loads a `.env` file from the working directory.
 
 ### Testing
 
@@ -202,17 +203,20 @@ curl -X POST http://localhost:8081/internal/api/v1/consents \
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and adjust for your environment:
+`.env.example` lists every variable `compose.yml` reads, grouped by service, at
+its default value. The most common ones:
 
-| Variable                                      | Local example                        | Production example |
-|-----------------------------------------------|--------------------------------------|--------------------|
-| `ENVIRONMENT`                                 | `local`                              | `production`       |
-| `LOG_LEVEL`                                   | `info` or `debug`                    | `warn`             |
-| `LOG_FORMAT`                                  | `text`                               | `json`             |
-| `PORT_PDP` / `PORT_CE` / `PORT_OE`            | `8082` / `8081` / `4000`             | as needed          |
-| `BUILD_VERSION` / `BUILD_TIME` / `GIT_COMMIT` | `dev` / local values                 | CI-provided values |
-| `OTEL_METRICS_EXPORTER`                       | `prometheus`                         | as needed          |
-| `AUDIT_SERVICE_URL` / `ENABLE_AUDIT`          | `http://audit-service:3001` / `true` | as needed          |
+| Variable                                          | Local default                           | Production example   |
+|---------------------------------------------------|-----------------------------------------|----------------------|
+| `ENVIRONMENT`                                     | `local`                                 | `production`         |
+| `PDP_PORT` / `CE_PORT` / `OE_PORT` / `PB_PORT`    | `8082` / `8081` / `4000` / `8083`       | as needed            |
+| `DB_USER` / `DB_PASSWORD`                         | `postgres` / `1234`                     | real credentials     |
+| `IDP_PUBLIC_URL`                                  | `http://localhost:8090`                 | your IdP's HTTPS URL |
+| `BUILD_VERSION` / `BUILD_TIME` / `GIT_COMMIT`     | `dev` / empty / `local`                 | CI-provided values   |
+| `OTEL_METRICS_EXPORTER`                           | `prometheus`                            | as needed            |
+| `AUDIT_SERVICE_URL` / `ARGUS_API_KEY`             | `http://audit-service:3001` / `1234`    | as needed            |
+
+All local-dev secrets default to `1234` — never reuse them outside local dev.
 
 ## Contributing
 
