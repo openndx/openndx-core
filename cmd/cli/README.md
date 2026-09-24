@@ -26,20 +26,20 @@ go build -o ondx ./cmd/cli
 ./ondx login
 ```
 
-`ondx` ships with a built-in `local` profile matching this repo's `docker compose` local-dev stack (ThunderID as IDP on `https://localhost:8090`, client `NDX_CLI`, port `8765`, Portal Backend at `http://localhost:8083`), so a bare `ondx login` works out of the box against it — see [Profiles](#profiles) to add other environments (staging, a partner's deployment, ...) or override any of these values.
+`ondx` ships with a built-in `local` profile matching this repo's `docker compose` local-dev stack (ThunderID as IDP on `http://localhost:8090`, client `NDX_CLI`, port `8765`, Portal Backend at `http://localhost:8083`), so a bare `ondx login` works out of the box against it — see [Profiles](#profiles) to add other environments (staging, a partner's deployment, ...) or override any of these values.
 
 This opens your browser to the identity provider's login page, catches the redirect on a local callback server, exchanges the code for a token, and caches it at `~/.openndx/credentials.json`. Every other command reuses that cached token automatically, refreshing it via its `refresh_token` when it's expired — you only need to log in again if the refresh token itself is no longer valid.
 
 Every flag below can still be passed explicitly, which overrides whatever the active profile sets, e.g. to point at a different issuer without touching your profile:
 
 ```bash
-./ondx login --issuer https://localhost:8090 --client-id NDX_CLI --callback-port 8765 --scopes "openid roles email" --insecure
+./ondx login --issuer http://localhost:8090 --client-id NDX_CLI --callback-port 8765 --scopes "openid roles email"
 ```
 
 `--issuer` fetches `authorization_endpoint`/`token_endpoint` from the identity provider's `{issuer}/.well-known/openid-configuration` (OIDC Discovery), so most standards-compliant IDPs only need a base URL. If an IDP doesn't serve that document at the standard root path, fall back to `--auth-url`/`--token-url` (which take precedence over discovery when set):
 
 ```bash
-./ondx login --auth-url https://localhost:8090/oauth2/authorize --token-url https://localhost:8090/oauth2/token --client-id NDX_CLI --callback-port 8765 --scopes "openid roles email" --insecure
+./ondx login --auth-url http://localhost:8090/oauth2/authorize --token-url http://localhost:8090/oauth2/token --client-id NDX_CLI --callback-port 8765 --scopes "openid roles email"
 ```
 
 This walkthrough uses two members: **DRP** (Department of Registrar of Persons), which owns and provides a schema, and **DIE** (Department of Immigration and Emigration), which registers an application and requests access to DRP's schema fields.
@@ -184,7 +184,7 @@ Profiles are stored in `~/.openndx/config.json`. A built-in `local` profile (see
 
 ### TLS and `--insecure`
 
-ThunderID's local-dev instance serves `https://localhost:8090` with a self-signed certificate (its own `docker compose` healthcheck uses `curl -k` for the same reason). `--insecure` skips TLS verification for that reason and is safe only for local dev — never pass it against a real deployment.
+ThunderID's local-dev instance serves plain HTTP on `http://localhost:8090`, so no TLS is involved and `--insecure` has no effect against it (the built-in `local` profile still sets it, which is harmless over HTTP). `--insecure` skips TLS certificate verification for HTTPS endpoints with self-signed or otherwise untrusted certificates. It is safe only for local/test setups — never pass it against a real deployment.
 
 ### Callback port
 

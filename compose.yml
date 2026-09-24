@@ -58,7 +58,7 @@ services:
     networks:
       - openndx-network
     environment:
-      - PUBLIC_URL=${IDP_PUBLIC_URL:-https://localhost:8090}
+      - PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
       - DATA_CONSUMER_CLIENT_SECRET=${DATA_CONSUMER_CLIENT_SECRET:-1234}
       - ADMIN_PASSWORD=${IDP_ADMIN_PASSWORD:-1234}
@@ -92,7 +92,7 @@ services:
       - thunderid-secrets:/opt/thunderid/config/secrets:ro
       - ./thunderid/deployment.yaml:/opt/thunderid/deployment.yaml
     healthcheck:
-      test: [ "CMD-SHELL", "curl -fsk -o /dev/null https://localhost:8090/health/readiness || exit 1" ]
+      test: [ "CMD-SHELL", "curl -fsk -o /dev/null http://localhost:8090/health/readiness || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -206,7 +206,7 @@ services:
       # startup from these env vars (entrypoint.sh), not baked in at build time.
       - CONSENT_ENGINE_URL=http://localhost:${PORT_CE:-8081}/api/v1
       - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
-      - IDP_BASE_URL=${IDP_PUBLIC_URL:-https://localhost:8090}
+      - IDP_BASE_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - IDP_SCOPE=openid profile email
       - IDP_SIGN_IN_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
       - IDP_SIGN_OUT_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
@@ -297,8 +297,8 @@ services:
       # claim it stamps into tokens) — NOT the container-network address below,
       # which is only used to actually reach the JWKS endpoint from inside the
       # compose network.
-      - IDP_ISSUER=${IDP_PUBLIC_URL:-https://localhost:8090}
-      - IDP_JWKS_URL=https://thunderid:8090/oauth2/jwks
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_JWKS_URL=http://thunderid:8090/oauth2/jwks
       - IDP_JWKS_INSECURE_SKIP_VERIFY=${IDP_JWKS_INSECURE_SKIP_VERIFY:-true}
       - IDP_ADMIN_PORTAL_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
       # PB's own outbound calls to the IDP (creating application/user records —
@@ -311,7 +311,7 @@ services:
       # API isn't Asgardeo-shaped. Everything else (list/get applications,
       # the policy-update endpoint the ndx CLI uses) doesn't call the IDP at
       # all and works fine.
-      - IDP_BASE_URL=https://thunderid:8090
+      - IDP_BASE_URL=http://thunderid:8090
       - IDP_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
       - IDP_CLIENT_SECRET=${IDP_CLIENT_SECRET:-unused-thunderid-has-no-secret}
       # Authorization

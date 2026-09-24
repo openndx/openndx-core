@@ -33,7 +33,7 @@ const (
 )
 
 var defaultLocalProfile = Profile{
-	Issuer:       "https://localhost:8090",
+	Issuer:       "http://localhost:8090",
 	ClientID:     ThunderIDCLIClientID,
 	Scopes:       "openid roles email",
 	CallbackPort: ThunderIDCallbackPort,

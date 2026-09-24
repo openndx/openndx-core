@@ -60,16 +60,14 @@ client (`thunderid/bootstrap/application.yaml`, `DATA_CONSUMER`; secret is
 `DATA_CONSUMER_CLIENT_SECRET` from `.env`, default `devsecret`):
 
 ```bash
-TOKEN=$(curl -sk -u "DATA_CONSUMER:devsecret" \
-  -X POST https://localhost:8090/oauth2/token \
+TOKEN=$(curl -s -u "DATA_CONSUMER:devsecret" \
+  -X POST http://localhost:8090/oauth2/token \
   -d grant_type=client_credentials \
   -d resource=http://api.openndx.local \
   | jq -r .access_token)
 ```
 
-`-k` skips TLS verification — ThunderID's local cert is self-signed (matches
-`IDP_JWKS_INSECURE_SKIP_VERIFY=true` in `.env`). `resource=http://api.openndx.local`
-is the OE resource server declared in `thunderid/bootstrap/resource.yaml`; the
+`resource=http://api.openndx.local` is the OE resource server declared in `thunderid/bootstrap/resource.yaml`; the
 `getdata` scope comes from the `DataConsumerGetData` role, not a requested scope
 param.
 
@@ -119,9 +117,7 @@ startup from env vars (`entrypoint.sh`), already wired to this stack's
 ThunderID/consent-engine.
 
 Open http://localhost:5173 (or `${PORT_CONSENT_PORTAL}` if you overrode it —
-see `.env.example`). Since ThunderID's cert is self-signed, the browser will
-otherwise reject the portal's requests to it — visit `https://localhost:8090`
-directly first and accept the certificate warning, then reload the portal.
+see `.env.example`).
 
 Don't use `portals/setup-portals.sh` for local testing here — it's a separate
 helper for running all three portals via `pnpm dev` against a generic

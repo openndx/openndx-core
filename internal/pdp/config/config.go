@@ -74,9 +74,9 @@ func LoadConfig(serviceName string) *Config {
 	flag.Parse()
 
 	// Reading IDP Configs
-	userIssuer := utils.GetEnvOrDefault("IDP_ISSUER", "https://localhost:8090/oauth2")
+	userIssuer := utils.GetEnvOrDefault("IDP_ISSUER", "http://localhost:8090/oauth2")
 	userAudience := utils.GetEnvOrDefault("IDP_AUDIENCE", "YOUR_AUDIENCE")
-	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "https://localhost:8090/oauth2/jwks")
+	userJwksURL := utils.GetEnvOrDefault("IDP_JWKS_URL", "http://localhost:8090/oauth2/jwks")
 
 	// Reading DB Configs
 	dbHost := utils.GetEnvOrDefault("DB_HOST", "localhost")

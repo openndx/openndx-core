@@ -1,7 +1,8 @@
 server:
   hostname: "0.0.0.0"
   port: 8090
-  public_url: "https://localhost:8090"
+  public_url: "http://localhost:8090"
+  http_only: true
   security:
     # Gates the Direct API endpoints. The secret is generated into config/secrets/direct_auth_secret
     # by setup.sh and read from there at load time. Callers present it in the Direct-Auth-Secret header.

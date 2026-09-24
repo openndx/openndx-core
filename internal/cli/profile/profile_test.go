@@ -13,7 +13,7 @@ func TestLoad_MissingFileYieldsBuiltinDefault(t *testing.T) {
 	assert.Equal(t, DefaultName, cfg.CurrentProfile)
 	local, err := cfg.Get(DefaultName)
 	assert.NoError(t, err)
-	assert.Equal(t, "https://localhost:8090", local.Issuer)
+	assert.Equal(t, "http://localhost:8090", local.Issuer)
 	assert.Equal(t, "NDX_CLI", local.ClientID)
 	assert.Equal(t, 8765, local.CallbackPort)
 	assert.True(t, local.Insecure)
@@ -47,7 +47,7 @@ func TestSaveAndLoad_RoundTrip(t *testing.T) {
 	// only ever defined "staging".
 	local, err := loaded.Get(DefaultName)
 	assert.NoError(t, err)
-	assert.Equal(t, "https://localhost:8090", local.Issuer)
+	assert.Equal(t, "http://localhost:8090", local.Issuer)
 }
 
 func TestLoad_PreservesUserOverriddenLocalProfile(t *testing.T) {

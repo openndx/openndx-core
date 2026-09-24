@@ -70,7 +70,7 @@ ondx login
 ```
 
 `ondx` ships with a built-in `local` profile matching this repo's `docker compose` local-dev
-stack (ThunderID as IDP on `https://localhost:8090`, client `NDX_CLI`, callback port `8765`,
+stack (ThunderID as IDP on `http://localhost:8090`, client `NDX_CLI`, callback port `8765`,
 Portal Backend at `http://localhost:8083`), so a bare `ondx login` works out of the box against
 it once that stack is running.
 
@@ -81,8 +81,8 @@ Every other command reuses that cached token automatically, refreshing it as nee
 need to log in again once the refresh token itself expires.
 
 Against a different environment, either pass flags explicitly — including `--insecure=false` if
-your current profile is `local` (which defaults it to `true` for ThunderID's self-signed dev
-cert) and you're pointing at a real TLS endpoint:
+your current profile is `local` (which defaults it to `true`) and you're pointing at a real TLS
+endpoint:
 
 ```bash
 ondx login --issuer https://idp.example.com --client-id ondx-cli --scopes "openid roles email" \
@@ -212,8 +212,9 @@ complete detail (including env var equivalents for every flag).
 
 - **`policy metadata not found`** on `applications create`/`policy update` — the `--field` you
   passed was never registered via `schemas create`. Register it there first.
-- **TLS errors against `https://localhost:8090`** — ThunderID's local-dev instance uses a
-  self-signed cert; pass `--insecure` (local dev only, never against a real deployment).
+- **Connection errors against `https://localhost:8090`** — ThunderID's local-dev instance serves
+  plain HTTP. Use `http://localhost:8090`, and update any older `.env` or `~/.openndx/config.json`
+  overrides that still point at `https://`.
 - **`ondx login` rejects your `--callback-port`** — ThunderID's `NDX_CLI` client has a redirect
   URI pinned to `http://127.0.0.1:8765/callback`; `ondx` enforces port `8765` for that client
   instead of attempting a login the IDP would reject anyway.
