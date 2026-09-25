@@ -1,12 +1,19 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+var (
+	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
+	ErrAllowListEntryNotFound = errors.New("allow-list entry not found")
 )
 
 // PolicyMetadataService provides business logic for policy metadata operations
@@ -364,4 +371,140 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 	}
 
 	return response, nil
+}
+
+// ListPolicyMetadata returns all policy metadata records for one schema.
+func (s *PolicyMetadataService) ListPolicyMetadata(
+	schemaID string,
+) (*models.PolicyMetadataListResponse, error) {
+	var records []models.PolicyMetadata
+
+	if err := s.db.
+		Where("schema_id = ?", schemaID).
+		Order("field_name ASC").
+		Find(&records).Error; err != nil {
+		return nil, fmt.Errorf("failed to list policy metadata: %w", err)
+	}
+
+	responseRecords := make([]models.PolicyMetadataResponse, 0, len(records))
+	for i := range records {
+		responseRecords = append(responseRecords, records[i].ToResponse())
+	}
+
+	return &models.PolicyMetadataListResponse{
+		Records: responseRecords,
+	}, nil
+}
+
+// PatchPolicyMetadata updates selected properties of one policy metadata record.
+func (s *PolicyMetadataService) PatchPolicyMetadata(
+	id uuid.UUID,
+	req *models.PolicyMetadataPatchRequest,
+) (*models.PolicyMetadataResponse, error) {
+	var policyMetadata models.PolicyMetadata
+
+	if err := s.db.First(&policyMetadata, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+		}
+
+		return nil, fmt.Errorf("failed to fetch policy metadata: %w", err)
+	}
+
+	if req.DisplayName.Set {
+		policyMetadata.DisplayName = req.DisplayName.Value
+	}
+
+	if req.Description.Set {
+		policyMetadata.Description = req.Description.Value
+	}
+
+	if req.AccessControlType.Set {
+		if req.AccessControlType.Value == nil {
+			return nil, errors.New("accessControlType cannot be null")
+		}
+
+		accessControlType := *req.AccessControlType.Value
+		if accessControlType != models.AccessControlTypePublic &&
+			accessControlType != models.AccessControlTypeRestricted {
+			return nil, fmt.Errorf(
+				"invalid accessControlType: %s",
+				accessControlType,
+			)
+		}
+
+		policyMetadata.AccessControlType = accessControlType
+	}
+
+	policyMetadata.UpdatedAt = time.Now()
+
+	if err := s.db.Model(&policyMetadata).
+		Select(
+			"display_name",
+			"description",
+			"access_control_type",
+			"updated_at",
+		).
+		Updates(&policyMetadata).Error; err != nil {
+		return nil, fmt.Errorf("failed to update policy metadata: %w", err)
+	}
+
+	response := policyMetadata.ToResponse()
+	return &response, nil
+}
+
+// DeletePolicyMetadata deletes one policy metadata record by ID.
+func (s *PolicyMetadataService) DeletePolicyMetadata(id uuid.UUID) error {
+	result := s.db.Delete(&models.PolicyMetadata{}, "id = ?", id)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete policy metadata: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+	}
+
+	return nil
+}
+
+// RevokeAllowListEntry removes one application from one field's allow-list.
+func (s *PolicyMetadataService) RevokeAllowListEntry(
+	id uuid.UUID,
+	applicationID string,
+) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var policyMetadata models.PolicyMetadata
+
+		if err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&policyMetadata, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+			}
+
+			return fmt.Errorf("failed to fetch policy metadata: %w", err)
+		}
+
+		if _, exists := policyMetadata.AllowList[applicationID]; !exists {
+			return fmt.Errorf(
+				"%w: %s",
+				ErrAllowListEntryNotFound,
+				applicationID,
+			)
+		}
+
+		delete(policyMetadata.AllowList, applicationID)
+		policyMetadata.UpdatedAt = time.Now()
+
+		if err := tx.Model(&policyMetadata).
+			Select("allow_list", "updated_at").
+			Updates(map[string]interface{}{
+				"allow_list": policyMetadata.AllowList,
+				"updated_at": policyMetadata.UpdatedAt,
+			}).Error; err != nil {
+			return fmt.Errorf("failed to revoke allow-list entry: %w", err)
+		}
+
+		return nil
+	})
 }
