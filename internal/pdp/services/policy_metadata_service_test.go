@@ -147,6 +147,27 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NotNil(t, nameRecord.DisplayName)
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 
+	// Reject any SQL statement that updates access_control_type. A display-only
+	// patch must still succeed because it should update only the supplied field.
+	require.NoError(t, db.Exec(`
+		CREATE TRIGGER reject_access_control_type_update
+		BEFORE UPDATE OF access_control_type ON policy_metadata
+		BEGIN
+			SELECT RAISE(FAIL, 'access_control_type was unexpectedly updated');
+		END;
+	`).Error)
+
+	displayOnlyResp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
+		DisplayName: models.OptionalPatchField[string]{
+			Set:   true,
+			Value: testhelpers.StringPtr("Contact Email"),
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, displayOnlyResp.DisplayName)
+	assert.Equal(t, "Contact Email", *displayOnlyResp.DisplayName)
+	assert.Equal(t, models.AccessControlTypeRestricted, displayOnlyResp.AccessControlType)
+
 	_, err = service.PatchPolicyMetadata(uuid.New(), &models.PolicyMetadataPatchRequest{})
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
