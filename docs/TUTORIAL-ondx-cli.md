@@ -3,50 +3,78 @@
 `ondx` is a Go CLI for OpenNDX management operations — members, schemas, applications, and
 policies — against the Portal Backend API. This tutorial covers getting the binary onto your
 machine and walking through a full onboarding scenario. For the exhaustive flag-by-flag
-reference, see [`cmd/cli/README.md`](../cmd/cli/README.md); this doc is the narrative,
+reference, see [`cmd/ondx/README.md`](../cmd/ondx/README.md); this doc is the narrative,
 start-to-finish version.
 
 ## Prerequisites
 
-- Go 1.26+ (only needed for the `go install`/`go build` methods below — not to run the binary
-  once built)
 - Network access to an OpenNDX Portal Backend instance and ThunderID, the identity provider it
   trusts
+- Go 1.26+ only if you install with `go install` or build from source (Options D and E below)
 
 ## 1. Install
 
-### Option A — `go install`, pointing straight at the package
+Prebuilt `ondx` binaries for Linux, macOS, and Windows (amd64/arm64) are attached to every
+[GitHub Release](https://github.com/openndx/openndx-core/releases) from the first release that
+includes the CLI onward.
+
+### Option A — Homebrew (macOS / Linux)
+
+```bash
+brew install openndx/tap/ondx
+```
+
+`brew upgrade ondx` picks up new releases.
+
+### Option B — install script (macOS / Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
+```
+
+The script picks the build for your OS/CPU, verifies it against the release's `checksums.txt`,
+and installs it to `/usr/local/bin` if that's writable, otherwise `~/.local/bin`. Set
+`ONDX_VERSION=v0.3.0` to pin a release, or `ONDX_INSTALL_DIR=<dir>` to install somewhere else.
+
+To download manually instead, grab `ondx_<os>_<arch>.tar.gz` (`.zip` on
+Windows) from the release page. Every release archive carries a build provenance attestation you
+can verify with the GitHub CLI:
+
+```bash
+gh attestation verify ondx_linux_amd64.tar.gz --repo openndx/openndx-core
+```
+
+### Option C — Windows (PowerShell script)
+
+Run the install script from PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
+```
+
+It picks the amd64 or arm64 build, verifies it against the release's `checksums.txt`, installs
+`ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that folder to your user `PATH` (open a new
+terminal afterwards). Set `$env:ONDX_VERSION = 'v0.3.0'` to pin a release, or
+`$env:ONDX_INSTALL_DIR` to install somewhere else. Re-run it to upgrade.
+
+The binary isn't code-signed, so if you download the zip through a browser instead, Windows
+SmartScreen may warn on first run.
+
+### Option D — `go install`
 
 This fetches, builds, and installs the CLI without cloning the repo:
 
 ```bash
-go install github.com/openndx/openndx-core/cmd/cli@main
+go install github.com/openndx/openndx-core/cmd/ondx@latest
 ```
 
-> **Note on `@main` vs `@latest`:** the `cmd/cli` package landed after this repo's most recent
-> tag (`v0.2.0`), so `@latest` currently resolves to a module version that predates the CLI and
-> will fail with `no required module provides package .../cmd/cli`. Use `@main` (or pin a
-> specific commit, `@<sha>`) until a new tag is cut that includes it; once one is, `@latest` (or
-> `@v0.3.0` etc.) will work too.
+It's installed to `GOBIN` if you've set that, otherwise `$(go env GOPATH)/bin` (usually
+`~/go/bin`) — make sure that directory is on your `PATH`.
 
-`go install` names the resulting binary after the package **directory**, not the module doc
-comment — so this produces a binary literally named `cli`, not `ondx`. It's installed to `GOBIN`
-if you've set that, otherwise `$(go env GOPATH)/bin`. Resolve whichever applies and rename the
-binary there:
+> **Note:** `@latest` resolves to the newest release tag, so it only works once a tag that
+> includes `cmd/ondx` has been cut. Until then, use `@main` (or pin a commit, `@<sha>`).
 
-```bash
-bin_dir="$(go env GOBIN)"
-[ -z "$bin_dir" ] && bin_dir="$(go env GOPATH)/bin"
-mv "$bin_dir/cli" "$bin_dir/ondx"
-```
-
-Make sure that directory is on your `PATH` (usually `~/go/bin`), then confirm it's picked up:
-
-```bash
-ondx help
-```
-
-### Option B — clone and build from source
+### Option E — clone and build from source
 
 Useful if you're working inside this repo already, or want a specific commit/branch without
 relying on the module proxy:
@@ -54,14 +82,20 @@ relying on the module proxy:
 ```bash
 git clone https://github.com/openndx/openndx-core.git
 cd openndx-core
-go build -o ondx ./cmd/cli
+go build -o ondx ./cmd/ondx
 ```
 
 This writes `ondx` to the current directory (not your `PATH`), so invoke it as `./ondx ...` in
 every command below, or move it onto your `PATH` yourself.
 
-Or skip the build step entirely and run it straight from source with `go run ./cmd/cli ...` in
+Or skip the build step entirely and run it straight from source with `go run ./cmd/ondx ...` in
 place of `./ondx ...`.
+
+### Check the install
+
+```bash
+ondx version
+```
 
 ## 2. Log in
 
@@ -205,7 +239,7 @@ Every command that calls Portal Backend (`members create`, `schemas create`,
 `--insecure`, and `--profile`. `ondx login` accepts `--credentials-path`, `--insecure`, and
 `--profile`, but not `--pb-url` (it doesn't talk to Portal Backend). `ondx profile list` and
 `ondx profile use <name>` take no flags at all. Run `ondx <command> -h` for the full flags on any
-of them, or see the [flag tables in `cmd/cli/README.md`](../cmd/cli/README.md#commands) for
+of them, or see the [flag tables in `cmd/ondx/README.md`](../cmd/ondx/README.md#commands) for
 complete detail (including env var equivalents for every flag).
 
 ## 6. Troubleshooting
@@ -223,4 +257,4 @@ complete detail (including env var equivalents for every flag).
   ThunderID's console first, then pass `--idp-user-id` / `--idp-application-id --idp-client-id`.
 
 For anything not covered here — full flag tables, the TLS/callback-port/ThunderID-resource-binding
-notes, and current limitations — see [`cmd/cli/README.md`](../cmd/cli/README.md).
+notes, and current limitations — see [`cmd/ondx/README.md`](../cmd/ondx/README.md).

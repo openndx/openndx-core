@@ -13,12 +13,19 @@ It works against any OIDC-compatible identity provider PB is configured to trust
 
 ## Quick Start
 
-### 1. Build
+### 1. Install
 
 ```bash
-go build -o ondx ./cmd/cli
-# or run directly with `go run ./cmd/cli ...` for any command below
+brew install openndx/tap/ondx
+# or
+curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
+# or, on Windows (PowerShell)
+irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
+# or
+go install github.com/openndx/openndx-core/cmd/ondx@latest
 ```
+
+Prebuilt binaries for every OS/CPU are also attached to each [GitHub Release](https://github.com/openndx/openndx-core/releases) — see the [tutorial](../../docs/TUTORIAL-ondx-cli.md#1-install) for all options, including verifying downloads with `gh attestation verify`. From a checkout, `go build -o ondx ./cmd/ondx` (or `go run ./cmd/ondx ...`) works too. Run `ondx version` to see which build you have.
 
 ### 2. Log in
 
@@ -180,6 +187,10 @@ Profiles are stored in `~/.openndx/config.json`. A built-in `local` profile (see
 
 `profile set` only changes the flags you pass — omitted flags keep their existing value in that profile. Each non-`local` profile also gets its own credentials cache (`~/.openndx/credentials-<name>.json`) so switching profiles can't pick up a token cached against a different identity provider.
 
+### `ondx version`
+
+Prints the release version, commit, and build date (injected by GoReleaser at release time), plus the Go version and OS/arch. Builds from `go install`/`go build` report the module version and commit Go embeds instead. `ondx --version` is an alias.
+
 ## Notes
 
 ### TLS and `--insecure`
@@ -203,16 +214,21 @@ ThunderID can bind an access token's `aud` claim to a resource server requested 
 ## Development
 
 ```bash
-go build ./cmd/cli/... ./internal/cli/...
-go vet ./cmd/cli/... ./internal/cli/...
+go build ./cmd/ondx/... ./internal/cli/...
+go vet ./cmd/ondx/... ./internal/cli/...
 go test ./internal/cli/...
 ```
+
+### Releases
+
+Pushing a `v*.*.*` tag runs `.github/workflows/release.yml`, whose `goreleaser` job builds `ondx` for linux/darwin/windows × amd64/arm64 per [`.goreleaser.yaml`](../../.goreleaser.yaml), creates the GitHub Release with the archives and `checksums.txt`, attests their build provenance, and updates the `openndx/homebrew-tap` cask (skipped for prereleases or when the `TAP_TOKEN` secret isn't set; the token needs write access to the tap repo). Dry-run it locally with `goreleaser release --snapshot --clean` (output in `dist/`).
 
 ### Project Structure
 
 ```
-cmd/cli/
-└── main.go                 # Entry point: flag parsing and subcommand dispatch
+cmd/ondx/
+├── main.go                 # Entry point: flag parsing and subcommand dispatch
+└── version.go              # `ondx version`; version/commit/date injected via -ldflags at release
 
 internal/cli/
 ├── auth/                    # PKCE, browser-based login flow, token cache/refresh

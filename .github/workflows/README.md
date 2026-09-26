@@ -29,13 +29,13 @@ Run on every PR when service code changes. Perform code quality checks and tests
 
 Build and publish Docker images to GitHub Container Registry when code is merged to main.
 
-| Workflow                            | Service               | Image                                          |
-| ----------------------------------- | --------------------- | ---------------------------------------------- |
-| `consent-engine-publish.yml`        | Consent Engine        | `ghcr.io/{owner}/consent-engine`               |
-| `orchestration-engine-publish.yml`  | Orchestration Engine  | `ghcr.io/{owner}/orchestration-engine`         |
-| `policy-decision-point-publish.yml` | Policy Decision Point | `ghcr.io/{owner}/policy-decision-point`        |
-| `portal-backend-publish.yml`        | Portal Backend        | `ghcr.io/{owner}/portal-backend`               |
-| `release.yml`                       | All Services          | Builds all services with version tags          |
+| Workflow                            | Service               | Image                                                       |
+|-------------------------------------|-----------------------|-------------------------------------------------------------|
+| `consent-engine-publish.yml`        | Consent Engine        | `ghcr.io/{owner}/consent-engine`                            |
+| `orchestration-engine-publish.yml`  | Orchestration Engine  | `ghcr.io/{owner}/orchestration-engine`                      |
+| `policy-decision-point-publish.yml` | Policy Decision Point | `ghcr.io/{owner}/policy-decision-point`                     |
+| `portal-backend-publish.yml`        | Portal Backend        | `ghcr.io/{owner}/portal-backend`                            |
+| `release.yml`                       | All Services, `ondx`  | Builds all services + `ondx` CLI binaries with version tags |
 
 **Triggers:**
 

@@ -218,6 +218,28 @@ its default value. The most common ones:
 
 All local-dev secrets default to `1234` — never reuse them outside local dev.
 
+## ondx CLI
+
+`ondx` is the management CLI for members, schemas, applications, and policies against the OpenNDX Platform. Install it with:
+
+```bash
+# macOS / Linux
+brew install openndx/tap/ondx
+
+# Any Unix
+curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
+
+# Go developers
+go install github.com/openndx/openndx-core/cmd/ondx@latest
+
+ondx version
+```
+
+Prebuilt archives for Linux, macOS, and Windows are attached to each [GitHub Release](https://github.com/openndx/openndx-core/releases); verify one with `gh attestation verify <file> --repo openndx/openndx-core`. See the [CLI tutorial](docs/TUTORIAL-ondx-cli.md) and [command reference](cmd/ondx/README.md).
+
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](docs/contributing/) for details on:

@@ -58,6 +58,8 @@ func main() {
 		err = runMembers(ctx, os.Args[2:])
 	case "schemas":
 		err = runSchemas(ctx, os.Args[2:])
+	case "version", "--version":
+		err = runVersion(os.Args[2:])
 	case "-h", "--help", "help":
 		printUsage()
 		return
@@ -87,6 +89,7 @@ Usage:
   ondx applications list [flags]    List applications
   ondx applications get [flags]     Show an application's current details and policy
   ondx policy update [flags]        Update an existing application's policy
+  ondx version                      Print the ondx version and build info
 
 Every command above accepts --profile <name> (env NDX_PROFILE) to use a
 profile other than the current one for that invocation - see

@@ -1,0 +1,106 @@
+# GoReleaser config for the ondx management CLI (cmd/ondx).
+# Run by the goreleaser job in .github/workflows/release.yml on v*.*.* tags; it
+# creates the GitHub Release, attaches the CLI archives, and updates the
+# Homebrew tap. Dry-run locally with: goreleaser release --snapshot --clean
+version: 2
+
+project_name: ondx
+
+builds:
+  - id: ondx
+    main: ./cmd/ondx
+    binary: ondx
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: ondx
+    # No version in the name so releases/latest/download/<name> is a stable URL
+    # for scripts/install.sh.
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - src: cmd/ondx/README.md
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native
+
+release:
+  prerelease: auto
+  footer: |
+    ## Docker images
+
+    This release includes Docker images for all services and portals:
+
+    - **Portal Backend**: `ghcr.io/openndx/portal-backend:{{ .Version }}`
+    - **Policy Decision Point**: `ghcr.io/openndx/policy-decision-point:{{ .Version }}`
+    - **Consent Engine**: `ghcr.io/openndx/consent-engine:{{ .Version }}`
+    - **Orchestration Engine**: `ghcr.io/openndx/orchestration-engine:{{ .Version }}`
+    - **Admin Portal**: `ghcr.io/openndx/admin-portal:{{ .Version }}`
+    - **Consent Portal**: `ghcr.io/openndx/consent-portal:{{ .Version }}`
+    - **Member Portal**: `ghcr.io/openndx/member-portal:{{ .Version }}`
+
+    ```bash
+    docker pull ghcr.io/openndx/portal-backend:{{ .Version }}
+    docker pull ghcr.io/openndx/policy-decision-point:{{ .Version }}
+    docker pull ghcr.io/openndx/consent-engine:{{ .Version }}
+    docker pull ghcr.io/openndx/orchestration-engine:{{ .Version }}
+    docker pull ghcr.io/openndx/admin-portal:{{ .Version }}
+    docker pull ghcr.io/openndx/consent-portal:{{ .Version }}
+    docker pull ghcr.io/openndx/member-portal:{{ .Version }}
+    ```
+
+    ## ondx CLI
+
+    ```bash
+    # macOS / Linux
+    brew install openndx/tap/ondx
+    # or
+    curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
+    ```
+
+    ```powershell
+    # Windows
+    irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
+    ```
+
+    Verify a download: `gh attestation verify <file> --repo openndx/openndx-core`
+
+homebrew_casks:
+  - name: ondx
+    repository:
+      owner: '{{ envOrDefault "GITHUB_REPOSITORY_OWNER" "openndx" }}'
+      name: homebrew-tap
+      # Must be exactly {{ .Env.NAME }} — GoReleaser rejects any other template
+      # in token fields. release.yml always sets TAP_TOKEN (empty when the
+      # secret is missing), and skip_upload is checked before the token is read.
+      token: "{{ .Env.TAP_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/openndx/openndx-core
+    description: OpenNDX management CLI
+    # Skip the tap push for prereleases, and when TAP_TOKEN isn't configured so
+    # the rest of the release still goes out.
+    skip_upload: '{{ if or .Prerelease (eq (envOrDefault "TAP_TOKEN" "") "") }}true{{ end }}'
+    hooks:
+      post:
+        # The binaries aren't notarized; clear the quarantine flag so macOS
+        # Gatekeeper doesn't block the first run.
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ondx"]
+          end

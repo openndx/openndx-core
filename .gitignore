@@ -44,3 +44,6 @@ mocks/mock-dmt/Config.toml
 
 # Database files
 **/*.db
+
+# ondx CLI binary built at the repo root (go build -o ondx ./cmd/ondx)
+/ondx

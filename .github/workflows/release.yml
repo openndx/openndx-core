@@ -208,41 +208,40 @@ jobs:
           echo "- **Mode:** $MODE" >> $GITHUB_STEP_SUMMARY
           echo "- **Image:** \`${REGISTRY}/${REPO_OWNER}/${SERVICE_IMAGE}:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
 
-  create-release:
-    needs: [prepare, build-and-push]
+  # GoReleaser builds the ondx CLI, creates the GitHub Release (Docker image
+  # list lives in .goreleaser.yaml's release.footer), and updates the Homebrew tap.
+  goreleaser:
+    needs: build-and-push
     if: github.event_name == 'push' && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ needs.prepare.outputs.version }}
-          body: |
-            ## Release ${{ needs.prepare.outputs.version }}
+          fetch-depth: 0
 
-            This release includes Docker images for all services and portals:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
-            - **Portal Backend**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/portal-backend:${{ needs.prepare.outputs.version }}`
-            - **Policy Decision Point**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/policy-decision-point:${{ needs.prepare.outputs.version }}`
-            - **Consent Engine**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/consent-engine:${{ needs.prepare.outputs.version }}`
-            - **Orchestration Engine**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/orchestration-engine:${{ needs.prepare.outputs.version }}`
-            - **Admin Portal**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/admin-portal:${{ needs.prepare.outputs.version }}`
-            - **Consent Portal**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/consent-portal:${{ needs.prepare.outputs.version }}`
-            - **Member Portal**: `${{ env.REGISTRY }}/${{ github.repository_owner }}/member-portal:${{ needs.prepare.outputs.version }}`
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Fine-grained PAT / GitHub App token with write access to
+          # openndx/homebrew-tap; the tap update is skipped when unset.
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
 
-            ### Pull Images
-
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/portal-backend:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/policy-decision-point:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/consent-engine:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/orchestration-engine:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/admin-portal:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/consent-portal:${{ needs.prepare.outputs.version }}
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/member-portal:${{ needs.prepare.outputs.version }}
-            ```
-          draft: false
-          prerelease: false
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: ./dist/checksums.txt
