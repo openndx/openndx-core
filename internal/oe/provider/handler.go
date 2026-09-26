@@ -57,6 +57,11 @@ func (h *Handler) GetProvider(serviceKey, schemaId string) (*Provider, bool) {
 func (h *Handler) AddProvider(provider *Provider) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if provider == nil || provider.ServiceKey == "" {
+		return
+	}
+
 	h.Providers = append(h.Providers, provider)
 	provider.Client = h.HttpClient
 }

@@ -294,3 +294,25 @@ func TestHandler_ConcurrentAccess(t *testing.T) {
 		t.Error("Original provider should still exist after concurrent operations")
 	}
 }
+
+func TestHandler_AddProvider_NilProvider(t *testing.T) {
+	handler := NewProviderHandler([]*Provider{
+		NewProvider("provider1", "http://example1.com", "schema1", nil),
+	})
+	initialCount := len(handler.Providers)
+	handler.AddProvider(nil)
+	if len(handler.Providers) != initialCount {
+		t.Errorf("expected provider count to stay %d after adding nil, got %d", initialCount, len(handler.Providers))
+	}
+}
+
+func TestHandler_AddProvider_EmptyServiceKey(t *testing.T) {
+	handler := NewProviderHandler([]*Provider{
+		NewProvider("provider1", "http://example1.com", "schema1", nil),
+	})
+	initialCount := len(handler.Providers)
+	handler.AddProvider(NewProvider("", "http://example2.com", "schema2", nil))
+	if len(handler.Providers) != initialCount {
+		t.Errorf("expected provider count to stay %d after adding empty-key provider, got %d", initialCount, len(handler.Providers))
+	}
+}
