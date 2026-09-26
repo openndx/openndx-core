@@ -1,12 +1,19 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+var (
+	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
+	ErrAllowListEntryNotFound = errors.New("allow-list entry not found")
 )
 
 // PolicyMetadataService provides business logic for policy metadata operations
@@ -168,33 +175,11 @@ func (s *PolicyMetadataService) UpdateAllowList(req *models.AllowListUpdateReque
 		return &models.AllowListUpdateResponse{Records: []models.AllowListUpdateResponseRecord{}}, nil
 	}
 
-	// Fetch all matching PolicyMetadata records in one query
-	var policyMetadataRecords []models.PolicyMetadata
 	whereClause := "(" + conditions[0]
 	for i := 1; i < len(conditions); i++ {
 		whereClause += " OR " + conditions[i]
 	}
 	whereClause += ")"
-
-	if err := s.db.Where(whereClause, args...).Find(&policyMetadataRecords).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch policy metadata records: %w", err)
-	}
-
-	// Create map for fast lookup: (schema_id + field_name) -> &PolicyMetadata
-	policyMap := make(map[string]*models.PolicyMetadata)
-	for i := range policyMetadataRecords {
-		pm := &policyMetadataRecords[i]
-		key := pm.SchemaID + ":" + pm.FieldName
-		policyMap[key] = pm
-	}
-
-	// Check if all requested records exist
-	for key := range requestMap {
-		if _, exists := policyMap[key]; !exists {
-			record := requestMap[key]
-			return nil, fmt.Errorf("policy metadata not found for schema_id %s and field_name %s", record.SchemaID, record.FieldName)
-		}
-	}
 
 	// Calculate expiration time based on grant duration
 	currentTime := time.Now()
@@ -208,69 +193,69 @@ func (s *PolicyMetadataService) UpdateAllowList(req *models.AllowListUpdateReque
 		return nil, fmt.Errorf("invalid grant duration: %s", req.GrantDuration)
 	}
 
-	// Start transaction
-	tx := s.db.Begin()
-	if tx.Error != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", tx.Error)
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
 	var responseRecords []models.AllowListUpdateResponseRecord
-	var recordsToUpdate []*models.PolicyMetadata
 
-	// Update records in memory first
-	for _, record := range req.Records {
-		key := record.SchemaID + ":" + record.FieldName
-		pm := policyMap[key]
-
-		// Update allow list
-		if pm.AllowList == nil {
-			pm.AllowList = make(models.AllowList)
-		}
-		pm.AllowList[req.ApplicationID] = models.AllowListEntry{
-			ExpiresAt: expiresAt,
-			UpdatedAt: currentTime,
+	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		// Lock the matching rows before reading their allow-lists. Granting and
+		// revoking therefore cannot overwrite each other with stale map values.
+		var policyMetadataRecords []models.PolicyMetadata
+		if err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(whereClause, args...).
+			Order("schema_id ASC, field_name ASC").
+			Find(&policyMetadataRecords).Error; err != nil {
+			return fmt.Errorf("failed to fetch policy metadata records: %w", err)
 		}
 
-		recordsToUpdate = append(recordsToUpdate, pm)
-
-		// Prepare response record
-		responseRecord := models.AllowListUpdateResponseRecord{
-			FieldName: record.FieldName,
-			SchemaID:  record.SchemaID,
-			ExpiresAt: expiresAt.Format(time.RFC3339),
-			UpdatedAt: currentTime.Format(time.RFC3339),
+		policyMap := make(map[string]*models.PolicyMetadata)
+		for i := range policyMetadataRecords {
+			pm := &policyMetadataRecords[i]
+			key := pm.SchemaID + ":" + pm.FieldName
+			policyMap[key] = pm
 		}
-		responseRecords = append(responseRecords, responseRecord)
-	}
 
-	// Update all records
-	// Note: We perform individual updates because each record has a different allow_list value.
-	// Each field's allow_list map may already contain entries for other applications, so individual
-	// updates are necessary to ensure the correct application ID and expiration time are set for each field.
-	// However, this function only updates the allow_list for a single application ID and expiration time
-	// per request (from req.ApplicationID and req.GrantDuration); all records in the batch receive the same values.
-	// The custom AllowList type's Value() method ensures proper JSONB serialization for each record.
-	if len(recordsToUpdate) > 0 {
-		for _, pm := range recordsToUpdate {
+		for key := range requestMap {
+			if _, exists := policyMap[key]; !exists {
+				record := requestMap[key]
+				return fmt.Errorf(
+					"policy metadata not found for schema_id %s and field_name %s",
+					record.SchemaID,
+					record.FieldName,
+				)
+			}
+		}
+
+		for _, record := range req.Records {
+			key := record.SchemaID + ":" + record.FieldName
+			pm := policyMap[key]
+
+			if pm.AllowList == nil {
+				pm.AllowList = make(models.AllowList)
+			}
+			pm.AllowList[req.ApplicationID] = models.AllowListEntry{
+				ExpiresAt: expiresAt,
+				UpdatedAt: currentTime,
+			}
 			pm.UpdatedAt = currentTime
+
 			if err := tx.Model(pm).Select("allow_list", "updated_at").Updates(map[string]interface{}{
 				"allow_list": pm.AllowList,
 				"updated_at": pm.UpdatedAt,
 			}).Error; err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("failed to update allow list record: %w", err)
+				return fmt.Errorf("failed to update allow list record: %w", err)
 			}
-		}
-	}
 
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+			responseRecords = append(responseRecords, models.AllowListUpdateResponseRecord{
+				FieldName: record.FieldName,
+				SchemaID:  record.SchemaID,
+				ExpiresAt: expiresAt.Format(time.RFC3339),
+				UpdatedAt: currentTime.Format(time.RFC3339),
+			})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return &models.AllowListUpdateResponse{
@@ -364,4 +349,138 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 	}
 
 	return response, nil
+}
+
+// ListPolicyMetadata returns all policy metadata records for one schema.
+func (s *PolicyMetadataService) ListPolicyMetadata(
+	schemaID string,
+) (*models.PolicyMetadataListResponse, error) {
+	var records []models.PolicyMetadata
+
+	if err := s.db.
+		Where("schema_id = ?", schemaID).
+		Order("field_name ASC").
+		Find(&records).Error; err != nil {
+		return nil, fmt.Errorf("failed to list policy metadata: %w", err)
+	}
+
+	responseRecords := make([]models.PolicyMetadataResponse, 0, len(records))
+	for i := range records {
+		responseRecords = append(responseRecords, records[i].ToResponse())
+	}
+
+	return &models.PolicyMetadataListResponse{
+		Records: responseRecords,
+	}, nil
+}
+
+// PatchPolicyMetadata updates selected properties of one policy metadata record.
+func (s *PolicyMetadataService) PatchPolicyMetadata(
+	id uuid.UUID,
+	req *models.PolicyMetadataPatchRequest,
+) (*models.PolicyMetadataResponse, error) {
+	var policyMetadata models.PolicyMetadata
+	updates := make(map[string]interface{})
+
+	if err := s.db.First(&policyMetadata, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+		}
+
+		return nil, fmt.Errorf("failed to fetch policy metadata: %w", err)
+	}
+
+	if req.DisplayName.Set {
+		policyMetadata.DisplayName = req.DisplayName.Value
+		updates["display_name"] = req.DisplayName.Value
+	}
+
+	if req.Description.Set {
+		policyMetadata.Description = req.Description.Value
+		updates["description"] = req.Description.Value
+	}
+
+	if req.AccessControlType.Set {
+		if req.AccessControlType.Value == nil {
+			return nil, errors.New("accessControlType cannot be null")
+		}
+
+		accessControlType := *req.AccessControlType.Value
+		if accessControlType != models.AccessControlTypePublic &&
+			accessControlType != models.AccessControlTypeRestricted {
+			return nil, fmt.Errorf(
+				"invalid accessControlType: %s",
+				accessControlType,
+			)
+		}
+
+		policyMetadata.AccessControlType = accessControlType
+		updates["access_control_type"] = accessControlType
+	}
+
+	policyMetadata.UpdatedAt = time.Now()
+	updates["updated_at"] = policyMetadata.UpdatedAt
+
+	if err := s.db.Model(&policyMetadata).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("failed to update policy metadata: %w", err)
+	}
+
+	response := policyMetadata.ToResponse()
+	return &response, nil
+}
+
+// DeletePolicyMetadata deletes one policy metadata record by ID.
+func (s *PolicyMetadataService) DeletePolicyMetadata(id uuid.UUID) error {
+	result := s.db.Delete(&models.PolicyMetadata{}, "id = ?", id)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete policy metadata: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+	}
+
+	return nil
+}
+
+// RevokeAllowListEntry removes one application from one field's allow-list.
+func (s *PolicyMetadataService) RevokeAllowListEntry(
+	id uuid.UUID,
+	applicationID string,
+) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var policyMetadata models.PolicyMetadata
+
+		if err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&policyMetadata, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+			}
+
+			return fmt.Errorf("failed to fetch policy metadata: %w", err)
+		}
+
+		if _, exists := policyMetadata.AllowList[applicationID]; !exists {
+			return fmt.Errorf(
+				"%w: %s",
+				ErrAllowListEntryNotFound,
+				applicationID,
+			)
+		}
+
+		delete(policyMetadata.AllowList, applicationID)
+		policyMetadata.UpdatedAt = time.Now()
+
+		if err := tx.Model(&policyMetadata).
+			Select("allow_list", "updated_at").
+			Updates(map[string]interface{}{
+				"allow_list": policyMetadata.AllowList,
+				"updated_at": policyMetadata.UpdatedAt,
+			}).Error; err != nil {
+			return fmt.Errorf("failed to revoke allow-list entry: %w", err)
+		}
+
+		return nil
+	})
 }

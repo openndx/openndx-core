@@ -276,6 +276,219 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 	}
 }
 
+func TestHandler_ListPolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/policy/metadata?schemaId=schema-123",
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	handler.handlePolicyService(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp models.PolicyMetadataListResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	require.Len(t, resp.Records, 2)
+	assert.Equal(t, "person.email", resp.Records[0].FieldName)
+	assert.Equal(t, "person.name", resp.Records[1].FieldName)
+	assert.Contains(t, resp.Records[0].AllowList, "app-123")
+}
+
+func TestHandler_PatchPolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	emailID := createResp.Records[1].ID
+	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/policy/metadata/"+emailID,
+		bytes.NewBufferString(`{"displayName":"Primary Email"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler.handlePolicyService(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.PolicyMetadataResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	require.NotNil(t, resp.DisplayName)
+	assert.Equal(t, "Primary Email", *resp.DisplayName)
+	assert.Contains(t, resp.AllowList, "app-123")
+
+	var count int64
+	require.NoError(t, db.Model(&models.PolicyMetadata{}).
+		Where("schema_id = ?", "schema-123").
+		Count(&count).Error)
+	assert.Equal(t, int64(2), count)
+
+	var nameRecord models.PolicyMetadata
+	require.NoError(t, db.Where(
+		"schema_id = ? AND field_name = ?",
+		"schema-123",
+		"person.name",
+	).First(&nameRecord).Error)
+	require.NotNil(t, nameRecord.DisplayName)
+	assert.Equal(t, "Name", *nameRecord.DisplayName)
+}
+
+func TestHandler_DeletePolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/"+createResp.Records[1].ID,
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	handler.handlePolicyService(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, w.Body.String())
+
+	var records []models.PolicyMetadata
+	require.NoError(t, db.Where("schema_id = ?", "schema-123").Find(&records).Error)
+	require.Len(t, records, 1)
+	assert.Equal(t, "person.name", records[0].FieldName)
+}
+
+func TestHandler_RevokeAllowListEntry(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 1)
+
+	for _, applicationID := range []string{"app-123", "app-456"} {
+		_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+			ApplicationID: applicationID,
+			GrantDuration: models.GrantDurationTypeOneMonth,
+			Records: []models.AllowListUpdateRequestRecord{
+				{FieldName: "person.email", SchemaID: "schema-123"},
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/"+createResp.Records[0].ID+"/allowlist/app-123",
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	handler.handlePolicyService(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var policyMetadata models.PolicyMetadata
+	require.NoError(t, db.First(&policyMetadata, "id = ?", createResp.Records[0].ID).Error)
+	assert.NotContains(t, policyMetadata.AllowList, "app-123")
+	assert.Contains(t, policyMetadata.AllowList, "app-456")
+}
+
 func TestHandler_UpdateAllowList(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db)
@@ -653,10 +866,10 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			expectedStatus: http.StatusBadRequest, // Endpoint exists, but empty body fails validation (applicationId required)
 		},
 		{
-			name:           "GET /api/v1/policy/metadata - Method not allowed",
+			name:           "GET /api/v1/policy/metadata - missing schemaId",
 			method:         http.MethodGet,
 			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusMethodNotAllowed,
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "PUT /api/v1/policy/metadata - Method not allowed",
@@ -689,10 +902,10 @@ func TestHandler_handlePolicyService(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "Invalid path - multiple segments",
+			name:           "POST metadata item - method not allowed",
 			method:         http.MethodPost,
 			path:           "/api/v1/policy/metadata/extra",
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusMethodNotAllowed,
 		},
 		{
 			name:           "Invalid path - empty after prefix",
