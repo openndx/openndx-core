@@ -76,23 +76,34 @@ func main() {
 
 	// Setup routes
 	mux := http.NewServeMux()
-	v1Handler.SetupRoutes(mux) // V1 routes with /api/v1/policy/ prefix
+
+	// Policy endpoints
+	mux.HandleFunc("GET /api/v1/policy/metadata", v1Handler.ListPolicyMetadata)
+	mux.HandleFunc("POST /api/v1/policy/metadata", v1Handler.CreatePolicyMetadata)
+	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", v1Handler.PatchPolicyMetadata)
+	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", v1Handler.DeletePolicyMetadata)
+	mux.HandleFunc(
+		"DELETE /api/v1/policy/metadata/{id}/allowlist/{applicationId}",
+		v1Handler.RevokeAllowListEntry,
+	)
+	mux.HandleFunc("POST /api/v1/policy/update-allowlist", v1Handler.UpdateAllowList)
+	mux.HandleFunc("POST /api/v1/policy/decide", v1Handler.GetPolicyDecision)
 
 	// Health check endpoint
-	mux.Handle("/health", utils.PanicRecoveryMiddleware(utils.HealthHandler("policy-decision-point")))
+	mux.Handle("GET /health", utils.HealthHandler("policy-decision-point"))
 
 	// Debug endpoint
-	mux.Handle("/debug", utils.PanicRecoveryMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /debug", func(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithJSON(w, http.StatusOK, map[string]string{
 			"service": "policy-decision-point",
 			"version": Version,
 			"path":    r.URL.Path,
 			"method":  r.Method,
 		})
-	})))
+	})
 
 	// Database debug endpoint
-	mux.Handle("/debug/db", utils.PanicRecoveryMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /debug/db", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -149,7 +160,7 @@ func main() {
 		}
 
 		utils.RespondWithJSON(w, http.StatusOK, debugInfo)
-	})))
+	})
 
 	// Create server configuration
 	serverConfig := &utils.ServerConfig{
@@ -158,7 +169,7 @@ func main() {
 		WriteTimeout: cfg.Service.Timeout,
 		IdleTimeout:  60 * time.Second,
 	}
-	server := utils.CreateServer(serverConfig, mux)
+	server := utils.CreateServer(serverConfig, utils.PanicRecoveryMiddleware(mux))
 
 	// Start server with graceful shutdown
 	if err := utils.StartServerWithGracefulShutdown(server, "policy-decision-point"); err != nil {

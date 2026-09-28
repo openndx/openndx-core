@@ -351,15 +351,19 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 	return response, nil
 }
 
-// ListPolicyMetadata returns all policy metadata records for one schema.
+// ListPolicyMetadata returns policy metadata records, optionally filtered by schema.
 func (s *PolicyMetadataService) ListPolicyMetadata(
 	schemaID string,
 ) (*models.PolicyMetadataListResponse, error) {
 	var records []models.PolicyMetadata
+	query := s.db.Model(&models.PolicyMetadata{})
 
-	if err := s.db.
-		Where("schema_id = ?", schemaID).
-		Order("field_name ASC").
+	if schemaID != "" {
+		query = query.Where("schema_id = ?", schemaID)
+	}
+
+	if err := query.
+		Order("schema_id ASC, field_name ASC").
 		Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("failed to list policy metadata: %w", err)
 	}
@@ -376,13 +380,13 @@ func (s *PolicyMetadataService) ListPolicyMetadata(
 
 // PatchPolicyMetadata updates selected properties of one policy metadata record.
 func (s *PolicyMetadataService) PatchPolicyMetadata(
-	id uuid.UUID,
+	id string,
 	req *models.PolicyMetadataPatchRequest,
 ) (*models.PolicyMetadataResponse, error) {
 	var policyMetadata models.PolicyMetadata
 	updates := make(map[string]interface{})
 
-	if err := s.db.First(&policyMetadata, "id = ?", id).Error; err != nil {
+	if err := s.db.First(&policyMetadata, "CAST(id AS TEXT) = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
 		}
@@ -430,8 +434,8 @@ func (s *PolicyMetadataService) PatchPolicyMetadata(
 }
 
 // DeletePolicyMetadata deletes one policy metadata record by ID.
-func (s *PolicyMetadataService) DeletePolicyMetadata(id uuid.UUID) error {
-	result := s.db.Delete(&models.PolicyMetadata{}, "id = ?", id)
+func (s *PolicyMetadataService) DeletePolicyMetadata(id string) error {
+	result := s.db.Where("CAST(id AS TEXT) = ?", id).Delete(&models.PolicyMetadata{})
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete policy metadata: %w", result.Error)
 	}
@@ -445,7 +449,7 @@ func (s *PolicyMetadataService) DeletePolicyMetadata(id uuid.UUID) error {
 
 // RevokeAllowListEntry removes one application from one field's allow-list.
 func (s *PolicyMetadataService) RevokeAllowListEntry(
-	id uuid.UUID,
+	id string,
 	applicationID string,
 ) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
@@ -453,7 +457,7 @@ func (s *PolicyMetadataService) RevokeAllowListEntry(
 
 		if err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
-			First(&policyMetadata, "id = ?", id).Error; err != nil {
+			First(&policyMetadata, "CAST(id AS TEXT) = ?", id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
 			}

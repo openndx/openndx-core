@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/services"
 	"github.com/openndx/openndx-core/internal/utils"
@@ -23,87 +22,6 @@ func NewHandler(db *gorm.DB) *Handler {
 	policyService := services.NewPolicyMetadataService(db)
 	return &Handler{
 		policyService: policyService,
-	}
-}
-
-// SetupRoutes configures all API routes
-func (h *Handler) SetupRoutes(mux *http.ServeMux) {
-	mux.Handle("/api/v1/policy/", utils.PanicRecoveryMiddleware(http.HandlerFunc(h.handlePolicyService)))
-}
-
-// handlePolicyService handles policy metadata service requests
-func (h *Handler) handlePolicyService(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/policy")
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-
-	switch parts[0] {
-	case "metadata":
-		switch len(parts) {
-		case 1:
-			switch r.Method {
-			case http.MethodGet:
-				h.ListPolicyMetadata(w, r)
-			case http.MethodPost:
-				h.CreatePolicyMetadata(w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-
-		case 2:
-			switch r.Method {
-			case http.MethodPatch:
-				h.PatchPolicyMetadata(w, r, parts[1])
-			case http.MethodDelete:
-				h.DeletePolicyMetadata(w, r, parts[1])
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-
-		case 4:
-			if parts[2] != "allowlist" {
-				http.Error(w, "Not Found", http.StatusNotFound)
-				return
-			}
-
-			switch r.Method {
-			case http.MethodDelete:
-				h.RevokeAllowListEntry(w, r, parts[1], parts[3])
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-
-		default:
-			http.Error(w, "Not Found", http.StatusNotFound)
-		}
-
-	case "update-allowlist":
-		if len(parts) != 1 {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodPost:
-			h.UpdateAllowList(w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-
-	case "decide":
-		if len(parts) != 1 {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodPost:
-			h.GetPolicyDecision(w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-
-	default:
-		http.Error(w, "Not Found", http.StatusNotFound)
 	}
 }
 
@@ -131,13 +49,9 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusCreated, resp)
 }
 
-// ListPolicyMetadata handles listing policy metadata for one schema.
+// ListPolicyMetadata handles listing policy metadata with an optional schema filter.
 func (h *Handler) ListPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	schemaID := strings.TrimSpace(r.URL.Query().Get("schemaId"))
-	if schemaID == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "schemaId is required and cannot be empty")
-		return
-	}
 
 	resp, err := h.policyService.ListPolicyMetadata(schemaID)
 	if err != nil {
@@ -149,11 +63,8 @@ func (h *Handler) ListPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 // PatchPolicyMetadata handles partially updating one policy metadata record.
-func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request, idValue string) {
-	id, ok := parsePolicyMetadataID(w, idValue)
-	if !ok {
-		return
-	}
+func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
 
 	var req models.PolicyMetadataPatchRequest
 	decoder := json.NewDecoder(r.Body)
@@ -193,11 +104,8 @@ func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request, id
 }
 
 // DeletePolicyMetadata handles deleting one policy metadata record.
-func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, _ *http.Request, idValue string) {
-	id, ok := parsePolicyMetadataID(w, idValue)
-	if !ok {
-		return
-	}
+func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
 
 	if err := h.policyService.DeletePolicyMetadata(id); err != nil {
 		respondWithPolicyServiceError(w, err)
@@ -210,16 +118,11 @@ func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, _ *http.Request, i
 // RevokeAllowListEntry handles removing one application from a field's allow-list.
 func (h *Handler) RevokeAllowListEntry(
 	w http.ResponseWriter,
-	_ *http.Request,
-	idValue string,
-	applicationID string,
+	r *http.Request,
 ) {
-	id, ok := parsePolicyMetadataID(w, idValue)
-	if !ok {
-		return
-	}
+	id := r.PathValue("id")
 
-	applicationID = strings.TrimSpace(applicationID)
+	applicationID := strings.TrimSpace(r.PathValue("applicationId"))
 	if applicationID == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "applicationId is required")
 		return
@@ -275,17 +178,6 @@ func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
-}
-
-// parsePolicyMetadataID parses and validates a policy metadata UUID.
-func parsePolicyMetadataID(w http.ResponseWriter, idValue string) (uuid.UUID, bool) {
-	id, err := uuid.Parse(idValue)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "invalid policy metadata id")
-		return uuid.Nil, false
-	}
-
-	return id, true
 }
 
 func respondWithPolicyServiceError(w http.ResponseWriter, err error) {

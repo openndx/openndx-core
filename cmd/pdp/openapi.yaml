@@ -110,14 +110,14 @@ paths:
   /api/v1/policy/metadata:
     get:
       summary: List Policy Metadata
-      description: List the current policy metadata records and allow-list state for a schema.
+      description: List current policy metadata records and allow-list state, optionally filtered by schema.
       tags:
         - Policy Metadata Management
       parameters:
         - name: schemaId
           in: query
-          required: true
-          description: Identifier of the schema whose policy metadata should be returned
+          required: false
+          description: Optional schema identifier used to filter policy metadata records
           schema:
             type: string
           example: "schema_001"
@@ -128,12 +128,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PolicyMetadataListResponse'
-        '400':
-          description: Missing or invalid schemaId
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error
           content:
@@ -175,10 +169,9 @@ paths:
       - name: id
         in: path
         required: true
-        description: UUID of the policy metadata record
+        description: Identifier of the policy metadata record
         schema:
           type: string
-          format: uuid
     patch:
       summary: Update Policy Metadata
       description: Update selected properties of one policy metadata record without changing other records or its allow-list.
@@ -198,7 +191,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolicyMetadataResponse'
         '400':
-          description: Invalid ID, request body, or access-control type
+          description: Invalid request body or access-control type
           content:
             application/json:
               schema:
@@ -223,12 +216,6 @@ paths:
       responses:
         '204':
           description: Policy metadata deleted successfully
-        '400':
-          description: Invalid policy metadata ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Policy metadata record not found
           content:
@@ -251,10 +238,9 @@ paths:
         - name: id
           in: path
           required: true
-          description: UUID of the policy metadata record
+          description: Identifier of the policy metadata record
           schema:
             type: string
-            format: uuid
         - name: applicationId
           in: path
           required: true
@@ -265,7 +251,7 @@ paths:
         '204':
           description: Allow-list entry revoked successfully
         '400':
-          description: Invalid policy metadata ID or application ID
+          description: Invalid application ID
           content:
             application/json:
               schema:
@@ -548,7 +534,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
           example: "123e4567-e89b-12d3-a456-426614174000"
         schemaId:
           type: string

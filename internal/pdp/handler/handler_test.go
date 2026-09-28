@@ -61,22 +61,6 @@ func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestHandler_SetupRoutes(t *testing.T) {
-	db := setupTestDB(t)
-	handler := NewHandler(db)
-
-	mux := http.NewServeMux()
-	handler.SetupRoutes(mux)
-
-	// Verify routes are registered
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBuffer([]byte("{}")))
-	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
-
-	// Should not return 404 (route exists)
-	assert.NotEqual(t, http.StatusNotFound, w.Code)
-}
-
 func TestHandler_NewHandler(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db)
@@ -302,6 +286,19 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, createResp.Records, 2)
 
+	_, err = handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "other-schema",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "other.field",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+		},
+	})
+	require.NoError(t, err)
+
 	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
 		ApplicationID: "app-123",
 		GrantDuration: models.GrantDurationTypeOneMonth,
@@ -311,23 +308,41 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(
+	allReq := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/policy/metadata",
+		nil,
+	)
+	allRecorder := httptest.NewRecorder()
+
+	handler.ListPolicyMetadata(allRecorder, allReq)
+
+	require.Equal(t, http.StatusOK, allRecorder.Code)
+
+	var allResp models.PolicyMetadataListResponse
+	require.NoError(t, json.NewDecoder(allRecorder.Body).Decode(&allResp))
+	require.Len(t, allResp.Records, 3)
+	assert.Equal(t, "other-schema", allResp.Records[0].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[1].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[2].SchemaID)
+
+	filteredReq := httptest.NewRequest(
 		http.MethodGet,
 		"/api/v1/policy/metadata?schemaId=schema-123",
 		nil,
 	)
-	w := httptest.NewRecorder()
+	filteredRecorder := httptest.NewRecorder()
 
-	handler.handlePolicyService(w, req)
+	handler.ListPolicyMetadata(filteredRecorder, filteredReq)
 
-	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, filteredRecorder.Code)
 
-	var resp models.PolicyMetadataListResponse
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
-	require.Len(t, resp.Records, 2)
-	assert.Equal(t, "person.email", resp.Records[0].FieldName)
-	assert.Equal(t, "person.name", resp.Records[1].FieldName)
-	assert.Contains(t, resp.Records[0].AllowList, "app-123")
+	var filteredResp models.PolicyMetadataListResponse
+	require.NoError(t, json.NewDecoder(filteredRecorder.Body).Decode(&filteredResp))
+	require.Len(t, filteredResp.Records, 2)
+	assert.Equal(t, "person.email", filteredResp.Records[0].FieldName)
+	assert.Equal(t, "person.name", filteredResp.Records[1].FieldName)
+	assert.Contains(t, filteredResp.Records[0].AllowList, "app-123")
 }
 
 func TestHandler_PatchPolicyMetadata(t *testing.T) {
@@ -372,9 +387,10 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 		bytes.NewBufferString(`{"displayName":"Primary Email"}`),
 	)
 	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", emailID)
 	w := httptest.NewRecorder()
 
-	handler.handlePolicyService(w, req)
+	handler.PatchPolicyMetadata(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
@@ -429,9 +445,10 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 		"/api/v1/policy/metadata/"+createResp.Records[1].ID,
 		nil,
 	)
+	req.SetPathValue("id", createResp.Records[1].ID)
 	w := httptest.NewRecorder()
 
-	handler.handlePolicyService(w, req)
+	handler.DeletePolicyMetadata(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, w.Body.String())
@@ -440,6 +457,18 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	require.NoError(t, db.Where("schema_id = ?", "schema-123").Find(&records).Error)
 	require.Len(t, records, 1)
 	assert.Equal(t, "person.name", records[0].FieldName)
+
+	unknownReq := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/not-a-uuid",
+		nil,
+	)
+	unknownReq.SetPathValue("id", "not-a-uuid")
+	unknownRecorder := httptest.NewRecorder()
+
+	handler.DeletePolicyMetadata(unknownRecorder, unknownReq)
+
+	assert.Equal(t, http.StatusNotFound, unknownRecorder.Code)
 }
 
 func TestHandler_RevokeAllowListEntry(t *testing.T) {
@@ -476,9 +505,11 @@ func TestHandler_RevokeAllowListEntry(t *testing.T) {
 		"/api/v1/policy/metadata/"+createResp.Records[0].ID+"/allowlist/app-123",
 		nil,
 	)
+	req.SetPathValue("id", createResp.Records[0].ID)
+	req.SetPathValue("applicationId", "app-123")
 	w := httptest.NewRecorder()
 
-	handler.handlePolicyService(w, req)
+	handler.RevokeAllowListEntry(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
 	assert.Empty(t, w.Body.String())
@@ -832,117 +863,6 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 
 			if tt.validateFunc != nil {
 				tt.validateFunc(t, w)
-			}
-		})
-	}
-}
-
-func TestHandler_handlePolicyService(t *testing.T) {
-	db := setupTestDB(t)
-	handler := NewHandler(db)
-
-	tests := []struct {
-		name           string
-		method         string
-		path           string
-		expectedStatus int
-	}{
-		{
-			name:           "POST /api/v1/policy/metadata",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusBadRequest, // Empty body fails validation (schemaId required)
-		},
-		{
-			name:           "POST /api/v1/policy/update-allowlist",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/update-allowlist",
-			expectedStatus: http.StatusOK, // Endpoint exists, will process request
-		},
-		{
-			name:           "POST /api/v1/policy/decide",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/decide",
-			expectedStatus: http.StatusBadRequest, // Endpoint exists, but empty body fails validation (applicationId required)
-		},
-		{
-			name:           "GET /api/v1/policy/metadata - missing schemaId",
-			method:         http.MethodGet,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "PUT /api/v1/policy/metadata - Method not allowed",
-			method:         http.MethodPut,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "DELETE /api/v1/policy/metadata - Method not allowed",
-			method:         http.MethodDelete,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "GET /api/v1/policy/update-allowlist - Method not allowed",
-			method:         http.MethodGet,
-			path:           "/api/v1/policy/update-allowlist",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "GET /api/v1/policy/decide - Method not allowed",
-			method:         http.MethodGet,
-			path:           "/api/v1/policy/decide",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "Invalid path - single segment",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/invalid",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "POST metadata item - method not allowed",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/metadata/extra",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "Invalid path - empty after prefix",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "Invalid path - three segments",
-			method:         http.MethodPost,
-			path:           "/api/v1/policy/metadata/extra/segment",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "PATCH method not allowed",
-			method:         http.MethodPatch,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:           "OPTIONS method not allowed",
-			method:         http.MethodOptions,
-			path:           "/api/v1/policy/metadata",
-			expectedStatus: http.StatusMethodNotAllowed,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, bytes.NewBuffer([]byte("{}")))
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			handler.handlePolicyService(w, req)
-
-			if w.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
 			}
 		})
 	}

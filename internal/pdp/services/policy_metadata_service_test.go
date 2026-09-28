@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -65,6 +64,15 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 	require.Len(t, resp.Records, 2)
 	assert.Equal(t, "person.email", resp.Records[0].FieldName)
 	assert.Equal(t, "person.name", resp.Records[1].FieldName)
+	assert.Equal(t, "schema-123", resp.Records[0].SchemaID)
+	assert.Equal(t, "schema-123", resp.Records[1].SchemaID)
+
+	allResp, err := service.ListPolicyMetadata("")
+	require.NoError(t, err)
+	require.Len(t, allResp.Records, 3)
+	assert.Equal(t, "other-schema", allResp.Records[0].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[1].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[2].SchemaID)
 
 	emptyResp, err := service.ListPolicyMetadata("missing-schema")
 	require.NoError(t, err)
@@ -107,8 +115,7 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	id, err := uuid.Parse(createResp.Records[1].ID)
-	require.NoError(t, err)
+	id := createResp.Records[1].ID
 
 	restricted := models.AccessControlTypeRestricted
 	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
@@ -168,7 +175,7 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	assert.Equal(t, "Contact Email", *displayOnlyResp.DisplayName)
 	assert.Equal(t, models.AccessControlTypeRestricted, displayOnlyResp.AccessControlType)
 
-	_, err = service.PatchPolicyMetadata(uuid.New(), &models.PolicyMetadataPatchRequest{})
+	_, err = service.PatchPolicyMetadata("not-a-uuid", &models.PolicyMetadataPatchRequest{})
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
 
@@ -196,8 +203,7 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, createResp.Records, 2)
 
-	id, err := uuid.Parse(createResp.Records[1].ID)
-	require.NoError(t, err)
+	id := createResp.Records[1].ID
 	require.NoError(t, service.DeletePolicyMetadata(id))
 
 	var records []models.PolicyMetadata
@@ -238,8 +244,7 @@ func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	id, err := uuid.Parse(createResp.Records[0].ID)
-	require.NoError(t, err)
+	id := createResp.Records[0].ID
 	require.NoError(t, service.RevokeAllowListEntry(id, "app-123"))
 
 	var policyMetadata models.PolicyMetadata
@@ -250,7 +255,7 @@ func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 	err = service.RevokeAllowListEntry(id, "app-123")
 	assert.ErrorIs(t, err, ErrAllowListEntryNotFound)
 
-	err = service.RevokeAllowListEntry(uuid.New(), "app-456")
+	err = service.RevokeAllowListEntry("not-a-uuid", "app-456")
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
 
