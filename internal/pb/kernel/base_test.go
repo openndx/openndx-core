@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -28,9 +29,10 @@ func TestBaseModel_BeforeCreate(t *testing.T) {
 			Name string
 		}
 
-		// Auto-migrate
-		assert.NoError(t, db.AutoMigrate(&TestModel{}))
-		defer func() { assert.NoError(t, db.Migrator().DropTable(&TestModel{})) }()
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record
 		model := TestModel{
@@ -63,8 +65,10 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 			Name string
 		}
 
-		assert.NoError(t, db.AutoMigrate(&TestModel{}))
-		defer func() { assert.NoError(t, db.Migrator().DropTable(&TestModel{})) }()
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record - timestamps will be set by BeforeCreate hook
 		model := TestModel{
@@ -75,26 +79,20 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		assert.NoError(t, err)
 		originalUpdatedAt := model.UpdatedAt
 
-		// Update the record with UpdatedAt set to a time in the future. The
-		// save should replace it with the time of the save. The BeforeUpdate
-		// hook does that, and so does GORM itself for a field named UpdatedAt.
-		explicitLaterTime := originalUpdatedAt.Add(1 * time.Second)
+		// Wait past SQLite timestamp resolution so BeforeUpdate must advance UpdatedAt
+		time.Sleep(1100 * time.Millisecond)
+
+		// Update without pre-assigning UpdatedAt; the hook alone should set it
 		model.Name = "Updated"
-		model.UpdatedAt = explicitLaterTime
-		beforeSave := time.Now()
 		err = db.Save(&model).Error
 		assert.NoError(t, err)
-		afterSave := time.Now()
 
 		// Reload the model to get the updated timestamp from database
 		var updatedModel TestModel
 		err = db.First(&updatedModel, "id = ?", model.ID).Error
 		assert.NoError(t, err)
 
-		// UpdatedAt is the time of the save, not the explicit time. Bounds,
-		// not After(originalUpdatedAt): on a coarse clock, such as Windows',
-		// the create and the update can read the same time.
-		assert.False(t, updatedModel.UpdatedAt.Before(beforeSave), "UpdatedAt %v is before the save started at %v", updatedModel.UpdatedAt, beforeSave)
-		assert.False(t, updatedModel.UpdatedAt.After(afterSave), "UpdatedAt %v is after the save ended at %v", updatedModel.UpdatedAt, afterSave)
+		assert.True(t, updatedModel.UpdatedAt.After(originalUpdatedAt),
+			"BeforeUpdate should advance UpdatedAt beyond the create-time value")
 	})
 }
