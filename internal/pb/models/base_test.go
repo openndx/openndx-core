@@ -74,13 +74,11 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		}
 		err = db.Create(&model).Error
 		assert.NoError(t, err)
-		originalUpdatedAt := model.UpdatedAt
 
-		// Wait past SQLite timestamp resolution so BeforeUpdate must advance UpdatedAt
-		time.Sleep(1100 * time.Millisecond)
-
-		// Update without pre-assigning UpdatedAt; the hook alone should set it
+		// Plant a stale UpdatedAt. BeforeUpdate must overwrite it with time.Now();
+		// if the hook does not run, this ancient value would persist and fail below.
 		model.Name = "Updated"
+		model.UpdatedAt = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 		err = db.Save(&model).Error
 		assert.NoError(t, err)
 
@@ -89,7 +87,8 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		err = db.First(&updatedModel, "id = ?", model.ID).Error
 		assert.NoError(t, err)
 
-		assert.True(t, updatedModel.UpdatedAt.After(originalUpdatedAt),
-			"BeforeUpdate should advance UpdatedAt beyond the create-time value")
+		assert.WithinDuration(t, time.Now(), updatedModel.UpdatedAt, 5*time.Second)
+		assert.True(t, updatedModel.UpdatedAt.After(time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC)),
+			"planted year-2000 UpdatedAt must be overwritten by BeforeUpdate")
 	})
 }
