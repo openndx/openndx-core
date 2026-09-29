@@ -9,14 +9,15 @@ import (
 
 func BuildProviderLevelQuery(fieldsMap *[]ProviderLevelFieldRecord) []*FederationServiceAST {
 	var queries []*FederationServiceAST
-	var addedServiceKeys []string
+	// Dedup by service+schema: one provider may expose multiple schemaIds.
+	var addedQueryKeys []string
 
 	for _, field := range *fieldsMap {
-
 		serviceKey := field.ServiceKey
+		queryKey := serviceKey + "\x00" + field.SchemaId
 
-		if !contains(addedServiceKeys, serviceKey) {
-			addedServiceKeys = append(addedServiceKeys, serviceKey)
+		if !contains(addedQueryKeys, queryKey) {
+			addedQueryKeys = append(addedQueryKeys, queryKey)
 			queries = append(queries, &FederationServiceAST{
 				ServiceKey: serviceKey,
 				SchemaID:   field.SchemaId,
@@ -38,9 +39,12 @@ func BuildProviderLevelQuery(fieldsMap *[]ProviderLevelFieldRecord) []*Federatio
 				},
 			})
 		}
-		// find the query with the service key
+		// Attach fields to the query matching both service key and schema ID.
 		for _, q := range queries {
 			if q.ServiceKey == serviceKey && q.SchemaID == field.SchemaId {
+				if field.FieldPath == "" {
+					break
+				}
 				args := strings.Split(field.FieldPath, ".")
 				pushFieldToAst(args, q.QueryAst.Definitions[0].(*ast.OperationDefinition).SelectionSet)
 				break
@@ -133,6 +137,9 @@ func BuildArrayProviderQuery(fieldsMap []string, arrayFields []string) []*Federa
 }
 
 func pushFieldToAst(field []string, parentField *ast.SelectionSet) {
+	if len(field) == 0 {
+		return
+	}
 	// loop through selectionSets to match the field path.
 	current := field[0]
 
@@ -202,6 +209,9 @@ func pushFieldToAst(field []string, parentField *ast.SelectionSet) {
 
 // pushArrayFieldToAst handles array fields specifically, ensuring proper array structure
 func pushArrayFieldToAst(field []string, parentField *ast.SelectionSet) {
+	if len(field) == 0 {
+		return
+	}
 	// For array fields, we need to handle the structure differently
 	current := field[0]
 
