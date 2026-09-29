@@ -62,7 +62,7 @@ func signToken(t *testing.T, priv *rsa.PrivateKey, claims jwt.MapClaims) string 
 func baseClaims() jwt.MapClaims {
 	now := time.Now()
 	return jwt.MapClaims{
-		"iss":       "https://thunderid:8090",
+		"iss":       "http://thunderid:8090",
 		"aud":       "CONSENT_PORTAL_APP",
 		"client_id": "CONSENT_PORTAL_APP",
 		"email":     "nayana@opensource.lk",
@@ -75,7 +75,7 @@ func baseClaims() jwt.MapClaims {
 
 func fullConfig() JWTVerifierConfig {
 	return JWTVerifierConfig{
-		Issuer:   "https://thunderid:8090",
+		Issuer:   "http://thunderid:8090",
 		Audience: "CONSENT_PORTAL_APP",
 		ClientID: "CONSENT_PORTAL_APP",
 	}

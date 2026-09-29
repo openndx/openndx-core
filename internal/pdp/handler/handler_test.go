@@ -1,0 +1,883 @@
+package handler
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/openndx/openndx-core/internal/pdp/models"
+	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+)
+
+// setupTestDB creates an in-memory SQLite database for unit testing.
+func setupTestDB(t *testing.T) *gorm.DB {
+	return testhelpers.SetupTestDB(t)
+}
+
+// TestRespondWithPolicyServiceError_HidesInternalDetails verifies that
+// unexpected service errors are logged without exposing details to clients.
+func TestRespondWithPolicyServiceError_HidesInternalDetails(t *testing.T) {
+	w := httptest.NewRecorder()
+	internalErr := errors.New("database connection failed: password=secret")
+
+	respondWithPolicyServiceError(w, internalErr)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.JSONEq(t, `{"error":"internal server error"}`, w.Body.String())
+	assert.NotContains(t, w.Body.String(), internalErr.Error())
+}
+
+func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler.CreatePolicyMetadata(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/update-allowlist", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler.UpdateAllowList(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
+	// This test doesn't need a database - it only tests JSON parsing
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/decide", bytes.NewBufferString("invalid json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler.GetPolicyDecision(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandler_NewHandler(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+	assert.NotNil(t, handler)
+	assert.NotNil(t, handler.policyService)
+}
+
+func TestHandler_CreatePolicyMetadata(t *testing.T) {
+	tests := []struct {
+		name           string
+		requestBody    models.PolicyMetadataCreateRequest
+		expectedStatus int
+		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
+	}{
+		{
+			name: "Create new policy metadata successfully",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "schema-123",
+				Records: []models.PolicyMetadataCreateRequestRecord{
+					{
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name"),
+						Description:       testhelpers.StringPtr("Complete name"),
+						Source:            models.SourcePrimary,
+						IsOwner:           true,
+						AccessControlType: models.AccessControlTypePublic,
+					},
+				},
+			},
+			expectedStatus: http.StatusCreated,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyMetadataCreateResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if len(resp.Records) != 1 {
+					t.Errorf("Expected 1 record, got %d", len(resp.Records))
+				}
+				if resp.Records[0].FieldName != "person.fullName" {
+					t.Errorf("Expected fieldName person.fullName, got %s", resp.Records[0].FieldName)
+				}
+			},
+		},
+		{
+			name: "Update existing policy metadata",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "schema-123",
+				Records: []models.PolicyMetadataCreateRequestRecord{
+					{
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name Updated"),
+						Description:       testhelpers.StringPtr("Updated description"),
+						Source:            models.SourcePrimary,
+						IsOwner:           true,
+						AccessControlType: models.AccessControlTypeRestricted,
+					},
+				},
+			},
+			expectedStatus: http.StatusCreated,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyMetadataCreateResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if len(resp.Records) != 1 {
+					t.Errorf("Expected 1 record, got %d", len(resp.Records))
+				}
+				if resp.Records[0].AccessControlType != models.AccessControlTypeRestricted {
+					t.Errorf("Expected AccessControlType restricted, got %s", resp.Records[0].AccessControlType)
+				}
+			},
+		},
+		{
+			name: "Empty request body",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "",
+				Records:  []models.PolicyMetadataCreateRequestRecord{},
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Service error - invalid field configuration",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "schema-123",
+				Records: []models.PolicyMetadataCreateRequestRecord{
+					{
+						FieldName:         "person.invalid",
+						Source:            models.SourcePrimary,
+						IsOwner:           false, // Invalid: isOwner false but no owner specified
+						AccessControlType: models.AccessControlTypePublic,
+					},
+				},
+			},
+			expectedStatus: http.StatusInternalServerError,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				// Should return error response
+				assert.Contains(t, w.Body.String(), "owner")
+			},
+		},
+		{
+			name: "Create with multiple records",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "schema-123",
+				Records: []models.PolicyMetadataCreateRequestRecord{
+					{
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name"),
+						Source:            models.SourcePrimary,
+						IsOwner:           true,
+						AccessControlType: models.AccessControlTypePublic,
+					},
+					{
+						FieldName:         "person.email",
+						DisplayName:       testhelpers.StringPtr("Email"),
+						Source:            models.SourcePrimary,
+						IsOwner:           true,
+						AccessControlType: models.AccessControlTypeRestricted,
+					},
+				},
+			},
+			expectedStatus: http.StatusCreated,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyMetadataCreateResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if len(resp.Records) != 2 {
+					t.Errorf("Expected 2 records, got %d", len(resp.Records))
+				}
+			},
+		},
+		{
+			name: "Create with fallback source",
+			requestBody: models.PolicyMetadataCreateRequest{
+				SchemaID: "schema-123",
+				Records: []models.PolicyMetadataCreateRequestRecord{
+					{
+						FieldName:         "person.fullName",
+						Source:            models.SourceFallback,
+						IsOwner:           true,
+						AccessControlType: models.AccessControlTypePublic,
+					},
+				},
+			},
+			expectedStatus: http.StatusCreated,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyMetadataCreateResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if resp.Records[0].Source != models.SourceFallback {
+					t.Errorf("Expected source fallback, got %s", resp.Records[0].Source)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset database for each test
+			db := setupTestDB(t)
+			handler := NewHandler(db)
+
+			// Create initial record for update test
+			if tt.name == "Update existing policy metadata" {
+				initialReq := models.PolicyMetadataCreateRequest{
+					SchemaID: "schema-123",
+					Records: []models.PolicyMetadataCreateRequestRecord{
+						{
+							FieldName:         "person.fullName",
+							DisplayName:       testhelpers.StringPtr("Full Name"),
+							Source:            models.SourcePrimary,
+							IsOwner:           true,
+							AccessControlType: models.AccessControlTypePublic,
+						},
+					},
+				}
+				_, err := handler.policyService.CreatePolicyMetadata(&initialReq)
+				require.NoError(t, err)
+			}
+
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.CreatePolicyMetadata(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, w)
+			}
+		})
+	}
+}
+
+func TestHandler_ListPolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	_, err = handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "other-schema",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "other.field",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
+	allReq := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/policy/metadata",
+		nil,
+	)
+	allRecorder := httptest.NewRecorder()
+
+	handler.ListPolicyMetadata(allRecorder, allReq)
+
+	require.Equal(t, http.StatusOK, allRecorder.Code)
+
+	var allResp models.PolicyMetadataListResponse
+	require.NoError(t, json.NewDecoder(allRecorder.Body).Decode(&allResp))
+	require.Len(t, allResp.Records, 3)
+	assert.Equal(t, "other-schema", allResp.Records[0].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[1].SchemaID)
+	assert.Equal(t, "schema-123", allResp.Records[2].SchemaID)
+
+	filteredReq := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/policy/metadata?schemaId=schema-123",
+		nil,
+	)
+	filteredRecorder := httptest.NewRecorder()
+
+	handler.ListPolicyMetadata(filteredRecorder, filteredReq)
+
+	require.Equal(t, http.StatusOK, filteredRecorder.Code)
+
+	var filteredResp models.PolicyMetadataListResponse
+	require.NoError(t, json.NewDecoder(filteredRecorder.Body).Decode(&filteredResp))
+	require.Len(t, filteredResp.Records, 2)
+	assert.Equal(t, "person.email", filteredResp.Records[0].FieldName)
+	assert.Equal(t, "person.name", filteredResp.Records[1].FieldName)
+	assert.Contains(t, filteredResp.Records[0].AllowList, "app-123")
+}
+
+func TestHandler_PatchPolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	emailID := createResp.Records[1].ID
+	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/api/v1/policy/metadata/"+emailID,
+		bytes.NewBufferString(`{"displayName":"Primary Email"}`),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", emailID)
+	w := httptest.NewRecorder()
+
+	handler.PatchPolicyMetadata(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.PolicyMetadataResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	require.NotNil(t, resp.DisplayName)
+	assert.Equal(t, "Primary Email", *resp.DisplayName)
+	assert.Contains(t, resp.AllowList, "app-123")
+
+	var count int64
+	require.NoError(t, db.Model(&models.PolicyMetadata{}).
+		Where("schema_id = ?", "schema-123").
+		Count(&count).Error)
+	assert.Equal(t, int64(2), count)
+
+	var nameRecord models.PolicyMetadata
+	require.NoError(t, db.Where(
+		"schema_id = ? AND field_name = ?",
+		"schema-123",
+		"person.name",
+	).First(&nameRecord).Error)
+	require.NotNil(t, nameRecord.DisplayName)
+	assert.Equal(t, "Name", *nameRecord.DisplayName)
+}
+
+func TestHandler_DeletePolicyMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.name",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 2)
+
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/"+createResp.Records[1].ID,
+		nil,
+	)
+	req.SetPathValue("id", createResp.Records[1].ID)
+	w := httptest.NewRecorder()
+
+	handler.DeletePolicyMetadata(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, w.Body.String())
+
+	var records []models.PolicyMetadata
+	require.NoError(t, db.Where("schema_id = ?", "schema-123").Find(&records).Error)
+	require.Len(t, records, 1)
+	assert.Equal(t, "person.name", records[0].FieldName)
+
+	unknownReq := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/not-a-uuid",
+		nil,
+	)
+	unknownReq.SetPathValue("id", "not-a-uuid")
+	unknownRecorder := httptest.NewRecorder()
+
+	handler.DeletePolicyMetadata(unknownRecorder, unknownReq)
+
+	assert.Equal(t, http.StatusNotFound, unknownRecorder.Code)
+}
+
+func TestHandler_RevokeAllowListEntry(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, createResp.Records, 1)
+
+	for _, applicationID := range []string{"app-123", "app-456"} {
+		_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+			ApplicationID: applicationID,
+			GrantDuration: models.GrantDurationTypeOneMonth,
+			Records: []models.AllowListUpdateRequestRecord{
+				{FieldName: "person.email", SchemaID: "schema-123"},
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/policy/metadata/"+createResp.Records[0].ID+"/allowlist/app-123",
+		nil,
+	)
+	req.SetPathValue("id", createResp.Records[0].ID)
+	req.SetPathValue("applicationId", "app-123")
+	w := httptest.NewRecorder()
+
+	handler.RevokeAllowListEntry(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	assert.Empty(t, w.Body.String())
+
+	var policyMetadata models.PolicyMetadata
+	require.NoError(t, db.First(&policyMetadata, "id = ?", createResp.Records[0].ID).Error)
+	assert.NotContains(t, policyMetadata.AllowList, "app-123")
+	assert.Contains(t, policyMetadata.AllowList, "app-456")
+}
+
+func TestHandler_UpdateAllowList(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	// Create initial policy metadata
+	createReq := models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.fullName",
+				DisplayName:       testhelpers.StringPtr("Full Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+		},
+	}
+	_, err := handler.policyService.CreatePolicyMetadata(&createReq)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		requestBody    models.AllowListUpdateRequest
+		expectedStatus int
+		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
+	}{
+		{
+			name: "Update allow list successfully",
+			requestBody: models.AllowListUpdateRequest{
+				ApplicationID: "app-123",
+				GrantDuration: models.GrantDurationTypeOneMonth,
+				Records: []models.AllowListUpdateRequestRecord{
+					{
+						FieldName: "person.fullName",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.AllowListUpdateResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if len(resp.Records) != 1 {
+					t.Errorf("Expected 1 record, got %d", len(resp.Records))
+				}
+				if resp.Records[0].FieldName != "person.fullName" {
+					t.Errorf("Expected fieldName person.fullName, got %s", resp.Records[0].FieldName)
+				}
+				if resp.Records[0].ExpiresAt == "" {
+					t.Error("Expected expiresAt to be set")
+				}
+			},
+		},
+		{
+			name: "Field not found",
+			requestBody: models.AllowListUpdateRequest{
+				ApplicationID: "app-123",
+				GrantDuration: models.GrantDurationTypeOneMonth,
+				Records: []models.AllowListUpdateRequestRecord{
+					{
+						FieldName: "person.nonexistent",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "Empty request body",
+			requestBody: models.AllowListUpdateRequest{
+				ApplicationID: "",
+				GrantDuration: models.GrantDurationTypeOneMonth,
+				Records:       []models.AllowListUpdateRequestRecord{},
+			},
+			expectedStatus: http.StatusOK, // Handler doesn't validate, service will handle
+		},
+		{
+			name: "Service error - invalid grant duration",
+			requestBody: models.AllowListUpdateRequest{
+				ApplicationID: "app-123",
+				GrantDuration: "invalid-duration", // Invalid grant duration
+				Records: []models.AllowListUpdateRequestRecord{
+					{
+						FieldName: "person.fullName",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/update-allowlist", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.UpdateAllowList(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
+			}
+
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, w)
+			}
+		})
+	}
+}
+
+func TestHandler_GetPolicyDecision(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db)
+
+	// Create policy metadata with allow list
+	createReq := models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.fullName",
+				DisplayName:       testhelpers.StringPtr("Full Name"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypePublic,
+			},
+			{
+				FieldName:         "person.nic",
+				DisplayName:       testhelpers.StringPtr("NIC"),
+				Source:            models.SourcePrimary,
+				IsOwner:           false,
+				AccessControlType: models.AccessControlTypeRestricted,
+				Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+			},
+		},
+	}
+	_, err := handler.policyService.CreatePolicyMetadata(&createReq)
+	if err != nil {
+		t.Fatalf("Failed to create policy metadata: %v", err)
+	}
+
+	// Update allow list for authorized field
+	updateReq := models.AllowListUpdateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{
+				FieldName: "person.fullName",
+				SchemaID:  "schema-123",
+			},
+		},
+	}
+	_, err = handler.policyService.UpdateAllowList(&updateReq)
+	if err != nil {
+		t.Fatalf("Failed to update allow list: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		requestBody    models.PolicyDecisionRequest
+		expectedStatus int
+		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
+	}{
+		{
+			name: "Authorized request",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-123",
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.fullName",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyDecisionResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if !resp.AppAuthorized {
+					t.Error("Expected appAuthorized to be true")
+				}
+				if len(resp.UnauthorizedFields) > 0 {
+					t.Errorf("Expected no unauthorized fields, got %d", len(resp.UnauthorizedFields))
+				}
+			},
+		},
+		{
+			name: "Unauthorized request - not in allow list",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-456", // Different app, not in allow list
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.fullName",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyDecisionResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if resp.AppAuthorized {
+					t.Error("Expected appAuthorized to be false")
+				}
+				if len(resp.UnauthorizedFields) != 1 {
+					t.Errorf("Expected 1 unauthorized field, got %d", len(resp.UnauthorizedFields))
+				}
+			},
+		},
+		{
+			name: "Unauthorized request - restricted field not in allow list",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-123",
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.nic",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyDecisionResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if resp.AppAuthorized {
+					t.Error("Expected appAuthorized to be false")
+				}
+				if len(resp.UnauthorizedFields) != 1 {
+					t.Errorf("Expected 1 unauthorized field, got %d", len(resp.UnauthorizedFields))
+				}
+			},
+		},
+		{
+			name: "Consent required - restricted field in allow list",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-123",
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.nic",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp models.PolicyDecisionResponse
+				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+					t.Fatalf("Failed to decode response: %v", err)
+				}
+				if !resp.AppAuthorized {
+					t.Error("Expected appAuthorized to be true (field is in allow list)")
+				}
+				if !resp.AppRequiresOwnerConsent {
+					t.Error("Expected appRequiresOwnerConsent to be true")
+				}
+				if len(resp.ConsentRequiredFields) != 1 {
+					t.Errorf("Expected 1 consent required field, got %d", len(resp.ConsentRequiredFields))
+				}
+				if len(resp.UnauthorizedFields) > 0 {
+					t.Errorf("Expected no unauthorized fields, got %d", len(resp.UnauthorizedFields))
+				}
+			},
+		},
+		{
+			name: "Field not found",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-123",
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.nonexistent",
+						SchemaID:  "schema-123",
+					},
+				},
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "Empty request body",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID:  "",
+				RequiredFields: []models.PolicyDecisionRequestRecord{},
+			},
+			expectedStatus: http.StatusBadRequest, // Handler validates required fields
+		},
+		{
+			name: "Service error - schema not found",
+			requestBody: models.PolicyDecisionRequest{
+				ApplicationID: "app-123",
+				RequiredFields: []models.PolicyDecisionRequestRecord{
+					{
+						FieldName: "person.fullName",
+						SchemaID:  "nonexistent-schema",
+					},
+				},
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Update allow list for consent-required test case before making the request
+			if tt.name == "Consent required - restricted field in allow list" {
+				updateReq := models.AllowListUpdateRequest{
+					ApplicationID: "app-123",
+					GrantDuration: models.GrantDurationTypeOneMonth,
+					Records: []models.AllowListUpdateRequestRecord{
+						{
+							FieldName: "person.nic",
+							SchemaID:  "schema-123",
+						},
+					},
+				}
+				_, err := handler.policyService.UpdateAllowList(&updateReq)
+				if err != nil {
+					t.Fatalf("Failed to update allow list for test setup: %v", err)
+				}
+			}
+
+			// Use the same handler instance for all operations
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/decide", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.GetPolicyDecision(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
+				return // Skip validation if status doesn't match
+			}
+
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, w)
+			}
+		})
+	}
+}

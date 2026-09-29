@@ -1,0 +1,362 @@
+# OpenNDX - Local Development Stack
+# Usage: docker compose up --build
+#
+# This stack is self-contained: it starts PostgreSQL, ThunderID (IdP) and every
+# OpenNDX service, so it can be tested end-to-end with a single command. Every
+# variable below has a working local-dev default, so a `.env` file is optional —
+# see `.env.example` for what each one controls.
+#
+# Note: Audit Service (https://github.com/LSFLK/argus) is optional. Services
+#       function normally when it is not running or unreachable.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-${ENVIRONMENT:-local}
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-1234}
+      # Just the server's initial connection database — postgres requires one.
+      # The actual per-service databases are created by init-db.sql on first startup.
+      - POSTGRES_DB=postgres
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  # -------------------------------------------------------------------
+  # Identity Provider (ThunderID)
+  # -------------------------------------------------------------------
+  # Stage A: Seed static database schemas from container image layer
+  thunderid-db-init:
+    image: ghcr.io/thunder-id/thunderid:1.0.1
+    container_name: ndx-thunderid-db-init
+    # Seed only when the volume is empty. An unconditional copy would overwrite
+    # configdb.db on every `up`, silently reverting the bootstrap and seed.
+    command: sh -c '[ -f /data/configdb.db ] || cp -r /opt/thunderid/database/* /data/'
+    volumes:
+      - thunderid-db:/data
+    restart: "no"
+
+  # Stage B: generate key material, then import the declarative bootstrap resources
+  # (the image's built-in defaults plus our own user/resource/application files below).
+  thunderid-setup:
+    image: ghcr.io/thunder-id/thunderid:1.0.1
+    container_name: ndx-thunderid-setup
+    command: ./setup.sh
+    networks:
+      - openndx-network
+    environment:
+      - PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      - DATA_CONSUMER_CLIENT_SECRET=${DATA_CONSUMER_CLIENT_SECRET:-1234}
+      - ADMIN_PASSWORD=${IDP_ADMIN_PASSWORD:-1234}
+    volumes:
+      - thunderid-db:/opt/thunderid/database
+      # Generated here, so must outlive this container.
+      - thunderid-certs:/opt/thunderid/config/certs
+      - thunderid-secrets:/opt/thunderid/config/secrets
+      - ./thunderid/deployment.yaml:/opt/thunderid/deployment.yaml
+      - ./thunderid/bootstrap/users.yaml:/opt/thunderid/bootstrap/02-users.yaml
+      - ./thunderid/bootstrap/resource.yaml:/opt/thunderid/bootstrap/03-resource.yaml
+      - ./thunderid/bootstrap/application.yaml:/opt/thunderid/bootstrap/04-application.yaml
+      - ./thunderid/bootstrap/cors.yaml:/opt/thunderid/bootstrap/05-cors.yaml
+    depends_on:
+      thunderid-db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stage C: Boot active server instances listening for authentication queries
+  thunderid:
+    image: ghcr.io/thunder-id/thunderid:1.0.1
+    container_name: ndx-thunderid
+    networks:
+      - openndx-network
+    ports:
+      - "8090:8090"
+    volumes:
+      - thunderid-db:/opt/thunderid/database
+      # Read-only: consume the key material Stage B generated, never regenerate it.
+      - thunderid-certs:/opt/thunderid/config/certs:ro
+      - thunderid-secrets:/opt/thunderid/config/secrets:ro
+      - ./thunderid/deployment.yaml:/opt/thunderid/deployment.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs -o /dev/null http://localhost:8090/health/readiness || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    depends_on:
+      thunderid-setup:
+        condition: service_completed_successfully
+
+  # -------------------------------------------------------------------
+  # OpenNDX services
+  # -------------------------------------------------------------------
+  # IDP_ISSUER is ThunderID's public URL (the `iss` it stamps into tokens), while
+  # IDP_JWKS_URL uses its compose-network address to actually reach the endpoint.
+  policy-decision-point:
+    build:
+      context: .
+      dockerfile: cmd/pdp/Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+    container_name: pdp-${ENVIRONMENT:-local}
+    ports:
+      - "${PDP_PORT:-8082}:8082"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - PORT=8082
+      - SERVICE_NAME=policy-decision-point
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_PDP:-pdp}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - RUN_MIGRATION=${RUN_MIGRATION:-true}
+      # IDP configuration
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_AUDIENCE=${IDP_AUDIENCE:-http://api.openndx.local}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  consent-engine:
+    build:
+      context: .
+      dockerfile: cmd/ce/Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+    container_name: ce-${ENVIRONMENT:-local}
+    ports:
+      - "${CE_PORT:-8081}:8081"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - PORT=8081
+      - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_CE:-consent_engine}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - RUN_MIGRATION=${RUN_MIGRATION:-true}
+      # IDP configuration (JWT verification for consent-portal tokens)
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_AUDIENCE=${CONSENT_ENGINE_AUDIENCE:-CONSENT_PORTAL}
+      - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
+      - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-nic}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      thunderid:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  # Citizen-facing UI for approving/rejecting consent requests. Without this,
+  # a pending consent (PDP_NOT_ALLOWED -> CE_NOT_APPROVED) has no convenient
+  # way to be approved — see dev/README.md for the end-to-end flow.
+  consent-portal:
+    build:
+      # Dockerfile lives at apps/consent/Dockerfile but its COPY paths are
+      # relative to the pnpm workspace root, so the build context must be
+      # portals/, not portals/apps/consent/.
+      context: ./portals
+      dockerfile: apps/consent/Dockerfile
+    container_name: consent-portal-${ENVIRONMENT:-local}
+    ports:
+      - "${CONSENT_PORTAL_PORT:-5173}:80"
+    environment:
+      # These are fetched directly by the user's browser, not from inside the
+      # compose network, so they must be host-reachable (localhost) addresses,
+      # not container service names — config.js is generated at container
+      # startup from these env vars (entrypoint.sh), not baked in at build time.
+      - CONSENT_ENGINE_URL=http://localhost:${CE_PORT:-8081}/api/v1
+      - IDP_CLIENT_ID=${CONSENT_PORTAL_CLIENT_ID:-CONSENT_PORTAL}
+      - IDP_BASE_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_SCOPE=openid profile email
+      - IDP_SIGN_IN_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+      - IDP_SIGN_OUT_REDIRECT_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
+    depends_on:
+      consent-engine:
+        condition: service_started
+      thunderid:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  orchestration-engine:
+    build:
+      context: .
+      dockerfile: cmd/oe/Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+    container_name: oe-${ENVIRONMENT:-local}
+    ports:
+      - "${OE_PORT:-4000}:4000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - PORT=4000
+      - SERVICE_NAME=orchestration-engine
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_OE:-orchestration_engine}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      # Audit (optional, degrades gracefully if unreachable)
+      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
+    volumes:
+      - ./cmd/oe/config.docker.json:/app/config.json:ro
+      - ./cmd/oe/schema.graphql:/app/schema.graphql:ro
+    extra_hosts:
+      # Lets the container reach the mock providers from dev/compose.yml running
+      # on the host (resolves host.docker.internal on Linux too).
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  portal-backend:
+    build:
+      context: .
+      dockerfile: cmd/pb/Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-local}
+    container_name: pb-${ENVIRONMENT:-local}
+    ports:
+      - "${PB_PORT:-8083}:8083"
+    environment:
+      - PORT=8083
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - PDP_SERVICE_URL=http://policy-decision-point:8082
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_PB:-portal_backend}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - RUN_MIGRATION=${RUN_MIGRATION:-true}
+      # IDP configuration for validating incoming JWTs (ondx CLI, portal frontends)
+      - IDP_ISSUER=${IDP_PUBLIC_URL:-http://localhost:8090}
+      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
+      - IDP_ADMIN_PORTAL_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
+      # PB's own outbound calls to the IDP (creating application/user records —
+      # POST /applications, POST /members) go through idpfactory, which only
+      # implements the Asgardeo (WSO2) admin API today — see
+      # docs/DESIGN-esignet-citizen-authentication.md §3.1 and
+      # internal/pb/idp/idpfactory/factory.go. These vars only need to be
+      # non-empty for PB to boot; against ThunderID those specific endpoints
+      # (create application/member) will still fail, since ThunderID's admin
+      # API isn't Asgardeo-shaped. Everything else (list/get applications,
+      # the policy-update endpoint the ondx CLI uses) doesn't call the IDP at
+      # all and works fine.
+      - IDP_BASE_URL=http://thunderid:8090
+      - IDP_CLIENT_ID=${NDX_CLI_CLIENT_ID:-NDX_CLI}
+      - IDP_CLIENT_SECRET=${IDP_CLIENT_SECRET:-1234}
+      # Authorization
+      - AUTHORIZATION_MODE=${AUTHORIZATION_MODE:-fail_open_admin_system}
+      - AUTHORIZATION_STRICT_MODE=${AUTHORIZATION_STRICT_MODE:-false}
+      # Audit (optional, degrades gracefully if unreachable)
+      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      thunderid:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+  audit-service:
+    build:
+      context: https://github.com/LSFLK/argus.git#v1.0.1
+      dockerfile: Dockerfile
+    container_name: audit-service-${ENVIRONMENT:-local}
+    ports:
+      - "${AUDIT_PORT:-3001}:3001"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - PORT=3001
+      # Database configuration
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-1234}
+      - DB_NAME=${DB_NAME_AUDIT:-audit}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openndx-network
+
+volumes:
+  postgres-data:
+    driver: local
+  thunderid-db:
+    driver: local
+  # Key material is generated per deployment, not shipped in the image. Without these
+  # volumes the server regenerates a different AES key and cannot decrypt the client
+  # secrets already stored in configdb.db.
+  thunderid-certs:
+    driver: local
+  thunderid-secrets:
+    driver: local
+
+networks:
+  openndx-network:
+    name: openndx-network

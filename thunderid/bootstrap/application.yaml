@@ -1,0 +1,174 @@
+# LOCAL-DEV ONLY: a sample data-consumer M2M client so the OE `getdata` API can be
+# exercised end-to-end without registering a real provider through the portal first.
+# Do not mount into a shared or production deployment — production consumers are
+# provisioned via the portal's WSO2 Identity Server integration, not ThunderID
+# (see docs/DESIGN-esignet-citizen-authentication.md, §3.1).
+#
+# clientSecret is resolved from DATA_CONSUMER_CLIENT_SECRET at bootstrap time
+# (SubstituteEnvironmentVariables); the thunderid-setup service sets it. The
+# `getdata` scope it's granted comes from the role in
+# thunderid/bootstrap/resource.yaml (id ...092), not from this client config.
+resource_type: application
+id: 01900000-0000-7000-8000-000000000091
+name: Sample Data Consumer
+description: Local-dev M2M client for calling the OE data API
+type: m2m
+ouId: 01900000-0000-7000-8000-000000000001
+allowedUserTypes: []
+inboundAuthConfig:
+  - type: oauth2
+    config:
+      clientId: DATA_CONSUMER
+      clientSecret: "{{ .DATA_CONSUMER_CLIENT_SECRET }}"
+      grantTypes:
+        - client_credentials
+      tokenEndpointAuthMethod: client_secret_basic
+      pkceRequired: false
+      publicClient: false
+      token:
+        accessToken:
+          clientConfig:
+            validityPeriod: 3600
+---
+# LOCAL-DEV ONLY: the React Consent Portal's browser OAuth2 client, so citizens can
+# log in against a local ThunderID instance while the eSignet integration described
+# in docs/DESIGN-esignet-citizen-authentication.md is still being built. Do not mount
+# into a shared or production deployment.
+#
+# clientId matches CONSENT_PORTAL_CLIENT_ID in .env, which consent-engine reads as
+# IDP_CLIENT_ID to validate portal-endpoint tokens. redirectUris are built from
+# CONSENT_PORTAL_URL, resolved at bootstrap time (SubstituteEnvironmentVariables);
+# the thunderid-setup service sets it.
+#
+# IMPORTANT: the authorize/token requests this app makes MUST include
+# `resource=http://consent.openndx.local` (the Consent Engine resource server
+# declared in thunderid/bootstrap/resource.yaml) so citizen tokens are audienced
+# for consent-engine, not the OE resource server — see that file's comment for why
+# sharing an audience across services would let tokens be replayed cross-API.
+resource_type: application
+id: 01900000-0000-7000-8000-0000000000a0
+name: Consent Portal
+description: React Consent Portal — citizen-facing consent approval UI
+type: browser
+ouId: 01900000-0000-7000-8000-000000000001
+url: "{{ .CONSENT_PORTAL_URL }}"
+logoUrl: "avatar:shape=rounded,variant=anonymous_entity,content=shield,colors=0"
+authFlowId: 01900000-0000-7000-8000-000000000061
+registrationFlowId: 01900000-0000-7000-8000-000000000064
+isRegistrationFlowEnabled: true
+signOutFlowId: 01900000-0000-7000-8000-00000000006a
+recoveryFlowId: 01900000-0000-7000-8000-000000000067
+isRecoveryFlowEnabled: true
+allowedUserTypes:
+  - Person
+  - Citizen
+inboundAuthConfig:
+  - type: oauth2
+    config:
+      clientId: CONSENT_PORTAL
+      redirectUris:
+        - "{{ .CONSENT_PORTAL_URL }}"
+        - "{{ .CONSENT_PORTAL_URL }}/callback"
+      postLogoutRedirectUris:
+        - "{{ .CONSENT_PORTAL_URL }}"
+      grantTypes:
+        - authorization_code
+        - refresh_token
+      responseTypes:
+        - code
+      pkceRequired: true
+      tokenEndpointAuthMethod: none
+      publicClient: true
+      token:
+        accessToken:
+          userConfig:
+            validityPeriod: 3600
+            attributes:
+              - given_name
+              - family_name
+              - email
+              - name
+              # Citizen-only attribute (thunderid/bootstrap/users.yaml). Needed
+              # in the access token so consent-engine's owner-id match
+              # (IDP_SUBJECT_CLAIM=nic) has something to compare against.
+              - nic
+        idToken:
+          validityPeriod: 3600
+          userAttributes:
+            - given_name
+            - family_name
+            - email
+            - name
+            - nic
+      scopeClaims:
+        profile:
+          - name
+          - given_name
+          - family_name
+          - picture
+        email:
+          - email
+          - email_verified
+        phone:
+          - phone_number
+          - phone_number_verified
+---
+# LOCAL-DEV ONLY: the `ndx` management CLI's OAuth2 client, so it can log admin
+# operators in against a local ThunderID instance and call Portal Backend's
+# management API. Do not mount into a shared or production deployment.
+#
+# type/pkceRequired/tokenEndpointAuthMethod/publicClient mirror CONSENT_PORTAL
+# above — the only other confirmed-working public-client config in this repo.
+# "native" isn't used here since it's not a documented type in this repo; if
+# ThunderID does support it, prefer it over reusing "browser".
+#
+# redirectUris is a single literal loopback URI, not a wildcard/regex, because
+# nothing in this repo's bootstrap config demonstrates ThunderID accepting a
+# pattern here (contrast thunderid/bootstrap/cors.yaml's allowedOrigins, which
+# does support a `regex:` entry — untested whether redirectUris shares that).
+# `ndx login` must be run with --callback-port 8765 to match. If ThunderID
+# does support a wildcard/regex loopback redirect URI (per RFC 8252 §7.3),
+# this can be relaxed and --callback-port dropped in favor of a random port.
+resource_type: application
+id: 01900000-0000-7000-8000-0000000000b0
+name: NDX CLI
+description: ndx management CLI — admin operator login for Portal Backend
+type: browser
+ouId: 01900000-0000-7000-8000-000000000001
+authFlowId: 01900000-0000-7000-8000-000000000061
+registrationFlowId: 01900000-0000-7000-8000-000000000064
+isRegistrationFlowEnabled: false
+signOutFlowId: 01900000-0000-7000-8000-00000000006a
+recoveryFlowId: 01900000-0000-7000-8000-000000000067
+isRecoveryFlowEnabled: false
+allowedUserTypes:
+  - Person
+inboundAuthConfig:
+  - type: oauth2
+    config:
+      clientId: NDX_CLI
+      redirectUris:
+        - "http://127.0.0.1:8765/callback"
+      grantTypes:
+        - authorization_code
+        - refresh_token
+      responseTypes:
+        - code
+      pkceRequired: true
+      tokenEndpointAuthMethod: none
+      publicClient: true
+      token:
+        accessToken:
+          userConfig:
+            validityPeriod: 3600
+            attributes:
+              - given_name
+              - family_name
+              - email
+              - roles
+        idToken:
+          validityPeriod: 3600
+      scopeClaims:
+        roles:
+          - roles
+          - email

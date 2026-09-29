@@ -171,7 +171,7 @@ The `docker-compose.test.yml` starts:
 - **Policy Decision Point** (8082) - Policy evaluation service
 - **Consent Engine** (8081) - Consent management service
 - **Orchestration Engine** (4000) - GraphQL orchestration service
-- **Portal Backend** (3000) - Admin portal backend
+- **Portal Backend** (8083) - Admin portal backend
 
 All services run on `test-network` Docker network.
 

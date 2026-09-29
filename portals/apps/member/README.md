@@ -60,7 +60,7 @@ cp .env.example .env
 |------------------------------|------------|--------------------------------------|--------------------------------------------|
 | `VITE_PORT`                  | Build-time | `5173`                               | Local dev server port                      |
 | `VITE_BASE_PATH`             | Build-time | `/`                                  | Public base path Vite serves the app under |
-| `VITE_API_URL`               | Runtime    | `http://localhost:3000`              | Portal Backend API base URL                |
+| `VITE_API_URL`               | Runtime    | `http://localhost:8083`              | Portal Backend API base URL                |
 | `VITE_LOGS_URL`              | Runtime    | `http://localhost:3001`              | Audit Service base URL (audit log viewer)  |
 | `VITE_CLIENT_ID`             | Runtime    | `your_client_id`                     | IdP (Asgardeo) application client ID       |
 | `VITE_BASE_URL`              | Runtime    | `https://api.asgardeo.io/t/your-org` | IdP (Asgardeo) base URL                    |
@@ -75,7 +75,7 @@ cp .env.example .env
 
 ```js
 window.configs = {
-  API_URL: 'http://localhost:3000',
+  API_URL: 'http://localhost:8083',
   LOGS_URL: 'http://localhost:3001',
   CLIENT_ID: 'your_client_id',
   BASE_URL: 'https://api.asgardeo.io/t/your-org',
@@ -103,7 +103,7 @@ docker build -t member-portal -f apps/member/Dockerfile .
 
 # Run container
 docker run -p 5173:80 \
-  -e VITE_API_URL=http://localhost:3000 \
+  -e VITE_API_URL=http://localhost:8083 \
   -e VITE_LOGS_URL=http://localhost:3001 \
   -e VITE_CLIENT_ID=your_client_id \
   -e VITE_BASE_URL=https://api.asgardeo.io/t/your-org \

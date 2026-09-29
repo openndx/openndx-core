@@ -1,0 +1,152 @@
+{
+  "birth": [
+    {
+      "id": 1,
+      "br_no": "BR000001",
+      "district": "Rivertown",
+      "division": "Rivertown Central",
+      "birth_date": "1990-04-12",
+      "birth_place": "Rivertown General Hospital",
+      "name": "Suresh",
+      "sex": "Male",
+      "nic": "748213",
+      "are_parents_married": true,
+      "is_grandfather_born_in_sri_lanka": true,
+      "father": {
+        "name": "Robert Doe",
+        "nic": "610234",
+        "birth_date": "1965-02-10",
+        "birth_place": "Rivertown",
+        "race": "N/A"
+      },
+      "mother": {
+        "name": "Mary Doe",
+        "nic": "620345",
+        "birth_date": "1968-05-14",
+        "birth_place": "Rivertown",
+        "race": "N/A",
+        "age_at_birth": 22
+      },
+      "date_of_registration": "1990-04-15",
+      "registrar_signature": "A. Registrar",
+      "informant": {
+        "signature": "Robert Doe",
+        "full_name": "Robert Doe",
+        "residence": "12 Elm Street, Rivertown",
+        "relationship_to_baby": "Father",
+        "nic": "610234"
+      }
+    },
+    {
+      "id": 2,
+      "br_no": "BR000002",
+      "district": "Lakeview",
+      "division": "Lakeview Urban",
+      "birth_date": "1992-08-25",
+      "birth_place": "Lakeview General Hospital",
+      "name": "Ramesh",
+      "sex": "Male",
+      "nic": "512346",
+      "are_parents_married": true,
+      "is_grandfather_born_in_sri_lanka": false,
+      "father": {
+        "name": "Richard Smith",
+        "nic": "630456",
+        "birth_date": "1962-03-01",
+        "birth_place": "Lakeview",
+        "race": "N/A"
+      },
+      "mother": {
+        "name": "Susan Smith",
+        "nic": "640567",
+        "birth_date": "1966-09-19",
+        "birth_place": "Lakeview",
+        "race": "N/A",
+        "age_at_birth": 26
+      },
+      "date_of_registration": "1992-08-28",
+      "registrar_signature": "B. Registrar",
+      "informant": {
+        "signature": "Richard Smith",
+        "full_name": "Richard Smith",
+        "residence": "45 Oak Avenue, Lakeview",
+        "relationship_to_baby": "Father",
+        "nic": "630456"
+      }
+    },
+    {
+      "id": 3,
+      "br_no": "BR000003",
+      "district": "Hillcrest",
+      "division": "Hillcrest Central",
+      "birth_date": "1988-01-30",
+      "birth_place": "Hillcrest Teaching Hospital",
+      "name": "Naresh",
+      "sex": "Male",
+      "nic": "398217",
+      "are_parents_married": false,
+      "is_grandfather_born_in_sri_lanka": true,
+      "father": {
+        "name": "Michael Carter",
+        "nic": "650678",
+        "birth_date": "1960-06-02",
+        "birth_place": "Hillcrest",
+        "race": "N/A"
+      },
+      "mother": {
+        "name": "Linda Carter",
+        "nic": "660789",
+        "birth_date": "1963-11-20",
+        "birth_place": "Hillcrest",
+        "race": "N/A",
+        "age_at_birth": 25
+      },
+      "date_of_registration": "1988-02-02",
+      "registrar_signature": "C. Registrar",
+      "informant": {
+        "signature": "Linda Carter",
+        "full_name": "Linda Carter",
+        "residence": "78 Pine Road, Hillcrest",
+        "relationship_to_baby": "Mother",
+        "nic": "660789"
+      }
+    },
+    {
+      "id": 4,
+      "br_no": "BR000004",
+      "district": "Brookfield",
+      "division": "Brookfield South",
+      "birth_date": "1985-11-03",
+      "birth_place": "Brookfield General Hospital",
+      "name": "Gomesh",
+      "sex": "Male",
+      "nic": "674529",
+      "are_parents_married": true,
+      "is_grandfather_born_in_sri_lanka": true,
+      "father": {
+        "name": "David Wilson",
+        "nic": "670891",
+        "birth_date": "1958-05-10",
+        "birth_place": "Brookfield",
+        "race": "N/A"
+      },
+      "mother": {
+        "name": "Patricia Wilson",
+        "nic": "680912",
+        "birth_date": "1961-08-20",
+        "birth_place": "Brookfield",
+        "race": "N/A",
+        "age_at_birth": 24
+      },
+      "date_of_registration": "1985-11-06",
+      "registrar_signature": "D. Registrar",
+      "informant": {
+        "signature": "David Wilson",
+        "full_name": "David Wilson",
+        "residence": "23 Maple Lane, Brookfield",
+        "relationship_to_baby": "Father",
+        "nic": "670891"
+      }
+    }
+  ]
+}

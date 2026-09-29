@@ -5,6 +5,16 @@ info:
   description: |
     The Orchestration Engine provides GraphQL federation and unified schema management capabilities.
     It supports multiple schema versions, schema activation/deactivation, and GraphQL query routing.
+  contact:
+    name: OpenNDX Team
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:4000
+    description: Local Development Environment
+
 paths:
   /health:
     get:

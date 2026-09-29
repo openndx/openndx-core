@@ -5,7 +5,8 @@ on:
     branches: [main, int-test-fail-paths]
     paths:
       - "tests/integration/**"
-      - "exchange/policy-decision-point/**"
+      - "cmd/pdp/**"
+      - "internal/pdp/**"
       - "cmd/ce/**"
       - "internal/ce/**"
       - "cmd/oe/**"
@@ -24,7 +25,8 @@ on:
     branches: [main, int-test-fail-paths]
     paths:
       - "tests/integration/**"
-      - "exchange/policy-decision-point/**"
+      - "cmd/pdp/**"
+      - "internal/pdp/**"
       - "cmd/ce/**"
       - "internal/ce/**"
       - "cmd/oe/**"
@@ -110,7 +112,7 @@ jobs:
 
           # Build Policy Decision Point
           echo "Building Policy Decision Point..."
-          (cd exchange/policy-decision-point && go build -o ../../tests/integration/bin/policy-decision-point .) &
+          go build -o tests/integration/bin/policy-decision-point ./cmd/pdp &
 
           # Build Consent Engine
           echo "Building Consent Engine..."

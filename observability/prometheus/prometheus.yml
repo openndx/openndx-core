@@ -39,8 +39,8 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-          - portal-backend:3000
+          - portal-backend:8083
         labels:
           service: 'portal-backend'
-          port: '3000'
+          port: '8083'
 

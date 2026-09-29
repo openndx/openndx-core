@@ -5,15 +5,21 @@ on:
     branches:
       - main
     paths:
-      - "exchange/policy-decision-point/**"
-      - "exchange/shared/**"
-      - "shared/**"
+      - "cmd/pdp/**"
+      - "internal/pdp/**"
+      - "internal/config/**"
+      - "internal/constants/**"
+      - "internal/monitoring/**"
+      - "internal/utils/**"
+      - "go.mod"
+      - "go.sum"
+      - ".dockerignore"
       - ".github/workflows/policy-decision-point-publish.yml"
   workflow_dispatch:
 
 env:
   # === Service-specific variables ===
-  SERVICE_PATH: "exchange/policy-decision-point"
+  SERVICE_PATH: "cmd/pdp"
   IMAGE_NAME: ${{ github.repository_owner }}/policy-decision-point
   # ================================
   REGISTRY: ghcr.io
@@ -58,7 +64,7 @@ jobs:
         id: build-push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.SERVICE_PATH }}
+          context: .
           file: ${{ env.SERVICE_PATH }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

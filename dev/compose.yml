@@ -1,0 +1,47 @@
+# Local dev/demo data providers for the Orchestration Engine.
+#
+# This brings up the mock member services published by the opendif-farajaland
+# reference implementation (https://github.com/LSFLK/opendif-farajaland) so
+# `oe` has real providers to federate against. It depends only on their
+# published images, not on that repo being checked out locally.
+#
+# Usage:
+#   docker compose -f dev/compose.yml up -d
+#   docker compose -f dev/compose.yml down
+#
+# See dev/README.md for the full walkthrough.
+
+services:
+  drp-api:
+    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api:${IMAGE_TAG:-v0.1.0}
+    container_name: dev-drp-api
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./providers/drp-api/Config.toml:/home/ballerina/Config.toml:ro
+      - ./providers/drp-api/mock_data.json:/home/ballerina/mock_data.json:ro
+    restart: unless-stopped
+
+  # GraphQL subgraph in front of drp-api. This is what oe's "drp" provider
+  # entry (cmd/oe/config.docker.json / config.example.json) points at.
+  drp-api-adapter:
+    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api-adapter:${IMAGE_TAG:-v0.1.0}
+    container_name: dev-drp-adapter
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./providers/drp-api-adapter/Config.toml:/home/ballerina/Config.toml:ro
+    depends_on:
+      - drp-api
+    restart: unless-stopped
+
+  rgd-api:
+    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/rgd-api:${IMAGE_TAG:-v0.1.0}
+    container_name: dev-rgd-api
+    ports:
+      - "8080:8080"
+    volumes:
+      # Overrides the image's baked-in mock_data.json with the generic dataset
+      # below, keeping NICs in sync with drp-api's mock data.
+      - ./providers/rgd-api/mock_data.json:/app/mock_data.json:ro
+    restart: unless-stopped

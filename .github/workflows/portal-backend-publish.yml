@@ -5,14 +5,21 @@ on:
     branches:
       - main
     paths:
-      - "portal-backend/**"
-      - "shared/**"
+      - "cmd/pb/**"
+      - "internal/pb/**"
+      - "internal/config/**"
+      - "internal/constants/**"
+      - "internal/monitoring/**"
+      - "internal/utils/**"
+      - "go.mod"
+      - "go.sum"
+      - ".dockerignore"
       - ".github/workflows/portal-backend-publish.yml"
   workflow_dispatch:
 
 env:
   # === Service-specific variables ===
-  SERVICE_PATH: "portal-backend"
+  SERVICE_PATH: "cmd/pb"
   IMAGE_NAME: ${{ github.repository_owner }}/portal-backend
   # ================================
   REGISTRY: ghcr.io

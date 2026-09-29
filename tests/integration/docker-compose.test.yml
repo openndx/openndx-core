@@ -2,8 +2,8 @@ services:
   # Policy Decision Point Service
   policy-decision-point:
     build:
-      context: ../../exchange/policy-decision-point
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: cmd/pdp/Dockerfile
     environment:
       PORT: 8082
       LOG_LEVEL: info

@@ -1,0 +1,42 @@
+[
+  {
+    "nic": "748213",
+    "fullName": "Suresh",
+    "otherNames": "Suresh",
+    "sex": "MALE",
+    "dateOfBirth": "1990-04-12",
+    "permanentAddress": "12 Elm Street, Rivertown",
+    "profession": "Software Engineer",
+    "photo": "https://example.com/photo.jpg"
+  },
+  {
+    "nic": "512346",
+    "fullName": "Ramesh",
+    "otherNames": "Ramesh",
+    "sex": "MALE",
+    "dateOfBirth": "1992-08-25",
+    "permanentAddress": "45 Oak Avenue, Lakeview",
+    "profession": "Pilot",
+    "photo": "https://example.com/photo.jpg"
+  },
+  {
+    "nic": "398217",
+    "fullName": "Naresh",
+    "otherNames": "Naresh",
+    "sex": "MALE",
+    "dateOfBirth": "1988-01-30",
+    "permanentAddress": "78 Pine Road, Hillcrest",
+    "profession": "Accountant",
+    "photo": "https://example.com/photo.jpg"
+  },
+  {
+    "nic": "674529",
+    "fullName": "Gomesh",
+    "otherNames": "Gomesh",
+    "sex": "MALE",
+    "dateOfBirth": "1985-11-03",
+    "permanentAddress": "23 Maple Lane, Brookfield",
+    "profession": "Civil Engineer",
+    "photo": "https://example.com/photo.jpg"
+  }
+]

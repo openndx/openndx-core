@@ -14,7 +14,6 @@ directive @sourceInfoArgList(
 
 type Query {
     personInfo(nic: String!): PersonInfo
-    vehicle: VehicleInfo
 }
 
 input SourceInfoInput {
@@ -31,20 +30,6 @@ type PersonInfo {
     dateOfBirth: String @sourceInfo(providerKey: "rgd", schemaId: "abc-212", providerField: "getPersonInfo.birthDate")
     sex: String @sourceInfo(providerKey: "rgd", schemaId: "abc-212", providerField: "getPersonInfo.sex")
     birthInfo: BirthInfo
-    ownedVehicles: [VehicleInfo] @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicles")
-}
-
-type VehicleInfo {
-    regNo: String @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.registrationNumber")
-    make: String @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.make")
-    model: String @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.model")
-    year: Int @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.yearOfManufacture")
-    class: [VehicleClass] @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.classes")
-}
-
-type VehicleClass {
-    className: String @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.classes.className")
-    classCode: String @sourceInfo(providerKey: "dmt", schemaId: "dmt-schema-v1", providerField: "vehicle.classes.classCode")
 }
 
 type BirthInfo {

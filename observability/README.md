@@ -14,7 +14,7 @@ Collects real-time metrics from all Go services for debugging performance and er
 │  ┌──────────────┐  ┌───────────────┐  ┌──────────────┐                   │
 │  │ Portal       │  │ Orchestration │  │ Policy        │  ...               │
 │  │ Backend      │  │ Engine        │  │ Decision      │                    │
-│  │ :3000        │  │ :4000         │  │ Point :8082   │                    │
+│  │ :8083        │  │ :4000         │  │ Point :8082   │                    │
 │  └──────┬───────┘  └───────┬───────┘  └──────┬───────┘                    │
 │         │                  │                 │                             │
 │         └──────────────────┴─────────────────┘                            │
@@ -94,7 +94,7 @@ Ensure all Go services are running and connected to the `openndx-network`:
 - Orchestration Engine (port 4000)
 - Consent Engine (port 8081)
 - Policy Decision Point (port 8082)
-- Portal Backend (port 3000)
+- Portal Backend (port 8083)
 
 ---
 
@@ -160,7 +160,7 @@ export OTEL_METRICS_EXPORTER=none
 | `OTEL_EXPORTER_OTLP_HEADERS` | OTLP headers (e.g., API keys). Format: `key1=value1,key2=value2` | - | `DD-API-KEY=xxx,DD-SITE=datadoghq.com` |
 | `SERVICE_NAME` | Service name for metrics | `openndx-service` | `portal-backend` |
 
-**Note:** For Docker Compose deployments, add these environment variables to your `docker-compose.yml`:
+**Note:** For Docker Compose deployments, add these environment variables to your `compose.yml`:
 
 ```yaml
 services:
@@ -279,13 +279,13 @@ To populate the Grafana dashboard with metrics, generate sample traffic:
 ./generate_sample_traffic.sh
 ```
 
-This sends requests to various endpoints on `portal-backend` (default: `http://localhost:3000`).
+This sends requests to various endpoints on `portal-backend` (default: `http://localhost:8083`).
 
 ### Configuration
 
 ```bash
 # Change the base URL
-PORTAL_BACKEND_URL=http://localhost:3000 ./generate_sample_traffic.sh
+PORTAL_BACKEND_URL=http://localhost:8083 ./generate_sample_traffic.sh
 
 # Change request interval (default: 2 seconds)
 REQUEST_INTERVAL=5 ./generate_sample_traffic.sh
@@ -450,7 +450,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
    ```
 
 4. **Ensure service is on `openndx-network`:**
-   In your service's `docker-compose.yml`:
+   In your service's `compose.yml`:
    ```yaml
    services:
      your-service:
@@ -476,7 +476,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
 
 1. Check that metrics are initialized:
    - Look for log messages: "Initialized OpenTelemetry metrics with..."
-   - Check `/metrics` endpoint returns data: `curl http://localhost:3000/metrics`
+   - Check `/metrics` endpoint returns data: `curl http://localhost:8083/metrics`
 
 2. For OTLP exporter:
    - Verify `OTEL_EXPORTER_OTLP_ENDPOINT` is set correctly

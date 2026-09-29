@@ -1,0 +1,1434 @@
+openapi: 3.0.3
+info:
+  title: Data Exchange Portal Backend
+  description: |
+    A secure, scalable Go-based REST Portal Backend for managing government data exchange workflows.
+    
+    ## Authentication
+    All /api/v1/ endpoints require JWT authentication using Bearer tokens from the configured OIDC-compliant
+    identity provider (ThunderID is the primary supported provider; other OIDC-compliant IdPs may also be
+    configured), enforced by a CORS -> JWT authentication -> RBAC authorization middleware chain.
+
+    /health, /debug, and /debug/db are exempt from authentication.
+
+    The /internal/api/v1/ endpoints (for service-to-service communication) bypass this entire middleware
+    chain - no CORS, no JWT authentication, and no RBAC authorization is applied. They are intended to be
+    reachable only from within the internal network and must never be exposed publicly.
+    
+    ## Authorization  
+    The API implements role-based access control (RBAC) with the following roles:
+    - **OpenNDX_Admin**: Full system access and management capabilities
+    - **OpenNDX_Member**: Standard user access to own resources only
+    - **OpenNDX_System**: System-level operations with read access
+    
+    ## Features
+    - JWT authentication with pluggable OIDC identity provider integration
+    - Role-based access control with granular permissions
+    - Thread-safe caching for optimal performance
+    - Ownership-based resource access validation
+    - Comprehensive audit logging
+    
+    This service handles member management, schema submissions, application processing, and access control
+    with enterprise-grade security and performance optimizations.
+  version: 1.0.0
+  contact:
+    name: OpenNDX Team
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8083
+    description: Local Development Environment
+
+paths:
+  /api/v1/members:
+    get:
+      summary: List members
+      description: Retrieve members with optional filters
+      operationId: getAllMembers
+      tags:
+        - Members
+      parameters:
+        - name: idpUserId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by IDP user ID
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            format: email
+          description: Filter by email address
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create member
+      operationId: createMember
+      tags:
+        - Members
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMemberRequest'
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/members/{memberId}:
+    get:
+      summary: Get member
+      operationId: getMember
+      tags:
+        - Members
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update member
+      operationId: updateMember
+      tags:
+        - Members
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRequest'
+      responses:
+        '200':
+          description: Member updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the Portal Backend
+      operationId: getHealth
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  service:
+                    type: string
+                    example: portal-backend-v1
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /debug:
+    get:
+      summary: Debug endpoint
+      description: Returns debug information about the Portal Backend
+      operationId: getDebug
+      tags:
+        - Debug
+      security: []
+      responses:
+        '200':
+          description: Debug information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  debug:
+                    type: string
+                    example: enabled
+                  service:
+                    type: string
+                    example: portal-backend-v1
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /debug/db:
+    get:
+      summary: Database debug endpoint
+      description: Returns database connection information and pool statistics
+      operationId: getDebugDB
+      tags:
+        - Debug
+      security: []
+      responses:
+        '200':
+          description: Database debug information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: connected
+                      openConnections:
+                        type: integer
+                        example: 5
+                      maxOpenConnections:
+                        type: integer
+                        example: 25
+                      idleConnections:
+                        type: integer
+                        example: 3
+                      waitCount:
+                        type: integer
+                        example: 0
+                      waitDuration:
+                        type: string
+                        example: 0s
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/schemas:
+    get:
+      summary: List all schemas
+      description: Retrieve a list of all schemas in the system
+      operationId: getAllSchemas
+      tags:
+        - Schemas
+      parameters:
+        - name: memberId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter schemas by owning member ID
+      responses:
+        '200':
+          description: List of schemas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Schema'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new schema
+      description: Create a new schema in the system
+      operationId: createSchema
+      tags:
+        - Schemas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchemaRequest'
+      responses:
+        '201':
+          description: Schema created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schema'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/schemas/{schemaId}:
+    get:
+      summary: Get schema by ID
+      description: Retrieve a specific schema by its ID
+      operationId: getSchema
+      tags:
+        - Schemas
+      parameters:
+        - name: schemaId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema ID
+      responses:
+        '200':
+          description: Schema details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schema'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update schema
+      description: Update an existing schema
+      operationId: updateSchema
+      tags:
+        - Schemas
+      parameters:
+        - name: schemaId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSchemaRequest'
+      responses:
+        '200':
+          description: Schema updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schema'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/schema-submissions:
+    get:
+      summary: List all schema submissions
+      description: Retrieve a list of all schema submissions in the system
+      operationId: getAllSchemaSubmissions
+      tags:
+        - Schema Submissions
+      parameters:
+        - name: memberId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter schema submissions by member ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [pending, approved, rejected]
+          style: form
+          explode: true
+          description: Filter by one or more statuses (repeat the parameter)
+      responses:
+        '200':
+          description: List of schema submissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SchemaSubmission'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new schema submission
+      description: Create a new schema submission in the system
+      operationId: createSchemaSubmission
+      tags:
+        - Schema Submissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchemaSubmissionRequest'
+      responses:
+        '201':
+          description: Schema submission created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/schema-submissions/{submissionId}:
+    get:
+      summary: Get schema submission by ID
+      description: Retrieve a specific schema submission by its ID
+      operationId: getSchemaSubmission
+      tags:
+        - Schema Submissions
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema submission ID
+      responses:
+        '200':
+          description: Schema submission details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaSubmission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update schema submission
+      description: Update an existing schema submission
+      operationId: updateSchemaSubmission
+      tags:
+        - Schema Submissions
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema submission ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSchemaSubmissionRequest'
+      responses:
+        '200':
+          description: Schema submission updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/applications:
+    get:
+      summary: List all applications
+      description: Retrieve a list of all applications in the system
+      operationId: getAllApplications
+      tags:
+        - Applications
+      parameters:
+        - name: memberId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter applications by member ID
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Application'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new application
+      description: Create a new application in the system
+      operationId: createApplication
+      tags:
+        - Applications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApplicationRequest'
+      responses:
+        '201':
+          description: Application created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/applications/{applicationId}:
+    get:
+      summary: Get application by ID
+      description: Retrieve a specific application by its ID
+      operationId: getApplication
+      tags:
+        - Applications
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application ID
+      responses:
+        '200':
+          description: Application details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update application
+      description: Update an existing application
+      operationId: updateApplication
+      tags:
+        - Applications
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApplicationRequest'
+      responses:
+        '200':
+          description: Application updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/applications/{applicationId}/policy:
+    put:
+      summary: Update application policy
+      description: |
+        Replaces an existing application's allow-list: the schema fields it is
+        granted access to and, optionally, the PDP grant duration. Field/policy
+        updates go through this endpoint rather than the general application
+        update endpoint.
+      operationId: updateApplicationPolicy
+      tags:
+        - Applications
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApplicationPolicyRequest'
+      responses:
+        '200':
+          description: Application policy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions or access denied to this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /internal/api/v1/applications:
+    get:
+      summary: Get application ID by IDP Client ID (Internal)
+      description: |
+        **Internal endpoint for service-to-service communication.**
+        
+        Retrieves the application ID using the Identity Provider (IDP) Client ID.
+        This endpoint is used by internal services (e.g., Orchestration Engine) to 
+        identify which application is making a request by decoding the app token 
+        and extracting the IDP Client ID.
+        
+        **Authentication:** No authentication required (internal use only)
+        
+        **Use Case:** When the Orchestration Engine receives a data access request,
+        it decodes the M2M app token to extract the `client_id` (IDP Client ID),
+        then calls this endpoint to determine which application in the system
+        corresponds to that client ID.
+      operationId: getApplicationIdByIdpClientId
+      tags:
+        - Internal - Applications
+      security: []
+      parameters:
+        - name: idpClientId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The IDP Client ID from the M2M application token
+          example: "a1b2c3d4e5f6g7h8i9j0"
+      responses:
+        '200':
+          description: Application ID retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationId:
+                    type: string
+                    description: The application ID corresponding to the IDP Client ID
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          description: Bad Request - Missing or invalid idpClientId parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "idpClientId query parameter is required"
+        '404':
+          description: Not Found - No application found for the given IDP Client ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "application not found for idpClientId: a1b2c3d4e5f6g7h8i9j0"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/application-submissions:
+    get:
+      summary: List all application submissions
+      description: Retrieve a list of all application submissions in the system
+      operationId: getAllApplicationSubmissions
+      tags:
+        - Application Submissions
+      parameters:
+        - name: memberId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter application submissions by member ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [pending, approved, rejected]
+          style: form
+          explode: true
+          description: Filter by one or more statuses (repeat the parameter)
+      responses:
+        '200':
+          description: List of application submissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApplicationSubmission'
+                  count:
+                    type: integer
+                    example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    post:
+      summary: Create a new application submission
+      description: Create a new application submission in the system
+      operationId: createApplicationSubmission
+      tags:
+        - Application Submissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApplicationSubmissionRequest'
+      responses:
+        '201':
+          description: Application submission created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/application-submissions/{submissionId}:
+    get:
+      summary: Get application submission by ID
+      description: Retrieve a specific application submission by its ID
+      operationId: getApplicationSubmission
+      tags:
+        - Application Submissions
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application submission ID
+      responses:
+        '200':
+          description: Application submission details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationSubmission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+    put:
+      summary: Update application submission
+      description: Update an existing application submission
+      operationId: updateApplicationSubmission
+      tags:
+        - Application Submissions
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application submission ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApplicationSubmissionRequest'
+      responses:
+        '200':
+          description: Application submission updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Member:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - type: object
+          properties:
+            memberId:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            phoneNumber:
+              type: string
+            idpUserId:
+              type: string
+
+    CreateMemberRequest:
+      type: object
+      required: [name, email, phoneNumber]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        idpUserId:
+          type: string
+          description: |
+            Registers a member whose IDP account was already provisioned
+            directly (e.g. manually via the identity provider's own console,
+            for providers idpfactory doesn't yet support automatic account
+            creation for). When set, creation skips creating the user and
+            assigning them to the member group in the IDP, using this value
+            as-is - the caller is responsible for that group/role assignment
+            having already happened.
+
+    UpdateMemberRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phoneNumber:
+          type: string
+    BaseModel:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Schema:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - type: object
+          properties:
+            schemaId:
+              type: string
+              description: Unique identifier for the schema
+            schemaName:
+              type: string
+              description: Name of the schema
+            schemaDescription:
+              type: string
+              nullable: true
+              description: Description of the schema
+            sdl:
+              type: string
+              description: Schema Definition Language content
+            endpoint:
+              type: string
+              description: GraphQL endpoint URL
+            version:
+              type: string
+              description: Schema version
+            memberId:
+              type: string
+              description: Reference to the owning member
+
+    SchemaSubmission:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - type: object
+          properties:
+            submissionId:
+              type: string
+              description: Unique identifier for the submission
+            schemaName:
+              type: string
+              description: Name of the schema
+            schemaDescription:
+              type: string
+              nullable: true
+              description: Description of the schema
+            sdl:
+              type: string
+              description: Schema Definition Language content
+            schemaEndpoint:
+              type: string
+              description: GraphQL endpoint URL
+            status:
+              type: string
+              enum: [pending, approved, rejected]
+              description: Submission status
+            review:
+              type: string
+              nullable: true
+              description: Review comments
+            previousSchemaId:
+              type: string
+              nullable: true
+              description: Reference to previous schema version
+            memberId:
+              type: string
+              description: Reference to the owning member
+
+    Application:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - type: object
+          properties:
+            applicationId:
+              type: string
+              description: Unique identifier for the application
+            applicationName:
+              type: string
+              description: Name of the application
+            applicationDescription:
+              type: string
+              nullable: true
+              description: Description of the application
+            selectedFields:
+              type: array
+              items:
+                $ref: '#/components/schemas/SelectedFieldRecord'
+              description: Selected fields for data access
+            version:
+              type: string
+              enum: [active, deprecated]
+              description: Version status of the application
+            idpApplicationId:
+              type: string
+              nullable: true
+              description: Identity Provider application ID for M2M authentication
+              example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            idpClientId:
+              type: string
+              nullable: true
+              description: Identity Provider Client ID used for M2M token authentication
+              example: "a1b2c3d4e5f6g7h8i9j0"
+            memberId:
+              type: string
+              description: Reference to the owning member
+
+    ApplicationSubmission:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - type: object
+          properties:
+            submissionId:
+              type: string
+              description: Unique identifier for the submission
+            applicationName:
+              type: string
+              description: Name of the application
+            applicationDescription:
+              type: string
+              nullable: true
+              description: Description of the application
+            selectedFields:
+              type: array
+              items:
+                $ref: '#/components/schemas/SelectedFieldRecord'
+              description: Selected fields for data access
+            status:
+              type: string
+              enum: [pending, approved, rejected]
+              description: Submission status
+            review:
+              type: string
+              nullable: true
+              description: Review comments
+            previousApplicationId:
+              type: string
+              nullable: true
+              description: Reference to previous application version
+            memberId:
+              type: string
+              description: Reference to the owning member
+
+    SelectedFieldRecord:
+      type: object
+      required:
+        - fieldName
+        - schemaId
+      properties:
+        fieldName:
+          type: string
+          description: Name of the selected field
+        schemaId:
+          type: string
+          description: Reference to the schema the field belongs to
+
+    GrantDurationType:
+      type: string
+      enum: ["30d", "365d"]
+      description: PDP grant duration for an application's field access policy
+
+    PolicyMetadataCreateRequestRecord:
+      type: object
+      required:
+        - fieldName
+        - source
+        - isOwner
+        - accessControlType
+      properties:
+        fieldName:
+          type: string
+          description: |
+            Field path. Used as-is (no forced typename.fieldName prefix the
+            way SDL-derived field paths get).
+        displayName:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [primary, fallback]
+        isOwner:
+          type: boolean
+        accessControlType:
+          type: string
+          enum: [public, restricted]
+        owner:
+          type: string
+          enum: [citizen]
+          nullable: true
+
+    CreateSchemaRequest:
+      type: object
+      required:
+        - schemaName
+        - endpoint
+        - memberId
+      properties:
+        schemaName:
+          type: string
+          description: Name of the schema
+        schemaDescription:
+          type: string
+          nullable: true
+          description: Description of the schema
+        sdl:
+          type: string
+          description: |
+            A GraphQL SDL string annotated with @accessControl/@source (and
+            optionally @displayName/@description/@isOwner/@owner) directives,
+            parsed into policy metadata records. Mutually exclusive with
+            fields - exactly one of sdl or fields must be provided.
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyMetadataCreateRequestRecord'
+          description: |
+            Declares policy metadata records directly, skipping SDL/GraphQL
+            parsing entirely - each fieldName is used as-is (no forced
+            typename.fieldName prefix the way SDL-derived field paths get).
+            Mutually exclusive with sdl - exactly one of sdl or fields must
+            be provided.
+        endpoint:
+          type: string
+          description: GraphQL endpoint URL
+        memberId:
+          type: string
+          description: Reference to the owning member
+      oneOf:
+        - required: [sdl]
+          not:
+            required: [fields]
+        - required: [fields]
+          not:
+            required: [sdl]
+
+    UpdateSchemaRequest:
+      type: object
+      properties:
+        schemaName:
+          type: string
+          description: Name of the schema
+        schemaDescription:
+          type: string
+          nullable: true
+          description: Description of the schema
+        sdl:
+          type: string
+          description: Schema Definition Language content
+        endpoint:
+          type: string
+          description: GraphQL endpoint URL
+        version:
+          type: string
+          description: Schema version
+
+    CreateSchemaSubmissionRequest:
+      type: object
+      required:
+        - schemaName
+        - sdl
+        - schemaEndpoint
+        - memberId
+      properties:
+        schemaName:
+          type: string
+          description: Name of the schema
+        schemaDescription:
+          type: string
+          nullable: true
+          description: Description of the schema
+        sdl:
+          type: string
+          description: Schema Definition Language content
+        schemaEndpoint:
+          type: string
+          description: GraphQL endpoint URL
+        previousSchemaId:
+          type: string
+          nullable: true
+          description: Reference to previous schema version
+        memberId:
+          type: string
+          description: Reference to the owning member
+
+    UpdateSchemaSubmissionRequest:
+      type: object
+      properties:
+        schemaName:
+          type: string
+          description: Name of the schema
+        schemaDescription:
+          type: string
+          nullable: true
+          description: Description of the schema
+        sdl:
+          type: string
+          description: Schema Definition Language content
+        schemaEndpoint:
+          type: string
+          description: GraphQL endpoint URL
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Submission status
+        review:
+          type: string
+          nullable: true
+          description: Review comments
+        previousSchemaId:
+          type: string
+          nullable: true
+          description: Reference to previous schema version
+
+    CreateApplicationRequest:
+      type: object
+      required:
+        - applicationName
+        - selectedFields
+        - memberId
+      properties:
+        applicationName:
+          type: string
+          description: Name of the application
+        applicationDescription:
+          type: string
+          nullable: true
+          description: Description of the application
+        selectedFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectedFieldRecord'
+          minItems: 1
+          description: Selected fields for data access
+        memberId:
+          type: string
+          description: Reference to the owning member
+        idpApplicationId:
+          type: string
+          nullable: true
+          description: |
+            Registers an application whose OAuth2 client was already
+            provisioned directly in the IDP (e.g. manually via the identity
+            provider's own console, for providers idpfactory doesn't yet
+            support automatic application creation for). When set together
+            with idpClientId, creation skips calling the IDP entirely and
+            uses these values as-is. Must be provided together with
+            idpClientId (both or neither).
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        idpClientId:
+          type: string
+          nullable: true
+          description: |
+            Identity Provider Client ID used for M2M token authentication.
+            Must be provided together with idpApplicationId (both or
+            neither).
+          example: "a1b2c3d4e5f6g7h8i9j0"
+      oneOf:
+        - required: [idpApplicationId, idpClientId]
+        - not:
+            anyOf:
+              - required: [idpApplicationId]
+              - required: [idpClientId]
+
+    UpdateApplicationRequest:
+      type: object
+      properties:
+        applicationName:
+          type: string
+          description: Name of the application
+        applicationDescription:
+          type: string
+          nullable: true
+          description: Description of the application
+        version:
+          type: string
+          enum: [active, deprecated]
+          description: |
+            Version status of the application. Note: selected fields/policy
+            updates go through PUT /api/v1/applications/{applicationId}/policy
+            instead of this endpoint.
+
+    UpdateApplicationPolicyRequest:
+      type: object
+      required:
+        - selectedFields
+      properties:
+        selectedFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectedFieldRecord'
+          minItems: 1
+          description: Replaces the application's allow-list of schema fields
+        grantDuration:
+          $ref: '#/components/schemas/GrantDurationType'
+
+    CreateApplicationSubmissionRequest:
+      type: object
+      required:
+        - applicationName
+        - selectedFields
+        - memberId
+      properties:
+        applicationName:
+          type: string
+          description: Name of the application
+        applicationDescription:
+          type: string
+          nullable: true
+          description: Description of the application
+        selectedFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectedFieldRecord'
+          minItems: 1
+          description: Selected fields for data access
+        previousApplicationId:
+          type: string
+          nullable: true
+          description: Reference to previous application version
+        memberId:
+          type: string
+          description: Reference to the owning member
+
+    UpdateApplicationSubmissionRequest:
+      type: object
+      properties:
+        applicationName:
+          type: string
+          description: Name of the application
+        applicationDescription:
+          type: string
+          nullable: true
+          description: Description of the application
+        selectedFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectedFieldRecord'
+          description: Selected fields for data access
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Submission status
+        review:
+          type: string
+          nullable: true
+          description: Review comments
+        previousApplicationId:
+          type: string
+          nullable: true
+          description: Reference to previous application version
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid request data"
+            code: "BAD_REQUEST"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Debug
+    description: Debug information endpoints
+  - name: Members
+    description: Member management endpoints
+  - name: Schemas
+    description: Schema management endpoints
+  - name: Schema Submissions
+    description: Schema submission management endpoints
+  - name: Applications
+    description: Application management endpoints
+  - name: Application Submissions
+    description: Application submission management endpoints
+  - name: Internal - Applications
+    description: |
+      Internal service-to-service endpoints. These are not exposed through
+      the same CORS/JWT/RBAC middleware chain as the /api/v1/ endpoints -
+      see the Authentication section above.

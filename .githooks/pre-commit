@@ -15,14 +15,14 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== OpenNDX Pre-commit Validation ===${NC}\n"
 
 # Function to get service path by name
-# NOTE: This mapping must be kept in sync with the Makefile (lines 62-70)
+# NOTE: This mapping must be kept in sync with the Makefile (lines 61-86)
 # Any changes to service paths should be updated in both locations
 get_service_path() {
     case "$1" in
-        portal-backend) echo "portal-backend" ;;
+        portal-backend) echo "cmd/pb internal/pb" ;;
         orchestration-engine) echo "cmd/oe internal/oe" ;;
         consent-engine) echo "cmd/ce internal/ce" ;;
-        policy-decision-point) echo "exchange/policy-decision-point" ;;
+        policy-decision-point) echo "cmd/pdp internal/pdp" ;;
         member-portal) echo "portals/apps/member" ;;
         admin-portal) echo "portals/apps/admin" ;;
         consent-portal) echo "portals/apps/consent" ;;

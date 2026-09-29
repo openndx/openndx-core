@@ -33,8 +33,6 @@ info:
 servers:
   - url: http://localhost:8081
     description: Local Development Environment
-  - url: https://consent-engine-dev.choreo.dev
-    description: Choreo Development Environment
 
 tags:
   - name: External

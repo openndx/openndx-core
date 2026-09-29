@@ -58,18 +58,18 @@ The Admin Portal has two independent configuration layers:
 cp .env.example .env
 ```
 
-| Variable | Type | Example / Default | Description |
-|---|---|---|---|
-| `VITE_PORT` | Build-time | `5173` | Local dev server port |
-| `VITE_BASE_PATH` | Build-time | `/` | Public base path Vite serves the app under |
-| `VITE_API_URL` | Runtime | `http://localhost:3000` | Portal Backend API base URL |
-| `VITE_LOGS_URL` | Runtime | `http://localhost:3001` | Audit Service base URL (audit log viewer) |
-| `VITE_IDP_CLIENT_ID` | Runtime | `your_client_id` | IdP (Asgardeo) application client ID |
-| `VITE_IDP_BASE_URL` | Runtime | `https://api.asgardeo.io/t/your-org` | IdP (Asgardeo) base URL |
-| `VITE_IDP_SCOPE` | Runtime | `openid,profile` | Comma-separated OAuth scopes |
-| `VITE_IDP_ADMIN_ROLE` | Runtime | `admin` | Role required to access the Admin Portal |
-| `VITE_SIGN_IN_REDIRECT_URL` | Runtime | `http://localhost:5173` | OIDC sign-in redirect URL |
-| `VITE_SIGN_OUT_REDIRECT_URL` | Runtime | `http://localhost:5173` | OIDC sign-out redirect URL |
+| Variable                     | Type       | Example / Default                    | Description                                |
+|------------------------------|------------|--------------------------------------|--------------------------------------------|
+| `VITE_PORT`                  | Build-time | `5173`                               | Local dev server port                      |
+| `VITE_BASE_PATH`             | Build-time | `/`                                  | Public base path Vite serves the app under |
+| `VITE_API_URL`               | Runtime    | `http://localhost:8083`              | Portal Backend API base URL                |
+| `VITE_LOGS_URL`              | Runtime    | `http://localhost:3001`              | Audit Service base URL (audit log viewer)  |
+| `VITE_IDP_CLIENT_ID`         | Runtime    | `your_client_id`                     | IdP (Asgardeo) application client ID       |
+| `VITE_IDP_BASE_URL`          | Runtime    | `https://api.asgardeo.io/t/your-org` | IdP (Asgardeo) base URL                    |
+| `VITE_IDP_SCOPE`             | Runtime    | `openid,profile`                     | Comma-separated OAuth scopes               |
+| `VITE_IDP_ADMIN_ROLE`        | Runtime    | `admin`                              | Role required to access the Admin Portal   |
+| `VITE_SIGN_IN_REDIRECT_URL`  | Runtime    | `http://localhost:5173`              | OIDC sign-in redirect URL                  |
+| `VITE_SIGN_OUT_REDIRECT_URL` | Runtime    | `http://localhost:5173`              | OIDC sign-out redirect URL                 |
 
 ### Testing runtime configuration locally
 
@@ -85,7 +85,7 @@ or create `portals/apps/admin/public/config.js` by hand:
 
 ```js
 window.configs = {
-  VITE_API_URL: 'http://localhost:3000',
+  VITE_API_URL: 'http://localhost:8083',
   VITE_LOGS_URL: 'http://localhost:3001',
   VITE_IDP_CLIENT_ID: 'your_client_id',
   VITE_IDP_BASE_URL: 'https://api.asgardeo.io/t/your-org',
@@ -114,7 +114,7 @@ docker build -t admin-portal -f apps/admin/Dockerfile .
 
 # Run container
 docker run -p 5173:80 \
-  -e VITE_API_URL=http://localhost:3000 \
+  -e VITE_API_URL=http://localhost:8083 \
   -e VITE_LOGS_URL=http://localhost:3001 \
   -e VITE_IDP_CLIENT_ID=your_client_id \
   -e VITE_IDP_BASE_URL=https://api.asgardeo.io/t/your-org \

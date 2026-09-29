@@ -77,13 +77,13 @@ fi
 echo ""
 
 # Build policy-decision-point
-if ! build_service "policy-decision-point" "exchange/policy-decision-point/Dockerfile" "exchange/policy-decision-point"; then
+if ! build_service "policy-decision-point" "cmd/pdp/Dockerfile" "cmd/pdp"; then
     OVERALL_STATUS=1
 fi
 echo ""
 
 # Build portal-backend
-if ! build_service "portal-backend" "portal-backend/Dockerfile" "portal-backend"; then
+if ! build_service "portal-backend" "cmd/pb/Dockerfile" "cmd/pb"; then
     OVERALL_STATUS=1
 fi
 echo ""

@@ -4,9 +4,15 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "exchange/policy-decision-point/**"
-      - "exchange/shared/**"
-      - "shared/**"
+      - "cmd/pdp/**"
+      - "internal/pdp/**"
+      - "internal/config/**"
+      - "internal/constants/**"
+      - "internal/monitoring/**"
+      - "internal/utils/**"
+      - "go.mod"
+      - "go.sum"
+      - ".dockerignore"
       - ".github/workflows/policy-decision-point-validate.yml"
   workflow_dispatch:
 
@@ -15,9 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SERVICE_PATH: "exchange/policy-decision-point"
+  SERVICE_PATH: "cmd/pdp"
   REGISTRY: ghcr.io
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.26"
 
 jobs:
   validate:
@@ -41,27 +47,27 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('exchange/policy-decision-point/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
 
       - name: Run Go Mod Tidy
-        run: cd ${{ env.SERVICE_PATH }} && go mod tidy
+        run: go mod tidy
 
       - name: Check for unclean Go Mod
         run: |
-          if ! git diff --exit-code -- ${{ env.SERVICE_PATH }}/go.mod ${{ env.SERVICE_PATH }}/go.sum; then
+          if ! git diff --exit-code -- go.mod go.sum; then
             echo "::error::go.mod or go.sum files have uncommitted changes. Please run 'go mod tidy' and commit."
-            git diff -- ${{ env.SERVICE_PATH }}/go.mod ${{ env.SERVICE_PATH }}/go.sum
+            git diff -- go.mod go.sum
             exit 1
           fi
           echo "Go mod files are clean."
 
       - name: Build application
-        run: cd ${{ env.SERVICE_PATH }} && go build .
+        run: go build ./${{ env.SERVICE_PATH }}
 
       - name: Run unit tests
-        run: cd ${{ env.SERVICE_PATH }} && go test ./... -count=1
+        run: go test ./${{ env.SERVICE_PATH }}/... ./internal/pdp/... -count=1
 
       - name: Set lowercase repository owner
         id: repo
@@ -73,7 +79,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.SERVICE_PATH }}
+          context: .
           file: ${{ env.SERVICE_PATH }}/Dockerfile
           push: false
           load: true

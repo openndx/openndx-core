@@ -1,0 +1,95 @@
+# Orchestration Engine (OE) resource server: declares the `getdata` scope that
+# data-consumer clients request via client_credentials to call OE's federated
+# data API.
+resource_type: resource_server
+id: 01900000-0000-7000-8000-000000000090
+name: Orchestration Engine Resource Server
+description: OE resource server
+identifier: http://api.openndx.local
+ouHandle: default
+resources:
+  - name: Consumer
+    handle: getdata
+    description: Data Consumer
+---
+# Grants the sample data-consumer app (thunderid/bootstrap/application.yaml,
+# id ...091) the `getdata` scope on the OE resource server. No requestable
+# `scopes` on that client itself: for client_credentials, the granted scope
+# comes from this role instead.
+resource_type: role
+id: 01900000-0000-7000-8000-000000000092
+name: DataConsumerGetData
+description: Grants the sample data-consumer app the getdata scope on the OE resource server
+ouHandle: default
+permissions:
+  - resourceServerId: 01900000-0000-7000-8000-000000000090
+    permissions:
+      - getdata
+assignments:
+  - id: 01900000-0000-7000-8000-000000000091
+    type: app
+---
+# Consent Engine's own resource server. ThunderID binds an access token's `aud` to
+# whatever resource server the caller requests, regardless of role/permission — a
+# resource identifier alone is enough to get a token audienced for it (verified: a
+# client with no role on this resource server can still mint one). So this MUST be
+# a distinct identifier from the OE resource server above: sharing one audience
+# between the citizen-facing Consent Portal and the M2M data-consumer flow would let
+# either token be replayed against the other service. The Consent Portal must
+# request `resource=http://consent.openndx.local` when it authenticates citizens,
+# and consent-engine validates against this same value (CONSENT_ENGINE_AUDIENCE).
+resource_type: resource_server
+id: 01900000-0000-7000-8000-000000000093
+name: Consent Engine Resource Server
+description: Consent Engine resource server for citizen-facing portal endpoints
+identifier: http://consent.openndx.local
+ouHandle: default
+resources:
+  - name: Portal
+    handle: access
+    description: Consent Portal citizen access
+---
+# Minimal resource server to give the OpenNDX_Admin role below a valid
+# `permissions` grant — every role example we have (this file's
+# DataConsumerGetData, and ThunderID's own built-in Administrator role) ties
+# permissions to a resource server, so this exists to satisfy that shape.
+# NOT the same thing as wiring Portal Backend to actually trust ThunderID for
+# JWT validation (PB's IDP_* env vars, and its idpfactory only supporting
+# Asgardeo today) — that remains separate, open work.
+resource_type: resource_server
+id: 01900000-0000-7000-8000-0000000000b3
+name: Portal Backend Resource Server
+description: Placeholder resource server so the OpenNDX_Admin role has a permissions grant
+identifier: http://pb.openndx.local
+ouHandle: default
+resources:
+  - name: Admin
+    handle: manage
+    description: OpenNDX administrative access
+
+---
+# Grants members of the OpenNDX Admins group (thunderid/bootstrap/users.yaml,
+# id ...b2) a `roles` claim value of "OpenNDX_Admin" once NDX_CLI requests the
+# `roles` scope (see that client's scopeClaims in application.yaml). The NAME
+# here is load-bearing: Portal Backend's authorization middleware
+# (internal/pb/models/authorization.go) does an exact string match against
+# "OpenNDX_Admin" — not against role IDs or permissions — so this role must be
+# named exactly that, unlike ThunderID's own built-in "Administrator" role
+# (a different name, for a different authorization domain — see users.yaml).
+#
+# VERIFIED: confirmed against a running instance by logging in as ndx-admin
+# via `ondx login` and decoding the access token — the `roles` claim carries
+# role NAMES like this one (not resourceServer:permission strings the way the
+# `permissions` block below is scoped).
+resource_type: role
+id: 01900000-0000-7000-8000-0000000000b4
+name: OpenNDX_Admin
+description: Grants OpenNDX Portal Backend admin access via the CLI
+ouHandle: default
+permissions:
+  - resourceServerId: 01900000-0000-7000-8000-0000000000b3
+    permissions:
+      - manage
+assignments:
+  - id: 01900000-0000-7000-8000-0000000000b2
+    type: group

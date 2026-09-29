@@ -56,8 +56,7 @@ git checkout -b fix/issue-number
 go test ./...
 
 # Run tests for a specific service
-cd exchange/consent-engine
-go test ./...
+go test ./cmd/ce/... ./internal/ce/...
 ```
 
 **Integration Tests:**
@@ -74,8 +73,7 @@ docker compose -f docker-compose.test.yml down
 make validate-build-all
 
 # Build a specific service
-cd exchange/consent-engine
-go build .
+go build ./cmd/ce
 ```
 
 ## Code Style and Standards
@@ -124,13 +122,14 @@ Before submitting a pull request, ensure:
 openndx-core/
 ├── cmd/                   # Go service entrypoints
 │   ├── oe/                # Orchestration Engine
-│   └── ce/                # Consent Engine
+│   ├── ce/                # Consent Engine
+│   ├── pdp/               # Policy Decision Point
+│   └── pb/                # Portal Backend
 ├── internal/              # Go service internals
 │   ├── oe/
-│   └── ce/
-├── exchange/              # Go backend services (not yet migrated to root module)
-│   ├── policy-decision-point/
-│   └── ...
+│   ├── ce/
+│   ├── pdp/
+│   └── pb/
 ├── portals/               # Frontend React applications (pnpm workspace)
 │   ├── apps/
 │   │   ├── member/

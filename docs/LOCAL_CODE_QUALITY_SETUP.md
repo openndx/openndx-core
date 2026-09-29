@@ -229,8 +229,7 @@ go: cannot find main module
 **Solution:**
 
 ```bash
-# Navigate to the specific service directory
-cd portal-backend
+# All services share the root go.mod - run from the repository root
 go mod tidy
 ```
 
@@ -309,18 +308,14 @@ Error: Service path not found for: invalid-service
 ```
 
 **Solution:**
-Check available services with:
-
-```bash
-ls -d */go.mod | sed 's|/go.mod||' | grep -v '^go.mod$'
-```
+Check the Makefile's `GO_SERVICES` list for the current set of valid names.
 
 Valid service names:
 
-- `portal-backend`
-- `cmd/oe` (use `orchestration-engine`)
-- `cmd/ce` (use `consent-engine`)
-- `exchange/policy-decision-point` (use `policy-decision-point`)
+- `portal-backend` (`cmd/pb` + `internal/pb`)
+- `orchestration-engine` (`cmd/oe` + `internal/oe`)
+- `consent-engine` (`cmd/ce` + `internal/ce`)
+- `policy-decision-point` (`cmd/pdp` + `internal/pdp`)
 
 ### Environment Setup Issues
 

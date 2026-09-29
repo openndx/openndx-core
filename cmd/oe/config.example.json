@@ -1,6 +1,6 @@
 {
   "environment": "development",
-  "trustUpstream": false,
+  "trustUpstream": true,
   "foundationalIdArgName": "nic",
   "ceUrl": "http://localhost:8081",
   "pdpUrl": "http://localhost:8082",
@@ -21,20 +21,14 @@
       }
     },
     {
-      "providerKey": "dmt",
-      "providerUrl": "http://localhost:9090",
-      "schemaId": "dmt-schema-v1",
-      "auth": null
-    },
-    {
       "providerKey": "rgd",
       "providerUrl": "http://localhost:8080/graphql",
-      "schemaId": "rgd-schema-v1",
+      "schemaId": "abc-212",
       "auth": {
         "type": "oauth2",
-        "tokenUrl": "https://example.com/oauth2/token",
-        "clientId": "SOME_CLIENT_ID",
-        "clientSecret": "SOME_CLIENT_SECRET"
+        "tokenUrl": "http://localhost:8080/oauth/token",
+        "clientId": "test_client",
+        "clientSecret": "test_secret"
       }
     }
   ],
@@ -48,22 +42,10 @@
     },
     {
       "providerKey": "rgd",
-      "schemaId": "rgd-schema-v1",
+      "schemaId": "abc-212",
       "targetArgName": "nic",
       "sourceArgPath": "personInfo-nic",
       "targetArgPath": "rgd.getPersonInfo"
-    },
-    {
-      "providerKey": "dmt",
-      "schemaId": "dmt-schema-v1",
-      "targetArgName": "ownerNic",
-      "sourceArgPath": "personInfo-nic",
-      "targetArgPath": "dmt.vehicle.getVehicleInfos"
     }
-  ],
-  "jwt": {
-    "expectedIssuer": "https://idp.example.com/oauth2/token",
-    "validAudiences": ["your-client-id"],
-    "jwksUrl": "https://idp.example.com/oauth2/jwks"
-  }
+  ]
 }

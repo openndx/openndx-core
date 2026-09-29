@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Test configuration values (can be overridden via environment variables)
-TEST_API_URL="${TEST_API_URL:-http://localhost:3000}"
+TEST_API_URL="${TEST_API_URL:-http://localhost:8083}"
 TEST_LOGS_URL="${TEST_LOGS_URL:-http://localhost:3001}"
 TEST_CLIENT_ID="${TEST_CLIENT_ID:-test-client-id-123}"
 TEST_BASE_URL="${TEST_BASE_URL:-https://api.asgardeo.io/t/test-org}"
