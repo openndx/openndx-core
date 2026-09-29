@@ -118,15 +118,20 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 		}
 	}
 
-	// Bulk save updated records
-	if len(updatedRecords) > 0 {
-		// Convert slice of pointers to slice of values for batch update
-		var recordsToUpdate []models.PolicyMetadata
-		for _, pm := range updatedRecords {
-			recordsToUpdate = append(recordsToUpdate, *pm)
-		}
-
-		if err := tx.Save(&recordsToUpdate).Error; err != nil {
+	// Update only metadata columns. The allow-list is managed separately and
+	// must not be overwritten with a stale value read earlier in this transaction.
+	for _, pm := range updatedRecords {
+		if err := tx.Model(pm).
+			Select(
+				"display_name",
+				"description",
+				"source",
+				"is_owner",
+				"access_control_type",
+				"owner",
+				"updated_at",
+			).
+			Updates(pm).Error; err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to update existing policy metadata: %w", err)
 		}

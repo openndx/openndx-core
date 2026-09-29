@@ -259,6 +259,73 @@ func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
 
+// TestCreatePolicyMetadata_DoesNotUpdateAllowList verifies that schema
+// synchronization cannot restore a stale allow-list entry.
+func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
+	db := setupTestDB(t)
+	service := NewPolicyMetadataService(db)
+
+	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = service.UpdateAllowList(&models.AllowListUpdateRequest{
+		ApplicationID: "app-A",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AllowListUpdateRequestRecord{
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Simulate a concurrent revoke after schema synchronization has read the
+	// stale row but immediately before it writes its metadata update.
+	require.NoError(t, db.Exec(`
+		CREATE TRIGGER revoke_before_schema_sync_update
+		BEFORE UPDATE OF display_name ON policy_metadata
+		BEGIN
+			UPDATE policy_metadata
+			SET allow_list = '{}'
+			WHERE id = OLD.id;
+		END;
+	`).Error)
+
+	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Primary Email"),
+				Source:            models.SourcePrimary,
+				IsOwner:           true,
+				AccessControlType: models.AccessControlTypeRestricted,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var policyMetadata models.PolicyMetadata
+	require.NoError(t, db.Where(
+		"schema_id = ? AND field_name = ?",
+		"schema-123",
+		"person.email",
+	).First(&policyMetadata).Error)
+	require.NotNil(t, policyMetadata.DisplayName)
+	assert.Equal(t, "Primary Email", *policyMetadata.DisplayName)
+	assert.NotContains(t, policyMetadata.AllowList, "app-A")
+	assert.Empty(t, policyMetadata.AllowList)
+}
+
 func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 	t.Run("CreatePolicyMetadata_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
