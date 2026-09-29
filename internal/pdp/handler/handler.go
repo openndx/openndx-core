@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -189,6 +190,7 @@ func respondWithPolicyServiceError(w http.ResponseWriter, err error) {
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 
 	default:
-		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("Policy service request failed", "error", err)
+		utils.RespondWithError(w, http.StatusInternalServerError, "internal server error")
 	}
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +18,19 @@ import (
 // setupTestDB creates an in-memory SQLite database for unit testing.
 func setupTestDB(t *testing.T) *gorm.DB {
 	return testhelpers.SetupTestDB(t)
+}
+
+// TestRespondWithPolicyServiceError_HidesInternalDetails verifies that
+// unexpected service errors are logged without exposing details to clients.
+func TestRespondWithPolicyServiceError_HidesInternalDetails(t *testing.T) {
+	w := httptest.NewRecorder()
+	internalErr := errors.New("database connection failed: password=secret")
+
+	respondWithPolicyServiceError(w, internalErr)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.JSONEq(t, `{"error":"internal server error"}`, w.Body.String())
+	assert.NotContains(t, w.Body.String(), internalErr.Error())
 }
 
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
