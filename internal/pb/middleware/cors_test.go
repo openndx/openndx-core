@@ -80,7 +80,8 @@ func TestCORSMiddleware(t *testing.T) {
 
 	t.Run("CORSMiddleware_WildcardOrigin", func(t *testing.T) {
 		config := CORSConfig{
-			AllowedOrigins: []string{"*"},
+			AllowedOrigins:   []string{"*"},
+			AllowCredentials: false,
 		}
 
 		middleware := CORSMiddleware(config)
@@ -95,6 +96,37 @@ func TestCORSMiddleware(t *testing.T) {
 		handler.ServeHTTP(w, req)
 
 		assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
+	})
+
+	t.Run("CORSMiddleware_WildcardWithCredentialsRejected", func(t *testing.T) {
+		config := CORSConfig{
+			AllowedOrigins:   []string{"*"},
+			AllowCredentials: true,
+		}
+
+		middleware := CORSMiddleware(config)
+		handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.Header.Set("Origin", "http://any.com")
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
+		assert.Empty(t, w.Header().Get("Access-Control-Allow-Credentials"))
+	})
+
+	t.Run("DefaultCORSConfig_DropsWildcardWhenCredentialsEnabled", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", "*")
+
+		config := DefaultCORSConfig()
+
+		assert.NotContains(t, config.AllowedOrigins, "*")
+		assert.Contains(t, config.AllowedOrigins, "http://localhost:5173")
+		assert.True(t, config.AllowCredentials)
 	})
 
 	t.Run("CORSMiddleware_OPTIONS", func(t *testing.T) {
