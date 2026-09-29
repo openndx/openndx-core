@@ -384,6 +384,7 @@ func TestHistogramBucketsConfiguration(t *testing.T) {
 
 // TestRouteNormalizationWithStaticPaths tests that static paths with hyphens are not normalized
 func TestRouteNormalizationWithStaticPaths(t *testing.T) {
+	resetRouteRegistryForTest()
 	tests := []struct {
 		input    string
 		expected string
