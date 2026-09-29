@@ -48,7 +48,7 @@ func (a *Client) GetApplicationInfo(ctx context.Context, applicationId string) (
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -80,7 +80,7 @@ func (a *Client) GetApplicationOIDC(ctx context.Context, applicationId string) (
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -136,7 +136,7 @@ func (a *Client) CreateApplication(ctx context.Context, app *idp.Application) (*
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := a.Client.Do(req)
+	resp, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -161,7 +161,7 @@ func (a *Client) DeleteApplication(ctx context.Context, applicationId string) er
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}

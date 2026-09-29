@@ -24,6 +24,16 @@ func NewClient(baseUrl string, clientId string, clientSecret string, scopes []st
 	return &Client{
 		BaseURL:     baseUrl,
 		OAuthConfig: oauthConfig,
-		Client:      oauthConfig.Client(context.Background()),
+		// Kept for callers/tests that inspect Client; request methods use httpClient(ctx)
+		// so token acquisition respects the caller's cancellation and deadlines.
+		Client: oauthConfig.Client(context.Background()),
 	}
+}
+
+// httpClient returns an OAuth2 HTTP client whose token fetch uses ctx.
+func (a *Client) httpClient(ctx context.Context) *http.Client {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return a.OAuthConfig.Client(ctx)
 }

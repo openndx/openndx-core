@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -25,9 +26,10 @@ func TestBaseModel_BeforeCreate(t *testing.T) {
 			Name string
 		}
 
-		// Auto-migrate
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record
 		model := TestModel{
@@ -60,8 +62,10 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 			Name string
 		}
 
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record - timestamps will be set by BeforeCreate hook
 		model := TestModel{
@@ -72,10 +76,11 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		assert.NoError(t, err)
 		originalUpdatedAt := model.UpdatedAt
 
-		// Update the record - BeforeUpdate hook should update UpdatedAt
-		explicitLaterTime := originalUpdatedAt.Add(1 * time.Second)
+		// Wait past SQLite timestamp resolution so BeforeUpdate must advance UpdatedAt
+		time.Sleep(1100 * time.Millisecond)
+
+		// Update without pre-assigning UpdatedAt; the hook alone should set it
 		model.Name = "Updated"
-		model.UpdatedAt = explicitLaterTime
 		err = db.Save(&model).Error
 		assert.NoError(t, err)
 
@@ -84,8 +89,7 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		err = db.First(&updatedModel, "id = ?", model.ID).Error
 		assert.NoError(t, err)
 
-		// Verify UpdatedAt was changed by BeforeUpdate hook
-		// Note: BeforeUpdate sets UpdatedAt to time.Now(), so it should be >= our explicit time
-		assert.True(t, updatedModel.UpdatedAt.After(originalUpdatedAt) || updatedModel.UpdatedAt.Equal(explicitLaterTime))
+		assert.True(t, updatedModel.UpdatedAt.After(originalUpdatedAt),
+			"BeforeUpdate should advance UpdatedAt beyond the create-time value")
 	})
 }
