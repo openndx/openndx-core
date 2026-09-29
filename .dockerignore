@@ -11,6 +11,7 @@ audit-service/
 observability/
 
 # Test & coverage artifacts
+tests/
 coverage.out
 coverage.html
 *.test
