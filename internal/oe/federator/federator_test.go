@@ -309,6 +309,7 @@ func TestSchemaCollection(t *testing.T) {
 			assert.NoError(t, err, tt.description)
 			assert.NotNil(t, response, "Response should not be nil")
 			assert.EqualValues(t, response.ProviderFieldMap, tt.expectedFields, "Should contain field: %s", tt.expectedFields)
+			assert.Len(t, response.Arguments, tt.expectedArgs, "Should extract expected number of query arguments")
 		})
 	}
 }
