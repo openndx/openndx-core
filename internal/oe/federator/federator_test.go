@@ -550,6 +550,60 @@ func TestBuildProviderLevelQuery(t *testing.T) {
 	}
 }
 
+func TestBuildProviderLevelQuery_SameServiceDifferentSchemas(t *testing.T) {
+	fieldsMap := &[]ProviderLevelFieldRecord{
+		{ServiceKey: "drp", SchemaId: "schema-v1", FieldPath: "person.fullName"},
+		{ServiceKey: "drp", SchemaId: "schema-v2", FieldPath: "person.address"},
+		{ServiceKey: "drp", SchemaId: "schema-v1", FieldPath: "person.nic"},
+	}
+
+	queries := BuildProviderLevelQuery(fieldsMap)
+	require.Len(t, queries, 2)
+
+	bySchema := map[string]*FederationServiceAST{}
+	for _, q := range queries {
+		assert.Equal(t, "drp", q.ServiceKey)
+		bySchema[q.SchemaID] = q
+	}
+	require.Contains(t, bySchema, "schema-v1")
+	require.Contains(t, bySchema, "schema-v2")
+
+	v1Op := bySchema["schema-v1"].QueryAst.Definitions[0].(*ast.OperationDefinition)
+	v2Op := bySchema["schema-v2"].QueryAst.Definitions[0].(*ast.OperationDefinition)
+
+	// v1 got fullName + nic under person; v2 got address under person
+	assert.ElementsMatch(t, []string{"person"}, extractFieldNames(v1Op.SelectionSet))
+	assert.ElementsMatch(t, []string{"person"}, extractFieldNames(v2Op.SelectionSet))
+
+	personV1 := v1Op.SelectionSet.Selections[0].(*ast.Field)
+	personV2 := v2Op.SelectionSet.Selections[0].(*ast.Field)
+	assert.ElementsMatch(t, []string{"fullName", "nic"}, extractFieldNames(personV1.SelectionSet))
+	assert.ElementsMatch(t, []string{"address"}, extractFieldNames(personV2.SelectionSet))
+}
+
+func TestBuildProviderLevelQuery_EmptyFieldPathSkipped(t *testing.T) {
+	fieldsMap := &[]ProviderLevelFieldRecord{
+		{ServiceKey: "drp", SchemaId: "schema1", FieldPath: ""},
+		{ServiceKey: "drp", SchemaId: "schema1", FieldPath: "person.fullName"},
+	}
+	queries := BuildProviderLevelQuery(fieldsMap)
+	require.Len(t, queries, 1)
+	op := queries[0].QueryAst.Definitions[0].(*ast.OperationDefinition)
+	assert.ElementsMatch(t, []string{"person"}, extractFieldNames(op.SelectionSet))
+}
+
+func TestBuildArrayProviderQuery_DotlessPathNoPanic(t *testing.T) {
+	// Path with no '.' yields empty args[1:]; must not panic.
+	assert.NotPanics(t, func() {
+		queries := BuildArrayProviderQuery([]string{"drp"}, []string{"dmt"})
+		require.Len(t, queries, 2)
+		for _, q := range queries {
+			op := q.QueryAst.Definitions[0].(*ast.OperationDefinition)
+			assert.Empty(t, op.SelectionSet.Selections)
+		}
+	})
+}
+
 // Helper function to extract field names from selection set
 func extractFieldNames(selectionSet *ast.SelectionSet) []string {
 	var fields []string
