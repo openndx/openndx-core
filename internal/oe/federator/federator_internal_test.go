@@ -39,7 +39,7 @@ type MockSchemaRecord struct {
 	SDL string
 }
 
-func (m *MockSchemaServiceWithSignature) GetActiveSchema() (*MockSchemaRecord, error) {
+func (m *MockSchemaServiceWithSignature) GetActiveSchema(ctx context.Context) (*MockSchemaRecord, error) {
 	return &MockSchemaRecord{SDL: m.SDL}, nil
 }
 
