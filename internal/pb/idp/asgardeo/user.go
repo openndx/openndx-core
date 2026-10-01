@@ -70,7 +70,7 @@ func (a *Client) GetUser(ctx context.Context, userId string) (*idp.UserInfo, err
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -148,7 +148,7 @@ func (a *Client) CreateUser(ctx context.Context, userInfo *idp.User) (*idp.UserI
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -223,7 +223,7 @@ func (a *Client) UpdateUser(ctx context.Context, userId string, userInfo *idp.Us
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -263,7 +263,7 @@ func (a *Client) DeleteUser(ctx context.Context, userId string) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}

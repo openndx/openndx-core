@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -29,7 +30,7 @@ func DefaultCORSConfig() CORSConfig {
 		}
 	}
 
-	return CORSConfig{
+	config := CORSConfig{
 		AllowedOrigins: allowedOrigins,
 		AllowedMethods: []string{
 			"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
@@ -44,6 +45,31 @@ func DefaultCORSConfig() CORSConfig {
 		AllowCredentials: true,
 		MaxAge:           86400, // 24 hours
 	}
+
+	// Browsers reject Access-Control-Allow-Origin: * with credentials. Drop wildcard
+	// origins when credentials are enabled so deployers must list trusted origins.
+	config.AllowedOrigins = sanitizeCORSOrigins(config.AllowedOrigins, config.AllowCredentials)
+
+	return config
+}
+
+func sanitizeCORSOrigins(origins []string, allowCredentials bool) []string {
+	if !allowCredentials {
+		return origins
+	}
+
+	sanitized := make([]string, 0, len(origins))
+	for _, origin := range origins {
+		if origin == "*" {
+			slog.Warn("Ignoring CORS origin '*' because AllowCredentials is enabled; list explicit origins instead")
+			continue
+		}
+		sanitized = append(sanitized, origin)
+	}
+	if len(sanitized) == 0 {
+		return []string{"http://localhost:5173"}
+	}
+	return sanitized
 }
 
 // CORSMiddleware creates a CORS middleware with the given configuration
@@ -55,7 +81,15 @@ func CORSMiddleware(config CORSConfig) func(http.Handler) http.Handler {
 			// Check if the origin is allowed
 			var allowedOrigin string
 			for _, allowedOrig := range config.AllowedOrigins {
-				if allowedOrig == "*" || allowedOrig == origin {
+				if allowedOrig == "*" {
+					// Never pair wildcard with credentials (invalid per the Fetch spec)
+					if config.AllowCredentials {
+						continue
+					}
+					allowedOrigin = "*"
+					break
+				}
+				if allowedOrig == origin {
 					allowedOrigin = allowedOrig
 					break
 				}
