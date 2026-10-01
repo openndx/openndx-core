@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -270,10 +272,18 @@ func ParseExpiryTime(expiryStr string) (time.Duration, error) {
 		return 0, fmt.Errorf("unsupported time unit: %s", unit)
 	}
 
-	// Parse the numeric value
-	var multiplier int
-	if _, err := fmt.Sscanf(value, "%d", &multiplier); err != nil {
+	// Strict all-digits parse (rejects prefixes like "1x" from "1xh")
+	multiplier, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
 		return 0, fmt.Errorf("invalid numeric value: %s", value)
+	}
+	if multiplier < 0 {
+		return 0, fmt.Errorf("negative duration multiplier: %d", multiplier)
+	}
+
+	maxMultiplier := int64(math.MaxInt64) / int64(duration)
+	if multiplier > maxMultiplier {
+		return 0, fmt.Errorf("expiry time exceeds maximum allowed duration and would cause an overflow")
 	}
 
 	return time.Duration(multiplier) * duration, nil
