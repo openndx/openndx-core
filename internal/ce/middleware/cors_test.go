@@ -85,6 +85,7 @@ func TestCORSMiddleware_DisallowedOrigin(t *testing.T) {
 
 	assert.True(t, nextCalled)
 	assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Contains(t, w.Header().Values("Vary"), "Origin")
 }
 
 func TestCORSMiddleware_WildcardOrigin(t *testing.T) {
@@ -133,9 +134,56 @@ func TestCORSMiddleware_PreflightRequest(t *testing.T) {
 	middleware(next).ServeHTTP(w, req)
 
 	assert.False(t, nextCalled)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Contains(t, w.Header().Values("Vary"), "Origin")
 	assert.Contains(t, w.Header().Values("Vary"), "Access-Control-Request-Method")
 	assert.Contains(t, w.Header().Values("Vary"), "Access-Control-Request-Headers")
+}
+
+func TestCORSMiddleware_PreflightRejectedOrigin(t *testing.T) {
+	config := CORSConfig{
+		AllowedOrigins: []string{"https://example.com"},
+	}
+	middleware := CORSMiddleware(config)
+
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/consents", nil)
+	req.Header.Set("Origin", "https://malicious.com")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+	})
+
+	middleware(next).ServeHTTP(w, req)
+
+	assert.False(t, nextCalled)
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Header().Values("Vary"), "Origin")
+}
+
+func TestCORSMiddleware_OptionsWithoutPreflightFallsThrough(t *testing.T) {
+	config := CORSConfig{
+		AllowedOrigins: []string{"https://example.com"},
+	}
+	middleware := CORSMiddleware(config)
+
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/consents", nil)
+	req.Header.Set("Origin", "https://example.com")
+	// No Access-Control-Request-Method — not a CORS preflight
+	w := httptest.NewRecorder()
+
+	nextCalled := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	middleware(next).ServeHTTP(w, req)
+
+	assert.True(t, nextCalled)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestCORSMiddleware_WildcardWithCredentials_Panic(t *testing.T) {
