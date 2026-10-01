@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -87,7 +88,7 @@ func TestSchemaHandler_GetSchemas_NoService(t *testing.T) {
 
 func TestSchemaHandler_GetSchemas_Success(t *testing.T) {
 	mockService := &mockSchemaService{
-		getAllSchemasFn: func() ([]services.Schema, error) {
+		getAllSchemasFn: func(ctx context.Context) ([]services.Schema, error) {
 			return []services.Schema{
 				{Version: "1.0.0", SDL: "type Query { test: String }"},
 			}, nil
@@ -117,7 +118,7 @@ func TestSchemaHandler_GetActiveSchema_NoService(t *testing.T) {
 
 func TestSchemaHandler_GetActiveSchema_Success(t *testing.T) {
 	mockService := &mockSchemaService{
-		getActiveSchemaFn: func() (*services.Schema, error) {
+		getActiveSchemaFn: func(ctx context.Context) (*services.Schema, error) {
 			return &services.Schema{SDL: "type Query { test: String }"}, nil
 		},
 	}
@@ -147,7 +148,7 @@ func TestSchemaHandler_ActivateSchema_NoService(t *testing.T) {
 func TestSchemaHandler_ActivateSchema_Success(t *testing.T) {
 	called := false
 	mockService := &mockSchemaService{
-		activateSchemaFn: func(version string) error {
+		activateSchemaFn: func(ctx context.Context, version string) error {
 			assert.Equal(t, "1.0.0", version)
 			called = true
 			return nil
@@ -249,7 +250,7 @@ func TestSchemaHandler_CheckCompatibility_NoService(t *testing.T) {
 
 func TestSchemaHandler_CheckCompatibility_Success(t *testing.T) {
 	mockService := &mockSchemaService{
-		checkCompatibilityFn: func(s string) (bool, string) {
+		checkCompatibilityFn: func(ctx context.Context, s string) (bool, string) {
 			assert.Equal(t, "type Query { test: String }", s)
 			return true, "ok"
 		},
@@ -272,38 +273,38 @@ func TestSchemaHandler_CheckCompatibility_Success(t *testing.T) {
 }
 
 type mockSchemaService struct {
-	createSchemaFn       func(version, sdl, createdBy string) (*services.Schema, error)
-	getAllSchemasFn      func() ([]services.Schema, error)
-	getActiveSchemaFn    func() (*services.Schema, error)
-	activateSchemaFn     func(version string) error
+	createSchemaFn       func(ctx context.Context, version, sdl, createdBy string) (*services.Schema, error)
+	getAllSchemasFn      func(ctx context.Context) ([]services.Schema, error)
+	getActiveSchemaFn    func(ctx context.Context) (*services.Schema, error)
+	activateSchemaFn     func(ctx context.Context, version string) error
 	validateSDLFn        func(sdl string) bool
-	checkCompatibilityFn func(newSDL string) (bool, string)
+	checkCompatibilityFn func(ctx context.Context, newSDL string) (bool, string)
 }
 
-func (m *mockSchemaService) CreateSchema(version, sdl, createdBy string) (*services.Schema, error) {
+func (m *mockSchemaService) CreateSchema(ctx context.Context, version, sdl, createdBy string) (*services.Schema, error) {
 	if m.createSchemaFn != nil {
-		return m.createSchemaFn(version, sdl, createdBy)
+		return m.createSchemaFn(ctx, version, sdl, createdBy)
 	}
 	return nil, nil
 }
 
-func (m *mockSchemaService) GetAllSchemas() ([]services.Schema, error) {
+func (m *mockSchemaService) GetAllSchemas(ctx context.Context) ([]services.Schema, error) {
 	if m.getAllSchemasFn != nil {
-		return m.getAllSchemasFn()
+		return m.getAllSchemasFn(ctx)
 	}
 	return nil, nil
 }
 
-func (m *mockSchemaService) GetActiveSchema() (*services.Schema, error) {
+func (m *mockSchemaService) GetActiveSchema(ctx context.Context) (*services.Schema, error) {
 	if m.getActiveSchemaFn != nil {
-		return m.getActiveSchemaFn()
+		return m.getActiveSchemaFn(ctx)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSchemaService) ActivateSchema(version string) error {
+func (m *mockSchemaService) ActivateSchema(ctx context.Context, version string) error {
 	if m.activateSchemaFn != nil {
-		return m.activateSchemaFn(version)
+		return m.activateSchemaFn(ctx, version)
 	}
 	return nil
 }
@@ -315,9 +316,9 @@ func (m *mockSchemaService) ValidateSDL(sdl string) bool {
 	return false
 }
 
-func (m *mockSchemaService) CheckCompatibility(newSDL string) (bool, string) {
+func (m *mockSchemaService) CheckCompatibility(ctx context.Context, newSDL string) (bool, string) {
 	if m.checkCompatibilityFn != nil {
-		return m.checkCompatibilityFn(newSDL)
+		return m.checkCompatibilityFn(ctx, newSDL)
 	}
 	return false, ""
 }

@@ -221,7 +221,7 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 		if schemaServiceValue.IsValid() && !schemaServiceValue.IsNil() {
 			getActiveSchemaMethod := schemaServiceValue.MethodByName("GetActiveSchema")
 			if getActiveSchemaMethod.IsValid() {
-				results := getActiveSchemaMethod.Call([]reflect.Value{})
+				results := getActiveSchemaMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})
 				if len(results) >= 2 && !results[1].IsNil() {
 					// Error occurred
 					logger.Log.Warn("Failed to get active schema from database", "Error", results[1].Interface())
