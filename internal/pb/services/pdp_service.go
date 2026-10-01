@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -156,4 +157,122 @@ func (s *PDPService) UpdateAllowList(request models.AllowListUpdateRequest) (*mo
 
 	slog.Info("Successfully updated allow list in PDP", "applicationId", request.ApplicationID, "recordsUpdated", len(response.Records))
 	return &response, nil
+}
+
+// PDPError is returned when the PDP responds with an unexpected status code,
+// so callers can map the PDP's status back onto their own response.
+type PDPError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *PDPError) Error() string {
+	return fmt.Sprintf("PDP returned status %d: %s", e.StatusCode, e.Message)
+}
+
+// ListPolicyMetadata lists the policy metadata records of a schema in the PDP
+func (s *PDPService) ListPolicyMetadata(schemaID string) (*models.PolicyMetadataListResponse, error) {
+	path := "/api/v1/policy/metadata?schemaId=" + url.QueryEscape(schemaID)
+
+	var response models.PolicyMetadataListResponse
+	if err := s.doRequest(http.MethodGet, path, nil, http.StatusOK, &response); err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+// PatchPolicyMetadata updates selected properties of one policy metadata record in the PDP
+func (s *PDPService) PatchPolicyMetadata(id string, request *models.PolicyMetadataPatchRequest) (*models.PolicyMetadataResponse, error) {
+	path := "/api/v1/policy/metadata/" + url.PathEscape(id)
+
+	var response models.PolicyMetadataResponse
+	if err := s.doRequest(http.MethodPatch, path, request, http.StatusOK, &response); err != nil {
+		return nil, err
+	}
+
+	slog.Info("Successfully patched policy metadata in PDP", "id", id)
+	return &response, nil
+}
+
+// DeletePolicyMetadata deletes one policy metadata record in the PDP
+func (s *PDPService) DeletePolicyMetadata(id string) error {
+	path := "/api/v1/policy/metadata/" + url.PathEscape(id)
+
+	if err := s.doRequest(http.MethodDelete, path, nil, http.StatusNoContent, nil); err != nil {
+		return err
+	}
+
+	slog.Info("Successfully deleted policy metadata in PDP", "id", id)
+	return nil
+}
+
+// RevokeAllowListEntry removes one application from a field's allow-list in the PDP
+func (s *PDPService) RevokeAllowListEntry(id string, applicationID string) error {
+	path := fmt.Sprintf("/api/v1/policy/metadata/%s/allowlist/%s", url.PathEscape(id), url.PathEscape(applicationID))
+
+	if err := s.doRequest(http.MethodDelete, path, nil, http.StatusNoContent, nil); err != nil {
+		return err
+	}
+
+	slog.Info("Successfully revoked allow-list entry in PDP", "id", id, "applicationId", applicationID)
+	return nil
+}
+
+// doRequest sends a JSON request to the PDP and decodes the response into out.
+// A response with a status other than expectedStatus is returned as a *PDPError.
+func (s *PDPService) doRequest(method, path string, body any, expectedStatus int, out any) error {
+	var reqBody io.Reader
+	if body != nil {
+		payload, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("failed to marshal request: %w", err)
+		}
+		reqBody = bytes.NewReader(payload)
+	}
+
+	httpReq, err := http.NewRequest(method, s.baseURL+path, reqBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	if body != nil {
+		httpReq.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := s.HTTPClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("failed to send request to PDP: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}(resp.Body)
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != expectedStatus {
+		slog.Error("PDP returned error", "method", method, "path", path, "status", resp.StatusCode, "body", string(respBody))
+
+		message := strings.TrimSpace(string(respBody))
+		var errorResponse struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(respBody, &errorResponse) == nil && errorResponse.Error != "" {
+			message = errorResponse.Error
+		}
+		return &PDPError{StatusCode: resp.StatusCode, Message: message}
+	}
+
+	if out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(respBody, out); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+	return nil
 }

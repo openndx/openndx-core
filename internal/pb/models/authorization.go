@@ -109,6 +109,12 @@ var EndpointPermissions = []EndpointPermission{
 	// Schema endpoints
 	{"GET", "/api/v1/schemas", PermissionReadSchema, false},
 	{"POST", "/api/v1/schemas", PermissionCreateSchema, false},
+	// Policy metadata routes are listed before the generic schema wildcards so
+	// that removing a single field's policy or allow-list entry is treated as a
+	// schema update rather than a schema deletion.
+	{"GET", "/api/v1/schemas/*/policy-metadata", PermissionReadSchema, true},
+	{"PATCH", "/api/v1/schemas/*/policy-metadata/*", PermissionUpdateSchema, true},
+	{"DELETE", "/api/v1/schemas/*/policy-metadata/*", PermissionUpdateSchema, true},
 	{"GET", "/api/v1/schemas/*", PermissionReadSchema, true},
 	{"PUT", "/api/v1/schemas/*", PermissionUpdateSchema, true},
 	{"DELETE", "/api/v1/schemas/*", PermissionDeleteSchema, true},

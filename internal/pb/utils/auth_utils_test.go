@@ -62,6 +62,46 @@ func TestFindEndpointPermission(t *testing.T) {
 			path:          "/api/v1/schemas",
 			expectedFound: false,
 		},
+		{
+			name:          "Wildcard match - GET schema policy metadata",
+			method:        "GET",
+			path:          "/api/v1/schemas/sch_1/policy-metadata",
+			expectedFound: true,
+			expectedPerm:  models.PermissionReadSchema,
+			expectedOwner: true,
+		},
+		{
+			name:          "Wildcard match - PATCH schema policy metadata record",
+			method:        "PATCH",
+			path:          "/api/v1/schemas/sch_1/policy-metadata/pm-1",
+			expectedFound: true,
+			expectedPerm:  models.PermissionUpdateSchema,
+			expectedOwner: true,
+		},
+		{
+			name:          "Wildcard match - DELETE schema policy metadata record requires update, not delete",
+			method:        "DELETE",
+			path:          "/api/v1/schemas/sch_1/policy-metadata/pm-1",
+			expectedFound: true,
+			expectedPerm:  models.PermissionUpdateSchema,
+			expectedOwner: true,
+		},
+		{
+			name:          "Wildcard match - DELETE schema policy allow-list entry",
+			method:        "DELETE",
+			path:          "/api/v1/schemas/sch_1/policy-metadata/pm-1/allowlist/client-1",
+			expectedFound: true,
+			expectedPerm:  models.PermissionUpdateSchema,
+			expectedOwner: true,
+		},
+		{
+			name:          "Wildcard match - DELETE schema still requires delete",
+			method:        "DELETE",
+			path:          "/api/v1/schemas/sch_1",
+			expectedFound: true,
+			expectedPerm:  models.PermissionDeleteSchema,
+			expectedOwner: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -140,5 +180,36 @@ func BenchmarkFindEndpointPermissionCached(b *testing.B) {
 		// Test both exact match and wildcard pattern with warm cache
 		FindEndpointPermission("GET", "/api/v1/schemas")
 		FindEndpointPermission("GET", "/api/v1/schemas/12345")
+	}
+}
+
+func TestMatchesEndpoint(t *testing.T) {
+	tests := []struct {
+		pattern string
+		path    string
+		want    bool
+	}{
+		{"/api/v1/schemas", "/api/v1/schemas", true},
+		{"/api/v1/schemas", "/api/v1/schemas/1", false},
+		{"/api/v1/schemas/*", "/api/v1/schemas/1", true},
+		{"/api/v1/schemas/*", "/api/v1/schemas/", true},
+		{"/api/v1/schemas/*", "/api/v1/schemas/1/policy-metadata", true},
+		{"/api/v1/schemas/*", "/api/v1/schemas", false},
+		{"/api/v1/schemas/*", "/api/v1/schema-submissions/1", false},
+		{"/api/v1/schemas/*/policy-metadata", "/api/v1/schemas/1/policy-metadata", true},
+		{"/api/v1/schemas/*/policy-metadata", "/api/v1/schemas/1/policy-metadata/pm-1", false},
+		{"/api/v1/schemas/*/policy-metadata", "/api/v1/schemas/1/2/policy-metadata", false},
+		{"/api/v1/schemas/*/policy-metadata/*", "/api/v1/schemas/1/policy-metadata/pm-1", true},
+		{"/api/v1/schemas/*/policy-metadata/*", "/api/v1/schemas/1/policy-metadata/pm-1/allowlist/app-1", true},
+		{"/api/v1/schemas/*/policy-metadata/*", "/api/v1/schemas/1/policy-metadata", false},
+		{"/api/v1/schemas/*/policy-metadata/*", "/api/v1/schemas/1/other/pm-1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern+" "+tt.path, func(t *testing.T) {
+			if got := MatchesEndpoint(tt.path, tt.pattern); got != tt.want {
+				t.Errorf("MatchesEndpoint(%q, %q) = %v, want %v", tt.path, tt.pattern, got, tt.want)
+			}
+		})
 	}
 }

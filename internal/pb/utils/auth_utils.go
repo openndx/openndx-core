@@ -199,20 +199,34 @@ func GetRequestIP(r *http.Request) string {
 	return "unknown"
 }
 
-// MatchesEndpoint checks if a request path matches an endpoint pattern
-// Supports wildcard matching with *
+// MatchesEndpoint checks if a request path matches an endpoint pattern.
+// A * segment in the middle of a pattern matches exactly one path segment,
+// while a trailing * segment matches the rest of the path.
 func MatchesEndpoint(requestPath, endpointPattern string) bool {
 	if endpointPattern == requestPath {
 		return true
 	}
 
-	// Handle wildcard patterns
-	if strings.HasSuffix(endpointPattern, "*") {
-		prefix := strings.TrimSuffix(endpointPattern, "*")
-		return strings.HasPrefix(requestPath, prefix)
+	if !strings.Contains(endpointPattern, "*") {
+		return false
 	}
 
-	return false
+	patternParts := strings.Split(endpointPattern, "/")
+	pathParts := strings.Split(requestPath, "/")
+
+	for i, part := range patternParts {
+		if part == "*" && i == len(patternParts)-1 {
+			return len(pathParts) >= len(patternParts)
+		}
+		if i >= len(pathParts) {
+			return false
+		}
+		if part != "*" && part != pathParts[i] {
+			return false
+		}
+	}
+
+	return len(pathParts) == len(patternParts)
 }
 
 // endpointLookupCache caches endpoint permissions for O(1) lookup

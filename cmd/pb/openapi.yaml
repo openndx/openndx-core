@@ -366,6 +366,148 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/schemas/{schemaId}/policy-metadata:
+    get:
+      summary: List schema policy metadata
+      description: |
+        Lists the PDP policy metadata of every field of the schema, including
+        each field's allow-list. Members can only list their own schemas.
+      operationId: listSchemaPolicyMetadata
+      tags:
+        - Schemas
+      parameters:
+        - name: schemaId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema ID
+      responses:
+        '200':
+          description: Policy metadata of the schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyMetadataCollection'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/schemas/{schemaId}/policy-metadata/{id}:
+    parameters:
+      - name: schemaId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The schema ID
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The policy metadata record ID
+    patch:
+      summary: Update a field's policy metadata
+      description: |
+        Updates the displayName, description, or accessControlType of one
+        field without resending the schema's other fields. Requires the
+        schema:update permission, and members can only update their own
+        schemas.
+      operationId: patchSchemaPolicyMetadata
+      tags:
+        - Schemas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyMetadataPatchRequest'
+      responses:
+        '200':
+          description: Policy metadata updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+    delete:
+      summary: Delete a field's policy metadata
+      description: |
+        Deletes the policy metadata record of one field. This changes the
+        schema's policy rather than deleting the schema, so it requires the
+        schema:update permission. Members can only delete from their own
+        schemas.
+      operationId: deleteSchemaPolicyMetadata
+      tags:
+        - Schemas
+      responses:
+        '204':
+          description: Policy metadata deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}:
+    delete:
+      summary: Revoke an application's access to a field
+      description: |
+        Removes one application from the field's allow-list. Requires the
+        schema:update permission, and members can only revoke access to
+        their own schemas.
+      operationId: revokeSchemaPolicyAllowListEntry
+      tags:
+        - Schemas
+      parameters:
+        - name: schemaId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The schema ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The policy metadata record ID
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The allow-list key of the application (its IdP client ID)
+      responses:
+        '204':
+          description: Allow-list entry revoked successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
   /api/v1/schema-submissions:
     get:
       summary: List all schema submissions
@@ -1098,6 +1240,88 @@ components:
           enum: [citizen]
           nullable: true
 
+    PolicyMetadata:
+      type: object
+      description: The PDP policy metadata of one schema field
+      properties:
+        id:
+          type: string
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        schemaId:
+          type: string
+        fieldName:
+          type: string
+          example: "person.fullName"
+        displayName:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [primary, fallback]
+        isOwner:
+          type: boolean
+        accessControlType:
+          type: string
+          enum: [public, restricted]
+        allowList:
+          type: object
+          description: |
+            Applications granted access to the field, keyed by the
+            application's IdP client ID.
+          additionalProperties:
+            $ref: '#/components/schemas/AllowListEntry'
+        owner:
+          type: string
+          enum: [citizen]
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AllowListEntry:
+      type: object
+      properties:
+        expires_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PolicyMetadataCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyMetadata'
+        count:
+          type: integer
+
+    PolicyMetadataPatchRequest:
+      type: object
+      description: |
+        At least one property is required. Omitted properties are left
+        unchanged, and displayName/description can be cleared with null.
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        accessControlType:
+          type: string
+          enum: [public, restricted]
+
     CreateSchemaRequest:
       type: object
       required:
@@ -1402,6 +1626,29 @@ components:
           example:
             error: "Internal server error"
             code: "INTERNAL_ERROR"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions or access denied to this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadGateway:
+      description: The Policy Decision Point failed or could not be reached
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Policy decision point request failed"
 
   securitySchemes:
     BearerAuth:

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -9,6 +10,10 @@ import (
 	"github.com/openndx/openndx-core/internal/pb/models"
 	"gorm.io/gorm"
 )
+
+// ErrPolicyMetadataNotFound is returned when a policy metadata record does not
+// exist in the requested schema.
+var ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
 
 // SchemaService handles schema-related operations
 type SchemaService struct {
@@ -194,6 +199,53 @@ func (s *SchemaService) GetSchemas(memberID *string) ([]*models.SchemaResponse, 
 	}
 
 	return responses, nil
+}
+
+// ListPolicyMetadata lists the PDP policy metadata records of a schema
+func (s *SchemaService) ListPolicyMetadata(schemaID string) (*models.PolicyMetadataListResponse, error) {
+	return s.policyService.ListPolicyMetadata(schemaID)
+}
+
+// PatchPolicyMetadata updates selected properties of one of a schema's policy metadata records
+func (s *SchemaService) PatchPolicyMetadata(schemaID, id string, req *models.PolicyMetadataPatchRequest) (*models.PolicyMetadataResponse, error) {
+	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
+		return nil, err
+	}
+	return s.policyService.PatchPolicyMetadata(id, req)
+}
+
+// DeletePolicyMetadata deletes one of a schema's policy metadata records
+func (s *SchemaService) DeletePolicyMetadata(schemaID, id string) error {
+	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
+		return err
+	}
+	return s.policyService.DeletePolicyMetadata(id)
+}
+
+// RevokeAllowListEntry removes one application from the allow-list of one of a schema's fields
+func (s *SchemaService) RevokeAllowListEntry(schemaID, id, applicationID string) error {
+	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
+		return err
+	}
+	return s.policyService.RevokeAllowListEntry(id, applicationID)
+}
+
+// ensurePolicyMetadataInSchema checks that the policy metadata record belongs to
+// the schema, so that ownership of one schema cannot be used to change the
+// policy metadata of another.
+func (s *SchemaService) ensurePolicyMetadataInSchema(schemaID, id string) error {
+	list, err := s.policyService.ListPolicyMetadata(schemaID)
+	if err != nil {
+		return err
+	}
+
+	for _, record := range list.Records {
+		if record.ID == id {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
 }
 
 // CreateSchemaSubmission creates a new schema

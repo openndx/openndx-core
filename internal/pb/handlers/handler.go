@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -681,6 +682,173 @@ func (h *V1Handler) UpdateSchema(w http.ResponseWriter, r *http.Request) {
 	middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schema.SchemaID, string(models.AuditStatusSuccess))
 
 	utils.RespondWithSuccess(w, http.StatusOK, schema)
+}
+
+// Schema policy metadata handlers
+
+// authorizeSchemaAccess checks that the authenticated user has the permission and,
+// for non-admin users, owns the schema. It writes the error response and returns
+// false when access is denied.
+func (h *V1Handler) authorizeSchemaAccess(w http.ResponseWriter, r *http.Request, schemaId string, permission models.Permission) bool {
+	// Get authenticated user
+	user, err := middleware.GetUserFromRequest(r)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusUnauthorized, "Authentication required")
+		return false
+	}
+
+	// Check permission
+	if !user.HasPermission(permission) {
+		utils.RespondWithError(w, http.StatusForbidden, "Insufficient permissions")
+		return false
+	}
+
+	schema, err := h.schemaService.GetSchema(schemaId)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusNotFound, err.Error())
+		return false
+	}
+
+	// For non-admin users, check ownership
+	if !user.IsAdmin() {
+		// Get member ID for the authenticated user (cached)
+		userMemberID, err := h.getUserMemberID(r, user)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusForbidden, "User member record not found")
+			return false
+		}
+
+		// Check if schema belongs to the user
+		if schema.MemberID != userMemberID {
+			utils.RespondWithError(w, http.StatusForbidden, "Access denied to this resource")
+			return false
+		}
+	}
+
+	return true
+}
+
+// ListSchemaPolicyMetadata handles GET /api/v1/schemas/{schemaId}/policy-metadata
+func (h *V1Handler) ListSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+	schemaId := r.PathValue("schemaId")
+	if !h.authorizeSchemaAccess(w, r, schemaId, models.PermissionReadSchema) {
+		return
+	}
+
+	list, err := h.schemaService.ListPolicyMetadata(schemaId)
+	if err != nil {
+		respondWithPolicyMetadataError(w, err)
+		return
+	}
+
+	response := models.CollectionResponse{
+		Items: list.Records,
+		Count: len(list.Records),
+	}
+	utils.RespondWithSuccess(w, http.StatusOK, response)
+}
+
+// PatchSchemaPolicyMetadata handles PATCH /api/v1/schemas/{schemaId}/policy-metadata/{id}
+func (h *V1Handler) PatchSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+	schemaId := r.PathValue("schemaId")
+	id := r.PathValue("id")
+	if !h.authorizeSchemaAccess(w, r, schemaId, models.PermissionUpdateSchema) {
+		return
+	}
+
+	var req models.PolicyMetadataPatchRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.IsEmpty() {
+		utils.RespondWithError(w, http.StatusBadRequest, "at least one editable field is required")
+		return
+	}
+
+	record, err := h.schemaService.PatchPolicyMetadata(schemaId, id, &req)
+	if err != nil {
+		// Log audit event for failure
+		middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusFailure))
+
+		respondWithPolicyMetadataError(w, err)
+		return
+	}
+
+	// Log audit event
+	middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusSuccess))
+
+	utils.RespondWithSuccess(w, http.StatusOK, record)
+}
+
+// DeleteSchemaPolicyMetadata handles DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}
+func (h *V1Handler) DeleteSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+	schemaId := r.PathValue("schemaId")
+	id := r.PathValue("id")
+	if !h.authorizeSchemaAccess(w, r, schemaId, models.PermissionUpdateSchema) {
+		return
+	}
+
+	if err := h.schemaService.DeletePolicyMetadata(schemaId, id); err != nil {
+		// Log audit event for failure
+		middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusFailure))
+
+		respondWithPolicyMetadataError(w, err)
+		return
+	}
+
+	// Log audit event
+	middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusSuccess))
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RevokeSchemaPolicyAllowListEntry handles DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}
+func (h *V1Handler) RevokeSchemaPolicyAllowListEntry(w http.ResponseWriter, r *http.Request) {
+	schemaId := r.PathValue("schemaId")
+	id := r.PathValue("id")
+	applicationId := r.PathValue("applicationId")
+	if !h.authorizeSchemaAccess(w, r, schemaId, models.PermissionUpdateSchema) {
+		return
+	}
+
+	if err := h.schemaService.RevokeAllowListEntry(schemaId, id, applicationId); err != nil {
+		// Log audit event for failure
+		middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusFailure))
+
+		respondWithPolicyMetadataError(w, err)
+		return
+	}
+
+	// Log audit event
+	middleware.LogAuditEvent(r, string(models.ResourceTypeSchemas), &schemaId, string(models.AuditStatusSuccess))
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// respondWithPolicyMetadataError maps policy metadata errors onto a response.
+// Client errors reported by the PDP are passed through, while PDP failures and
+// unreachable PDPs are reported as a bad gateway.
+func respondWithPolicyMetadataError(w http.ResponseWriter, err error) {
+	if errors.Is(err, services.ErrPolicyMetadataNotFound) {
+		utils.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	var pdpErr *services.PDPError
+	if errors.As(err, &pdpErr) {
+		switch pdpErr.StatusCode {
+		case http.StatusBadRequest, http.StatusNotFound, http.StatusConflict:
+			utils.RespondWithError(w, pdpErr.StatusCode, pdpErr.Message)
+			return
+		}
+	}
+
+	slog.Error("Policy metadata request to PDP failed", "error", err)
+	utils.RespondWithError(w, http.StatusBadGateway, "Policy decision point request failed")
 }
 
 // Application submission handlers

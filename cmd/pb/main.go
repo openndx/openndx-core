@@ -64,6 +64,12 @@ func main() {
 	mux.Handle("GET /api/v1/schemas/{schemaId}", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.GetSchema)))
 	mux.Handle("PUT /api/v1/schemas/{schemaId}", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.UpdateSchema)))
 
+	// Schema policy metadata endpoints
+	mux.Handle("GET /api/v1/schemas/{schemaId}/policy-metadata", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.ListSchemaPolicyMetadata)))
+	mux.Handle("PATCH /api/v1/schemas/{schemaId}/policy-metadata/{id}", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.PatchSchemaPolicyMetadata)))
+	mux.Handle("DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.DeleteSchemaPolicyMetadata)))
+	mux.Handle("DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.RevokeSchemaPolicyAllowListEntry)))
+
 	// Schema submission endpoints
 	mux.Handle("GET /api/v1/schema-submissions", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.GetAllSchemaSubmissions)))
 	mux.Handle("POST /api/v1/schema-submissions", utils.PanicRecoveryMiddleware(http.HandlerFunc(v1Handler.CreateSchemaSubmission)))

@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -375,4 +376,118 @@ func TestPDPService_UpdateAllowList_MarshalError(t *testing.T) {
 // Helper function to create string pointers
 func stringPtr(s string) *string {
 	return &s
+}
+
+func TestPDPService_ListPolicyMetadata_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/api/v1/policy/metadata", r.URL.Path)
+		assert.Equal(t, "sch_1&x", r.URL.Query().Get("schemaId"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"records":[{"id":"pm-1","schemaId":"sch_1&x","fieldName":"person.name","source":"primary","isOwner":false,"accessControlType":"restricted","allowList":{}}]}`))
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	response, err := service.ListPolicyMetadata("sch_1&x")
+	require.NoError(t, err)
+	require.Len(t, response.Records, 1)
+	assert.Equal(t, "pm-1", response.Records[0].ID)
+	assert.Equal(t, models.AccessControlTypeRestricted, response.Records[0].AccessControlType)
+}
+
+func TestPDPService_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "/api/v1/policy/metadata/pm-1", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, map[string]any{"displayName": "Name", "description": nil}, body)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"pm-1","schemaId":"sch_1","fieldName":"person.name","displayName":"Name","accessControlType":"public"}`))
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	var req models.PolicyMetadataPatchRequest
+	require.NoError(t, json.Unmarshal([]byte(`{"displayName":"Name","description":null}`), &req))
+
+	response, err := service.PatchPolicyMetadata("pm-1", &req)
+	require.NoError(t, err)
+	assert.Equal(t, "pm-1", response.ID)
+	assert.Equal(t, "Name", *response.DisplayName)
+}
+
+func TestPDPService_DeletePolicyMetadata_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/api/v1/policy/metadata/pm-1", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	assert.NoError(t, service.DeletePolicyMetadata("pm-1"))
+}
+
+func TestPDPService_RevokeAllowListEntry_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/api/v1/policy/metadata/pm-1/allowlist/client-1", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	assert.NoError(t, service.RevokeAllowListEntry("pm-1", "client-1"))
+}
+
+func TestPDPService_RevokeAllowListEntry_EscapesPathSegments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/policy/metadata/pm-1/allowlist/client%2F1", r.URL.EscapedPath())
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	assert.NoError(t, service.RevokeAllowListEntry("pm-1", "client/1"))
+}
+
+func TestPDPService_PolicyMetadata_ReturnsPDPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error":"allow-list entry not found: client-1"}`))
+	}))
+	defer server.Close()
+
+	service := NewPDPService(server.URL)
+
+	err := service.RevokeAllowListEntry("pm-1", "client-1")
+	var pdpErr *PDPError
+	require.ErrorAs(t, err, &pdpErr)
+	assert.Equal(t, http.StatusNotFound, pdpErr.StatusCode)
+	assert.Equal(t, "allow-list entry not found: client-1", pdpErr.Message)
+}
+
+func TestPDPService_PolicyMetadata_NetworkError(t *testing.T) {
+	service := NewPDPService("http://invalid-host:9999")
+
+	_, err := service.ListPolicyMetadata("sch_1")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to send request to PDP")
+
+	var pdpErr *PDPError
+	assert.False(t, errors.As(err, &pdpErr))
 }
