@@ -311,8 +311,27 @@ func TestHandler_AddProvider_EmptyServiceKey(t *testing.T) {
 		NewProvider("provider1", "http://example1.com", "schema1", nil),
 	})
 	initialCount := len(handler.Providers)
-	handler.AddProvider(NewProvider("", "http://example2.com", "schema2", nil))
+	rejected := NewProvider("", "http://example2.com", "schema2", nil)
+	handler.AddProvider(rejected)
 	if len(handler.Providers) != initialCount {
 		t.Errorf("expected provider count to stay %d after adding empty-key provider, got %d", initialCount, len(handler.Providers))
+	}
+	if rejected.Client == handler.HttpClient {
+		t.Error("rejected empty-key provider should not receive the handler HTTP client")
+	}
+}
+
+func TestHandler_GetProvider_SkipsNilEntries(t *testing.T) {
+	handler := NewProviderHandler([]*Provider{
+		NewProvider("provider1", "http://example1.com", "schema1", nil),
+	})
+	handler.Providers = append([]*Provider{nil}, handler.Providers...)
+
+	provider, exists := handler.GetProvider("provider1", "schema1")
+	if !exists || provider == nil {
+		t.Fatal("expected to find provider1 despite a nil slot in the slice")
+	}
+	if provider.ServiceKey != "provider1" {
+		t.Errorf("expected service key provider1, got %s", provider.ServiceKey)
 	}
 }

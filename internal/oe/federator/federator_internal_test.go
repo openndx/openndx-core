@@ -399,3 +399,26 @@ func TestInitialize_FailsWithInvalidConfig(t *testing.T) {
 		assert.Contains(t, err.Error(), "foundationalIdArgName is not configured")
 	})
 }
+
+func TestInitialize_SkipsProvidersWithEmptyKey(t *testing.T) {
+	providerHandler := provider.NewProviderHandler(nil)
+	cfg := &configs.Config{
+		Environment:           "production",
+		TrustUpstream:         true,
+		FoundationalIdArgName: "nic",
+		Providers: []*configs.ProviderConfig{
+			{ProviderKey: "", ProviderURL: "http://empty-key.example", SchemaID: "schema1"},
+			{ProviderKey: "ok", ProviderURL: "http://ok.example", SchemaID: "schema2"},
+		},
+	}
+
+	_, err := Initialize(context.Background(), cfg, providerHandler, nil)
+	require.NoError(t, err)
+
+	_, exists := providerHandler.GetProvider("", "schema1")
+	assert.False(t, exists)
+
+	p, exists := providerHandler.GetProvider("ok", "schema2")
+	require.True(t, exists)
+	assert.Equal(t, "http://ok.example", p.ServiceUrl)
+}

@@ -16,7 +16,11 @@ func TestParseExpiryTime(t *testing.T) {
 		{name: "ISO period days", input: "P30D", expected: 30 * 24 * time.Hour, expectError: false},
 		{name: "ISO period time hours", input: "PT1H", expected: 1 * time.Hour, expectError: false},
 		{name: "ISO lowercase minutes", input: "pt15m", expected: 15 * time.Minute, expectError: false},
+		{name: "ISO time minutes", input: "PT1M", expected: 1 * time.Minute, expectError: false},
 		{name: "ISO unsupported months", input: "P1M", expected: 0, expectError: true},
+		{name: "ISO hours require time prefix", input: "P1H", expected: 0, expectError: true},
+		{name: "ISO seconds require time prefix", input: "P1S", expected: 0, expectError: true},
+		{name: "ISO days require date prefix", input: "PT1D", expected: 0, expectError: true},
 
 		// Standard Tests
 		{name: "valid days", input: "30d", expected: 30 * 24 * time.Hour, expectError: false},
