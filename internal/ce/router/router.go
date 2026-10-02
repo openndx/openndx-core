@@ -58,6 +58,9 @@ func (r *V1Router) registerPortalRoutes(mux *http.ServeMux) {
 		utils.PanicRecoveryMiddleware(http.HandlerFunc(r.portalHandler.HealthCheck)))
 
 	// Consent endpoints (authentication required)
+	mux.Handle("GET /api/v1/consents",
+		utils.PanicRecoveryMiddleware(
+			r.authMiddleware.Authenticate(http.HandlerFunc(r.portalHandler.ListConsents))))
 	mux.Handle("GET /api/v1/consents/{consentId}",
 		utils.PanicRecoveryMiddleware(
 			r.authMiddleware.Authenticate(http.HandlerFunc(r.portalHandler.GetConsent))))

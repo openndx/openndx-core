@@ -65,14 +65,18 @@ func (m *JWTAuthMiddleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Add owner subject to request context
-		ctx := context.WithValue(r.Context(), ownerSubjectKey, subject)
-		r = r.WithContext(ctx)
+		r = r.WithContext(WithOwnerSubject(r.Context(), subject))
 
 		slog.Debug("User authenticated", "subject", subject)
 
 		// Call next handler
 		next.ServeHTTP(w, r)
 	})
+}
+
+// WithOwnerSubject returns a copy of ctx carrying the authenticated owner's subject (UID)
+func WithOwnerSubject(ctx context.Context, subject string) context.Context {
+	return context.WithValue(ctx, ownerSubjectKey, subject)
 }
 
 // GetOwnerSubjectFromContext extracts the authenticated owner's subject (UID) from the request context

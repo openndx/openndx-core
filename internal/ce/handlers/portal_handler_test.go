@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/ce/middleware"
+	"github.com/openndx/openndx-core/internal/ce/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -172,4 +174,60 @@ func TestPortalHandler_HealthCheck_MethodNotAllowed(t *testing.T) {
 	handler.HealthCheck(w, req)
 
 	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+}
+
+func TestPortalHandler_ListConsents_MethodNotAllowed(t *testing.T) {
+	handler := &PortalHandler{consentService: nil}
+
+	req := httptest.NewRequest("POST", "/api/v1/consents", nil)
+	req = req.WithContext(middleware.WithOwnerSubject(req.Context(), "user-123"))
+	w := httptest.NewRecorder()
+
+	handler.ListConsents(w, req)
+
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+}
+
+func TestPortalHandler_ListConsents_MissingSubject(t *testing.T) {
+	handler := &PortalHandler{consentService: nil}
+
+	req := httptest.NewRequest("GET", "/api/v1/consents", nil)
+	w := httptest.NewRecorder()
+
+	handler.ListConsents(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestPortalHandler_ListConsents_InvalidQuery(t *testing.T) {
+	tests := map[string]string{
+		"unknown status":    "status=pending,granted",
+		"non-numeric limit": "limit=abc",
+		"zero limit":        "limit=0",
+		"limit above max":   "limit=101",
+		"negative offset":   "offset=-1",
+	}
+	for name, rawQuery := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler := &PortalHandler{consentService: nil}
+
+			req := httptest.NewRequest("GET", "/api/v1/consents?"+rawQuery, nil)
+			req = req.WithContext(middleware.WithOwnerSubject(req.Context(), "user-123"))
+			w := httptest.NewRecorder()
+
+			handler.ListConsents(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	}
+}
+
+func TestParseStatusFilter(t *testing.T) {
+	statuses, err := parseStatusFilter([]string{"pending, approved", "expired", ""})
+	assert.NoError(t, err)
+	assert.Equal(t, []models.ConsentStatus{models.StatusPending, models.StatusApproved, models.StatusExpired}, statuses)
+
+	statuses, err = parseStatusFilter(nil)
+	assert.NoError(t, err)
+	assert.Empty(t, statuses)
 }

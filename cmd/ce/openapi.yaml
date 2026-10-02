@@ -10,6 +10,7 @@ info:
     ### External APIs (Authorization Required)
     User-facing endpoints protected by Bearer Token authentication:
     - Health check endpoint
+    - List the authenticated owner's consents (self-service approval)
     - Get consent details (owner verification required)
     - Update consent status (owner verification required)
     
@@ -64,6 +65,106 @@ paths:
                     example: healthy
                 required:
                   - status
+
+  /api/v1/consents:
+    get:
+      summary: List My Consents
+      description: |
+        Lists the consents owned by the authenticated data owner, newest first. Used by the
+        consent portal's self-service flow, where the data owner signs in independently of the
+        requester (e.g. a citizen at a counter while an officer initiates the data request),
+        reviews their pending requests and approves or rejects them.
+
+        Each item is a summary; fetch `GET /api/v1/consents/{consentId}` for the full request
+        (requested fields, grant duration) before deciding on it.
+
+        **Authorization:** Requires Bearer Token
+
+        **Ownership Scoping:** Only consents whose owner_id matches the subject (UID) from the decoded token are returned. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
+
+        Pending and approved consents of the owner whose deadline has passed are marked `expired` before listing.
+      operationId: listConsents
+      tags:
+        - External
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by status. Repeat the parameter or pass a comma-separated list. Omit to return all statuses.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [pending, approved, rejected, expired, revoked]
+          example: ["pending"]
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of consents to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: Number of consents to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Consents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListConsentsResponse'
+        '400':
+          description: Bad request - invalid status, limit or offset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "BAD_REQUEST"
+                  message: "invalid status: granted"
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "UNAUTHORIZED"
+                  message: "Invalid or expired token"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "INTERNAL_ERROR"
+                  message: "Request timeout or cancelled"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "INTERNAL_ERROR"
+                  message: "An unexpected error occurred"
 
   /api/v1/consents/{consentId}:
     get:
@@ -158,6 +259,8 @@ paths:
         **Valid Actions:**
         - `approve` - Approve the consent request
         - `reject` - Reject the consent request
+
+        Only a `pending` consent that has not passed its pending deadline can be updated; otherwise `409` is returned.
       operationId: updateConsent
       tags:
         - External
@@ -271,6 +374,16 @@ paths:
                 error:
                   code: "METHOD_NOT_ALLOWED"
                   message: "Method not allowed"
+        '409':
+          description: Conflict - consent is no longer pending (already decided, revoked or expired)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "CONSENT_NOT_PENDING"
+                  message: "Consent is no longer pending and cannot be updated"
         '408':
           description: Request timeout
           content:
@@ -658,6 +771,11 @@ components:
       type: object
       description: User-facing consent object for the consent portal UI
       properties:
+        consentId:
+          type: string
+          format: uuid
+          description: The unique identifier of the consent record
+          example: "550e8400-e29b-41d4-a716-446655440000"
         appId:
           type: string
           description: The unique identifier of the application
@@ -681,6 +799,10 @@ components:
           enum: [realtime, offline]
           description: The type of consent mechanism
           example: "realtime"
+        grantDuration:
+          type: string
+          description: How long access is granted for once approved (ISO 8601 duration)
+          example: "PT1H"
         createdAt:
           type: string
           format: date-time
@@ -691,27 +813,42 @@ components:
           format: date-time
           description: Timestamp when the consent was last updated
           example: "2023-12-09T10:30:00Z"
+        pendingExpiresAt:
+          type: string
+          format: date-time
+          description: Deadline for approving or rejecting a pending consent. Only present while pending.
+          example: "2023-12-09T11:30:00Z"
+        grantExpiresAt:
+          type: string
+          format: date-time
+          description: When an approved consent's access grant ends. Only present once approved.
+          example: "2023-12-09T11:30:00Z"
         fields:
           type: array
           description: List of fields requiring consent with rich information
           items:
             $ref: '#/components/schemas/ConsentField'
       required:
+        - consentId
         - appId
         - ownerId
         - status
         - type
+        - grantDuration
         - createdAt
         - updatedAt
         - fields
       example:
+        consentId: "550e8400-e29b-41d4-a716-446655440000"
         appId: "app-12345"
         appName: "Passport Application"
         ownerId: "user123"
         status: "pending"
         type: "realtime"
+        grantDuration: "PT1H"
         createdAt: "2023-12-09T10:30:00Z"
         updatedAt: "2023-12-09T10:30:00Z"
+        pendingExpiresAt: "2023-12-09T11:30:00Z"
         fields:
           - fieldName: "personInfo.name"
             schemaId: "schema-001"
@@ -723,6 +860,75 @@ components:
             displayName: "Date of Birth"
             description: "Your date of birth"
             owner: "citizen"
+
+    ConsentSummaryView:
+      type: object
+      description: Compact consent row for listing an owner's consents in the consent portal
+      properties:
+        consentId:
+          type: string
+          format: uuid
+          description: The unique identifier of the consent record
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        appId:
+          type: string
+          description: The unique identifier of the application
+          example: "app-12345"
+        appName:
+          type: string
+          nullable: true
+          description: The name of the application
+          example: "Passport Application"
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired, revoked]
+          description: The current status of the consent
+          example: "pending"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the consent was created
+          example: "2023-12-09T10:30:00Z"
+        pendingExpiresAt:
+          type: string
+          format: date-time
+          description: Deadline for approving or rejecting a pending consent. Only present while pending.
+          example: "2023-12-09T11:30:00Z"
+        grantExpiresAt:
+          type: string
+          format: date-time
+          description: When an approved consent's access grant ends. Only present once approved.
+          example: "2023-12-09T11:30:00Z"
+      required:
+        - consentId
+        - appId
+        - status
+        - createdAt
+
+    ListConsentsResponse:
+      type: object
+      description: A page of the authenticated owner's consents, newest first
+      properties:
+        consents:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentSummaryView'
+        total:
+          type: integer
+          format: int64
+          description: Total number of consents matching the filter
+          example: 3
+        limit:
+          type: integer
+          example: 20
+        offset:
+          type: integer
+          example: 0
+      required:
+        - consents
+        - total
+        - limit
+        - offset
 
     ErrorResponse:
       type: object

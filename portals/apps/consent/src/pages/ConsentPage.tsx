@@ -1,9 +1,11 @@
 import { LogIn, Shield } from 'lucide-react';
 import React from 'react';
 import { useAuth } from 'react-oidc-context';
+import { Link, Navigate } from 'react-router-dom';
 import UserHeader from '../components/UserHeader';
 import { PortalAction } from '../constants/portalAction';
 import { useConsent } from '../contexts/ConsentContext';
+import { formatDate, formatFieldName } from '../utils/format';
 
 const ConsentPage: React.FC = () => {
   const { consentRecord, isSubmitting, handleConsentDecision, isFetchingConsent, signIn, consentId } = useConsent();
@@ -21,6 +23,12 @@ const ConsentPage: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Without a specific request to review, show the owner all of their requests instead. This is
+  // only safe once auth has settled: navigating earlier would drop the OIDC callback's query params.
+  if (!consentId) {
+    return <Navigate to="/consents" replace />;
   }
 
   // 2. Not Authenticated State
@@ -64,24 +72,6 @@ const ConsentPage: React.FC = () => {
   }
 
   // 4. Main Consent UI
-  const formatFieldName = (field: string): string => {
-    const lastField = field ? field.split('.').at(-1) : '';
-    if (!lastField) return field;
-
-    const words = lastField
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .split(/[_\s]+/)
-      .filter(word => word.length > 0);
-
-    return words
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  };
-
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString();
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 relative">
       <UserHeader userName={userName} onSignIn={() => signinRedirect()} onSignOut={() => signoutRedirect()} />
@@ -164,6 +154,12 @@ const ConsentPage: React.FC = () => {
                 </p>
               </div>
             )}
+
+            <div className="mt-6 text-center">
+              <Link to="/consents" className="text-sm text-indigo-600 hover:text-indigo-800">
+                View all my consent requests
+              </Link>
+            </div>
           </div>
         </div>
       </div>

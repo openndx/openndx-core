@@ -43,7 +43,8 @@ type CreateConsentRequest struct {
 // ConsentPortalActionRequest defines the structure for consent portal interactions
 type ConsentPortalActionRequest struct {
 	ConsentID string              `json:"consentId"`
-	Action    ConsentPortalAction `json:"action"` // "approve" or "reject"
+	OwnerID   string              `json:"ownerId"` // Subject of the caller; must match the consent's owner
+	Action    ConsentPortalAction `json:"action"`  // "approve" or "reject"
 	UpdatedBy string              `json:"updatedBy"`
 }
 
@@ -58,14 +59,38 @@ type ConsentResponseInternalView struct {
 // ConsentResponsePortalView represents the user-facing consent object for the UI.
 // Uses rich field information for better UX in the consent portal
 type ConsentResponsePortalView struct {
-	AppID     string         `json:"appId"`
-	AppName   *string        `json:"appName"`
-	OwnerID   string         `json:"ownerId"`
-	Status    ConsentStatus  `json:"status"`
-	Type      ConsentType    `json:"type"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	Fields    []ConsentField `json:"fields"` // Rich field information with display names and descriptions
+	ConsentID        string         `json:"consentId"`
+	AppID            string         `json:"appId"`
+	AppName          *string        `json:"appName"`
+	OwnerID          string         `json:"ownerId"`
+	Status           ConsentStatus  `json:"status"`
+	Type             ConsentType    `json:"type"`
+	GrantDuration    string         `json:"grantDuration"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	UpdatedAt        time.Time      `json:"updatedAt"`
+	PendingExpiresAt *time.Time     `json:"pendingExpiresAt,omitempty"` // Only set while pending
+	GrantExpiresAt   *time.Time     `json:"grantExpiresAt,omitempty"`   // Only set once approved
+	Fields           []ConsentField `json:"fields"`                     // Rich field information with display names and descriptions
+}
+
+// ConsentSummaryView is the compact row shown in the consent portal's list of an owner's consents.
+// The full request (fields, grant duration, ...) is fetched by ID via ConsentResponsePortalView.
+type ConsentSummaryView struct {
+	ConsentID        string        `json:"consentId"`
+	AppID            string        `json:"appId"`
+	AppName          *string       `json:"appName"`
+	Status           ConsentStatus `json:"status"`
+	CreatedAt        time.Time     `json:"createdAt"`
+	PendingExpiresAt *time.Time    `json:"pendingExpiresAt,omitempty"` // Only set while pending
+	GrantExpiresAt   *time.Time    `json:"grantExpiresAt,omitempty"`   // Only set once approved
+}
+
+// ListConsentsResponse is the paginated list of the authenticated owner's consents
+type ListConsentsResponse struct {
+	Consents []ConsentSummaryView `json:"consents"`
+	Total    int64                `json:"total"`
+	Limit    int                  `json:"limit"`
+	Offset   int                  `json:"offset"`
 }
 
 // ToConsentResponseInternalView converts a ConsentRecord to a simplified ConsentResponseInternalView.
@@ -90,17 +115,34 @@ func (cr *ConsentRecord) ToConsentResponseInternalView() ConsentResponseInternal
 	return response
 }
 
+// ToConsentSummaryView converts a ConsentRecord to the compact row used when listing an owner's consents
+func (cr *ConsentRecord) ToConsentSummaryView() ConsentSummaryView {
+	return ConsentSummaryView{
+		ConsentID:        cr.ConsentID.String(),
+		AppID:            cr.AppID,
+		AppName:          cr.AppName,
+		Status:           ConsentStatus(cr.Status),
+		CreatedAt:        cr.CreatedAt,
+		PendingExpiresAt: cr.PendingExpiresAt,
+		GrantExpiresAt:   cr.GrantExpiresAt,
+	}
+}
+
 // ToConsentResponsePortalView converts an internal ConsentRecord to a user-facing view.
 // Returns rich field information including display names and descriptions for better UX
 func (cr *ConsentRecord) ToConsentResponsePortalView() ConsentResponsePortalView {
 	return ConsentResponsePortalView{
-		AppID:     cr.AppID,
-		AppName:   cr.AppName,
-		OwnerID:   cr.OwnerID,
-		Status:    ConsentStatus(cr.Status),
-		Type:      ConsentType(cr.Type),
-		CreatedAt: cr.CreatedAt,
-		UpdatedAt: cr.UpdatedAt,
-		Fields:    cr.Fields, // Now includes DisplayName, Description, and Owner for rich UI rendering
+		ConsentID:        cr.ConsentID.String(),
+		AppID:            cr.AppID,
+		AppName:          cr.AppName,
+		OwnerID:          cr.OwnerID,
+		Status:           ConsentStatus(cr.Status),
+		Type:             ConsentType(cr.Type),
+		GrantDuration:    cr.GrantDuration,
+		CreatedAt:        cr.CreatedAt,
+		UpdatedAt:        cr.UpdatedAt,
+		PendingExpiresAt: cr.PendingExpiresAt,
+		GrantExpiresAt:   cr.GrantExpiresAt,
+		Fields:           cr.Fields, // Now includes DisplayName, Description, and Owner for rich UI rendering
 	}
 }
