@@ -188,3 +188,28 @@ func TestConsentRecord_ToConsentResponsePortalView_NoAppName(t *testing.T) {
 
 	assert.Nil(t, response.AppName)
 }
+
+func TestConsentRecord_ToConsentSummaryView(t *testing.T) {
+	appName := "Test App"
+	pendingExpiresAt := time.Now().Add(time.Hour)
+	record := ConsentRecord{
+		ConsentID:        uuid.New(),
+		AppID:            "app-123",
+		AppName:          &appName,
+		OwnerID:          "owner-123",
+		Status:           string(StatusPending),
+		CreatedAt:        time.Now(),
+		PendingExpiresAt: &pendingExpiresAt,
+		Fields:           []ConsentField{{FieldName: "email", SchemaID: "schema-1", Owner: OwnerCitizen}},
+	}
+
+	summary := record.ToConsentSummaryView()
+
+	assert.Equal(t, record.ConsentID.String(), summary.ConsentID)
+	assert.Equal(t, record.AppID, summary.AppID)
+	assert.Equal(t, &appName, summary.AppName)
+	assert.Equal(t, StatusPending, summary.Status)
+	assert.Equal(t, record.CreatedAt, summary.CreatedAt)
+	assert.Equal(t, &pendingExpiresAt, summary.PendingExpiresAt)
+	assert.Nil(t, summary.GrantExpiresAt)
+}

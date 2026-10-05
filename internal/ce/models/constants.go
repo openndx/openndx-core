@@ -71,6 +71,8 @@ var (
 	ErrConsentGetFailed    = errors.New("failed to get consent records")
 	ErrConsentExpiryFailed = errors.New("failed to check consent expiry")
 	ErrPortalRequestFailed = errors.New("failed to process consent portal request")
+	ErrConsentNotPending   = errors.New("consent is not pending")
+	ErrConsentAccessDenied = errors.New("consent belongs to a different owner")
 )
 
 // ConsentErrorCode represents an error code
@@ -78,12 +80,19 @@ type ConsentErrorCode string
 
 // ConsentErrorCode constants
 const (
-	ErrorCodeConsentNotFound  ConsentErrorCode = "CONSENT_NOT_FOUND"
-	ErrorCodeInternalError    ConsentErrorCode = "INTERNAL_ERROR"
-	ErrorCodeBadRequest       ConsentErrorCode = "BAD_REQUEST"
-	ErrorCodeUnauthorized     ConsentErrorCode = "UNAUTHORIZED"
-	ErrorCodeForbidden        ConsentErrorCode = "FORBIDDEN"
-	ErrorCodeMethodNotAllowed ConsentErrorCode = "METHOD_NOT_ALLOWED"
+	ErrorCodeConsentNotFound   ConsentErrorCode = "CONSENT_NOT_FOUND"
+	ErrorCodeInternalError     ConsentErrorCode = "INTERNAL_ERROR"
+	ErrorCodeBadRequest        ConsentErrorCode = "BAD_REQUEST"
+	ErrorCodeUnauthorized      ConsentErrorCode = "UNAUTHORIZED"
+	ErrorCodeForbidden         ConsentErrorCode = "FORBIDDEN"
+	ErrorCodeMethodNotAllowed  ConsentErrorCode = "METHOD_NOT_ALLOWED"
+	ErrorCodeConsentNotPending ConsentErrorCode = "CONSENT_NOT_PENDING"
+)
+
+// Pagination bounds for listing an owner's consents in the portal
+const (
+	DefaultConsentListLimit = 20
+	MaxConsentListLimit     = 100
 )
 
 // ConsentEngineOperation represents the operation

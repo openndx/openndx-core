@@ -77,3 +77,14 @@ Then set the values in `public/config.js`:
    - Navigate to `http://localhost:5173/?consentId={consent_id}`
    - Log in if required.
    - Review and act on the consent request.
+
+### Self-Service Flow
+
+For requests raised by someone other than the data owner (e.g. an officer at a counter acting for a
+citizen), the owner signs in to the portal independently, on their own device or a kiosk:
+
+1. Navigate to `http://localhost:5173/consents` (opening `/` without a `consentId` lands here too).
+2. Sign in as the data owner. The token's subject claim must match the consent's `ownerId`.
+3. The **Pending** tab lists requests awaiting a decision; **All** shows the full history.
+4. Open a request from the table to see the requested data, then approve or deny it.
+   Once approved, the requester retries the original data request.

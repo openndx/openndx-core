@@ -35,8 +35,9 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [consentRecord, setConsentRecord] = useState<ConsentRecord | null>(null);
   const [error, setError] = useState('');
   const [consentId, setConsentId] = useState<string | null>(() => {
-    // Initial state from localStorage or null
-    return localStorage.getItem('consentId');
+    // Initial state from the URL (front-channel redirect), then localStorage (restored after the
+    // OIDC sign-in round trip), or null
+    return new URLSearchParams(window.location.search).get('consentId') ?? localStorage.getItem('consentId');
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,10 +51,11 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
     const idFromUrl = searchParams.get('consentId');
 
     if (idFromUrl) {
+      // Persist so the ID survives the OIDC sign-in redirect, which drops the query string
+      localStorage.setItem('consentId', idFromUrl);
       if (idFromUrl !== consentId) {
-        console.log('ConsentContext: Found consentId in URL, updating state and storage:', idFromUrl);
+        console.log('ConsentContext: Found consentId in URL, updating state:', idFromUrl);
         setConsentId(idFromUrl);
-        localStorage.setItem('consentId', idFromUrl);
       }
     }
     // If not in URL, we already initialized from localStorage in useState initializer.
@@ -69,6 +71,10 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
     // d) We are not currently fetching
 
     if (auth.isLoading) return;
+
+    // Only the single-consent page consumes this record. Other routes (e.g. the self-service
+    // list) must not be redirected by a stale consentId left in storage by a previous user.
+    if (location.pathname !== '/') return;
 
     if (!consentId) {
       // No consent ID to fetch
@@ -129,7 +135,7 @@ export const ConsentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     fetchConsent();
 
-  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.user, CONSENT_ENGINE_PATH, consentRecord, navigate]);
+  }, [consentId, auth.isAuthenticated, auth.isLoading, auth.user, CONSENT_ENGINE_PATH, consentRecord, navigate, location.pathname]);
 
   const handleConsentDecision = async (decision: PortalAction) => {
     if (!consentRecord || !consentRecord.consentId) return;

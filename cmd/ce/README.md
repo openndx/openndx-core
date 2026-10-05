@@ -47,11 +47,12 @@ Service runs on port **8081** by default.
 
 ### Portal APIs (JWT Authentication)
 
-| Method | Endpoint                       | Description           |
-|--------|--------------------------------|-----------------------|
-| GET    | `/api/v1/health`               | Health check          |
-| GET    | `/api/v1/consents/{consentId}` | Get consent details   |
-| PUT    | `/api/v1/consents/{consentId}` | Update consent status |
+| Method | Endpoint                       | Description                                                                     |
+|--------|--------------------------------|---------------------------------------------------------------------------------|
+| GET    | `/api/v1/health`               | Health check                                                                    |
+| GET    | `/api/v1/consents`             | List the signed-in owner's consents (`?status=pending&limit=20&offset=0`)       |
+| GET    | `/api/v1/consents/{consentId}` | Get consent details                                                             |
+| PUT    | `/api/v1/consents/{consentId}` | Update consent status (pending only; `409 CONSENT_NOT_PENDING` otherwise)       |
 
 ### System Endpoints
 

@@ -11,6 +11,12 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userName, onSignIn, onSignOut }
   const auth = useAuth();
   const isSignedIn = auth.isAuthenticated;
 
+  // On a shared device (e.g. an office kiosk) don't leave the previous user's pending consent behind
+  const handleSignOut = () => {
+    localStorage.removeItem('consentId');
+    onSignOut();
+  };
+
   if (!isSignedIn) {
     return (
       <div className="absolute top-4 right-4 flex items-center space-x-4 bg-white rounded-lg shadow-md px-4 py-2">
@@ -33,7 +39,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userName, onSignIn, onSignOut }
         {userName && <>Welcome, <span className="font-medium text-gray-800">{userName}</span></>}
       </div>
       <button
-        onClick={onSignOut}
+        onClick={handleSignOut}
         className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
       >
         Sign Out
