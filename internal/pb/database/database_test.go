@@ -1,7 +1,6 @@
 package database
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -9,6 +8,14 @@ import (
 )
 
 func TestNewDatabaseConfig(t *testing.T) {
+	// Isolate from ambient DB_* env so defaults are deterministic
+	t.Setenv("DB_HOST", "")
+	t.Setenv("DB_PORT", "")
+	t.Setenv("DB_USERNAME", "")
+	t.Setenv("DB_PASSWORD", "")
+	t.Setenv("DB_NAME", "")
+	t.Setenv("DB_SSLMODE", "")
+
 	config := NewDatabaseConfig()
 	assert.NotNil(t, config)
 	assert.Equal(t, "localhost", config.Host)
@@ -24,21 +31,12 @@ func TestNewDatabaseConfig(t *testing.T) {
 }
 
 func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
-	os.Setenv("DB_HOST", "test-host")
-	os.Setenv("DB_PORT", "5434")
-	os.Setenv("DB_USERNAME", "test-user")
-	os.Setenv("DB_PASSWORD", "test-pass")
-	os.Setenv("DB_NAME", "test-db")
-	os.Setenv("DB_SSLMODE", "disable")
-
-	t.Cleanup(func() {
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_USERNAME")
-		os.Unsetenv("DB_PASSWORD")
-		os.Unsetenv("DB_NAME")
-		os.Unsetenv("DB_SSLMODE")
-	})
+	t.Setenv("DB_HOST", "test-host")
+	t.Setenv("DB_PORT", "5434")
+	t.Setenv("DB_USERNAME", "test-user")
+	t.Setenv("DB_PASSWORD", "test-pass")
+	t.Setenv("DB_NAME", "test-db")
+	t.Setenv("DB_SSLMODE", "disable")
 
 	config := NewDatabaseConfig()
 	assert.Equal(t, "test-host", config.Host)
@@ -52,8 +50,7 @@ func TestNewDatabaseConfig_WithEnvVars(t *testing.T) {
 func TestGetEnvOrDefault(t *testing.T) {
 	t.Run("Returns env var when set", func(t *testing.T) {
 		key := "TEST_ENV_VAR_12345"
-		os.Setenv(key, "test-value")
-		defer os.Unsetenv(key)
+		t.Setenv(key, "test-value")
 
 		result := getEnvOrDefault(key, "default")
 		assert.Equal(t, "test-value", result)
@@ -61,7 +58,7 @@ func TestGetEnvOrDefault(t *testing.T) {
 
 	t.Run("Returns default when not set", func(t *testing.T) {
 		key := "TEST_ENV_VAR_NONEXISTENT_12345"
-		os.Unsetenv(key)
+		t.Setenv(key, "")
 
 		result := getEnvOrDefault(key, "default-value")
 		assert.Equal(t, "default-value", result)
@@ -69,8 +66,7 @@ func TestGetEnvOrDefault(t *testing.T) {
 
 	t.Run("Returns default when empty string", func(t *testing.T) {
 		key := "TEST_ENV_VAR_EMPTY_12345"
-		os.Setenv(key, "")
-		defer os.Unsetenv(key)
+		t.Setenv(key, "")
 
 		result := getEnvOrDefault(key, "default")
 		assert.Equal(t, "default", result)

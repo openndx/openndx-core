@@ -132,8 +132,8 @@ func TestJWTAuthMiddleware_KeyUpdateAtomicity(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 1000; j++ {
 				middleware.keysMutex.RLock()
-				hasInitialKey := middleware.keys["initial-key"] != nil
-				hasNewKey := middleware.keys["new-key"] != nil
+				_, hasInitialKey := middleware.keys["initial-key"]
+				_, hasNewKey := middleware.keys["new-key"]
 				lastFetch := middleware.lastFetch
 				middleware.keysMutex.RUnlock()
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -25,9 +26,10 @@ func TestBaseModel_BeforeCreate(t *testing.T) {
 			Name string
 		}
 
-		// Auto-migrate
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record
 		model := TestModel{
@@ -60,8 +62,10 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 			Name string
 		}
 
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		require.NoError(t, db.AutoMigrate(&TestModel{}))
+		t.Cleanup(func() {
+			require.NoError(t, db.Migrator().DropTable(&TestModel{}))
+		})
 
 		// Create a record - timestamps will be set by BeforeCreate hook
 		model := TestModel{
@@ -70,12 +74,11 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		}
 		err = db.Create(&model).Error
 		assert.NoError(t, err)
-		originalUpdatedAt := model.UpdatedAt
 
-		// Update the record - BeforeUpdate hook should update UpdatedAt
-		explicitLaterTime := originalUpdatedAt.Add(1 * time.Second)
+		// Plant a stale UpdatedAt. BeforeUpdate must overwrite it with time.Now();
+		// if the hook does not run, this ancient value would persist and fail below.
 		model.Name = "Updated"
-		model.UpdatedAt = explicitLaterTime
+		model.UpdatedAt = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 		err = db.Save(&model).Error
 		assert.NoError(t, err)
 
@@ -84,8 +87,8 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 		err = db.First(&updatedModel, "id = ?", model.ID).Error
 		assert.NoError(t, err)
 
-		// Verify UpdatedAt was changed by BeforeUpdate hook
-		// Note: BeforeUpdate sets UpdatedAt to time.Now(), so it should be >= our explicit time
-		assert.True(t, updatedModel.UpdatedAt.After(originalUpdatedAt) || updatedModel.UpdatedAt.Equal(explicitLaterTime))
+		assert.WithinDuration(t, time.Now(), updatedModel.UpdatedAt, 5*time.Second)
+		assert.True(t, updatedModel.UpdatedAt.After(time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC)),
+			"planted year-2000 UpdatedAt must be overwritten by BeforeUpdate")
 	})
 }

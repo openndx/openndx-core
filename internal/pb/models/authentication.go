@@ -239,9 +239,10 @@ func NewAuthenticatedUser(claims *UserClaims) (*AuthenticatedUser, error) {
 		}
 	}
 
-	// Log security-relevant event when invalid roles are filtered
+	// Log security-relevant event when invalid roles are filtered.
+	// Avoid logging end-user identifiers or raw role strings.
 	if len(invalidRoles) > 0 {
-		slog.Warn("Invalid roles filtered from JWT claims", "user", claims.IdpUserID, "invalid_roles", invalidRoles)
+		slog.Warn("Invalid roles filtered from JWT claims", "invalid_role_count", len(invalidRoles))
 	}
 
 	// If no valid roles found, deny access for security
