@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/auth"
+	"github.com/openndx/openndx-core/internal/pb/auth/authtest"
+	"github.com/openndx/openndx-core/internal/pb/idp/idptest"
 	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/openndx/openndx-core/internal/pb/policy"
 	"github.com/openndx/openndx-core/internal/pb/services"
@@ -118,7 +120,7 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 	t.Cleanup(server.Close)
 
 	pdpService := policy.NewClient(server.URL)
-	mockIDP := new(MockIdentityProviderAPI)
+	mockIDP := &idptest.Mock{}
 	handler := &V1Handler{
 		memberService:      services.NewMemberService(db, mockIDP),
 		schemaService:      services.NewSchemaService(db, pdpService),
@@ -131,8 +133,8 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 // makeMemberOwner reassigns the schema to a new member and returns that member's
 // test user. A fresh user is created per test because AuthenticatedUser caches
 // its member ID, which would otherwise leak between test databases.
-func (e *policyMetadataTestEnv) makeMemberOwner(t *testing.T) TestUser {
-	owner := CreateCustomTestUser(fmt.Sprintf("owner-%d", time.Now().UnixNano()), "owner@test.com", []auth.Role{auth.RoleMember})
+func (e *policyMetadataTestEnv) makeMemberOwner(t *testing.T) authtest.TestUser {
+	owner := authtest.CreateCustomTestUser(fmt.Sprintf("owner-%d", time.Now().UnixNano()), "owner@test.com", []auth.Role{auth.RoleMember})
 	member := models.Member{
 		MemberID:    "mem_owner_" + fmt.Sprintf("%d", time.Now().UnixNano()),
 		Name:        "Owner Member",
@@ -170,7 +172,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 	t.Run("Admin lists policy metadata of a schema", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodGet, env.url(""), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodGet, env.url(""), nil))
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		var response struct {
@@ -188,7 +190,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 		owner := env.makeMemberOwner(t)
 
-		w := env.serve(NewAuthenticatedRequest(http.MethodGet, env.url(""), nil, owner))
+		w := env.serve(authtest.NewAuthenticatedRequest(http.MethodGet, env.url(""), nil, owner))
 
 		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	})
@@ -199,7 +201,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 		otherMemberID := createTestMember(t, env.db, fmt.Sprintf("other-%d@example.com", time.Now().UnixNano()))
 		otherSchemaID := createTestSchema(t, env.db, otherMemberID)
 
-		w := env.serve(NewAuthenticatedRequest(http.MethodGet, fmt.Sprintf("/api/v1/schemas/%s/policy-metadata", otherSchemaID), nil, owner))
+		w := env.serve(authtest.NewAuthenticatedRequest(http.MethodGet, fmt.Sprintf("/api/v1/schemas/%s/policy-metadata", otherSchemaID), nil, owner))
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -208,7 +210,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 	t.Run("Unauthenticated request is rejected", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewUnauthenticatedRequest(http.MethodGet, env.url(""), nil))
+		w := env.serve(authtest.NewUnauthenticatedRequest(http.MethodGet, env.url(""), nil))
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
@@ -216,7 +218,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 	t.Run("Unknown schema returns not found", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodGet, "/api/v1/schemas/sch_missing/policy-metadata", nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodGet, "/api/v1/schemas/sch_missing/policy-metadata", nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -225,7 +227,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 	t.Run("Method not allowed on collection", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodPost, env.url(""), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPost, env.url(""), nil))
 
 		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 	})
@@ -237,7 +239,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 		owner := env.makeMemberOwner(t)
 
 		body := `{"displayName":"Patched","description":null}`
-		w := env.serve(NewAuthenticatedRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(body), owner))
+		w := env.serve(authtest.NewAuthenticatedRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(body), owner))
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		var response policy.PolicyMetadataResponse
@@ -254,7 +256,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("Record from another schema is not found and not forwarded", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodPatch, env.url("/pm-other"), strings.NewReader(`{"displayName":"x"}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPatch, env.url("/pm-other"), strings.NewReader(`{"displayName":"x"}`)))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, env.pdp.writeCalls())
@@ -263,7 +265,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("Empty body is rejected", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{}`)))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -272,7 +274,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("Unknown field is rejected", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"fieldName":"x"}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"fieldName":"x"}`)))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -283,7 +285,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 		env.pdp.writeStatus = http.StatusBadRequest
 		env.pdp.writeBody = `{"error":"accessControlType must be public or restricted"}`
 
-		w := env.serve(NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"accessControlType":"secret"}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"accessControlType":"secret"}`)))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "accessControlType must be public or restricted")
@@ -294,7 +296,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 		env.pdp.writeStatus = http.StatusInternalServerError
 		env.pdp.writeBody = `{"error":"internal server error"}`
 
-		w := env.serve(NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"displayName":"x"}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"displayName":"x"}`)))
 
 		assert.Equal(t, http.StatusBadGateway, w.Code)
 	})
@@ -302,7 +304,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("System user cannot patch", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewSystemRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"displayName":"x"}`)))
+		w := env.serve(authtest.NewSystemRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"displayName":"x"}`)))
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -314,7 +316,7 @@ func TestSchemaPolicyMetadataEndpoints_Delete(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 		owner := env.makeMemberOwner(t)
 
-		w := env.serve(NewAuthenticatedRequest(http.MethodDelete, env.url("/pm-1"), nil, owner))
+		w := env.serve(authtest.NewAuthenticatedRequest(http.MethodDelete, env.url("/pm-1"), nil, owner))
 
 		require.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
 		calls := env.pdp.writeCalls()
@@ -326,7 +328,7 @@ func TestSchemaPolicyMetadataEndpoints_Delete(t *testing.T) {
 	t.Run("Member cannot delete from another member's schema", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewMemberRequest(http.MethodDelete, env.url("/pm-1"), nil))
+		w := env.serve(authtest.NewMemberRequest(http.MethodDelete, env.url("/pm-1"), nil))
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
 		assert.Empty(t, env.pdp.calls)
@@ -335,7 +337,7 @@ func TestSchemaPolicyMetadataEndpoints_Delete(t *testing.T) {
 	t.Run("Record from another schema is not found and not forwarded", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodDelete, env.url("/pm-other"), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodDelete, env.url("/pm-other"), nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, env.pdp.writeCalls())
@@ -344,7 +346,7 @@ func TestSchemaPolicyMetadataEndpoints_Delete(t *testing.T) {
 	t.Run("Method not allowed on record", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodPut, env.url("/pm-1"), bytes.NewBufferString(`{}`)))
+		w := env.serve(authtest.NewAdminRequest(http.MethodPut, env.url("/pm-1"), bytes.NewBufferString(`{}`)))
 
 		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 	})
@@ -355,7 +357,7 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 		owner := env.makeMemberOwner(t)
 
-		w := env.serve(NewAuthenticatedRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-1"), nil, owner))
+		w := env.serve(authtest.NewAuthenticatedRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-1"), nil, owner))
 
 		require.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
 		calls := env.pdp.writeCalls()
@@ -369,7 +371,7 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 		env.pdp.writeStatus = http.StatusNotFound
 		env.pdp.writeBody = `{"error":"allow-list entry not found: client-2"}`
 
-		w := env.serve(NewAdminRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-2"), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-2"), nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Contains(t, w.Body.String(), "allow-list entry not found")
@@ -378,7 +380,7 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 	t.Run("Record from another schema is not found and not forwarded", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodDelete, env.url("/pm-other/allowlist/client-1"), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodDelete, env.url("/pm-other/allowlist/client-1"), nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, env.pdp.writeCalls())
@@ -387,7 +389,7 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 	t.Run("Method not allowed on allow-list entry", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodGet, env.url("/pm-1/allowlist/client-1"), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodGet, env.url("/pm-1/allowlist/client-1"), nil))
 
 		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 	})
@@ -395,7 +397,7 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 	t.Run("Unknown sub-path returns not found", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 
-		w := env.serve(NewAdminRequest(http.MethodDelete, env.url("/pm-1/other/client-1"), nil))
+		w := env.serve(authtest.NewAdminRequest(http.MethodDelete, env.url("/pm-1/other/client-1"), nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
@@ -405,10 +407,10 @@ func TestSchemaPolicyMetadataEndpoints_PDPUnreachable(t *testing.T) {
 	db := setupSQLiteTestDB(t)
 	memberID := createTestMember(t, db, fmt.Sprintf("policy-unreachable-%d@example.com", time.Now().UnixNano()))
 	schemaID := createTestSchema(t, db, memberID)
-	handler := NewTestV1HandlerWithMockPDP(t, db)
+	handler := NewTestV1HandlerWithMockPDP(t, db, &idptest.Mock{})
 
 	w := httptest.NewRecorder()
-	newPolicyMetadataMux(handler).ServeHTTP(w, NewAdminRequest(http.MethodGet, fmt.Sprintf("/api/v1/schemas/%s/policy-metadata", schemaID), nil))
+	newPolicyMetadataMux(handler).ServeHTTP(w, authtest.NewAdminRequest(http.MethodGet, fmt.Sprintf("/api/v1/schemas/%s/policy-metadata", schemaID), nil))
 
 	assert.Equal(t, http.StatusBadGateway, w.Code)
 }

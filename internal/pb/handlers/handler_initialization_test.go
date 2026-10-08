@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/openndx/openndx-core/internal/pb/auth"
+	"github.com/openndx/openndx-core/internal/pb/idp/idptest"
 	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/openndx/openndx-core/internal/pb/services"
 	"github.com/stretchr/testify/assert"
@@ -103,10 +104,8 @@ func TestNewV1Handler_MissingEnvVars(t *testing.T) {
 func TestGetUserMemberID_Caching(t *testing.T) {
 	testHandler := NewTestV1Handler(t)
 
-	// Setup mock IDP
-	mockIDPStore = new(MockIdentityProviderAPI)
-	// Re-create member service with this mock
-	testHandler.handler.memberService = services.NewMemberService(testHandler.db, mockIDPStore)
+	// Re-create member service with a fresh mock IDP
+	testHandler.handler.memberService = services.NewMemberService(testHandler.db, &idptest.Mock{})
 
 	// Create a user
 	user := &auth.AuthenticatedUser{

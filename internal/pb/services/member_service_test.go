@@ -9,125 +9,12 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/openndx/openndx-core/internal/pb/idp"
+	"github.com/openndx/openndx-core/internal/pb/idp/idptest"
 	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-// MockIDP is a fake identity provider for testing
-type MockIDP struct {
-	CreateUserFunc                  func(ctx context.Context, user *idp.User) (*idp.UserInfo, error)
-	UpdateUserFunc                  func(ctx context.Context, userID string, user *idp.User) (*idp.UserInfo, error)
-	DeleteUserFunc                  func(ctx context.Context, userID string) error
-	AddMemberToGroupByGroupNameFunc func(ctx context.Context, groupName string, member *idp.GroupMember) (*string, error)
-	RemoveMemberFromGroupFunc       func(ctx context.Context, groupID string, userID string) error
-	// Missing methods from interface
-	GetUserFunc            func(ctx context.Context, userID string) (*idp.UserInfo, error)
-	GetGroupFunc           func(ctx context.Context, groupID string) (*idp.GroupInfo, error)
-	GetGroupByNameFunc     func(ctx context.Context, groupName string) (*string, error)
-	CreateGroupFunc        func(ctx context.Context, group *idp.Group) (*idp.GroupInfo, error)
-	UpdateGroupFunc        func(ctx context.Context, groupID string, group *idp.Group) (*idp.GroupInfo, error)
-	AddMemberToGroupFunc   func(ctx context.Context, groupID string, memberInfo *idp.GroupMember) error
-	CreateApplicationFunc  func(ctx context.Context, app *idp.Application) (*string, error)
-	DeleteApplicationFunc  func(ctx context.Context, applicationID string) error
-	DeleteGroupFunc        func(ctx context.Context, groupID string) error
-	GetApplicationInfoFunc func(ctx context.Context, applicationID string) (*idp.ApplicationInfo, error)
-	GetApplicationOIDCFunc func(ctx context.Context, applicationID string) (*idp.ApplicationOIDCInfo, error)
-}
-
-func (m *MockIDP) CreateUser(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
-	if m.CreateUserFunc != nil {
-		return m.CreateUserFunc(ctx, user)
-	}
-	return &idp.UserInfo{Id: "idp_123", Email: user.Email}, nil
-}
-
-func (m *MockIDP) UpdateUser(ctx context.Context, userID string, user *idp.User) (*idp.UserInfo, error) {
-	if m.UpdateUserFunc != nil {
-		return m.UpdateUserFunc(ctx, userID, user)
-	}
-	return &idp.UserInfo{Id: userID, Email: user.Email}, nil
-}
-
-func (m *MockIDP) DeleteUser(ctx context.Context, userID string) error {
-	if m.DeleteUserFunc != nil {
-		return m.DeleteUserFunc(ctx, userID)
-	}
-	return nil
-}
-
-func (m *MockIDP) AddMemberToGroupByGroupName(ctx context.Context, groupName string, member *idp.GroupMember) (*string, error) {
-	if m.AddMemberToGroupByGroupNameFunc != nil {
-		return m.AddMemberToGroupByGroupNameFunc(ctx, groupName, member)
-	}
-	groupID := "group_123"
-	return &groupID, nil
-}
-
-func (m *MockIDP) RemoveMemberFromGroup(ctx context.Context, groupID string, userID string) error {
-	if m.RemoveMemberFromGroupFunc != nil {
-		return m.RemoveMemberFromGroupFunc(ctx, groupID, userID)
-	}
-	return nil
-}
-
-// Implement other interface methods with stubs
-func (m *MockIDP) GetUser(ctx context.Context, userID string) (*idp.UserInfo, error) { return nil, nil }
-
-func (m *MockIDP) GetGroup(ctx context.Context, groupID string) (*idp.GroupInfo, error) {
-	return nil, nil
-}
-
-func (m *MockIDP) GetGroupByName(ctx context.Context, groupName string) (*string, error) {
-	return nil, nil
-}
-
-func (m *MockIDP) CreateGroup(ctx context.Context, group *idp.Group) (*idp.GroupInfo, error) {
-	return nil, nil
-}
-
-func (m *MockIDP) UpdateGroup(ctx context.Context, groupID string, group *idp.Group) (*idp.GroupInfo, error) {
-	return nil, nil
-}
-
-func (m *MockIDP) AddMemberToGroup(ctx context.Context, groupID string, memberInfo *idp.GroupMember) error {
-	return nil
-}
-
-func (m *MockIDP) CreateApplication(ctx context.Context, app *idp.Application) (*string, error) {
-	if m.CreateApplicationFunc != nil {
-		return m.CreateApplicationFunc(ctx, app)
-	}
-	appID := "mock-idp-app-id"
-	return &appID, nil
-}
-
-func (m *MockIDP) DeleteApplication(ctx context.Context, applicationID string) error {
-	if m.DeleteApplicationFunc != nil {
-		return m.DeleteApplicationFunc(ctx, applicationID)
-	}
-	return nil
-}
-
-func (m *MockIDP) DeleteGroup(ctx context.Context, groupID string) error { return nil }
-
-func (m *MockIDP) GetApplicationInfo(ctx context.Context, applicationID string) (*idp.ApplicationInfo, error) {
-	if m.GetApplicationInfoFunc != nil {
-		return m.GetApplicationInfoFunc(ctx, applicationID)
-	}
-	return nil, nil
-}
-
-func (m *MockIDP) GetApplicationOIDC(ctx context.Context, applicationID string) (*idp.ApplicationOIDCInfo, error) {
-	if m.GetApplicationOIDCFunc != nil {
-		return m.GetApplicationOIDCFunc(ctx, applicationID)
-	}
-	return &idp.ApplicationOIDCInfo{
-		ClientId:     "mock-client-id",
-		ClientSecret: "mock-client-secret",
-	}, nil
-}
 
 // setupMemberMockDB creates a mock database for testing
 func setupMemberMockDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock, func()) {
@@ -164,7 +51,7 @@ func TestCreateMember_Success(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			return &idp.UserInfo{
 				Id:          "idp_123",
@@ -212,7 +99,7 @@ func TestCreateMember_ExternallyProvisioned_Success_SkipsIdpCreation(t *testing.
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		// These must never be called for an externally provisioned member.
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			t.Fatal("CreateUser should not be called for an externally provisioned member")
@@ -254,7 +141,7 @@ func TestCreateMember_ExternallyProvisioned_EmptyIdpUserID(t *testing.T) {
 	db, _, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	service := NewMemberService(db, &MockIDP{})
+	service := NewMemberService(db, &idptest.Mock{})
 	ctx := context.Background()
 
 	empty := ""
@@ -276,7 +163,7 @@ func TestCreateMember_ExternallyProvisioned_DatabaseError_NoIdpRollback(t *testi
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		DeleteUserFunc: func(ctx context.Context, userID string) error {
 			t.Fatal("DeleteUser should not be called for an externally provisioned member")
 			return nil
@@ -314,7 +201,7 @@ func TestCreateMember_IDPCreateUserError(t *testing.T) {
 	db, _, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			return nil, errors.New("IDP service unavailable")
 		},
@@ -343,7 +230,7 @@ func TestCreateMember_EmailMismatch_WithRollback(t *testing.T) {
 	db, _, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			// Return user with different email (simulating mismatch)
 			return &idp.UserInfo{
@@ -381,7 +268,7 @@ func TestCreateMember_GroupAssignmentError_WithRollback(t *testing.T) {
 	db, _, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			return &idp.UserInfo{
 				Id:          "idp_123",
@@ -421,7 +308,7 @@ func TestCreateMember_DatabaseError_WithRollback(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		CreateUserFunc: func(ctx context.Context, user *idp.User) (*idp.UserInfo, error) {
 			return &idp.UserInfo{
 				Id:          "idp_123",
@@ -470,7 +357,7 @@ func TestUpdateMember_Success(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		UpdateUserFunc: func(ctx context.Context, userID string, user *idp.User) (*idp.UserInfo, error) {
 			return &idp.UserInfo{
 				Id:          userID,
@@ -526,7 +413,7 @@ func TestUpdateMember_NotFound(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	service := NewMemberService(db, &MockIDP{})
+	service := NewMemberService(db, &idptest.Mock{})
 	ctx := context.Background()
 
 	memberID := "mem_nonexistent"
@@ -555,7 +442,7 @@ func TestUpdateMember_IDPUpdateError_NoRollback(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	mockIDP := &MockIDP{
+	mockIDP := &idptest.Mock{
 		UpdateUserFunc: func(ctx context.Context, userID string, user *idp.User) (*idp.UserInfo, error) {
 			return nil, errors.New("IDP update failed")
 		},
@@ -594,7 +481,7 @@ func TestGetMember_Success(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	service := NewMemberService(db, &MockIDP{})
+	service := NewMemberService(db, &idptest.Mock{})
 	ctx := context.Background()
 
 	memberID := "mem_123"
@@ -629,7 +516,7 @@ func TestGetAllMembers_NoFilter(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	service := NewMemberService(db, &MockIDP{})
+	service := NewMemberService(db, &idptest.Mock{})
 	ctx := context.Background()
 
 	now := time.Now()
@@ -658,7 +545,7 @@ func TestGetAllMembers_WithEmailFilter(t *testing.T) {
 	db, mock, cleanup := setupMemberMockDB(t)
 	defer cleanup()
 
-	service := NewMemberService(db, &MockIDP{})
+	service := NewMemberService(db, &idptest.Mock{})
 	ctx := context.Background()
 
 	email := "john@example.com"

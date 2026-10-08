@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/openndx/openndx-core/internal/pb/database/dbtest"
 	"github.com/openndx/openndx-core/internal/pb/idp"
+	"github.com/openndx/openndx-core/internal/pb/idp/idptest"
 	"github.com/openndx/openndx-core/internal/pb/kernel"
 	"github.com/openndx/openndx-core/internal/pb/models"
 	"github.com/openndx/openndx-core/internal/pb/policy"
@@ -21,7 +23,7 @@ import (
 
 func TestApplicationService_CreateApplication(t *testing.T) {
 	t.Run("CreateApplication_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		// Mock PDP, capturing the allow-list request body so we can assert the key.
@@ -42,7 +44,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		desc := "Test Description"
@@ -84,7 +86,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 	})
 
 	t.Run("CreateApplication_PDPFailure_Compensation", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		// Mock PDP failure
@@ -100,7 +102,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		desc := "Test Description"
@@ -136,7 +138,7 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 
 func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T) {
 	t.Run("Success_SkipsIdpCreation", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		var capturedAllowList policy.AllowListUpdateRequest
@@ -156,7 +158,7 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{
+		mockIDP := &idptest.Mock{
 			// These must never be called for an externally provisioned application.
 			CreateApplicationFunc: func(ctx context.Context, app *idp.Application) (*string, error) {
 				t.Fatal("CreateApplication should not be called for an externally provisioned application")
@@ -200,11 +202,11 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 	})
 
 	t.Run("Error_OnlyOneIDProvided", func(t *testing.T) {
-		db, _, cleanup := SetupMockDB(t)
+		db, _, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		idpAppID := "thunder-app-01900000-0000-7000-8000-0000000000c0"
@@ -226,11 +228,11 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 	})
 
 	t.Run("Error_EmptyValues", func(t *testing.T) {
-		db, _, cleanup := SetupMockDB(t)
+		db, _, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		empty := ""
@@ -253,7 +255,7 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 	})
 
 	t.Run("PDPFailure_DoesNotAttemptIdpDeletion", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		mockTransport := &MockRoundTripper{
@@ -268,7 +270,7 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{
+		mockIDP := &idptest.Mock{
 			DeleteApplicationFunc: func(ctx context.Context, applicationID string) error {
 				t.Fatal("DeleteApplication should not be called for an externally provisioned application")
 				return nil
@@ -306,11 +308,11 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 
 func TestApplicationService_UpdateApplication(t *testing.T) {
 	t.Run("UpdateApplication_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -345,11 +347,11 @@ func TestApplicationService_UpdateApplication(t *testing.T) {
 	})
 
 	t.Run("UpdateApplication_NotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations - return no rows
@@ -373,7 +375,7 @@ func TestApplicationService_UpdateApplication(t *testing.T) {
 
 func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 	t.Run("UpdateApplicationPolicy_Success_DefaultGrantDuration", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		var capturedAllowList policy.AllowListUpdateRequest
@@ -393,7 +395,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		clientID := "idp-client-123"
@@ -427,7 +429,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationPolicy_Success_ExplicitGrantDuration", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		var capturedAllowList policy.AllowListUpdateRequest
@@ -447,7 +449,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		clientID := "idp-client-123"
@@ -476,11 +478,11 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationPolicy_NotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		mock.ExpectQuery(`SELECT .*`).
@@ -502,11 +504,11 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationPolicy_NilIdpClientID", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// idp_client_id column omitted -> IdpClientID stays nil
@@ -530,7 +532,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationPolicy_PDPFailure_NoDBWrite", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		mockTransport := &MockRoundTripper{
@@ -545,7 +547,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		clientID := "idp-client-123"
@@ -572,11 +574,11 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 
 func TestApplicationService_GetApplication(t *testing.T) {
 	t.Run("GetApplication_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -603,11 +605,11 @@ func TestApplicationService_GetApplication(t *testing.T) {
 	})
 
 	t.Run("GetApplication_NotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -626,11 +628,11 @@ func TestApplicationService_GetApplication(t *testing.T) {
 
 func TestApplicationService_GetApplications(t *testing.T) {
 	t.Run("GetApplications_NoFilter", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -657,11 +659,11 @@ func TestApplicationService_GetApplications(t *testing.T) {
 	})
 
 	t.Run("GetApplications_WithMemberIDFilter", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		memberID := "member-123"
@@ -690,11 +692,11 @@ func TestApplicationService_GetApplications(t *testing.T) {
 
 func TestApplicationService_CreateApplicationSubmission(t *testing.T) {
 	t.Run("CreateApplicationSubmission_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -729,11 +731,11 @@ func TestApplicationService_CreateApplicationSubmission(t *testing.T) {
 	})
 
 	t.Run("CreateApplicationSubmission_MemberNotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -762,11 +764,11 @@ func TestApplicationService_CreateApplicationSubmission(t *testing.T) {
 
 func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 	t.Run("UpdateApplicationSubmission_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -796,11 +798,11 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationSubmission_NotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -819,7 +821,7 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 	})
 
 	t.Run("UpdateApplicationSubmission_ApprovalWithApplicationCreationFailure", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		// Mock PDP failure
@@ -835,7 +837,7 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 		pdpService := policy.NewClient("http://mock-pdp")
 		pdpService.HTTPClient = &http.Client{Transport: mockTransport}
 
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -877,11 +879,11 @@ func TestApplicationService_UpdateApplicationSubmission(t *testing.T) {
 
 func TestApplicationService_GetApplicationSubmission(t *testing.T) {
 	t.Run("GetApplicationSubmission_Success", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -912,11 +914,11 @@ func TestApplicationService_GetApplicationSubmission(t *testing.T) {
 	})
 
 	t.Run("GetApplicationSubmission_NotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -935,11 +937,11 @@ func TestApplicationService_GetApplicationSubmission(t *testing.T) {
 
 func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 	t.Run("GetApplicationSubmissions_NoFilter", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -963,11 +965,11 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 	})
 
 	t.Run("GetApplicationSubmissions_WithMemberIDFilter", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		memberID := "member-123"
@@ -993,11 +995,11 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 	})
 
 	t.Run("GetApplicationSubmissions_WithStatusFilter", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		statusFilter := []string{string(kernel.StatusApproved)}
@@ -1026,11 +1028,11 @@ func TestApplicationService_GetApplicationSubmissions(t *testing.T) {
 
 func TestApplicationService_CreateApplication_EdgeCases(t *testing.T) {
 	t.Run("CreateApplication_EmptySelectedFields", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		req := &models.CreateApplicationRequest{
@@ -1076,11 +1078,11 @@ func TestApplicationService_CreateApplication_EdgeCases(t *testing.T) {
 
 func TestApplicationService_UpdateApplication_EdgeCases(t *testing.T) {
 	t.Run("UpdateApplication_PartialUpdate", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -1117,11 +1119,11 @@ func TestApplicationService_UpdateApplication_EdgeCases(t *testing.T) {
 
 func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) {
 	t.Run("CreateApplicationSubmission_WithPreviousApplicationID", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -1161,11 +1163,11 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 	})
 
 	t.Run("CreateApplicationSubmission_InvalidPreviousApplicationID", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations
@@ -1193,11 +1195,11 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 
 func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 	t.Run("Success_ValidClientId", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		expectedAppID := "app-123"
@@ -1228,11 +1230,11 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 	})
 
 	t.Run("Error_ClientIdNotFound", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		clientID := "non-existent-client"
@@ -1254,11 +1256,11 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 	})
 
 	t.Run("Error_DatabaseError", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		clientID := "client-789"
@@ -1280,11 +1282,11 @@ func TestApplicationService_GetApplicationIdByIdpClientId(t *testing.T) {
 	})
 
 	t.Run("Error_EmptyClientId", func(t *testing.T) {
-		db, mock, cleanup := SetupMockDB(t)
+		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
 		pdpService := policy.NewClient("http://mock-pdp")
-		mockIDP := &MockIDP{}
+		mockIDP := &idptest.Mock{}
 		service := NewApplicationService(db, pdpService, mockIDP)
 
 		// Mock DB expectations

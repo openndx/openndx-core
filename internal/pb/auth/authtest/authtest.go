@@ -1,4 +1,6 @@
-package handlers
+// Package authtest provides authenticated test personas and request helpers
+// for Portal Backend handler tests. Import it only from _test.go files.
+package authtest
 
 import (
 	"fmt"
