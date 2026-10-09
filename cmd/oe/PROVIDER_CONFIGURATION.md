@@ -104,7 +104,7 @@ new provider, Registrar General Department of Farajaland (RGDF), as an example.
    ```graphql
    query PersonInfoQueryrgdf {
         getPersonInfo {
-            name
+            fullName
             birthRegistrationNumber
         }
    }
