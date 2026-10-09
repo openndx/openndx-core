@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -10,12 +11,12 @@ import (
 
 // SchemaService defines the behavior SchemaHandler depends on.
 type SchemaService interface {
-	CreateSchema(version, sdl, createdBy string) (*services.Schema, error)
-	GetAllSchemas() ([]services.Schema, error)
-	GetActiveSchema() (*services.Schema, error)
-	ActivateSchema(version string) error
+	CreateSchema(ctx context.Context, version, sdl, createdBy string) (*services.Schema, error)
+	GetAllSchemas(ctx context.Context) ([]services.Schema, error)
+	GetActiveSchema(ctx context.Context) (*services.Schema, error)
+	ActivateSchema(ctx context.Context, version string) error
 	ValidateSDL(sdl string) bool
-	CheckCompatibility(newSDL string) (bool, string)
+	CheckCompatibility(ctx context.Context, newSDL string) (bool, string)
 }
 
 // SchemaHandler handles HTTP requests for schema management
@@ -64,7 +65,7 @@ func (h *SchemaHandler) CreateSchema(w http.ResponseWriter, r *http.Request) {
 		req.Version = "1.0.0" // Default version
 	}
 
-	schema, err := h.schemaService.CreateSchema(req.Version, req.SDL, req.CreatedBy)
+	schema, err := h.schemaService.CreateSchema(r.Context(), req.Version, req.SDL, req.CreatedBy)
 	if err != nil {
 		logger.Log.Error("Failed to create schema", "error", err, "version", req.Version)
 		// Return generic error to avoid exposing internal details
@@ -83,7 +84,7 @@ func (h *SchemaHandler) GetSchemas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schemas, err := h.schemaService.GetAllSchemas()
+	schemas, err := h.schemaService.GetAllSchemas(r.Context())
 	if err != nil {
 		logger.Log.Error("Failed to get schemas", "error", err)
 		// Log detailed error but return generic message to client
@@ -103,7 +104,7 @@ func (h *SchemaHandler) GetActiveSchema(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	schema, err := h.schemaService.GetActiveSchema()
+	schema, err := h.schemaService.GetActiveSchema(r.Context())
 	if err != nil {
 		logger.Log.Error("Failed to get active schema", "error", err)
 		// Log detailed error but return generic message to client
@@ -131,7 +132,7 @@ func (h *SchemaHandler) ActivateSchema(w http.ResponseWriter, r *http.Request) {
 	// Extract version from URL path
 	version := r.PathValue("version")
 
-	err := h.schemaService.ActivateSchema(version)
+	err := h.schemaService.ActivateSchema(r.Context(), version)
 	if err != nil {
 		logger.Log.Error("Failed to activate schema", "error", err, "version", version)
 		// Return generic error to avoid exposing internal details
@@ -176,7 +177,7 @@ func (h *SchemaHandler) CheckCompatibility(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	compatible, reason := h.schemaService.CheckCompatibility(req.SDL)
+	compatible, reason := h.schemaService.CheckCompatibility(r.Context(), req.SDL)
 	response := map[string]interface{}{
 		"compatible": compatible,
 		"reason":     reason,
