@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/openndx/openndx-core/internal/monitoring"
 	"github.com/openndx/openndx-core/internal/pdp/config"
 	"github.com/openndx/openndx-core/internal/pdp/db"
 	"github.com/openndx/openndx-core/internal/pdp/handler"
@@ -89,6 +90,19 @@ func main() {
 	mux.HandleFunc("POST /api/v1/policy/update-allowlist", v1Handler.UpdateAllowList)
 	mux.HandleFunc("POST /api/v1/policy/decide", v1Handler.GetPolicyDecision)
 
+	monitoring.RegisterRoutes([]string{
+		"/health",
+		"/metrics",
+		"/debug",
+		"/debug/db",
+		"/api/v1/policy/metadata",
+		"/api/v1/policy/metadata/:id",
+		"/api/v1/policy/metadata/:id/allowlist/:id",
+		"/api/v1/policy/update-allowlist",
+		"/api/v1/policy/decide",
+	})
+	mux.Handle("GET /metrics", monitoring.Handler())
+
 	// Health check endpoint
 	mux.Handle("GET /health", utils.HealthHandler("policy-decision-point"))
 
@@ -169,11 +183,18 @@ func main() {
 		WriteTimeout: cfg.Service.Timeout,
 		IdleTimeout:  60 * time.Second,
 	}
-	server := utils.CreateServer(serverConfig, utils.PanicRecoveryMiddleware(mux))
+	// Metrics outermost so all requests are recorded.
+	server := utils.CreateServer(serverConfig, monitoring.HTTPMetricsMiddleware(utils.PanicRecoveryMiddleware(mux)))
 
 	// Start server with graceful shutdown
 	if err := utils.StartServerWithGracefulShutdown(server, "policy-decision-point"); err != nil {
 		slog.Error("Server failed", "error", err)
 		os.Exit(1)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := monitoring.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Metrics shutdown error", "error", err)
 	}
 }

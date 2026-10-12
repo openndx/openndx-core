@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/LSFLK/argus/pkg/audit"
+	"github.com/openndx/openndx-core/internal/monitoring"
 	"github.com/openndx/openndx-core/internal/pb/database"
 	"github.com/openndx/openndx-core/internal/pb/handlers"
 	"github.com/openndx/openndx-core/internal/pb/middleware"
@@ -281,6 +282,27 @@ func main() {
 	// DO NOT expose this service directly to public internet without proper network isolation.
 	topLevelMux.Handle("/internal/api/v1/", http.StripPrefix("", apiMux))
 
+	monitoring.RegisterRoutes([]string{
+		"/health",
+		"/metrics",
+		"/debug",
+		"/debug/db",
+		"/api/v1/members",
+		"/api/v1/members/:id",
+		"/api/v1/schemas",
+		"/api/v1/schemas/:id",
+		"/api/v1/schema-submissions",
+		"/api/v1/schema-submissions/:id",
+		"/api/v1/applications",
+		"/api/v1/applications/:id",
+		"/api/v1/applications/:id/policy",
+		"/api/v1/application-submissions",
+		"/api/v1/application-submissions/:id",
+		"/internal/api/v1/applications",
+		"/internal/api/v1/applications/:id",
+	})
+	topLevelMux.Handle("/metrics", monitoring.Handler())
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -290,7 +312,7 @@ func main() {
 	addr := ":" + port
 	server := &http.Server{
 		Addr:         addr,
-		Handler:      topLevelMux,
+		Handler:      monitoring.HTTPMetricsMiddleware(topLevelMux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -320,6 +342,12 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err)
 		os.Exit(1)
+	}
+
+	metricsCtx, metricsCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer metricsCancel()
+	if err := monitoring.Shutdown(metricsCtx); err != nil {
+		slog.Error("Metrics shutdown error", "error", err)
 	}
 
 	// Gracefully close database connection

@@ -154,6 +154,8 @@ services:
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-local}
       - PORT=8081
+      - SERVICE_NAME=consent-engine
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
       # Database configuration
       - DB_HOST=postgres
@@ -276,6 +278,8 @@ services:
       - "${PB_PORT:-8083}:8083"
     environment:
       - PORT=8083
+      - SERVICE_NAME=portal-backend
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
       - PDP_SERVICE_URL=http://policy-decision-point:8082
       # Database configuration

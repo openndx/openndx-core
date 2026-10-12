@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/openndx/openndx-core/internal/monitoring"
 	"github.com/openndx/openndx-core/internal/oe/auth"
 	"github.com/openndx/openndx-core/internal/oe/database"
 	"github.com/openndx/openndx-core/internal/oe/federator"
@@ -40,10 +41,10 @@ func RunServer(ctx context.Context, f *federator.Federator) {
 		port = ":" + port
 	}
 
-	// Create HTTP server with proper configuration
+	// Metrics outermost so all requests (including CORS preflight) are recorded.
 	srv := &http.Server{
 		Addr:    port,
-		Handler: corsMiddleware(mux),
+		Handler: monitoring.HTTPMetricsMiddleware(corsMiddleware(mux)),
 	}
 
 	// Channel to signal server errors
@@ -78,6 +79,12 @@ func RunServer(ctx context.Context, f *federator.Federator) {
 		} else {
 			logger.Log.Info("Server stopped gracefully")
 		}
+
+		metricsCtx, metricsCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer metricsCancel()
+		if err := monitoring.Shutdown(metricsCtx); err != nil {
+			logger.Log.Error("Metrics shutdown error", "error", err)
+		}
 	}
 }
 
@@ -108,6 +115,19 @@ func SetupRouter(f *federator.Federator) *http.ServeMux {
 
 	// Set the schema service in the federator
 	f.SchemaService = schemaService
+
+	monitoring.RegisterRoutes([]string{
+		"/health",
+		"/metrics",
+		"/sdl",
+		"/sdl/versions",
+		"/sdl/validate",
+		"/sdl/check-compatibility",
+		"/sdl/versions/:id/activate",
+		"/public/graphql",
+	})
+	mux.Handle("GET /metrics", monitoring.Handler())
+
 	// /health route
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		resp := Response{Message: "OpenNDX Server is Healthy!"}

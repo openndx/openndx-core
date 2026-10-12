@@ -343,18 +343,18 @@ Simply set the environment variables (see [Switching Observability Backends](#sw
 
 ### Service Instrumentation
 
-All services use **OpenTelemetry** for metrics collection:
+All core Go services use the shared OpenTelemetry package at `internal/monitoring`:
 
-**Portal Backend** (`portal-backend/v1/middleware/otel_metrics.go`):
-- OpenTelemetry metrics middleware wraps `/api/v1/` routes
-- Records: `http_request_duration_seconds`, `http_requests_total`
-- Attributes: `http.method`, `http.route`, `http.status_code`
+| Service | Wiring |
+|---------|--------|
+| Consent Engine | `cmd/ce` — `/metrics` + `HTTPMetricsMiddleware` |
+| Orchestration Engine | `internal/oe/server` — `/metrics` + `HTTPMetricsMiddleware` |
+| Policy Decision Point | `cmd/pdp` — `/metrics` + `HTTPMetricsMiddleware` |
+| Portal Backend | `cmd/pb` — `/metrics` + `HTTPMetricsMiddleware` |
 
-**Exchange Services** (`../internal/monitoring/otel_metrics.go`):
-- Shared OpenTelemetry monitoring package with `HTTPMetricsMiddleware()`
 - Records: `http_requests_total`, `http_request_duration_seconds`
-- Additional metrics: `external_calls_total`, `business_events_total`
-- Attributes: `http.method`, `http.route` (normalized), `http.status_code`
+- Additional metrics: `external_calls_total`, `business_events_total` (call sites still optional)
+- HTTP attributes (OTel semconv → Prometheus labels): `http_request_method`, `http_route`, `http_response_status_code`
 
 **Default Exporter:** Prometheus (for local dev). Configure via `OTEL_METRICS_EXPORTER` env var.
 
@@ -363,17 +363,15 @@ All services use **OpenTelemetry** for metrics collection:
 Each instrumented service exposes a `/metrics` endpoint:
 
 ```go
-// Portal Backend
-topLevelMux.Handle("/metrics", v1middleware.MetricsHandler())
-
-// Exchange Services
 mux.Handle("/metrics", monitoring.Handler())
+// or: mux.Handle("GET /metrics", monitoring.Handler())
+handler := monitoring.HTTPMetricsMiddleware(inner)
 ```
 
 The endpoint returns metrics in **Prometheus text format** (when using Prometheus exporter):
 ```
-http_requests_total{http_method="GET",http_route="/api/v1/members",http_status_code="200"} 42
-http_request_duration_seconds_bucket{http_method="GET",http_route="/api/v1/members",le="0.1"} 38
+http_requests_total{http_request_method="GET",http_route="/api/v1/members",http_response_status_code="200"} 42
+http_request_duration_seconds_bucket{http_request_method="GET",http_route="/api/v1/members",le="0.1"} 38
 ...
 ```
 
