@@ -36,8 +36,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total[5m])) by (method, route)",
-          "legendFormat": "{{method}} {{route}}",
+          "expr": "sum(rate(http_requests_ratio_total[5m])) by (http_request_method, http_route)",
+          "legendFormat": "{{http_request_method}} {{http_route}}",
           "refId": "A"
         }
       ],
@@ -61,8 +61,8 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (route, le))",
-          "legendFormat": "{{route}}",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (http_route, le))",
+          "legendFormat": "{{http_route}}",
           "refId": "A"
         }
       ],
@@ -85,8 +85,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(external_calls_total[5m])) by (external_target, external_operation)",
-          "legendFormat": "{{external_target}}/{{external_operation}}",
+          "expr": "sum(rate(external_calls_ratio_total[5m])) by (openndx_external_target, openndx_external_operation)",
+          "legendFormat": "{{openndx_external_target}}/{{openndx_external_operation}}",
           "refId": "A"
         }
       ],
@@ -109,8 +109,8 @@
       },
       "targets": [
         {
-          "expr": "100 * sum(rate(external_call_errors_total[5m])) by (external_target) / sum(rate(external_calls_total[5m])) by (external_target)",
-          "legendFormat": "{{external_target}} error %",
+          "expr": "100 * sum(rate(external_call_errors_ratio_total[5m])) by (openndx_external_target) / sum(rate(external_calls_ratio_total[5m])) by (openndx_external_target)",
+          "legendFormat": "{{openndx_external_target}} error %",
           "refId": "A"
         }
       ],
@@ -133,13 +133,13 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(business_events_total{business_outcome=\"success\"}[5m])) by (business_action)",
-          "legendFormat": "{{business_action}} success",
+          "expr": "sum(rate(business_events_ratio_total{openndx_business_outcome=\"success\"}[5m])) by (openndx_business_action)",
+          "legendFormat": "{{openndx_business_action}} success",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(business_events_total{business_outcome=\"failure\"}[5m])) by (business_action)",
-          "legendFormat": "{{business_action}} failure",
+          "expr": "sum(rate(business_events_ratio_total{openndx_business_outcome=\"failure\"}[5m])) by (openndx_business_action)",
+          "legendFormat": "{{openndx_business_action}} failure",
           "refId": "B"
         }
       ],
@@ -187,6 +187,5 @@
   "timepicker": {},
   "timezone": "",
   "title": "Go Services Metrics",
-  "version": 1
+  "version": 2
 }
-

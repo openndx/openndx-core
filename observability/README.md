@@ -178,37 +178,41 @@ services:
 
 ### HTTP Request Metrics
 
-| Metric                          | Type      | Labels                                    | Purpose                    |
-| ------------------------------- | --------- | ----------------------------------------- | -------------------------- |
-| `http_requests_total`           | Counter   | `http_method`, `http_route`, `http_status_code` | Request volume by endpoint |
-| `http_request_duration_seconds` | Histogram | `http_method`, `http_route`               | API latency percentiles    |
+Instrument names in code use `_total` / `_seconds`. The OTel Prometheus exporter
+rewrites unitless counters to `*_ratio_total` (e.g. `http_requests_total` →
+`http_requests_ratio_total`). Dashboards and PromQL below use the **exported** names.
+
+| Exported metric                 | Type      | Labels                                                         | Purpose                    |
+| ------------------------------- | --------- | -------------------------------------------------------------- | -------------------------- |
+| `http_requests_ratio_total`     | Counter   | `http_request_method`, `http_route`, `http_response_status_code` | Request volume by endpoint |
+| `http_request_duration_seconds` | Histogram | `http_request_method`, `http_route`                            | API latency percentiles    |
 
 **Label Definitions:**
-- `http_method`: HTTP method (GET, POST, PUT, DELETE, etc.)
+- `http_request_method`: HTTP method (GET, POST, PUT, DELETE, etc.)
 - `http_route`: Normalized route path (e.g., `/api/v1/members`, `/api/v1/policies`)
-- `http_status_code`: HTTP response status code (200, 404, 500, etc.)
+- `http_response_status_code`: HTTP response status code (200, 404, 500, etc.)
 
-### External Call Metrics (Exchange services)
+### External Call Metrics
 
-| Metric                            | Type      | Labels                                    | Purpose                    |
-| --------------------------------- | --------- | ----------------------------------------- | -------------------------- |
-| `external_calls_total`            | Counter   | `external_target`, `external_operation` | External call volume       |
-| `external_call_duration_seconds`   | Histogram | `external_target`, `external_operation`    | External call latency      |
-| `external_call_errors_total`       | Counter   | `external_target`, `external_operation`    | Failed external calls      |
-
-**Label Definitions:**
-- `external_target`: Target service or system (e.g., `postgres`, `redis`, `external-api`)
-- `external_operation`: Operation type (e.g., `query`, `insert`, `get`, `set`)
-
-### Business Event Metrics (Exchange services)
-
-| Metric                    | Type    | Labels                          | Purpose                |
-| ------------------------- | ------- | ------------------------------- | ---------------------- |
-| `business_events_total`   | Counter | `business_action`, `business_outcome` | Business KPI tracking |
+| Exported metric                    | Type      | Labels                                                      | Purpose               |
+| ---------------------------------- | --------- | ----------------------------------------------------------- | --------------------- |
+| `external_calls_ratio_total`       | Counter   | `openndx_external_target`, `openndx_external_operation`     | External call volume  |
+| `external_call_duration_seconds`   | Histogram | `openndx_external_target`, `openndx_external_operation`     | External call latency |
+| `external_call_errors_ratio_total` | Counter   | `openndx_external_target`, `openndx_external_operation`     | Failed external calls |
 
 **Label Definitions:**
-- `business_action`: Business action type (e.g., `consent_created`, `policy_evaluated`)
-- `business_outcome`: Outcome of the action (e.g., `success`, `failure`, `pending`)
+- `openndx_external_target`: Target service or system (e.g., `postgres`, `redis`, `external-api`)
+- `openndx_external_operation`: Operation type (e.g., `query`, `insert`, `get`, `set`)
+
+### Business Event Metrics
+
+| Exported metric               | Type    | Labels                                                    | Purpose               |
+| ----------------------------- | ------- | --------------------------------------------------------- | --------------------- |
+| `business_events_ratio_total` | Counter | `openndx_business_action`, `openndx_business_outcome`     | Business KPI tracking |
+
+**Label Definitions:**
+- `openndx_business_action`: Business action type (e.g., `consent_created`, `policy_evaluated`)
+- `openndx_business_outcome`: Outcome of the action (e.g., `success`, `failure`, `pending`)
 
 ### Go Runtime Metrics (Automatic)
 
@@ -224,7 +228,7 @@ The monitoring package automatically instruments Go runtime metrics:
 
 **Request Rate by Endpoint:**
 ```promql
-sum by (http_route, http_method) (rate(http_requests_total[5m]))
+sum by (http_route, http_request_method) (rate(http_requests_ratio_total[5m]))
 ```
 
 **95th Percentile Latency by Endpoint:**
@@ -234,7 +238,7 @@ histogram_quantile(0.95, sum by (http_route, le) (rate(http_request_duration_sec
 
 **Error Rate by Endpoint:**
 ```promql
-sum by (http_route) (rate(http_requests_total{http_status_code=~"5.."}[5m]))
+sum by (http_route) (rate(http_requests_ratio_total{http_response_status_code=~"5.."}[5m]))
 ```
 
 **Top 10 Slowest Endpoints:**
@@ -244,7 +248,7 @@ topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(http_request_dur
 
 **External Call Error Rate:**
 ```promql
-sum by (external_target, external_operation) (rate(external_call_errors_total[5m]))
+sum by (openndx_external_target, openndx_external_operation) (rate(external_call_errors_ratio_total[5m]))
 ```
 
 **Service Availability:**
@@ -352,7 +356,7 @@ All core Go services use the shared OpenTelemetry package at `internal/monitorin
 | Policy Decision Point | `cmd/pdp` — `/metrics` + `HTTPMetricsMiddleware` |
 | Portal Backend | `cmd/pb` — `/metrics` + `HTTPMetricsMiddleware` |
 
-- Records: `http_requests_total`, `http_request_duration_seconds`
+- Instruments: `http_requests_total`, `http_request_duration_seconds` (exported as `http_requests_ratio_total`, etc.)
 - Additional metrics: `external_calls_total`, `business_events_total` (call sites still optional)
 - HTTP attributes (OTel semconv → Prometheus labels): `http_request_method`, `http_route`, `http_response_status_code`
 
@@ -370,7 +374,7 @@ handler := monitoring.HTTPMetricsMiddleware(inner)
 
 The endpoint returns metrics in **Prometheus text format** (when using Prometheus exporter):
 ```
-http_requests_total{http_request_method="GET",http_route="/api/v1/members",http_response_status_code="200"} 42
+http_requests_ratio_total{http_request_method="GET",http_route="/api/v1/members",http_response_status_code="200"} 42
 http_request_duration_seconds_bucket{http_request_method="GET",http_route="/api/v1/members",le="0.1"} 38
 ...
 ```
@@ -396,7 +400,7 @@ Example scrape config:
 ### Metric Storage
 
 Prometheus stores scraped metrics in its Time-Series Database (TSDB):
-- **Format**: Time-series with labels (e.g., `http_requests_total{method="GET",route="/api/v1/members"}`)
+- **Format**: Time-series with labels (e.g., `http_requests_ratio_total{http_request_method="GET",http_route="/api/v1/members"}`)
 - **Retention**: 30 days (configurable)
 - **Query Language**: PromQL (Prometheus Query Language)
 
@@ -405,7 +409,7 @@ Prometheus stores scraped metrics in its Time-Series Database (TSDB):
 Grafana queries Prometheus via PromQL to create dashboards:
 
 - **Data Source**: Configured to connect to `http://prometheus:9090`
-- **Queries**: Written in PromQL (e.g., `rate(http_requests_total[5m])`)
+- **Queries**: Written in PromQL (e.g., `rate(http_requests_ratio_total[5m])`)
 - **Dashboards**: Pre-configured panels showing:
   - HTTP request rates
   - Latency percentiles (P95, P99)
