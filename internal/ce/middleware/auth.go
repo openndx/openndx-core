@@ -80,3 +80,9 @@ func GetOwnerSubjectFromContext(ctx context.Context) (string, bool) {
 	subject, ok := ctx.Value(ownerSubjectKey).(string)
 	return subject, ok
 }
+
+// WithOwnerSubject adds the owner's subject (UID) to the context.
+// Exported for tests that need to simulate an authenticated request.
+func WithOwnerSubject(ctx context.Context, subject string) context.Context {
+	return context.WithValue(ctx, ownerSubjectKey, subject)
+}
