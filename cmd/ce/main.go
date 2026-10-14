@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -129,5 +130,11 @@ func main() {
 	if err := utils.StartServerWithGracefulShutdown(httpServer, "consent-engine"); err != nil {
 		slog.Error("Server failed", "error", err)
 		os.Exit(1)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := monitoring.Shutdown(shutdownCtx); err != nil {
+		slog.Error("Metrics shutdown error", "error", err)
 	}
 }
