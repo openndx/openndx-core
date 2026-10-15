@@ -193,11 +193,8 @@ var goldenCases = []goldenCase{
 		name:        "consent_revoked",
 		request:     graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
 		pdpResponse: consentRequired(),
-		ceResponse: &consent.ConsentResponseInternalView{
-			ConsentID:        "consent-3",
-			Status:           consent.StatusRevoked,
-			ConsentPortalURL: strPtr("https://consent.example/consents/consent-3"),
-		},
+		// The consent engine sends a portal URL only for pending consents.
+		ceResponse: &consent.ConsentResponseInternalView{ConsentID: "consent-3", Status: consent.StatusRevoked},
 	},
 	{
 		name:    "missing_data_owner_id",

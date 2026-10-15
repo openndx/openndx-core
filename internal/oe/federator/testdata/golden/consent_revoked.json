@@ -5,7 +5,7 @@
       {
         "extensions": {
           "code": "CE_NOT_APPROVED",
-          "consentPortalUrl": "https://consent.example/consents/consent-3",
+          "consentPortalUrl": null,
           "consentStatus": "revoked"
         },
         "message": "Consent not approved"
