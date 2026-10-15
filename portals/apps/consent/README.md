@@ -12,7 +12,7 @@ The Consent Portal is the interface where citizens (data owners) interact with O
 
 - **Consent Review** - View details of data access requests (who, what, why)
 - **Approval/Denial** - Grant or deny access to requested data
-- **Consent Management** - View and revoke previously granted consents
+- **Consent Management** - View past consents and revoke an approved one
 - **Secure Authentication** - Integration with IdP for user authentication
 
 ## Quick Start
@@ -88,3 +88,5 @@ citizen), the owner signs in to the portal independently, on their own device or
 3. The **Pending** tab lists requests awaiting a decision; **All** shows the full history.
 4. Open a request from the table to see the requested data, then approve or deny it.
    Once approved, the requester retries the original data request.
+5. To withdraw access later, open an approved consent and choose **Revoke access**, then confirm.
+   The application stops receiving the data at once. Its next request creates a new pending consent.

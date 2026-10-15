@@ -183,7 +183,8 @@ func (h *PortalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 // UpdateConsent handles PUT /api/v1/consents/:consentId
 // Authorization: Bearer Token
 // Verifies that consent.owner_id matches the subject (UID) from the decoded token
-// Body: { "action": "approve" | "reject" }
+// Body: { "action": "approve" | "reject" | "revoke" }
+// approve and reject decide a pending consent; revoke withdraws an approved one
 func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, models.ErrorCodeMethodNotAllowed, "Method not allowed")
@@ -220,9 +221,15 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate action
-	if actionReq.Action != string(models.ActionApprove) && actionReq.Action != string(models.ActionReject) {
-		utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, fmt.Sprintf("Invalid action: %s. Must be 'approve' or 'reject'", actionReq.Action))
+	// Validate action and resolve the status it leads to
+	statusMap := map[string]string{
+		string(models.ActionApprove): string(models.StatusApproved),
+		string(models.ActionReject):  string(models.StatusRejected),
+		string(models.ActionRevoke):  string(models.StatusRevoked),
+	}
+	newStatus, ok := statusMap[actionReq.Action]
+	if !ok {
+		utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, fmt.Sprintf("Invalid action: %s. Must be 'approve', 'reject' or 'revoke'", actionReq.Action))
 		return
 	}
 
@@ -253,6 +260,10 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 			utils.RespondWithError(w, http.StatusConflict, models.ErrorCodeConsentNotPending, "Consent is no longer pending and cannot be updated")
 			return
 		}
+		if errors.Is(err, models.ErrConsentNotRevocable) {
+			utils.RespondWithError(w, http.StatusConflict, models.ErrorCodeConsentNotRevocable, "Only an approved consent can be revoked")
+			return
+		}
 		if errors.Is(err, models.ErrPortalRequestFailed) {
 			utils.RespondWithError(w, http.StatusBadRequest, models.ErrorCodeBadRequest, "Invalid consent update request")
 			return
@@ -263,13 +274,9 @@ func (h *PortalHandler) UpdateConsent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return success response with actual consent status
-	statusMap := map[string]string{
-		string(models.ActionApprove): string(models.StatusApproved),
-		string(models.ActionReject):  string(models.StatusRejected),
-	}
 	response := map[string]string{
 		"message": "Consent updated successfully",
-		"status":  statusMap[actionReq.Action],
+		"status":  newStatus,
 	}
 	utils.RespondWithJSON(w, http.StatusOK, response)
 }

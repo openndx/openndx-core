@@ -30,6 +30,7 @@ type ConsentPortalAction string
 const (
 	ActionApprove ConsentPortalAction = "approve"
 	ActionReject  ConsentPortalAction = "reject"
+	ActionRevoke  ConsentPortalAction = "revoke"
 )
 
 // GrantDuration represents the duration for which consent is granted
@@ -67,11 +68,11 @@ var (
 	ErrConsentNotFound     = errors.New("consent record not found")
 	ErrConsentCreateFailed = errors.New("failed to create consent record")
 	ErrConsentUpdateFailed = errors.New("failed to update consent record")
-	ErrConsentRevokeFailed = errors.New("failed to revoke consent record")
 	ErrConsentGetFailed    = errors.New("failed to get consent records")
 	ErrConsentExpiryFailed = errors.New("failed to check consent expiry")
 	ErrPortalRequestFailed = errors.New("failed to process consent portal request")
 	ErrConsentNotPending   = errors.New("consent is not pending")
+	ErrConsentNotRevocable = errors.New("consent is not approved and cannot be revoked")
 	ErrConsentAccessDenied = errors.New("consent belongs to a different owner")
 )
 
@@ -80,13 +81,14 @@ type ConsentErrorCode string
 
 // ConsentErrorCode constants
 const (
-	ErrorCodeConsentNotFound   ConsentErrorCode = "CONSENT_NOT_FOUND"
-	ErrorCodeInternalError     ConsentErrorCode = "INTERNAL_ERROR"
-	ErrorCodeBadRequest        ConsentErrorCode = "BAD_REQUEST"
-	ErrorCodeUnauthorized      ConsentErrorCode = "UNAUTHORIZED"
-	ErrorCodeForbidden         ConsentErrorCode = "FORBIDDEN"
-	ErrorCodeMethodNotAllowed  ConsentErrorCode = "METHOD_NOT_ALLOWED"
-	ErrorCodeConsentNotPending ConsentErrorCode = "CONSENT_NOT_PENDING"
+	ErrorCodeConsentNotFound     ConsentErrorCode = "CONSENT_NOT_FOUND"
+	ErrorCodeInternalError       ConsentErrorCode = "INTERNAL_ERROR"
+	ErrorCodeBadRequest          ConsentErrorCode = "BAD_REQUEST"
+	ErrorCodeUnauthorized        ConsentErrorCode = "UNAUTHORIZED"
+	ErrorCodeForbidden           ConsentErrorCode = "FORBIDDEN"
+	ErrorCodeMethodNotAllowed    ConsentErrorCode = "METHOD_NOT_ALLOWED"
+	ErrorCodeConsentNotPending   ConsentErrorCode = "CONSENT_NOT_PENDING"
+	ErrorCodeConsentNotRevocable ConsentErrorCode = "CONSENT_NOT_REVOCABLE"
 )
 
 // Pagination bounds for listing an owner's consents in the portal

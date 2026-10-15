@@ -44,7 +44,7 @@ type CreateConsentRequest struct {
 type ConsentPortalActionRequest struct {
 	ConsentID string              `json:"consentId"`
 	OwnerID   string              `json:"ownerId"` // Subject of the caller; must match the consent's owner
-	Action    ConsentPortalAction `json:"action"`  // "approve" or "reject"
+	Action    ConsentPortalAction `json:"action"`  // "approve", "reject" or "revoke"
 	UpdatedBy string              `json:"updatedBy"`
 }
 

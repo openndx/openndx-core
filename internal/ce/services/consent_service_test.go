@@ -320,3 +320,77 @@ func TestUpdateConsentStatusByPortalAction_ExpiredPendingCannotBeApproved(t *tes
 	assert.ErrorIs(t, err, models.ErrConsentNotPending)
 	assert.Equal(t, string(models.StatusExpired), statusOf(t, db, stale.ConsentID))
 }
+
+func revokeRequest(record *models.ConsentRecord, ownerID string) models.ConsentPortalActionRequest {
+	return models.ConsentPortalActionRequest{
+		ConsentID: record.ConsentID.String(),
+		OwnerID:   ownerID,
+		Action:    models.ActionRevoke,
+		UpdatedBy: ownerID,
+	}
+}
+
+func TestUpdateConsentStatusByPortalAction_RevokesApproved(t *testing.T) {
+	svc, db := setupTestService(t)
+	approved := insertConsent(t, db, "owner-1", "app-a", models.StatusApproved, time.Minute)
+
+	require.NoError(t, svc.UpdateConsentStatusByPortalAction(context.Background(), revokeRequest(approved, "owner-1")))
+
+	var record models.ConsentRecord
+	require.NoError(t, db.Where("consent_id = ?", approved.ConsentID).First(&record).Error)
+	assert.Equal(t, string(models.StatusRevoked), record.Status)
+	require.NotNil(t, record.UpdatedBy)
+	assert.Equal(t, "owner-1", *record.UpdatedBy)
+	assert.NotNil(t, record.GrantExpiresAt, "the withdrawn grant stays on record")
+}
+
+func TestUpdateConsentStatusByPortalAction_RevokeByOtherOwnerIsDenied(t *testing.T) {
+	svc, db := setupTestService(t)
+	approved := insertConsent(t, db, "owner-1", "app-a", models.StatusApproved, time.Minute)
+
+	err := svc.UpdateConsentStatusByPortalAction(context.Background(), revokeRequest(approved, "owner-2"))
+	assert.ErrorIs(t, err, models.ErrConsentAccessDenied)
+	assert.Equal(t, string(models.StatusApproved), statusOf(t, db, approved.ConsentID))
+}
+
+func TestUpdateConsentStatusByPortalAction_RevokeRequiresApproved(t *testing.T) {
+	for _, status := range []models.ConsentStatus{models.StatusPending, models.StatusRejected, models.StatusRevoked, models.StatusExpired} {
+		t.Run(string(status), func(t *testing.T) {
+			svc, db := setupTestService(t)
+			record := insertConsent(t, db, "owner-1", "app-a", status, time.Minute)
+
+			err := svc.UpdateConsentStatusByPortalAction(context.Background(), revokeRequest(record, "owner-1"))
+			assert.ErrorIs(t, err, models.ErrConsentNotRevocable)
+			assert.Equal(t, string(status), statusOf(t, db, record.ConsentID))
+		})
+	}
+}
+
+func TestUpdateConsentStatusByPortalAction_ExpiredGrantCannotBeRevoked(t *testing.T) {
+	svc, db := setupTestService(t)
+	stale := insertConsent(t, db, "owner-1", "app-a", models.StatusApproved, 2*time.Hour)
+
+	err := svc.UpdateConsentStatusByPortalAction(context.Background(), revokeRequest(stale, "owner-1"))
+	assert.ErrorIs(t, err, models.ErrConsentNotRevocable)
+	assert.Equal(t, string(models.StatusExpired), statusOf(t, db, stale.ConsentID))
+}
+
+func TestCreateConsentRecord_AfterRevocationStartsNewPendingConsent(t *testing.T) {
+	svc, db := setupTestService(t)
+	approved := insertConsent(t, db, "owner-1", "app-a", models.StatusApproved, time.Minute)
+	require.NoError(t, svc.UpdateConsentStatusByPortalAction(context.Background(), revokeRequest(approved, "owner-1")))
+
+	// Same app, owner and fields as the revoked consent: the revoked grant must not be reused
+	created, err := svc.CreateConsentRecord(context.Background(), models.CreateConsentRequest{
+		AppID: "app-a",
+		ConsentRequirement: models.ConsentRequirement{
+			Owner:   models.OwnerCitizen,
+			OwnerID: "owner-1",
+			Fields:  approved.Fields,
+		},
+	})
+	require.NoError(t, err)
+	assert.NotEqual(t, approved.ConsentID.String(), created.ConsentID)
+	assert.Equal(t, string(models.StatusPending), created.Status)
+	assert.Equal(t, string(models.StatusRevoked), statusOf(t, db, approved.ConsentID))
+}

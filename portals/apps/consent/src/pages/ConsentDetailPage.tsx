@@ -13,7 +13,8 @@ import { formatDate, formatFieldName, formatGrantDuration } from '../utils/forma
 import type { ConsentListNotice } from './ConsentListPage';
 
 // Full view of one of the owner's consent requests, reached from the self-service list. The owner
-// reviews exactly what is being requested here before approving or denying it.
+// reviews exactly what is being requested here before approving or denying it, and can later revoke
+// an approved consent.
 const ConsentDetailPage: React.FC = () => {
   const { consentId } = useParams<{ consentId: string }>();
   const auth = useAuth();
@@ -28,6 +29,8 @@ const ConsentDetailPage: React.FC = () => {
   const [loadError, setLoadError] = useState('');
   const [decisionError, setDecisionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmingRevoke, setIsConfirmingRevoke] = useState(false);
+  const [revokeNotice, setRevokeNotice] = useState('');
 
   const fetchConsent = useCallback(async () => {
     if (!token || !consentId) return;
@@ -84,12 +87,23 @@ const ConsentDetailPage: React.FC = () => {
       });
 
       if (response.status === 409) {
-        setDecisionError(`This request is no longer pending. It may have expired or already been decided.`);
+        setDecisionError(decision === PortalAction.revoke
+          ? 'This consent is no longer active. It may have expired or already been revoked.'
+          : 'This request is no longer pending. It may have expired or already been decided.');
+        setIsConfirmingRevoke(false);
         fetchConsent();
         return;
       }
       if (!response.ok) {
         throw new Error(`Failed to submit your decision (Status: ${response.status})`);
+      }
+
+      // Stay on the page after revoking so the owner sees the consent's new state
+      if (decision === PortalAction.revoke) {
+        setIsConfirmingRevoke(false);
+        setRevokeNotice(`You revoked access for ${appName}. It can no longer use this data without asking you again.`);
+        fetchConsent();
+        return;
       }
 
       const notice: ConsentListNotice = {
@@ -116,6 +130,7 @@ const ConsentDetailPage: React.FC = () => {
   }
 
   const isPending = consent?.status === ConsentStatus.pending;
+  const isApproved = consent?.status === ConsentStatus.approved;
   const grantDuration = formatGrantDuration(consent?.grantDuration);
 
   return (
@@ -198,6 +213,10 @@ const ConsentDetailPage: React.FC = () => {
                   </dl>
                 </div>
 
+                {revokeNotice && (
+                  <div className="mb-4 p-4 rounded-lg bg-green-50 text-green-800 text-sm">{revokeNotice}</div>
+                )}
+
                 {decisionError && (
                   <div className="mb-4 p-4 rounded-lg bg-red-50 text-red-800 text-sm">{decisionError}</div>
                 )}
@@ -227,6 +246,38 @@ const ConsentDetailPage: React.FC = () => {
                       </button>
                     </div>
                   </>
+                ) : isApproved ? (
+                  isConfirmingRevoke ? (
+                    <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+                      <p className="text-sm text-red-800 mb-4">
+                        Revoke access for <strong>{consent.appName || consent.appId}</strong>? It will stop
+                        receiving this data immediately and will have to ask you again to regain access.
+                      </p>
+                      <div className="flex space-x-4">
+                        <button
+                          onClick={() => setIsConfirmingRevoke(false)}
+                          disabled={isSubmitting}
+                          className="flex-1 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 transition-colors font-medium"
+                        >
+                          Keep access
+                        </button>
+                        <button
+                          onClick={() => handleDecision(PortalAction.revoke)}
+                          disabled={isSubmitting}
+                          className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-colors font-medium"
+                        >
+                          {isSubmitting ? 'Processing...' : 'Revoke access'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setDecisionError(''); setIsConfirmingRevoke(true); }}
+                      className="w-full px-6 py-3 bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                    >
+                      Revoke access
+                    </button>
+                  )
                 ) : (
                   <div className="text-center p-4 bg-gray-50 rounded-lg text-gray-600">
                     This consent request is <strong>{consent.status}</strong> and needs no action.

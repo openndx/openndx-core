@@ -99,7 +99,7 @@ issue #631 integrates the raw SQL repository.
 | GET    | `/api/v1/health`               | Health check                                                                    |
 | GET    | `/api/v1/consents`             | List the signed-in owner's consents (`?status=pending&limit=20&offset=0`)       |
 | GET    | `/api/v1/consents/{consentId}` | Get consent details                                                             |
-| PUT    | `/api/v1/consents/{consentId}` | Update consent status (pending only; `409 CONSENT_NOT_PENDING` otherwise)       |
+| PUT    | `/api/v1/consents/{consentId}` | Approve/reject a pending consent or revoke an approved one (`409` otherwise)    |
 
 ### System Endpoints
 

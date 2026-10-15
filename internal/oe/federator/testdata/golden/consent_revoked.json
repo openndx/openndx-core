@@ -1,0 +1,75 @@
+{
+  "response": {
+    "data": null,
+    "errors": [
+      {
+        "extensions": {
+          "code": "CE_NOT_APPROVED",
+          "consentPortalUrl": "https://consent.example/consents/consent-3",
+          "consentStatus": "revoked"
+        },
+        "message": "Consent not approved"
+      }
+    ]
+  },
+  "policyRequests": [
+    {
+      "applicationId": "app-golden",
+      "requiredFields": [
+        {
+          "fieldName": "person.fullName",
+          "schemaId": "drp-v1"
+        },
+        {
+          "fieldName": "person.permanentAddress",
+          "schemaId": "drp-v1"
+        }
+      ]
+    }
+  ],
+  "consentRequests": [
+    {
+      "appId": "app-golden",
+      "consentRequirement": {
+        "owner": "citizen",
+        "ownerId": "199012345678",
+        "fields": [
+          {
+            "fieldName": "person.permanentAddress",
+            "schemaId": "drp-v1",
+            "displayName": "Address",
+            "owner": "citizen"
+          }
+        ]
+      },
+      "consentType": "realtime"
+    }
+  ],
+  "providerRequests": {},
+  "auditEvents": [
+    {
+      "eventType": "DATA_REQUEST",
+      "status": "SUCCESS",
+      "actorType": "APPLICATION",
+      "actorId": "app-golden",
+      "targetType": "SERVICE",
+      "targetId": "SERVICE"
+    },
+    {
+      "eventType": "POLICY_CHECK",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "policy-decision-point"
+    },
+    {
+      "eventType": "CONSENT_CHECK",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "consent-engine"
+    }
+  ]
+}

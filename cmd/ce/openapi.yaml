@@ -250,17 +250,20 @@ paths:
     put:
       summary: Update Consent Status
       description: |
-        Updates the consent status by approving or rejecting it.
-        
+        Updates the consent status by approving, rejecting or revoking it.
+
         **Authorization:** Requires Bearer Token
-        
+
         **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
-        
+
         **Valid Actions:**
         - `approve` - Approve the consent request
         - `reject` - Reject the consent request
+        - `revoke` - Withdraw a previously approved consent. The record is kept with status `revoked`, and the owner is recorded as `updatedBy`.
 
-        Only a `pending` consent that has not passed its pending deadline can be updated; otherwise `409` is returned.
+        `approve` and `reject` apply only to a `pending` consent that has not passed its pending deadline; otherwise `409 CONSENT_NOT_PENDING` is returned.
+        `revoke` applies only to an `approved` consent whose grant has not expired; otherwise `409 CONSENT_NOT_REVOCABLE` is returned.
+        After a revocation, the next data request from the same application creates a new `pending` consent.
       operationId: updateConsent
       tags:
         - External
@@ -284,7 +287,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [approve, reject]
+                  enum: [approve, reject, revoke]
                   description: The action to perform on the consent
               required:
                 - action
@@ -303,7 +306,7 @@ paths:
                     example: "Consent updated successfully"
                   status:
                     type: string
-                    enum: [approved, rejected]
+                    enum: [approved, rejected, revoked]
                     description: The resulting consent status (not the action)
                     example: "approved"
                 required:
@@ -321,7 +324,7 @@ paths:
                   value:
                     error:
                       code: "BAD_REQUEST"
-                      message: "Invalid action: pending. Must be 'approve' or 'reject'"
+                      message: "Invalid action: pending. Must be 'approve', 'reject' or 'revoke'"
                 invalidRequest:
                   summary: Invalid request body
                   value:
@@ -375,15 +378,24 @@ paths:
                   code: "METHOD_NOT_ALLOWED"
                   message: "Method not allowed"
         '409':
-          description: Conflict - consent is no longer pending (already decided, revoked or expired)
+          description: Conflict - the consent is not in a state the action applies to
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error:
-                  code: "CONSENT_NOT_PENDING"
-                  message: "Consent is no longer pending and cannot be updated"
+              examples:
+                notPending:
+                  summary: approve/reject on a consent that is no longer pending (already decided, revoked or expired)
+                  value:
+                    error:
+                      code: "CONSENT_NOT_PENDING"
+                      message: "Consent is no longer pending and cannot be updated"
+                notRevocable:
+                  summary: revoke on a consent that is not approved (pending, rejected, already revoked or expired)
+                  value:
+                    error:
+                      code: "CONSENT_NOT_REVOCABLE"
+                      message: "Only an approved consent can be revoked"
         '408':
           description: Request timeout
           content:

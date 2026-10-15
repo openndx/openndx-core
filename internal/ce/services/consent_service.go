@@ -360,13 +360,19 @@ func (s *ConsentService) UpdateConsentStatusByPortalAction(ctx context.Context, 
 
 	currentTime := time.Now().UTC()
 
-	// Only a pending, unexpired request can be decided on. An expired request is persisted as
+	// Approve and reject decide a pending request; revoke withdraws an approved grant.
+	fromStatus, errWrongStatus := models.StatusPending, models.ErrConsentNotPending
+	if req.Action == models.ActionRevoke {
+		fromStatus, errWrongStatus = models.StatusApproved, models.ErrConsentNotRevocable
+	}
+
+	// Only an unexpired consent can be acted on. An expired consent is persisted as
 	// such so the requester has to initiate a fresh one.
 	if err := s.persistExpiryIfStale(ctx, &consentRecord, currentTime); err != nil {
 		return fmt.Errorf("%w: %w", models.ErrConsentUpdateFailed, err)
 	}
-	if consentRecord.Status != string(models.StatusPending) {
-		return fmt.Errorf("%w: current status is %s", models.ErrConsentNotPending, consentRecord.Status)
+	if consentRecord.Status != string(fromStatus) {
+		return fmt.Errorf("%w: current status is %s", errWrongStatus, consentRecord.Status)
 	}
 
 	updates := map[string]any{
@@ -381,56 +387,26 @@ func (s *ConsentService) UpdateConsentStatusByPortalAction(ctx context.Context, 
 	case models.ActionReject:
 		// Do not set GrantExpiresAt on rejection - only approval gets a grant expiry
 		updates["status"] = models.StatusRejected
+	case models.ActionRevoke:
+		// Keep GrantExpiresAt so the record still shows the grant that was withdrawn
+		updates["status"] = models.StatusRevoked
 	default:
 		return fmt.Errorf("%w: invalid action: %s", models.ErrPortalRequestFailed, req.Action)
 	}
 
-	// Conditional on the row still being pending so concurrent decisions cannot overwrite each other:
-	// exactly one wins and the rest observe ErrConsentNotPending.
+	// Conditional on the row still being in fromStatus so concurrent actions cannot overwrite each other:
+	// exactly one wins and the rest observe errWrongStatus.
 	result := s.db.WithContext(ctx).Model(&models.ConsentRecord{}).
-		Where("consent_id = ? AND owner_id = ? AND status = ?", parsedConsentID, req.OwnerID, models.StatusPending).
+		Where("consent_id = ? AND owner_id = ? AND status = ?", parsedConsentID, req.OwnerID, fromStatus).
 		Updates(updates)
 	if result.Error != nil {
 		return fmt.Errorf("%w: %w", models.ErrConsentUpdateFailed, result.Error)
 	}
 	if result.RowsAffected != 1 {
-		return fmt.Errorf("%w: consent was decided concurrently", models.ErrConsentNotPending)
+		return fmt.Errorf("%w: consent was updated concurrently", errWrongStatus)
 	}
 
 	return nil
-}
-
-// RevokeConsent revokes an existing approved or pending consent
-func (s *ConsentService) RevokeConsent(ctx context.Context, consentID string, revokedBy string) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var consentRecord models.ConsentRecord
-		parsedConsentID, err := uuid.Parse(consentID)
-		if err != nil {
-			return fmt.Errorf("%w: invalid consent ID", models.ErrConsentRevokeFailed)
-		}
-
-		if err := tx.Where("consent_id = ?", parsedConsentID).First(&consentRecord).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("%w: %w", models.ErrConsentNotFound, err)
-			}
-			return fmt.Errorf("%w: %w", models.ErrConsentRevokeFailed, err)
-		}
-
-		if consentRecord.Status != string(models.StatusApproved) && consentRecord.Status != string(models.StatusPending) {
-			return fmt.Errorf("%w: only approved or pending consents can be revoked", models.ErrConsentRevokeFailed)
-		}
-
-		consentRecord.Status = string(models.StatusRevoked)
-		currentTime := time.Now().UTC()
-		consentRecord.UpdatedAt = currentTime
-		consentRecord.UpdatedBy = &revokedBy
-
-		if err := tx.Save(&consentRecord).Error; err != nil {
-			return fmt.Errorf("%w: %w", models.ErrConsentRevokeFailed, err)
-		}
-
-		return nil
-	})
 }
 
 // parseGrantDuration parses the grant duration string into a time.Duration
@@ -536,7 +512,7 @@ func isValidGrantDuration(grantDuration models.GrantDuration) bool {
 // isValidConsentPortalAction checks if a consent portal action is valid
 func isValidConsentPortalAction(action models.ConsentPortalAction) bool {
 	switch action {
-	case models.ActionApprove, models.ActionReject:
+	case models.ActionApprove, models.ActionReject, models.ActionRevoke:
 		return true
 	default:
 		return false

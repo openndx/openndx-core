@@ -170,11 +170,10 @@ cd tests/integration && docker compose -f docker-compose.test.yml up -d && \
 | Orchestration Engine (4000)  | `POST /graphql`                  | GraphQL endpoint for data requests |
 | Policy Decision Point (8082) | `POST /api/v1/policy/decide`     | Authorization decision             |
 | Consent Engine (8081)        | `POST /internal/api/v1/consents` | Process consent workflow request   |
-| Consent Engine (8081)        | `GET /consents/{id}`             | Get consent status                 |
-| Consent Engine (8081)        | `PUT /consents/{id}`             | Update consent status              |
-| Consent Engine (8081)        | `DELETE /consents/{id}`          | Revoke consent                     |
-| Consent Engine (8081)        | `GET /data-owner/{owner}`        | Get consents by data owner         |
-| Consent Engine (8081)        | `GET /consumer/{consumer}`       | Get consents by consumer           |
+| Consent Engine (8081)        | `GET /internal/api/v1/consents`  | Get consent status                 |
+| Consent Engine (8081)        | `GET /api/v1/consents`           | List the owner's consents          |
+| Consent Engine (8081)        | `GET /api/v1/consents/{id}`      | Get consent details                |
+| Consent Engine (8081)        | `PUT /api/v1/consents/{id}`      | Approve, reject or revoke consent  |
 | all services                 | `GET /health`                    | Health check                       |
 
 ```bash
