@@ -67,6 +67,17 @@ Then set the values in `public/config.js`:
 
 ## Testing Guide
 
+### Automated tests
+
+```bash
+# From portals/
+pnpm --filter consent-portal run test
+```
+
+Vitest + React Testing Library cover `ConsentDetailPage` (approve/deny, revoke
+confirmation, 409 handling, and inactive statuses). CI runs the same script in
+`.github/workflows/consent-portal-validate.yml`.
+
 ### End-to-End Flow
 
 1. **Start Backend Services**: Ensure Consent Engine is running on port 8081.
