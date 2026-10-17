@@ -28,7 +28,8 @@ func TestSetupRouter_Health(t *testing.T) {
 		t.Fatalf("Failed to initialize federator: %v", err)
 	}
 
-	mux := SetupRouter(f)
+	mux, cleanup := SetupRouter(f)
+	t.Cleanup(cleanup)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -51,7 +52,8 @@ func TestSetupRouter_SDL_Endpoints(t *testing.T) {
 		t.Fatalf("Failed to initialize federator: %v", err)
 	}
 
-	mux := SetupRouter(f)
+	mux, cleanup := SetupRouter(f)
+	t.Cleanup(cleanup)
 
 	endpoints := []string{
 		"/sdl",
@@ -88,7 +90,8 @@ func TestSetupRouter_PublicGraphQL_BadRequest(t *testing.T) {
 		t.Fatalf("Failed to initialize federator: %v", err)
 	}
 
-	mux := SetupRouter(f)
+	mux, cleanup := SetupRouter(f)
+	t.Cleanup(cleanup)
 
 	// Invalid JSON body
 	req := httptest.NewRequest(http.MethodPost, "/public/graphql", bytes.NewBufferString("invalid-json"))
@@ -111,7 +114,8 @@ func TestSetupRouter_PublicGraphQL_Unauthorized(t *testing.T) {
 		t.Fatalf("Failed to initialize federator: %v", err)
 	}
 
-	mux := SetupRouter(f)
+	mux, cleanup := SetupRouter(f)
+	t.Cleanup(cleanup)
 
 	// Valid JSON but missing auth token
 	gqlReq := graphql.Request{

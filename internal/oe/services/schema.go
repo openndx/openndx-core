@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -37,7 +38,7 @@ func NewSchemaService(db *database.SchemaDB) *SchemaService {
 }
 
 // CreateSchema creates a new schema version
-func (s *SchemaService) CreateSchema(version, sdl, createdBy string) (*Schema, error) {
+func (s *SchemaService) CreateSchema(ctx context.Context, version, sdl, createdBy string) (*Schema, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -63,7 +64,7 @@ func (s *SchemaService) CreateSchema(version, sdl, createdBy string) (*Schema, e
 	}
 
 	// Save to database
-	if err := s.db.CreateSchema(schema); err != nil {
+	if err := s.db.CreateSchema(ctx, schema); err != nil {
 		return nil, fmt.Errorf("failed to save schema to database: %w", err)
 	}
 
@@ -82,12 +83,12 @@ func (s *SchemaService) CreateSchema(version, sdl, createdBy string) (*Schema, e
 }
 
 // GetActiveSchema returns the currently active schema
-func (s *SchemaService) GetActiveSchema() (*Schema, error) {
+func (s *SchemaService) GetActiveSchema(ctx context.Context) (*Schema, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
 
-	dbSchema, err := s.db.GetActiveSchema()
+	dbSchema, err := s.db.GetActiveSchema(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active schema: %w", err)
 	}
@@ -111,20 +112,20 @@ func (s *SchemaService) GetActiveSchema() (*Schema, error) {
 }
 
 // ActivateSchema activates a specific schema version
-func (s *SchemaService) ActivateSchema(version string) error {
+func (s *SchemaService) ActivateSchema(ctx context.Context, version string) error {
 	if s.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
-	return s.db.ActivateSchema(version)
+	return s.db.ActivateSchema(ctx, version)
 }
 
 // GetAllSchemas returns all schemas
-func (s *SchemaService) GetAllSchemas() ([]Schema, error) {
+func (s *SchemaService) GetAllSchemas(ctx context.Context) ([]Schema, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
 
-	dbSchemas, err := s.db.GetAllSchemas()
+	dbSchemas, err := s.db.GetAllSchemas(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get schemas: %w", err)
 	}
@@ -152,8 +153,8 @@ func (s *SchemaService) ValidateSDL(sdl string) bool {
 }
 
 // CheckCompatibility checks if a new SDL is backward compatible with the active schema
-func (s *SchemaService) CheckCompatibility(newSDL string) (bool, string) {
-	activeSchema, err := s.GetActiveSchema()
+func (s *SchemaService) CheckCompatibility(ctx context.Context, newSDL string) (bool, string) {
+	activeSchema, err := s.GetActiveSchema(ctx)
 	if err != nil {
 		return false, "failed to get active schema: " + err.Error()
 	}

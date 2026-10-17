@@ -27,7 +27,8 @@ const DefaultPort = "4000"
 // RunServer starts an HTTP server with graceful shutdown support.
 // The server will shut down gracefully when the context is cancelled (e.g., on SIGINT/SIGTERM).
 func RunServer(ctx context.Context, f *federator.Federator) {
-	mux := SetupRouter(f)
+	mux, cleanup := SetupRouter(f)
+	defer cleanup()
 
 	// Get port configuration
 	port := os.Getenv("PORT")
@@ -81,17 +82,27 @@ func RunServer(ctx context.Context, f *federator.Federator) {
 	}
 }
 
-// SetupRouter initializes the router and registers all endpoints
-func SetupRouter(f *federator.Federator) *http.ServeMux {
+// SetupRouter initializes the router and registers all endpoints.
+// The returned cleanup closes the schema DB connection pool when non-nil.
+func SetupRouter(f *federator.Federator) (*http.ServeMux, func()) {
 	mux := http.NewServeMux()
 
 	// Initialize database connection
 	dbConnectionString := getDatabaseConnectionString()
-	schemaDB, err := database.NewSchemaDB(dbConnectionString)
+	schemaDB, err := database.NewSchemaDB(context.Background(), dbConnectionString)
 	if err != nil {
 		logger.Log.Error("Failed to connect to database", "error", err)
 		// Continue without database for now
 		schemaDB = nil
+	}
+
+	cleanup := func() {
+		if schemaDB == nil {
+			return
+		}
+		if err := schemaDB.Close(); err != nil {
+			logger.Log.Error("Failed to close schema database", "error", err)
+		}
 	}
 
 	// Initialize schema service and handler
@@ -178,7 +189,7 @@ func SetupRouter(f *federator.Federator) *http.ServeMux {
 		}
 	})
 
-	return mux
+	return mux, cleanup
 }
 
 // corsMiddleware sets CORS headers
