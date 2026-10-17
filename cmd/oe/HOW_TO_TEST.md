@@ -169,7 +169,7 @@ curl -X POST http://localhost:4000/sdl/validate \
 
 ### 5. Compatibility Checking Tests 
 
-#### TC-009: Check Backward Compatible Changes
+#### TC-009: Detect Breaking Schema Changes
 **Command**:
 ```bash
 curl -X POST http://localhost:4000/sdl/check-compatibility \
@@ -186,9 +186,12 @@ curl -X POST http://localhost:4000/sdl/check-compatibility \
 }
 ```
 
-### 6. Federator Integration Tests 
+### 6. Policy Gate Integration Tests
 
-#### TC-010: Test Federator with Database Schema (Version 1.0.0)
+These cases stop at PDP/CE rejection before federation runs. They confirm policy
+integration wiring, not federator/schema-selection/array-processing success.
+
+#### TC-010: Federated Query Blocked by Consent Engine (Schema Version 1.0.0)
 **Command**:
 ```bash
 curl -X POST http://localhost:4000/ \
@@ -197,7 +200,7 @@ curl -X POST http://localhost:4000/ \
     "query": "query GetData { personInfo(nic: \"199512345678\") { fullName } }"
   }'
 ```
-**Result**: **PASSED** - Federator using database schema:
+**Result**: **PASSED** - Request reaches CE and is rejected while consent is pending:
 ```json
 {
   "data": null,
@@ -214,7 +217,7 @@ curl -X POST http://localhost:4000/ \
 }
 ```
 
-#### TC-011: Test Federator with Database Schema (Version 1.1.0)
+#### TC-011: Federated Query Blocked by PDP (Schema Version 1.1.0)
 **Command**:
 ```bash
 curl -X POST http://localhost:4000/ \
@@ -223,7 +226,7 @@ curl -X POST http://localhost:4000/ \
     "query": "query { hello }"
   }'
 ```
-**Result**: **PASSED** - Federator using new active schema from database:
+**Result**: **PASSED** - Request reaches PDP and is rejected:
 ```json
 {
   "data": null,
@@ -238,9 +241,12 @@ curl -X POST http://localhost:4000/ \
 }
 ```
 
-### 7. Array and Non-Array Query Tests 
+### 7. Policy Gate Tests for Array and Nested Queries
 
-#### TC-012: Array Query Test
+Same gate behavior as above; these queries never reach array/non-array federation
+processing while PDP/CE reject the request.
+
+#### TC-012: Array Query Blocked by PDP
 **Command**:
 ```bash
 curl -X POST http://localhost:4000/ \
@@ -249,7 +255,7 @@ curl -X POST http://localhost:4000/ \
     "query": "query GetData { personInfo(nic: \"199512345678\") { ownedVehicles { regNo make model year } } }"
   }'
 ```
-**Result**: **PASSED** - Array processing working correctly:
+**Result**: **PASSED** - Array-shaped query rejected by PDP before federation:
 ```json
 {
   "data": null,
@@ -264,7 +270,7 @@ curl -X POST http://localhost:4000/ \
 }
 ```
 
-#### TC-013: Non-Array Query Test
+#### TC-013: Nested Query Blocked by Consent Engine
 **Command**:
 ```bash
 curl -X POST http://localhost:4000/ \
@@ -273,7 +279,7 @@ curl -X POST http://localhost:4000/ \
     "query": "query GetData { personInfo(nic: \"199512345678\") { profession otherNames birthInfo { birthRegistrationNumber birthPlace } } }"
   }'
 ```
-**Result**: **PASSED** - Non-array processing working correctly:
+**Result**: **PASSED** - Nested query rejected by CE before federation:
 ```json
 {
   "data": null,
@@ -336,8 +342,7 @@ uses `unified_schemas` table from database and falls back to
 3. **Schema Management**: Full CRUD operations working with database persistence
 4. **Real-time Switching**: Schema activation changes immediately reflected in federator
 5. **Error Handling**: Robust error handling with proper fallback mechanisms
-6. **Array Processing**: Both array and non-array queries processed correctly
-7. **Policy Integration**: PDP and CE integration working correctly
+6. **Policy Integration**: PDP and CE rejection paths are exercised by federated queries (TC-010–TC-013)
 
 ## SQL Commands for Database Management
 
