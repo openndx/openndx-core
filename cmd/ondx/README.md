@@ -8,7 +8,7 @@ It includes policy setup, citizen consent, expected responses, and cleanup.
 
 ## Overview
 
-`ondx` logs an operator in via a browser-based OAuth2 login (Authorization Code + PKCE, like `gh auth login`), caches the resulting token, and uses it to call Portal Backend's management endpoints: creating members, schemas, and applications, listing/inspecting applications, and updating an application's policy (its granted schema fields).
+`ondx` logs an operator in via a browser-based OAuth2 login (Authorization Code + PKCE, like `gh auth login`), caches the resulting token, and uses it to call Portal Backend's management endpoints: creating members, schemas, and applications, listing/inspecting members, schemas, and applications, and updating an application's policy (its granted schema fields).
 
 It works against any OIDC-compatible identity provider PB is configured to trust. Today that's usually one of two setups:
 
@@ -162,6 +162,14 @@ Registers a schema and its grantable fields directly, skipping GraphQL SDL/direc
 
 Prints each field as `schemaId:fieldName` — the `--field` shape `applications create`/`policy update` expect, so you can copy straight from here.
 
+### `ondx schemas list [--member-id ...]`
+
+Lists the schemas you can see: every schema for an admin (optionally filtered to one member's with `--member-id`), or only your own member's schemas otherwise. Add `--json` for the raw response.
+
+### `ondx schemas get --schema-id ...`
+
+Shows one schema's details and its grantable fields, each printed as `schemaId:fieldName` — the same shape `applications create`/`policy update --field` expect. Members can only fetch their own member's schemas. Add `--json` for the schema and its fields as JSON.
+
 ### `ondx applications create`
 
 Registers an application. `--name`, `--member-id`, and at least one `--field schemaId:fieldName` are always required.
@@ -239,7 +247,7 @@ If you saved a `local` profile in `~/.openndx/config.json` before it had a `reso
 
 - **An application's client secret is shown only once**, in the `applications create` output. Portal Backend doesn't store it and ThunderID doesn't return it again. Applications created by approving an application submission don't surface it at all yet.
 - **Members need their organization unit created in ThunderID first.** Portal Backend only stores the link (`--ou-id`); it does not create organization units or users. The local stack seeds `drp` (`01900000-0000-7000-8000-0000000000c0`) and `die` (`01900000-0000-7000-8000-0000000000c1`), with staff users `drp-admin` / `die-admin` (password `1234`) who get the `OpenNDX_Member` role and an `ouId` claim.
-- **No delete or update commands yet, and no `schemas list`/`get`.** Only `members create`/`list`/`get`, `schemas create`, `applications create`/`list`/`get`, and `policy update` are implemented.
+- **No delete or update commands yet.** Only `members create`/`list`/`get`, `schemas create`/`list`/`get`, `applications create`/`list`/`get`, and `policy update` are implemented.
 - **`ondx applications get`/`list` output for `--field` values always reflects the full current policy** — there's no "show me the diff" helper; compare manually before running `policy update`.
 
 ## Development

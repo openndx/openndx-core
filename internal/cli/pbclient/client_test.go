@@ -250,6 +250,163 @@ func TestListMembers_ErrorResponse(t *testing.T) {
 	assert.ErrorContains(t, err, "User has no organization unit")
 }
 
+func TestGetSchema_Success(t *testing.T) {
+	var capturedAuth, capturedPath, capturedMethod string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedAuth = r.Header.Get("Authorization")
+		capturedPath = r.URL.Path
+		capturedMethod = r.Method
+
+		resp := schema.SchemaResponse{
+			SchemaID:   "drp-schema-v1",
+			MemberID:   "mem_123",
+			SchemaName: "DRP Person",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-token")
+	resp, err := client.GetSchema(context.Background(), "drp-schema-v1")
+
+	assert.NoError(t, err)
+	if assert.NotNil(t, resp) {
+		assert.Equal(t, "drp-schema-v1", resp.SchemaID)
+		assert.Equal(t, "mem_123", resp.MemberID)
+	}
+
+	assert.Equal(t, "Bearer test-token", capturedAuth)
+	assert.Equal(t, "/api/v1/schemas/drp-schema-v1", capturedPath)
+	assert.Equal(t, http.MethodGet, capturedMethod)
+}
+
+func TestGetSchema_Forbidden(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Access denied to this resource"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	resp, err := client.GetSchema(context.Background(), "other-schema")
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.ErrorContains(t, err, "status 403")
+}
+
+func TestListSchemas_Success(t *testing.T) {
+	var capturedPath, capturedMethod string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.String()
+		capturedMethod = r.Method
+		resp := map[string]any{
+			"items": []schema.SchemaResponse{
+				{SchemaID: "schema-1", SchemaName: "Schema One", MemberID: "mem_1"},
+				{SchemaID: "schema-2", SchemaName: "Schema Two", MemberID: "mem_2"},
+			},
+			"count": 2,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	schemas, err := client.ListSchemas(context.Background(), nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/api/v1/schemas", capturedPath)
+	assert.Equal(t, http.MethodGet, capturedMethod)
+	assert.Equal(t, 2, schemas.Count)
+	if assert.Len(t, schemas.Items, 2) {
+		assert.Equal(t, "schema-1", schemas.Items[0].SchemaID)
+		assert.Equal(t, "mem_2", schemas.Items[1].MemberID)
+	}
+}
+
+func TestListSchemas_WithMemberFilter(t *testing.T) {
+	var capturedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.String()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": []schema.SchemaResponse{}, "count": 0})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	memberID := "mem_42"
+	schemas, err := client.ListSchemas(context.Background(), &memberID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/api/v1/schemas?memberId=mem_42", capturedPath)
+	assert.Empty(t, schemas.Items)
+}
+
+func TestListSchemas_ErrorResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "User member record not found"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	schemas, err := client.ListSchemas(context.Background(), nil)
+
+	assert.Error(t, err)
+	assert.Nil(t, schemas)
+	assert.ErrorContains(t, err, "status 403")
+	assert.ErrorContains(t, err, "User member record not found")
+}
+
+func TestListSchemaPolicyMetadata_Success(t *testing.T) {
+	var capturedPath, capturedMethod string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		capturedMethod = r.Method
+		resp := map[string]any{
+			"items": []policy.PolicyMetadataResponse{
+				{ID: "pm_1", SchemaID: "drp-schema-v1", FieldName: "person.fullName", AccessControlType: policy.AccessControlTypePublic},
+				{ID: "pm_2", SchemaID: "drp-schema-v1", FieldName: "person.nic", IsOwner: true},
+			},
+			"count": 2,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	fields, err := client.ListSchemaPolicyMetadata(context.Background(), "drp-schema-v1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/api/v1/schemas/drp-schema-v1/policy-metadata", capturedPath)
+	assert.Equal(t, http.MethodGet, capturedMethod)
+	assert.Equal(t, 2, fields.Count)
+	if assert.Len(t, fields.Items, 2) {
+		assert.Equal(t, "person.fullName", fields.Items[0].FieldName)
+		assert.True(t, fields.Items[1].IsOwner)
+	}
+}
+
+func TestListSchemaPolicyMetadata_ErrorResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "schema not found"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "token")
+	fields, err := client.ListSchemaPolicyMetadata(context.Background(), "missing")
+
+	assert.Error(t, err)
+	assert.Nil(t, fields)
+	assert.ErrorContains(t, err, "status 404")
+}
+
 func TestCreateApplication_Success(t *testing.T) {
 	var capturedMethod, capturedPath string
 	var capturedBody application.CreateApplicationRequest

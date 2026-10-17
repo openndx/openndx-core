@@ -14,6 +14,7 @@ import (
 
 	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/member"
+	"github.com/openndx/openndx-core/internal/pb/policy"
 	"github.com/openndx/openndx-core/internal/pb/schema"
 )
 
@@ -142,6 +143,65 @@ func (c *Client) ListMembers(ctx context.Context, ouID *string) (*MemberCollecti
 		return nil, err
 	}
 	var collection MemberCollection
+	if err := json.Unmarshal(body, &collection); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &collection, nil
+}
+
+// GetSchema calls GET /api/v1/schemas/{schemaId}.
+func (c *Client) GetSchema(ctx context.Context, schemaID string) (*schema.SchemaResponse, error) {
+	body, err := c.doJSON(ctx, http.MethodGet, "/api/v1/schemas/"+url.PathEscape(schemaID), nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp schema.SchemaResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &resp, nil
+}
+
+// SchemaCollection is the GET /api/v1/schemas response envelope.
+type SchemaCollection struct {
+	Items []schema.SchemaResponse `json:"items"`
+	Count int                     `json:"count"`
+}
+
+// ListSchemas calls GET /api/v1/schemas, optionally filtered to one member's
+// schemas.
+func (c *Client) ListSchemas(ctx context.Context, memberID *string) (*SchemaCollection, error) {
+	path := "/api/v1/schemas"
+	if memberID != nil && *memberID != "" {
+		path += "?memberId=" + url.QueryEscape(*memberID)
+	}
+
+	body, err := c.doJSON(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	var collection SchemaCollection
+	if err := json.Unmarshal(body, &collection); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+	return &collection, nil
+}
+
+// PolicyMetadataCollection is the GET /api/v1/schemas/{schemaId}/policy-metadata
+// response envelope.
+type PolicyMetadataCollection struct {
+	Items []policy.PolicyMetadataResponse `json:"items"`
+	Count int                             `json:"count"`
+}
+
+// ListSchemaPolicyMetadata calls GET /api/v1/schemas/{schemaId}/policy-metadata
+// to list a schema's grantable fields.
+func (c *Client) ListSchemaPolicyMetadata(ctx context.Context, schemaID string) (*PolicyMetadataCollection, error) {
+	body, err := c.doJSON(ctx, http.MethodGet, "/api/v1/schemas/"+url.PathEscape(schemaID)+"/policy-metadata", nil)
+	if err != nil {
+		return nil, err
+	}
+	var collection PolicyMetadataCollection
 	if err := json.Unmarshal(body, &collection); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}

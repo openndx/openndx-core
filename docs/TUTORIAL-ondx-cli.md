@@ -248,12 +248,14 @@ against a different identity provider.
 | `ondx members list [--ou-id ...] [--json]`                | List members                                        |
 | `ondx members get --member-id ... [--json]`               | Show a member's details                             |
 | `ondx schemas create [flags]`                             | Register a schema and its grantable fields          |
+| `ondx schemas list [--member-id ...] [--json]`            | List schemas                                        |
+| `ondx schemas get --schema-id ... [--json]`               | Show a schema's details and fields                  |
 | `ondx applications create [flags]`                        | Register an application, optionally granting fields |
 | `ondx applications list [--member-id ...] [--json]`       | List applications                                   |
 | `ondx applications get --app-id ... [--json]`             | Show an application's details and current policy    |
 | `ondx policy update --app-id ... --field ... [flags]`     | Save the selected fields and add or refresh grants  |
 
-Every command that calls Portal Backend (`members create`/`list`/`get`, `schemas create`,
+Every command that calls Portal Backend (`members create`/`list`/`get`, `schemas create`/`list`/`get`,
 `applications create`/`list`/`get`, `policy update`) also accepts `--pb-url`, `--credentials-path`,
 `--insecure`, and `--profile`. `ondx login` accepts `--credentials-path`, `--insecure`, and
 `--profile`, but not `--pb-url` (it doesn't talk to Portal Backend). `ondx profile list` and

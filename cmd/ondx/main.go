@@ -90,6 +90,8 @@ Usage:
   ondx members list [flags]         List members
   ondx members get [flags]          Show a member's details
   ondx schemas create [flags]       Register a new schema and its grantable fields
+  ondx schemas list [flags]         List schemas
+  ondx schemas get [flags]          Show a schema's details and fields
   ondx applications create [flags]  Register a new application
   ondx applications list [flags]    List applications
   ondx applications get [flags]     Show an application's current details and policy
@@ -716,14 +718,168 @@ func runMembersCreate(ctx context.Context, args []string) error {
 
 func runSchemas(ctx context.Context, args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("expected a subcommand: 'create' (usage: ondx schemas create [flags])")
+		return fmt.Errorf("expected a subcommand: 'create', 'get', or 'list' (usage: ondx schemas create|get|list [flags])")
 	}
 	switch args[0] {
 	case "create":
 		return runSchemasCreate(ctx, args[1:])
+	case "get":
+		return runSchemasGet(ctx, args[1:])
+	case "list":
+		return runSchemasList(ctx, args[1:])
 	default:
-		return fmt.Errorf("unknown schemas subcommand %q (expected 'create')", args[0])
+		return fmt.Errorf("unknown schemas subcommand %q (expected 'create', 'get', or 'list')", args[0])
 	}
+}
+
+func runSchemasList(ctx context.Context, args []string) error {
+	profileName, active, err := resolveActiveProfile(args)
+	if err != nil {
+		return err
+	}
+
+	fs := flag.NewFlagSet("schemas list", flag.ExitOnError)
+	fs.String("profile", profileName, "Named profile to use for defaults (env NDX_PROFILE; see 'ondx profile list')")
+	memberID := fs.String("member-id", "", "Filter to one member's schemas (admins see all schemas if omitted)")
+	pbURL := fs.String("pb-url", firstNonEmpty(os.Getenv("NDX_PB_URL"), active.PBURL), "Portal Backend base URL (env NDX_PB_URL)")
+	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
+	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
+	jsonOutput := fs.Bool("json", false, "Print the raw JSON response instead of a formatted summary")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if *pbURL == "" {
+		return fmt.Errorf("--pb-url is required (or set NDX_PB_URL, or configure it in a profile)")
+	}
+
+	path := *credentialsPath
+	if path == "" {
+		path = defaultCredentialsPathOrExit(profileName)
+	}
+
+	httpClient := newHTTPClient(*insecure)
+
+	token, err := auth.EnsureFreshToken(ctx, path, httpClient)
+	if err != nil {
+		return err
+	}
+
+	client := pbclient.NewClient(*pbURL, token.AccessToken)
+	client.HTTPClient = httpClient
+
+	var memberFilter *string
+	if *memberID != "" {
+		memberFilter = memberID
+	}
+	schemas, err := client.ListSchemas(ctx, memberFilter)
+	if err != nil {
+		return fmt.Errorf("failed to list schemas: %w", err)
+	}
+
+	if *jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(schemas)
+	}
+
+	if len(schemas.Items) == 0 {
+		fmt.Println("No schemas found.")
+		return nil
+	}
+	fmt.Printf("%-40s %-30s %-40s %s\n", "SCHEMA ID", "NAME", "MEMBER ID", "ENDPOINT")
+	for _, s := range schemas.Items {
+		fmt.Printf("%-40s %-30s %-40s %s\n", s.SchemaID, s.SchemaName, s.MemberID, s.Endpoint)
+	}
+	return nil
+}
+
+// schemaDetails is the `schemas get --json` output: the schema plus its
+// grantable fields, which Portal Backend serves from a separate endpoint.
+type schemaDetails struct {
+	*schema.SchemaResponse
+	Fields []policy.PolicyMetadataResponse `json:"fields"`
+}
+
+func runSchemasGet(ctx context.Context, args []string) error {
+	profileName, active, err := resolveActiveProfile(args)
+	if err != nil {
+		return err
+	}
+
+	fs := flag.NewFlagSet("schemas get", flag.ExitOnError)
+	fs.String("profile", profileName, "Named profile to use for defaults (env NDX_PROFILE; see 'ondx profile list')")
+	schemaID := fs.String("schema-id", "", "Schema ID to fetch (required)")
+	pbURL := fs.String("pb-url", firstNonEmpty(os.Getenv("NDX_PB_URL"), active.PBURL), "Portal Backend base URL (env NDX_PB_URL)")
+	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
+	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
+	jsonOutput := fs.Bool("json", false, "Print the schema and its fields as JSON instead of a formatted summary")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if *schemaID == "" {
+		return fmt.Errorf("--schema-id is required")
+	}
+	if *pbURL == "" {
+		return fmt.Errorf("--pb-url is required (or set NDX_PB_URL, or configure it in a profile)")
+	}
+
+	path := *credentialsPath
+	if path == "" {
+		path = defaultCredentialsPathOrExit(profileName)
+	}
+
+	httpClient := newHTTPClient(*insecure)
+
+	token, err := auth.EnsureFreshToken(ctx, path, httpClient)
+	if err != nil {
+		return err
+	}
+
+	client := pbclient.NewClient(*pbURL, token.AccessToken)
+	client.HTTPClient = httpClient
+	s, err := client.GetSchema(ctx, *schemaID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch schema: %w", err)
+	}
+	fields, err := client.ListSchemaPolicyMetadata(ctx, s.SchemaID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch schema fields: %w", err)
+	}
+
+	if *jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		// Keep "fields" an array even when Portal Backend sends null items.
+		fieldItems := fields.Items
+		if fieldItems == nil {
+			fieldItems = []policy.PolicyMetadataResponse{}
+		}
+		return enc.Encode(schemaDetails{SchemaResponse: s, Fields: fieldItems})
+	}
+
+	fmt.Printf("Schema:      %s (%s)\n", s.SchemaName, s.SchemaID)
+	if s.SchemaDescription != nil && *s.SchemaDescription != "" {
+		fmt.Printf("Description: %s\n", *s.SchemaDescription)
+	}
+	fmt.Printf("Member ID:   %s\n", s.MemberID)
+	fmt.Printf("Endpoint:    %s\n", s.Endpoint)
+	fmt.Printf("Version:     %s\n", s.Version)
+	fmt.Printf("Created:     %s\n", s.CreatedAt)
+	fmt.Printf("Updated:     %s\n", s.UpdatedAt)
+	fmt.Println("Fields:")
+	if len(fields.Items) == 0 {
+		fmt.Println("  (none)")
+	}
+	for _, f := range fields.Items {
+		owner := ""
+		if f.IsOwner {
+			owner = ", owner"
+		}
+		fmt.Printf("  - %s:%s (%s%s)\n", s.SchemaID, f.FieldName, f.AccessControlType, owner)
+	}
+	return nil
 }
 
 func runSchemasCreate(ctx context.Context, args []string) error {
