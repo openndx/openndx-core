@@ -34,54 +34,49 @@ func FindFieldDefinitionInSchema(schema *ast.Document, typeName, fieldName strin
 	return nil
 }
 
-// ExtractSourceInfoFromSchema extracts @sourceInfo directive from schema using field path
+// namedTypeName unwraps NonNull and List wrappers to the underlying named type.
+func namedTypeName(t ast.Type) string {
+	for t != nil {
+		switch typ := t.(type) {
+		case *ast.Named:
+			if typ.Name == nil {
+				return ""
+			}
+			return typ.Name.Value
+		case *ast.NonNull:
+			t = typ.Type
+		case *ast.List:
+			t = typ.Type
+		default:
+			return ""
+		}
+	}
+	return ""
+}
+
+// ExtractSourceInfoFromSchema extracts @sourceInfo directive from schema using field path.
+// Paths are type.field or type.intermediate....leaf. Intermediate fields may be objects or
+// lists (including NonNull wrappers such as [VehicleClass!]!); each step is unwrapped to the
+// underlying named type before continuing to the leaf.
 func ExtractSourceInfoFromSchema(schema *ast.Document, fieldPath string) *SourceInfo {
-	// Parse field path like "vehicleInfo.regNo" or "vehicleInfo.class.className" or "VehicleClass.className"
 	parts := strings.Split(fieldPath, ".")
 	if len(parts) < 2 {
 		return nil
 	}
 
-	// Handle different path formats
-	switch len(parts) {
-	case 2:
-		// Direct type.field format (e.g., "VehicleClass.className", "vehicleInfo.regNo")
-		return findAndExtractSourceInfo(schema, parts[0], parts[1])
-
-	case 3:
-		// Nested path format (e.g., "vehicleInfo.class.className")
-		// This means we have: parentType.arrayField.nestedField
-		parentType := parts[0]  // "vehicleInfo"
-		arrayField := parts[1]  // "class"
-		nestedField := parts[2] // "className"
-
-		// First, find the array field in the parent type to determine the array element type
-		arrayFieldDef := FindFieldDefinitionInSchema(schema, parentType, arrayField)
-		if arrayFieldDef == nil {
+	typeName := parts[0]
+	for _, fieldName := range parts[1 : len(parts)-1] {
+		fieldDef := FindFieldDefinitionInSchema(schema, typeName, fieldName)
+		if fieldDef == nil {
 			return nil
 		}
-
-		// Determine the array element type name from the schema
-		arrayElementTypeName := ""
-
-		// Check if the array field is a List type and get its element type
-		if listType, ok := arrayFieldDef.Type.(*ast.List); ok {
-			if namedType, ok := listType.Type.(*ast.Named); ok {
-				arrayElementTypeName = namedType.Name.Value
-			}
-		}
-
-		if arrayElementTypeName == "" {
+		typeName = namedTypeName(fieldDef.Type)
+		if typeName == "" {
 			return nil
 		}
-
-		// Find the nested field in the array element type
-		return findAndExtractSourceInfo(schema, arrayElementTypeName, nestedField)
-
-	default:
-		// For paths with more than 3 parts, fall back to the first two parts
-		return findAndExtractSourceInfo(schema, parts[0], parts[1])
 	}
+
+	return findAndExtractSourceInfo(schema, typeName, parts[len(parts)-1])
 }
 
 // findAndExtractSourceInfo is a helper function to find a field and extract its source info
