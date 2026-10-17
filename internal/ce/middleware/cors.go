@@ -17,13 +17,14 @@ type CORSConfig struct {
 }
 
 // DefaultCORSConfig returns the default CORS configuration.
-// The allowed origins can be overridden by setting the CORS_ALLOWED_ORIGINS environment variable (comma-separated).
+// allowedOrigins is a comma-separated list (typically from CORS_ALLOWED_ORIGINS
+// and/or the consent portal URL). An empty string yields no allowed origins.
+// NewCORSMiddleware / CORSMiddleware panics if AllowCredentials is true and
+// AllowedOrigins contains "*" (invalid per the CORS spec).
 func DefaultCORSConfig(allowedOrigins string) CORSConfig {
-	// Get allowed origins from environment variable, default to localhost:5173
 	var allowedOriginsArr []string
 	if envOrigins := allowedOrigins; envOrigins != "" {
 		envOriginsList := strings.Split(envOrigins, ",")
-		// Append environment origins to the default
 		for _, origin := range envOriginsList {
 			trimmed := strings.TrimSpace(origin)
 			if trimmed != "" {
@@ -64,6 +65,10 @@ func CORSMiddleware(config CORSConfig) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 
+			// Always advertise Origin-dependent responses, even when the origin
+			// is rejected, so shared caches key on Origin.
+			w.Header().Add("Vary", "Origin")
+
 			// Check if the origin is allowed
 			var allowedOrigin string
 			for _, allowedOrig := range config.AllowedOrigins {
@@ -75,9 +80,6 @@ func CORSMiddleware(config CORSConfig) func(http.Handler) http.Handler {
 
 			// If origin is allowed or we allow all origins
 			if allowedOrigin != "" {
-				// Always add Vary: Origin to prevent cache poisoning
-				w.Header().Add("Vary", "Origin")
-
 				// Set CORS headers
 				// Note: wildcard with credentials is prevented at configuration time
 				if allowedOrigin == "*" {
@@ -102,16 +104,18 @@ func CORSMiddleware(config CORSConfig) func(http.Handler) http.Handler {
 				}
 			}
 
-			// Handle preflight requests
-			if r.Method == "OPTIONS" {
-				// Add Vary headers for preflight requests to prevent cache poisoning
+			// Answer CORS preflight only; other OPTIONS fall through to the router.
+			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 				w.Header().Add("Vary", "Access-Control-Request-Method")
 				w.Header().Add("Vary", "Access-Control-Request-Headers")
-				w.WriteHeader(http.StatusOK)
+				if allowedOrigin == "" {
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 
-			// Continue with the next handler
 			next.ServeHTTP(w, r)
 		})
 	}
