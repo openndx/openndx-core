@@ -1,6 +1,7 @@
 package federator
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -50,7 +51,6 @@ func QueryBuilder(maps *[]ProviderLevelFieldRecord, args []*ArgSource) ([]*feder
 		PushArgumentsToProviderQueryAst(providerArgs, q)
 
 		query := printer.Print(q.QueryAst).(string)
-		println(printer.Print(q.QueryAst).(string))
 
 		requests = append(requests, &federationServiceRequest{
 			ServiceKey: q.ServiceKey,
@@ -492,10 +492,26 @@ func PushArgumentValue(arg *ast.Argument, val interface{}) {
 	case int:
 		arg.Value = &ast.IntValue{
 			Kind:  kinds.IntValue,
-			Value: string(rune(v)),
+			Value: strconv.Itoa(v),
+		}
+	case int64:
+		arg.Value = &ast.IntValue{
+			Kind:  kinds.IntValue,
+			Value: strconv.FormatInt(v, 10),
+		}
+	case json.Number:
+		if _, err := v.Int64(); err == nil {
+			arg.Value = &ast.IntValue{
+				Kind:  kinds.IntValue,
+				Value: v.String(),
+			}
+		} else {
+			arg.Value = &ast.FloatValue{
+				Kind:  kinds.FloatValue,
+				Value: v.String(),
+			}
 		}
 	case float64:
-		// inside your case float64:
 		arg.Value = &ast.FloatValue{
 			Kind:  kinds.FloatValue,
 			Value: strconv.FormatFloat(v, 'f', -1, 64),

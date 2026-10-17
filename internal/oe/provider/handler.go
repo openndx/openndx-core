@@ -53,15 +53,24 @@ func (h *Handler) GetProvider(serviceKey, schemaId string) (*Provider, bool) {
 	return p, exists
 }
 
-// AddProvider adds a new provider to the handler.
-func (h *Handler) AddProvider(provider *Provider) {
+// AddProvider adds a new provider to the handler. It reports false, leaving the
+// handler unchanged, when the provider is nil, has no service key, or a provider
+// with the same service key and schema ID is already registered.
+func (h *Handler) AddProvider(provider *Provider) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	if provider == nil || provider.ServiceKey == "" {
-		return
+		return false
+	}
+
+	for _, existing := range h.Providers {
+		if existing.ServiceKey == provider.ServiceKey && existing.SchemaID == provider.SchemaID {
+			return false
+		}
 	}
 
 	h.Providers = append(h.Providers, provider)
 	provider.Client = h.HttpClient
+	return true
 }

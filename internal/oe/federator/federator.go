@@ -3,6 +3,7 @@ package federator
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,6 +101,19 @@ func createErrorResponseWithCode(message string, code string) graphql.Response {
 	})
 }
 
+// errorResponseFromError wraps err in a GraphQL error response, keeping it as-is
+// when it is already a *graphql.JSONError.
+func errorResponseFromError(err error) graphql.Response {
+	var jsonErr *graphql.JSONError
+	if !stderrors.As(err, &jsonErr) {
+		jsonErr = &graphql.JSONError{Message: err.Error()}
+	}
+	return graphql.Response{
+		Data:   nil,
+		Errors: []interface{}{jsonErr},
+	}
+}
+
 // Initialize sets up the Federator with providers and an HTTP client.
 // Returns error if critical configuration is invalid (fail-fast approach).
 // The provided context controls the lifecycle of background operations (e.g., JWKS auto-refresh).
@@ -168,7 +182,9 @@ func Initialize(ctx context.Context, configs *configs.Config, providerHandler *p
 
 			// print service url
 			logger.Log.Info("Adding Provider from the Config File", "Provider Key", p.ProviderKey, "Provider Url", p.ProviderURL)
-			providerHandler.AddProvider(providerInstance)
+			if !providerHandler.AddProvider(providerInstance) {
+				logger.Log.Warn("Skipping duplicate provider in the Config File", "Provider Key", p.ProviderKey, "Schema ID", p.SchemaID)
+			}
 		}
 	} else {
 		logger.Log.Info("No Providers found in the Config File")
@@ -209,6 +225,7 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 	doc, err := parser.Parse(parser.ParseParams{Source: src})
 	if err != nil {
 		logger.Log.Error("Failed to parse query", "Error", err)
+		return createErrorResponseWithCode(fmt.Sprintf("Failed to parse query: %v", err), errors.CodeBadRequest)
 	}
 
 	// Get schema document from database or config
@@ -284,12 +301,7 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 	schemaCollection, err := ProviderSchemaCollector(schema, doc)
 	if err != nil {
 		logger.Log.Error("Failed to collect provider schema", "Error", err)
-		return graphql.Response{
-			Data: nil,
-			Errors: []interface{}{
-				err.(*graphql.JSONError),
-			},
-		}
+		return errorResponseFromError(err)
 	}
 
 	// Safely get argument mapping with nil check
@@ -502,12 +514,7 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 	splitRequests, err := QueryBuilder(schemaCollection.ProviderFieldMap, extractedArgs)
 	if err != nil {
 		logger.Log.Error("Failed to build queries", "Error", err)
-		return graphql.Response{
-			Data: nil,
-			Errors: []interface{}{
-				err.(*graphql.JSONError),
-			},
-		}
+		return errorResponseFromError(err)
 	}
 
 	if len(splitRequests) == 0 {
@@ -703,29 +710,6 @@ func (f *Federator) logConsentCheck(ctx context.Context, applicationID, ownerID 
 	// Update context with traceID if one was generated
 	// Consent Engine is a service, so targetType is "SERVICE"
 	return middleware.LogAuditEvent(ctx, "CONSENT_CHECK", &targetID, "SERVICE", requestMetadata, responseMetadata, status)
-}
-
-func (f *Federator) mergeResponses(responses []*ProviderResponse) graphql.Response {
-	merged := graphql.Response{
-		Data:   make(map[string]interface{}),
-		Errors: make([]interface{}, 0),
-	}
-
-	for _, resp := range responses {
-		if resp.Response.Data != nil {
-			for k, v := range resp.Response.Data {
-				// wrap v with service key
-				merged.Data[resp.ServiceKey] = map[string]interface{}{
-					k: v,
-				}
-			}
-		}
-		if resp.Response.Errors != nil {
-			merged.Errors = append(merged.Errors, resp.Response.Errors...)
-		}
-	}
-
-	return merged
 }
 
 // loadSchemaFromFile loads the schema from schema.graphql file as a fallback

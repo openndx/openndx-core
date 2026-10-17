@@ -1,6 +1,7 @@
 package federator
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/graphql-go/graphql/language/ast"
@@ -162,7 +163,31 @@ func TestPushArgumentValue(t *testing.T) {
 			value: 65,
 			expected: &ast.IntValue{
 				Kind:  kinds.IntValue,
-				Value: string(rune(65)),
+				Value: "65",
+			},
+		},
+		{
+			name:  "Int64",
+			value: int64(199012345678),
+			expected: &ast.IntValue{
+				Kind:  kinds.IntValue,
+				Value: "199012345678",
+			},
+		},
+		{
+			name:  "JSON number integer",
+			value: json.Number("42"),
+			expected: &ast.IntValue{
+				Kind:  kinds.IntValue,
+				Value: "42",
+			},
+		},
+		{
+			name:  "JSON number float",
+			value: json.Number("4.2"),
+			expected: &ast.FloatValue{
+				Kind:  kinds.FloatValue,
+				Value: "4.2",
 			},
 		},
 		{

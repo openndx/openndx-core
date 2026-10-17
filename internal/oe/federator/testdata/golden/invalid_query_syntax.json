@@ -1,7 +1,14 @@
 {
-  "panicked": true,
   "response": {
-    "data": null
+    "data": null,
+    "errors": [
+      {
+        "extensions": {
+          "code": "BAD_REQUEST"
+        },
+        "message": "Failed to parse query: Syntax Error Query (1:40) Expected Name, found {\n\n1: query { personInfo(nic: \"199012345678\" { fullName } }\n                                          ^\n"
+      }
+    ]
   },
   "policyRequests": [],
   "consentRequests": [],

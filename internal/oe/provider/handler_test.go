@@ -306,6 +306,25 @@ func TestHandler_AddProvider_NilProvider(t *testing.T) {
 	}
 }
 
+func TestHandler_AddProvider_Duplicate(t *testing.T) {
+	original := NewProvider("provider1", "http://example1.com", "schema1", nil)
+	handler := NewProviderHandler([]*Provider{original})
+
+	if handler.AddProvider(NewProvider("provider1", "http://other.com", "schema1", nil)) {
+		t.Error("expected AddProvider to reject a duplicate service key and schema ID")
+	}
+	if len(handler.Providers) != 1 {
+		t.Errorf("expected 1 provider after adding a duplicate, got %d", len(handler.Providers))
+	}
+	if p, _ := handler.GetProvider("provider1", "schema1"); p != original {
+		t.Error("expected the original provider to be kept")
+	}
+
+	if !handler.AddProvider(NewProvider("provider1", "http://example1.com", "schema2", nil)) {
+		t.Error("expected AddProvider to accept the same service key with a different schema ID")
+	}
+}
+
 func TestHandler_AddProvider_EmptyServiceKey(t *testing.T) {
 	handler := NewProviderHandler([]*Provider{
 		NewProvider("provider1", "http://example1.com", "schema1", nil),

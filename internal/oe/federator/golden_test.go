@@ -211,8 +211,6 @@ var goldenCases = []goldenCase{
 		request: graphql.Request{Query: `mutation { personInfo(nic: "199012345678") { fullName } }`},
 	},
 	{
-		// Characterizes current behaviour: the parse error is ignored and the
-		// pipeline panics on the nil document.
 		name:    "invalid_query_syntax",
 		request: graphql.Request{Query: `query { personInfo(nic: "199012345678" { fullName } }`},
 	},

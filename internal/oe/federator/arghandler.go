@@ -133,57 +133,6 @@ func containsArg(args []*graphql.ArgMapping, target *graphql.ArgMapping) bool {
 	return false
 }
 
-// FindArrayRequiredArguments identifies which arguments are required for array fields
-func FindArrayRequiredArguments(flattenedPaths []string, argMap []*graphql.ArgMapping) []*graphql.ArgMapping {
-	var requiredArgs []*graphql.ArgMapping
-
-	for _, path := range flattenedPaths {
-		for _, arg := range argMap {
-			if arg == nil {
-				continue
-			}
-
-			// Check for array field patterns
-			if isPathPrefix(path, arg.TargetArgPath) && !containsArg(requiredArgs, arg) {
-				requiredArgs = append(requiredArgs, arg)
-			}
-		}
-	}
-
-	return requiredArgs
-}
-
-// ExtractArrayRequiredArguments matches array field arguments with the required argument mappings
-func ExtractArrayRequiredArguments(argMap []*graphql.ArgMapping, arguments []*ast.Argument) []*ArgSource {
-	requiredArgs := make([]*ArgSource, 0)
-
-	for _, arg := range arguments {
-		if arg == nil || arg.Name == nil {
-			continue
-		}
-
-		for _, mapping := range argMap {
-			if mapping == nil {
-				continue
-			}
-
-			// e.g., SourceArgPath: "personInfo-nic" -> match with "nic"
-			segments := strings.Split(mapping.SourceArgPath, "-")
-			lastSegment := segments[len(segments)-1]
-
-			// If the argument name matches the last segment of SourceArgPath.
-			if arg.Name.Value == lastSegment && !containsArgSource(requiredArgs, mapping) {
-				requiredArgs = append(requiredArgs, &ArgSource{
-					ArgMapping: mapping,
-					Argument:   arg,
-				})
-			}
-		}
-	}
-
-	return requiredArgs
-}
-
 func containsArgSource(args []*ArgSource, target *graphql.ArgMapping) bool {
 	for _, arg := range args {
 		if arg.ArgMapping == target {
