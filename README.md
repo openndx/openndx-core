@@ -1,260 +1,98 @@
 # OpenNDX
 
-A comprehensive data exchange platform consisting of multiple microservices and portals for secure data sharing and consent management.
+An open-source data exchange platform. Data consumers ask for citizens' data through one GraphQL gateway; the platform checks the consumer's access, gets the citizen's consent where required, fetches the data from the organizations that hold it, and returns one merged answer.
 
 ## Architecture
 
-### Backend Services (Go)
-
-- **Orchestration Engine** - Data exchange workflow orchestration
-- **Policy Decision Point** - Policy enforcement
-- **Consent Engine** - User consent management and validation
-- **Portal Backend** - Backend service for the `Admin Portal` and the `Member Portal`
-
-### Frontend Portals (React/TypeScript)
-
-- **Member Portal** - Management of `Data sources` or `Applications` by `OpenNDX Members`
-- **Admin Portal** - Administrative dashboard for the `OpenNDX Admins`
-- **Consent Portal** - Citizen-facing interface for data consent
-
-### Optional Components
-
-- **Observability Stack** (`observability/`) - Metrics collection and visualization (Prometheus, Grafana)
-- **Audit Service** ([LSFLK/argus](https://github.com/LSFLK/argus)) - Audit logging and event tracking (optional, services function normally without it)
-
-### Services
-
-| Service                         | Port | Purpose                          | Documentation                   |
-|---------------------------------|------|----------------------------------|---------------------------------|
-| **Orchestration Engine (OE)**   | 4000 | Request coordination and routing | [OE README](cmd/oe/README.md)   |
-| **Policy Decision Point (PDP)** | 8082 | ABAC authorization using OPA     | [PDP README](cmd/pdp/README.md) |
-| **Consent Engine (CE)**         | 8081 | Consent management and workflow  | [CE README](cmd/ce/README.md)   |
-| **Portal Backend (PB)**         | -    | Backend for Admin/Member Portals | [PB README](cmd/pb/README.md)   |
-
-### Request Flow
-
-```text
-Data Consumer → Orchestration Engine → Policy Decision Point (PDP)
-                     ↓
-              Consent Engine (CE) ← (if consent required)
-                     ↓
-              Data Provider
+```mermaid
+flowchart LR
+    Consumer[Data consumer app] -->|GraphQL| OE[Orchestration Engine]
+    OE -->|access decision| PDP[Policy Decision Point]
+    OE -->|consent| CE[Consent Engine]
+    OE -->|sub-queries| PR[Data providers]
+    Citizen --> CP[Consent Portal]
+    CP --> CE
+    Operator[Operators and member staff] --> AP[Admin and Member Portals]
+    AP --> PB[Portal Backend]
+    CLI[ondx CLI] --> PB
+    PB -->|policy metadata, allow-lists| PDP
+    PB -->|application clients| IDP[ThunderID]
+    CP -.->|sign in| IDP
+    AP -.->|sign in| IDP
+    CLI -.->|sign in| IDP
+    Consumer -.->|client credentials| IDP
+    CE -.->|verify tokens| IDP
+    PB -.->|verify tokens| IDP
+    OE -.->|audit events| AU[Argus audit service]
+    PB -.->|audit events| AU
 ```
 
-1. **Data Consumer Request** — a GraphQL request arrives at the Orchestration Engine.
-2. **PDP Evaluation** — the Orchestration Engine asks the PDP whether the request is
-   authorized and which fields (if any) still require consent.
-3. **Consent Management** — if consent is required, the Orchestration Engine calls
-   the Consent Engine, which returns a consent portal URL for the data owner.
-4. **Data Access** — once authorized (and consented, if required), the Orchestration
-   Engine fetches data from the appropriate Data Provider.
+Each core service keeps its own PostgreSQL database. Detail for every component is in its README, linked below.
 
-See the [Orchestration Engine README](cmd/oe/README.md) for full request/response
-payloads and the [GraphQL/Policy/Consent flow doc](docs/FLOW-graphql-policy-consent-and-esignet-gap.md)
-for a deeper walkthrough.
+| Component | Role | Port | Docs |
+|---|---|---|---|
+| Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
+| Policy Decision Point (PDP) | Field-level policy metadata, application allow-lists, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
+| Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
+| Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
+| `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
+| Consent Portal | Citizen app to approve or revoke consent | 5173 | [portals/apps/consent](portals/apps/consent/README.md) |
+| Admin Portal | Operator app: members and submission review (not in Compose) | n/a | [portals/apps/admin](portals/apps/admin/README.md) |
+| Member Portal | Member staff app: schemas and applications (not in Compose) | n/a | [portals/apps/member](portals/apps/member/README.md) |
+| ThunderID | Identity provider bundled for local use | 8090 | [thunderid/](thunderid) |
+| Audit service | [Argus](https://github.com/LSFLK/argus), optional audit log | 3001 | external |
+| PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
+| Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
 
-## How to Deploy
+Ports are the Docker Compose defaults, and each can be changed in `.env`.
 
-### Prerequisites
+### How a data request flows
 
-Before deploying OpenNDX, you must configure an Identity Provider (IdP) to handle authentication and authorization.
+1. A consumer gets a token from the identity provider and sends a GraphQL query to the Orchestration Engine.
+2. The Orchestration Engine asks the Policy Decision Point whether the consumer may read each field, and which fields need the data owner's consent.
+3. If consent is needed, the Consent Engine records a pending request. The consumer receives a consent link, the citizen approves it in the Consent Portal, and the consumer repeats the query.
+4. The Orchestration Engine fetches the data from the providers in parallel and returns the merged result.
 
-1.  **Configure IdP**: Set up an IdP (e.g., Asgardeo, Keycloak, Auth0) to manage users and roles.
-2.  **Create Users**: Create the necessary users in your IdP.
-3.  **Assign Roles**:
-    - Create a role named `openndx-admin`.
-    - Assign this role to users who require administrative access to the OpenNDX Admin Portal.
-    - Ensure other roles (e.g., `openndx-member`) are created and assigned as needed for Member Portal access.
+Providers, schemas, applications and their access are set up beforehand through the Portal Backend, using the portals or `ondx`. Details: [Orchestration Engine](cmd/oe/README.md#how-it-works).
 
-### Deployment Steps
+## Quick start
 
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/OpenNDX/openndx-core.git
-    cd openndx-core
-    ```
-
-2.  **Configure Environment**:
-    - Optional: the root `compose.yml` defaults every variable to a working local-dev value, including the bundled ThunderID IdP.
-    - To override any of them, copy the root `.env.example` to `.env` (`cp .env.example .env`) and edit only what you need.
-
-3.  **Build and Run**:
-    - Use the provided Makefile to build and run services.
-    ```bash
-    make setup-all
-    make validate-build-all
-    make run-all # If available, or run services individually
-    ```
-
-
-## Quick Start
-
-### Initial Setup
+You need Docker with Compose.
 
 ```bash
-make setup-all
-```
-
-This command will:
-
-1. **Install Git Hooks** - Sets up pre-commit hooks that automatically run quality checks, build validation, and tests for services with staged changes
-2. **Setup Go Services** - Installs dependencies (`go mod tidy` and `go mod download`) for:
-
-   - orchestration-engine
-   - policy-decision-point
-   - consent-engine
-   - portal-backend
-
-3. **Setup Frontend Services** - Installs pnpm dependencies (`pnpm install --frozen-lockfile`) for:
-   - member-portal
-   - admin-portal
-   - consent-portal
-
-### Build and Run
-
-```bash
-# Build all services
-make validate-build-all
-
-# Run a specific service
-make run <service-name>
-```
-
-## Available Commands
-
-```bash
-make help                    # Show all available commands
-make setup <service>         # Setup a specific service
-make validate-build <service> # Build and validate a service
-make validate-test <service>  # Run tests for a service
-make quality-check <service>  # Run code quality checks
-```
-
-## Local Development Stack (Docker Compose)
-
-For a full flow using the mock DRP/RGD providers, follow the
-[local end-to-end walkthrough](dev/WALKTHROUGH.md). It uses `ondx` to register
-members and schemas, grant application policy, and then walks through citizen
-consent approval and verification of the returned data.
-
-The repo root `compose.yml` brings up Postgres, ThunderID (IdP), OE, PDP, CE,
-Portal Backend, the consent portal, and the optional audit service — a
-self-contained stack for exercising the full request flow end-to-end without
-running each Go binary by hand.
-
-```bash
+git clone https://github.com/openndx/openndx-core.git
+cd openndx-core
 docker compose up --build
 ```
 
-Every variable has a working local-dev default, so no `.env` is needed. To
-override any of them, `cp .env.example .env` and edit only what you need —
-docker compose automatically loads a `.env` file from the working directory.
+This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend, the Consent Portal and the audit service. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. The audit service is built from its GitHub source, so the first build needs network access.
 
-### Testing
+The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data. The Admin and Member Portals are not in Compose; see their READMEs.
 
-```bash
-# Unit tests (from the repo root)
-go test ./cmd/pdp/... ./internal/pdp/... -v
-go test ./cmd/ce/... ./internal/ce/... -v
-go test ./cmd/oe/... ./internal/oe/... -v
+## Working on the code
 
-# Integration tests
-cd tests/integration && docker compose -f docker-compose.test.yml up -d && \
-  (go test -v ./...; docker compose -f docker-compose.test.yml down -v)
-```
-
-### API Reference
-
-| Service                      | Endpoint                         | Purpose                            |
-|------------------------------|----------------------------------|------------------------------------|
-| Orchestration Engine (4000)  | `POST /graphql`                  | GraphQL endpoint for data requests |
-| Policy Decision Point (8082) | `POST /api/v1/policy/decide`     | Authorization decision             |
-| Consent Engine (8081)        | `POST /internal/api/v1/consents` | Process consent workflow request   |
-| Consent Engine (8081)        | `GET /internal/api/v1/consents`  | Get consent status                 |
-| Consent Engine (8081)        | `GET /api/v1/consents`           | List the owner's consents          |
-| Consent Engine (8081)        | `GET /api/v1/consents/{id}`      | Get consent details                |
-| Consent Engine (8081)        | `PUT /api/v1/consents/{id}`      | Approve, reject or revoke consent  |
-| all services                 | `GET /health`                    | Health check                       |
+Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker and Make, then:
 
 ```bash
-# Policy decision
-curl -X POST http://localhost:8082/api/v1/policy/decide \
-  -H "Content-Type: application/json" \
-  -d '{
-    "consumer_id": "passport-app",
-    "app_id": "passport-app",
-    "request_id": "req_123",
-    "required_fields": ["person.fullName", "person.photo"]
-  }'
-
-# Consent request
-curl -X POST http://localhost:8081/internal/api/v1/consents \
-  -H "Content-Type: application/json" \
-  -d '{
-    "app_id": "passport-app",
-    "data_fields": [
-      {
-        "owner_type": "citizen",
-        "owner_id": "199512345678",
-        "fields": ["person.permanentAddress"]
-      }
-    ],
-    "purpose": "passport_application",
-    "session_id": "session_123",
-    "redirect_url": "https://passport-app.gov.lk/callback"
-  }'
+make help                        # all commands
+make setup-all                   # git hooks, Go modules, portal dependencies
+make validate-test <service>     # tests
+make quality-check <service>     # format, lint, security
+make run <service>               # run one service
 ```
 
-### Environment Variables
+`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend`, `consent-portal`, `admin-portal` or `member-portal`. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
-`.env.example` lists every variable `compose.yml` reads, grouped by service, at
-its default value. The most common ones:
-
-| Variable                                          | Local default                           | Production example   |
-|---------------------------------------------------|-----------------------------------------|----------------------|
-| `ENVIRONMENT`                                     | `local`                                 | `production`         |
-| `PDP_PORT` / `CE_PORT` / `OE_PORT` / `PB_PORT`    | `8082` / `8081` / `4000` / `8083`       | as needed            |
-| `DB_USER` / `DB_PASSWORD`                         | `postgres` / `1234`                     | real credentials     |
-| `IDP_PUBLIC_URL`                                  | `http://localhost:8090`                 | your IdP's HTTPS URL |
-| `BUILD_VERSION` / `BUILD_TIME` / `GIT_COMMIT`     | `dev` / empty / `local`                 | CI-provided values   |
-| `OTEL_METRICS_EXPORTER`                           | `prometheus`                            | as needed            |
-| `AUDIT_SERVICE_URL` / `ARGUS_API_KEY`             | `http://audit-service:3001` / `1234`    | as needed            |
-
-All local-dev secrets default to `1234` — never reuse them outside local dev.
-
-## ondx CLI
-
-`ondx` is the management CLI for members, schemas, applications, and policies against the OpenNDX Platform. Install it with:
-
-```bash
-# macOS / Linux
-brew install openndx/tap/ondx
-
-# Any Unix
-curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
-
-# Windows (PowerShell)
-irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
-
-# Go developers
-go install github.com/openndx/openndx-core/cmd/ondx@latest
-
-ondx version
-```
-
-Prebuilt archives for Linux, macOS, and Windows are attached to each [GitHub Release](https://github.com/openndx/openndx-core/releases); verify one with `gh attestation verify <file> --repo openndx/openndx-core`. See the [CLI tutorial](docs/TUTORIAL-ondx-cli.md) and [command reference](cmd/ondx/README.md).
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](docs/contributing/) for details on:
-- Development setup
-- Pull request process
-- Reporting issues
-
-## Security
-
-For security concerns, please see our [Security Policy](SECURITY.md). **Do not report security vulnerabilities through public GitHub issues.**
+To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
 ## Documentation
 
-For detailed documentation, see the `docs/` directory.
+- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` tutorial](docs/TUTORIAL-ondx-cli.md)
+- **Components:** the table above
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
+- **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
+- **Contributor and ops references (refresh pending):** [Makefile usage](docs/MAKEFILE_USAGE.md), [code quality setup](docs/LOCAL_CODE_QUALITY_SETUP.md), [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
+
+## Security and license
+
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md), not in public issues. Licensed under the [Apache License 2.0](LICENSE). Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).

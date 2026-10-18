@@ -157,7 +157,7 @@ dept   := authCtx.ExtraClaims()["department"]         // any other shape: index 
 
 Validation also requires `exp`, and checks `iss` and `aud` against `issuer` and `audience`.
 
-Roles populate `AuthContext.Roles()`, which is what the [`authz`](../authz/README.md) seam consumes. They are read from a top-level `roles` claim only; a role claim under another name, or nested (such as `realm_access.roles`), has to be mapped to `roles` on the IdP side. A `roles` claim of any shape other than an array of strings rejects the token, rather than silently reading as "no roles".
+Roles populate `AuthContext.Roles()`, which is what the [`authz`](https://pkg.go.dev/github.com/OpenNSW/core/authz) seam consumes. They are read from a top-level `roles` claim only; a role claim under another name, or nested (such as `realm_access.roles`), has to be mapped to `roles` on the IdP side. A `roles` claim of any shape other than an array of strings rejects the token, rather than silently reading as "no roles".
 
 ## Migrating from user and client principals
 
@@ -199,4 +199,4 @@ if err := manager.Health(); err != nil {
 
 ## Authorization
 
-`authn` handles identity only. For scope enforcement use the [`authz`](../authz/README.md) package — `*AuthContext` satisfies `authz.Principal` directly.
+`authn` handles identity only. For scope enforcement use the [`authz`](https://pkg.go.dev/github.com/OpenNSW/core/authz) package — `*AuthContext` satisfies `authz.Principal` directly.

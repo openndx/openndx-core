@@ -119,5 +119,5 @@ docker compose up -d
 
 ## Resources
 
-- [Release Guide](RELEASE_GUIDE.md) - How to create releases with version tags
+- [Release Guide](../../docs/RELEASE.md) - How to create releases with version tags
 - [GitHub Container Registry Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
