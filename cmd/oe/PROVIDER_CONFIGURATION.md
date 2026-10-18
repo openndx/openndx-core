@@ -1,112 +1,86 @@
-# Provider Configuration Guide
+# Adding a data provider to the OE
 
-This guide provides step-by-step instructions for configuring a new data provider into the Orchestration Engine (OE)
-which will enable OE to call the respective providers. The OE is designed to fetch data from multiple providers based
-on consumer requests, and proper integration is essential for seamless operation. This guide explains how to set up a 
-new provider, Registrar General Department of Farajaland (RGDF), as an example.
+How to make the Orchestration Engine fetch data from a new provider. The examples use the two mock providers from [dev/](../../dev/README.md): `drp` (API-key auth) and `rgd` (OAuth2). Every key is described in [CONFIGURATION.md](CONFIGURATION.md).
 
-## Prerequisites
+## What you need from the provider
 
-- As the first step, ensure you have obtained the access details (GraphQL endpoint URL, authentication credentials,
-  etc.) from the data provider.
-- Familiarize yourself with the provider's GraphQL schema and data structure.
+- The provider's GraphQL endpoint URL.
+- Its authentication details: an API key header, or OAuth2 client-credentials (token URL, client ID, secret, scopes).
+- Its GraphQL schema: the query fields and their paths, for example `person.fullName`.
 
-## Step 1: Update Configuration
+## 1. Register the schema and its policy metadata
 
-1. Open the `config.json` file located in the Orchestration Engine's root directory.
-2. Add a new entry to the `providers` array with the following details:
-    - `providerKey`: A unique identifier for the data provider (e.g., "rgdf").
-    - `providerUrl`: The GraphQL endpoint URL of the data provider.
-      Example:
-   ```json
-   {
-     "providerKey": "rgdf",
-     "providerUrl": "https://rgdf.gov.fl/graphql"
-   }
-   ```
-3. Provider Auth (Optional): If the provider requires authentication, add the necessary credentials (API key,
-   OAuth tokens, etc.) to the configuration file. Explained in the next step.
+The Policy Decision Point only answers for fields it has metadata for. A field with no metadata makes the whole query fail with `PDP_ERROR`. Register the provider's schema through Portal Backend, which creates the metadata in the PDP:
 
-## Step 2: Auth Method Configuration
+```bash
+ondx schemas create --profile local \
+  --schema-id drp-schema-v1 --name "DRP Person Registry" \
+  --endpoint http://localhost:9091 --member-id "$MEMBER_ID" \
+  --field person.fullName:public:primary \
+  --field person.profession:restricted:primary
+```
 
-1. In the `config.json` file, locate the `providers` array.
-2. For each provider that requires authentication, add an `auth` object with the following fields:
-    - `type`: The type of authentication (e.g., "apiKey", "oauth2").
+The `--schema-id` becomes the `schemaId`, and each `--field` name becomes the PDP `fieldName`. See [the walkthrough](../../dev/WALKTHROUGH.md#4-register-members-and-both-provider-schemas) for the full sequence.
 
-    1. For `apiKey` type:
-        - `apiKeyName`: The name of the header where the API key should be included (e.g., "Authorization").
-        - `apiKeyValue`: The actual API key provided by the data provider.
-    2. For `oauth2` type:
-        - `tokenUrl`: The URL to obtain the OAuth2 token.
-        - `clientId`: The client ID provided by the data provider.
-        - `clientSecret`: The client secret provided by the data provider.
+## 2. Add the provider to `config.json`
 
-## Step 3: Argument Mappings
+Add an entry to `providers`. `providerKey` and `schemaId` together identify the provider.
 
-1. In the `config.json` file, locate the `argMappings` array.
-2. Add new entries to map arguments from the consumer's request to the provider's expected arguments. This is explained
-   with an example below.
+```json
+{
+  "providerKey": "drp",
+  "providerUrl": "http://localhost:9091",
+  "schemaId": "drp-schema-v1",
+  "auth": { "type": "apiKey", "apiKeyName": "Test-Key", "apiKeyValue": "<key>" }
+}
+```
 
-   Let's say the source query (consumer facing) query looks like this.
-    ```graphql
-    query getPersonInfo {
-        personInfo(nic: "199512345678") {
-            name
-            address
-            profession
-            birthInfo {
-                 brNo
-             }
-         }
-   }
-     ```  
-   And the provider (rgdf) expects the query to look like this.
-    ```graphql
-    query GetPersonInforgdf {
-        getPersonInfo(nic: "12") {
-            fullName
-            permanentAddress
-            birthRegistrationNumber
-        }
-    }
-   ```
-   Example:
-    The above scenario maps to the following arguments.
-   ```json
-   {
-     "providerKey": "rgdf",
-     "targetArgName": "nic",
-     "sourceArgPath": "personInfo-nic",
-     "targetArgPath": "rgdf.person"
-   }
-   ```
-2. Repeat this process for all arguments that need to be mapped.
+For OAuth2 use `"auth": { "type": "oauth2", "tokenUrl": "...", "clientId": "...", "clientSecret": "...", "scopes": ["..."] }`. Leave out `auth` for a provider that needs none.
 
-## Schema Directives
+## 3. Map the arguments
 
-1. Ensure that the provider's GraphQL schema includes the `@sourceInfo` directive on each leaf field that the OE will
-   query.
-2. The `@sourceInfo` directive should contain the following fields:
-    - `providerKey`: The unique identifier for the data provider (must match the `providerKey` in the configuration).
-    - `providerField`: The field name in the provider's schema that corresponds to this field.
-      Example:
-   ```graphql
-   type PersonInfo {
-        name: String @sourceInfo(providerKey: "rgdf", providerField: "getPersonInfo.fullName")
-        birthInfo: BirthInfo
-   }
-   
-    type BirthInfo {
-          brNo: String @sourceInfo(providerKey: "rgdf", providerField: "getPersonInfo.birthRegistrationNumber")
-    }
-   ```
-   This will be mapped to the provider's schema as follows:
-   ```graphql
-   query PersonInfoQueryrgdf {
-        getPersonInfo {
-            name
-            birthRegistrationNumber
-        }
-   }
-   ```
-3. Explore `schema.graphql` for further examples.
+`argMappings` tells the OE how the consumer's argument becomes the provider's. Say the consumer asks:
+
+```graphql
+query { personInfo(nic: "748213") { fullName } }
+```
+
+and the provider expects `person(nic: "...") { fullName }`. The mapping is:
+
+```json
+{
+  "providerKey": "drp",
+  "schemaId": "drp-schema-v1",
+  "targetArgName": "nic",
+  "sourceArgPath": "personInfo-nic",
+  "targetArgPath": "person"
+}
+```
+
+`sourceArgPath` is the consumer-side argument (dash-separated path ending in the argument name). `targetArgPath` is the leading part of the provider field path the argument belongs to: `person` for `person.fullName`. Add one mapping per provider argument.
+
+## 4. Declare the fields in the GraphQL schema
+
+Each leaf field the consumer can query carries `@sourceInfo`:
+
+```graphql
+type PersonInfo {
+  fullName: String @sourceInfo(providerKey: "drp", schemaId: "drp-schema-v1", providerField: "person.fullName")
+}
+```
+
+- `providerKey` and `schemaId` must match the provider entry in `config.json`.
+- `providerField` is the path in the provider's schema and must match the `fieldName` registered in step 1.
+
+The checked-in sample is [schema.graphql](schema.graphql). To change the schema the OE serves, create a new version and activate it with the `/sdl` routes (see [HOW_TO_TEST.md](HOW_TO_TEST.md#manage-schema-versions)), or edit `schema.graphql` when the database holds no active schema.
+
+## 5. Restart and check
+
+Providers are read once at startup, so restart the OE after editing `config.json`. Then run a query as in [dev/README.md](../../dev/README.md). If it fails:
+
+| Error | Likely cause |
+|---|---|
+| `PDP_ERROR` | A queried field has no policy metadata for that `schemaId` (step 1). |
+| `PDP_NOT_ALLOWED` | The consumer application has no grant for the field. |
+| `CE_NOT_APPROVED` | The owner has not approved consent yet. |
+| Field missing from the result, no error | The provider call failed, so its fields are omitted. Check the OE log and the provider's URL and credentials. |

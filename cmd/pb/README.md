@@ -1,251 +1,137 @@
-# Portal Backend
+# Portal Backend (PB)
 
-A secure Go-based REST API for managing data exchange workflows, including member management, schema submissions, and application processing.
+The management REST API of OpenNDX: members, provider schemas, consumer applications, and the submissions that create them. It validates callers' tokens, enforces scope-based access, and keeps the Policy Decision Point and the identity provider in step with what it stores.
+
+> **Naming.** PB is planned to be renamed **Management Server**. Until then the code, image, service and environment names all say `portal-backend` or `pb`; the [rename checklist](#rename-note) lists every place the name appears.
 
 ## Overview
 
-The Portal Backend provides REST APIs for the Admin Portal and Member Portal, handling authentication, authorization, and business logic for data exchange operations.
-
-## Features
-
-- **JWT Authentication** for a single API audience (`internal/authn`)
-- **Role-Based Access Control (RBAC)** with granular permissions
-- **PostgreSQL Database** with automatic schema management
-- **Thread-Safe Caching** for optimal performance
-- **OpenAPI Documentation** at `/openapi.yaml`
-- **Comprehensive Health Monitoring**
-- **Docker Support** for containerized deployment
-- **Audit Logging** for compliance
-
-## Quick Start
-
-### Prerequisites
-
-- Go 1.26+
-- PostgreSQL 13+
-- Docker (optional)
-
-### 1. Environment Setup
-
-> [!NOTE]
-> The Portal Backend no longer auto-loads a `.env` file at startup — variables must come from the process environment. Copy `cmd/pb/.env.example` to `cmd/pb/.env`, update it, then source it manually before running the service (see step 2).
-
-Copy `cmd/pb/.env.example` to `cmd/pb/.env` and update it:
-
-```bash
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_NAME=portal_backend
-DB_SSLMODE=disable
-RUN_MIGRATION=true
-
-# JWT Authentication (Required)
-IDP_BASE_URL=https://thunderid.example.com
-# PB's API audience: its resource server identifier in the IdP
-IDP_AUDIENCE=http://pb.openndx.local
-
-# Policy Decision Point
-PDP_SERVICE_URL=http://localhost:8082
-
-
-# ThunderID management client (creates each application's OAuth2 client)
-IDP_CLIENT_ID=PORTAL_BACKEND
-IDP_CLIENT_SECRET=management_client_secret
-IDP_SCOPE=system
-# The System resource server identifier the `system` scope is requested for,
-# and the role every new application is assigned (grants `getdata`).
-IDP_TOKEN_RESOURCE=https://localhost:8090/mcp
-IDP_DATA_CONSUMER_ROLE_ID=<role id>
+```mermaid
+flowchart LR
+    AP[Admin and Member portals] -->|REST, Bearer token| PB
+    CLI[ondx CLI] -->|REST, Bearer token| PB
+    PB --> DB[(PostgreSQL: portal_backend)]
+    PB -->|metadata and allow-list| PDP[Policy Decision Point]
+    PB -->|create and delete app clients| IDP[ThunderID]
+    PB -.->|verify tokens: JWKS| IDP
+    PB -.->|audit events| A[Argus audit service]
 ```
 
-`POST /api/v1/applications` creates the application's M2M client in the owning member's ThunderID
-organization unit, assigns it `IDP_DATA_CONSUMER_ROLE_ID`, and returns its `idpClientSecret` once. The
-local compose stack configures this with the `PORTAL_BACKEND` client from
-`thunderid/bootstrap/application.yaml`.
+PB is called by the [`ondx` CLI](../ondx/README.md) and by the admin and member portals. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
 
-### 2. Run the Service
+## Quick start
+
+With Docker Compose (from the repo root). PB needs the PDP at runtime, so start both:
 
 ```bash
-# Load cmd/pb/.env into the shell environment (from the repo root)
-set -a
-source cmd/pb/.env
-set +a
-
-# Run the server
-go run ./cmd/pb
-
-# Or build and run
-go build -o pb ./cmd/pb && ./pb
+docker compose up --build portal-backend policy-decision-point
+curl http://localhost:8083/health
 ```
 
-The service runs on port 8083 by default.
+This also starts PostgreSQL and ThunderID, and registers PB's own client (`PORTAL_BACKEND`) in ThunderID.
+
+Native, against your own PostgreSQL, PDP and identity provider. All of the variables marked required in [CONFIGURATION.md](CONFIGURATION.md) must be set, or the service exits at startup:
+
+```bash
+export DB_HOST=localhost DB_USERNAME=postgres DB_PASSWORD=<password> DB_NAME=portal_backend \
+       DB_SSLMODE=disable RUN_MIGRATION=true \
+       PDP_SERVICE_URL=http://localhost:8082 \
+       IDP_BASE_URL=http://localhost:8090 IDP_AUDIENCE=http://pb.openndx.local \
+       IDP_CLIENT_ID=PORTAL_BACKEND IDP_CLIENT_SECRET=<secret> IDP_SCOPE=system \
+       IDP_TOKEN_RESOURCE=https://localhost:8090/mcp IDP_DATA_CONSUMER_ROLE_ID=<role-id>
+make run portal-backend      # or: go run ./cmd/pb
+```
+
+No `.env` file is loaded; [.env.example](.env.example) is a template to source yourself (`set -a; source cmd/pb/.env; set +a`). Tables are created only when `RUN_MIGRATION` is exactly `true`.
 
 ## Configuration
 
-### Server Configuration
+| Variable | Default | Notes |
+|---|---|---|
+| `PORT` | `8083` | |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated origins; credentials are allowed. |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE` | `localhost`, `5432`, `postgres`, `password`, `testdb2`, `require` | |
+| `RUN_MIGRATION` | unset | Run table migrations at startup only when exactly `true`. |
+| `PDP_SERVICE_URL` | none | **Required.** Must start with `http://` or `https://`. |
+| `IDP_AUDIENCE` | none | **Required.** PB's resource-server identifier; tokens for any other audience are rejected. |
+| `IDP_BASE_URL` | none | Required unless `IDP_JWKS_URL` and `IDP_ISSUER` are set. Derives the JWKS and issuer URLs. |
+| `IDP_CLIENT_ID`, `IDP_CLIENT_SECRET` | none | **Required.** PB's own client for ThunderID's management API. |
+| `IDP_SCOPE`, `IDP_TOKEN_RESOURCE`, `IDP_DATA_CONSUMER_ROLE_ID` | none | Management token scope and resource, and the role given to new application clients. |
+| `AUDIT_SERVICE_URL`, `ARGUS_API_KEY` | none | Optional; auditing is off without a URL. |
+
+All variables, with code defaults against the Compose values: [CONFIGURATION.md](CONFIGURATION.md).
+
+## API
+
+All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full schemas: [openapi.yaml](openapi.yaml). Success responses are the bare resource, lists are `{items, count}`, and errors are `{"error": "<message>"}`.
+
+| Resource | Endpoints | Scope |
+|---|---|---|
+| Members | `GET /members`, `GET /members/{memberId}`<br>`POST /members`<br>`PUT /members/{memberId}` | `member:read`<br>`member:write-all`<br>`member:write` |
+| Schemas | `GET /schemas`, `GET /schemas/{schemaId}`<br>`POST /schemas`, `PUT /schemas/{schemaId}` | `schema:read`<br>`schema:write` |
+| Schema policy metadata | `GET /schemas/{schemaId}/policy-metadata`<br>`PATCH`, `DELETE` on `.../policy-metadata/{id}`<br>`DELETE .../policy-metadata/{id}/allowlist/{applicationId}` | `schema:read`<br>`schema:write` |
+| Schema submissions | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}` | `schema-submission:read`<br>`schema-submission:write` |
+| Applications | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write` |
+| Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
+
+Outside `/api/v1`, with no authentication: `GET /health` (`503` if the database is down), `GET /debug`, `GET /debug/db`, and `GET /internal/api/v1/applications?idpClientId=` (looks up an application by its IdP client ID). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
+
+## How it works
+
+Creating an application touches three systems, so PB undoes earlier steps if a later one fails:
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant PB
+    participant IDP as ThunderID
+    participant DB as PostgreSQL
+    participant PDP
+    C->>PB: POST /api/v1/applications
+    PB->>IDP: create M2M client in the member's organization unit, assign role
+    IDP-->>PB: client_id and client_secret
+    PB->>DB: insert application
+    PB->>PDP: update allow-list for client_id (30 days)
+    PB-->>C: application and idpClientSecret (shown once)
+```
+
+- The PDP allow-list is keyed by the IdP `client_id`, which is the identity the Orchestration Engine reads from consumer tokens.
+- `POST /schemas` stores the schema, then registers its policy metadata in the PDP, and removes the schema if that fails.
+- A submission is a request that becomes a schema or application when its status is set to `approved` (`PUT .../{submissionId}`); the creation steps above then run, and the status goes back to `pending` if they fail. Who may set that status is described in [AUTHORIZATION.md](AUTHORIZATION.md#submission-approval).
+- A caller reaches its own member's records. Reaching other members' records needs the matching `-all` scope as well.
+
+## Security and deployment
+
+> **Deployment security: network isolation.** `GET /internal/api/v1/applications`, `/health`, `/debug` and `/debug/db` are not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
+
+- CORS defaults to `http://localhost:5173`. Compose sets `*`; set explicit origins for any shared deployment.
+- PB serves no `/metrics` endpoint and no `/openapi.yaml`; the spec is the file in this directory.
+
+## Development
 
 ```bash
-PORT=8083                         # Server port (default: 8083)
-CORS_ALLOWED_ORIGINS=*            # CORS allowed origins
+make validate-test portal-backend      # tests with -race and coverage
+go test ./cmd/pb/... ./internal/pb/... -count=1
+make quality-check portal-backend
 ```
 
-## API Endpoints
+Tests run without external services. `make validate-test` does not cover `internal/authn`; run `go test ./internal/authn/...` for the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
-### Core Resources
+Code is in [`internal/pb`](../../internal/pb): `member`, `schema` and `application` (one package per resource: model, service, handler), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (CORS and audit), `database`. Token validation is in [`internal/authn`](../../internal/authn/README.md).
 
-- **Members** - `/api/v1/members` - User profile and membership management
-- **Schemas** - `/api/v1/schemas` - Data schema definitions and management
-- **Schema Submissions** - `/api/v1/schema-submissions` - Schema submission workflow
-- **Applications** - `/api/v1/applications` - Application definitions
-- **Application Submissions** - `/api/v1/application-submissions` - Application submission workflow
+## Rename note
 
-### System Endpoints
+When PB becomes Management Server, these identifiers embed the current name:
 
-- **Health Check** - `/health` - System health and database status
-- **API Documentation** - `/openapi.yaml` - OpenAPI specification
+- Compose service, container and image: `portal-backend`, `pb-${ENVIRONMENT}`, `ghcr.io/openndx/portal-backend`; Makefile service name and CI workflows (`portal-backend-validate`, `portal-backend-publish`)
+- Go packages `internal/pb` and `internal/cli/pbclient`; the `"portal-backend"` string in `/health` and `/debug`
+- Environment variables `PB_PORT`, `DB_NAME_PB`, `PB_AUDIENCE`, and the `ondx` flag and variable `--pb-url` / `NDX_PB_URL`
+- The token audience `http://pb.openndx.local`, which clients request as `resource=`
+- ThunderID seed data in `thunderid/bootstrap`: the `PORTAL_BACKEND` client, the `PortalBackendSystem` role and the "Portal Backend Resource Server"
 
-### Authentication
+## More docs
 
-**JWT Requirements** (validated by `internal/authn`):
-- Issuer: `IDP_ISSUER`
-- Audience: `IDP_AUDIENCE`, PB's resource server identifier. Any client's token for this audience is accepted; clients request it with `resource=` at login.
-- Claims: `sub` and `client_id` are required; `scope` carries the scopes below. `ouId` and `email` are read when present; `ouId` ties a caller to its member.
-- Validation: JWKS-based signature verification (`IDP_JWKS_URL`)
-
-A missing or invalid token gets `401`.
-
-### Authorization
-
-Every `/api/v1/` route requires an OAuth2 scope from the token's `scope` claim, checked with `github.com/OpenNSW/core/authz`. The scope sits next to each route in `cmd/pb/main.go`; a token without it gets `403`. Scopes are defined in `internal/pb/caller/scopes.go`.
-
-**Caller's member.** After authentication, `caller.Middleware` looks up the member linked to the token's `ouId` and puts it on the request context. A caller without an `ouId`, or whose organization unit has no member, proceeds without one. Handlers then apply one rule: a caller holding the resource's `-all` scope reaches every member's records; any other caller reaches only its own member's, and gets `403` for another member's record or when it has no member.
-
-**Audit.** Write operations are audited with the token's `sub` as the actor and its `client_id` in the event metadata.
-
-**Scopes.** Each is `<resource>:<action>`, the permission ThunderID builds from an action on PB's resource server:
-
-| Resource                 | Own organization unit                                          | Every organization unit                                                |
-|--------------------------|----------------------------------------------------------------|------------------------------------------------------------------------|
-| Members                  | `member:read`, `member:write`                                  | `member:read-all`, `member:write-all`                                  |
-| Schemas                  | `schema:read`, `schema:write`                                  | `schema:read-all`, `schema:write-all`                                  |
-| Schema submissions       | `schema-submission:read`, `schema-submission:write`            | `schema-submission:read-all`, `schema-submission:write-all`            |
-| Applications             | `application:read`, `application:write`                        | `application:read-all`, `application:write-all`                        |
-| Application submissions  | `application-submission:read`, `application-submission:write`  | `application-submission:read-all`, `application-submission:write-all`  |
-
-Each route requires exactly one scope: `GET` routes `<resource>:read`, and `POST`, `PUT`, `PATCH` and `DELETE` routes `<resource>:write`. The `-all` scopes never open a route on their own; the handler checks them only to widen the caller past its own member's records. A caller working across organization units therefore needs both, e.g. `schema:read` and `schema:read-all`. Creating a member (`POST /api/v1/members`) takes `member:write-all` only. Policy metadata routes under `/api/v1/schemas/{schemaId}/` use the schema scopes, and `PUT /api/v1/applications/{applicationId}/policy` the application scopes.
-
-The scopes carry no namespace prefix: PB only accepts tokens for its own audience, and ThunderID binds each token to exactly one resource server, so a scope in a PB token can only be PB's.
-
-**Roles.** ThunderID grants the scopes through roles on PB's resource server (`thunderid/bootstrap/resource.yaml`); PB never reads role names. Changing what a role may do is a ThunderID change, not a PB release:
-
-| ThunderID role   | Scopes                                                                                                                    |
-|------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `OpenNDX_Admin`  | All of the above                                                                                                          |
-| `OpenNDX_Member` | `member:read`, `member:write` and `read`/`write` on schemas, schema submissions, applications and application submissions |
-
-**Clients** must request the scopes along with `resource=<IDP_AUDIENCE>`: ThunderID issues only scopes that the client requests and the user's roles grant. The `ondx` CLI's `local` profile requests all of them; the admin and member portals take theirs from their scope setting (`VITE_IDP_SCOPE` / `VITE_SCOPE`).
-
-## Testing
-
-### Run Tests
-
-```bash
-# Unit tests only (from the repo root)
-go test ./cmd/pb/... ./internal/pb/...
-
-# Integration tests with PostgreSQL
-make test-postgres
-
-# Tests with race detection
-go test -race ./cmd/pb/... ./internal/pb/...
-
-# Coverage report
-go test -coverprofile=coverage.out ./cmd/pb/... ./internal/pb/...
-go tool cover -html=coverage.out
-```
-
-### Test Database Setup
-
-```bash
-export TEST_DB_PASSWORD=test_password
-make test-local
-```
-
-## Architecture
-
-### Project Structure
-
-```
-cmd/pb/
-└── main.go                 # Entry point: wires dependencies and registers every route
-
-internal/pb/
-├── application/           # Application context: applications, submissions, allow-lists
-├── caller/                # Scopes and the caller's member (tokens are validated by internal/authn)
-├── database/              # GORM connection and migrations
-├── idp/                   # Identity provider integrations
-├── kernel/                # Types shared across domains (BaseModel, Status, Version)
-├── member/                # Member context: model, DTOs, service, handlers
-├── middleware/            # CORS & audit
-├── policy/                # Client for the Policy Decision Point (PDP)
-└── schema/                # Schema context: schemas, submissions, policy metadata
-
-internal/utils/            # HTTP/server helpers shared across services
-```
-
-### Security Architecture
-
-```
-Request → CORS → JWT Validation → Route Scope → Resource Access
-    ↓        ↓           ↓              ↓             ↓
- Origin   Token      Audience       Scope Check   Ownership
- Check    Verify     & Claims       (403)         Validation
-```
-
-### Database Schema
-
-**Core Tables:**
-- `members` - User profiles and membership information
-- `schemas` - Data schema definitions with versioning
-- `schema_submissions` - Schema submission workflow and status
-- `applications` - Application templates and definitions
-- `application_submissions` - Application submission workflow
-
-**Features:**
-- Auto-migration on startup
-- Connection pooling with configurable limits
-- Health monitoring with metrics
-- Transaction support with timeouts
-
-## Health Check
-
-`GET /health` returns comprehensive system status:
-
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "database": {
-    "status": "connected",
-    "open_connections": 5,
-    "max_open_connections": 25
-  }
-}
-```
-
-## Docker
-
-```bash
-# Build image (from the repo root)
-docker build -t portal-backend -f cmd/pb/Dockerfile .
-
-# Run container
-docker run -p 8083:8083 \
-  -e DB_HOST=host.docker.internal \
-  -e PDP_SERVICE_URL=http://host.docker.internal:8082 \
-  --env-file cmd/pb/.env \
-  portal-backend
-```
+- [AUTHORIZATION.md](AUTHORIZATION.md): scopes, ownership rules, roles, submission approval
+- [CONFIGURATION.md](CONFIGURATION.md): every environment variable
+- [openapi.yaml](openapi.yaml): API reference
+- [`ondx` CLI](../ondx/README.md) and [Policy Decision Point](../pdp/README.md)

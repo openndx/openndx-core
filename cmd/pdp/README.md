@@ -1,240 +1,121 @@
 # Policy Decision Point (PDP)
 
-Authorization service using Open Policy Agent (OPA) that evaluates data access requests and determines consent requirements.
+Stores field-level policy metadata and per-application allow-lists, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
 
 ## Overview
 
-The PDP provides attribute-based access control (ABAC) with field-level permissions. It uses Open Policy Agent (OPA) v1 with Rego v1 policies and stores policy metadata in PostgreSQL for real-time evaluation.
+The PDP is a leaf service. It calls nothing else and stores everything in its own PostgreSQL database (`pdp`).
 
-**Technology**: Go + Open Policy Agent (OPA) v1 + Rego v1 + PostgreSQL  
-**Port**: 8082
+```mermaid
+flowchart LR
+    OE[Orchestration Engine] -->|POST /policy/decide| PDP
+    PB[Portal Backend] -->|metadata and allow-list| PDP
+    PDP --> DB[(PostgreSQL: pdp)]
+```
 
-## Features
+| Caller | Uses |
+|---|---|
+| Orchestration Engine | `POST /api/v1/policy/decide` before every federated query |
+| Portal Backend | metadata and allow-list endpoints, when schemas and applications are approved or edited |
 
-- **Real-time Policy Evaluation** - Policies loaded from database on startup
-- **Field-level Access Control** - Granular permissions for individual data fields
-- **Consent Management** - Automatic consent requirement calculation
-- **Allow List Management** - Dynamic application authorization for restricted fields
-- **OPA v1 Integration** - Modern Open Policy Agent with Rego v1 syntax
-- **Database-driven** - Policy metadata stored in PostgreSQL
+There is no policy language or rules engine. The decision is a lookup over the `policy_metadata` table (see [POLICY_MODEL.md](POLICY_MODEL.md)).
 
-## Quick Start
+## Quick start
 
-### Prerequisites
-
-- Go 1.26+
-- PostgreSQL 13+
-
-### Run the Service
+With Docker Compose (from the repo root; starts PostgreSQL first):
 
 ```bash
-# Copy environment template
-cp cmd/pdp/.env.example cmd/pdp/.env
-
-# Edit .env with your database configuration
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_USERNAME=postgres
-# DB_PASSWORD=password
-# DB_NAME=pdp
-
-# Run locally (from the repo root)
-go run ./cmd/pdp
-
-# Or build and run
-go build -o pdp ./cmd/pdp && ./pdp
-```
-
-The service runs on port 8082 by default.
-
-## Configuration
-
-### Environment Variables
-
-All configuration is done via environment variables. See `.env.example` for a complete list.
-
-| Variable       | Description             | Default     |
-|----------------|-------------------------|-------------|
-| `PORT`         | Service port            | `8082`      |
-| `ENVIRONMENT`  | `production` or `local` | `local`     |
-| `IDP_ORG_NAME` | IDP organization name   | -           |
-| `IDP_ISSUER`   | JWT issuer URL          | -           |
-| `IDP_AUDIENCE` | JWT audience            | -           |
-| `IDP_JWKS_URL` | JWKS endpoint URL       | -           |
-| `DB_HOST`      | Database host           | `localhost` |
-| `DB_PORT`      | Database port           | `5432`      |
-| `DB_USERNAME`  | Database username       | `postgres`  |
-| `DB_PASSWORD`  | Database password       | -           |
-| `DB_NAME`      | Database name           | `pdp`       |
-| `DB_SSLMODE`   | SSL mode                | `require`   |
-
-**Optional:**
-```bash
-RUN_MIGRATION=false       # Set to "true" to run migrations on startup
-```
-
-## API Endpoints
-
-| Endpoint                          | Method | Description                        |
-|-----------------------------------|--------|------------------------------------|
-| `/api/v1/policy/decide`           | POST   | Authorization decision             |
-| `/api/v1/policy/metadata`         | POST   | Create policy metadata for fields  |
-| `/api/v1/policy/update-allowlist` | POST   | Update allow list for applications |
-| `/health`                         | GET    | Health check                       |
-| `/debug`                          | GET    | Debug information                  |
-| `/debug/db`                       | GET    | Database connection status         |
-
-### Authorization Request
-
-**Endpoint:** `POST /api/v1/policy/decide`
-
-**Request:**
-```json
-{
-  "applicationId": "passport-app",
-  "requiredFields": [
-    {
-      "fieldName": "person.fullName",
-      "schemaId": "schema-123"
-    },
-    {
-      "fieldName": "person.photo",
-      "schemaId": "schema-123"
-    }
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "appAuthorized": true,
-  "unauthorizedFields": [],
-  "appAccessExpired": false,
-  "expiredFields": [],
-  "appRequiresOwnerConsent": true,
-  "consentRequiredFields": [
-    {
-      "fieldName": "person.photo",
-      "schemaId": "schema-123",
-      "displayName": "Photo",
-      "description": "Person's photo"
-    }
-  ]
-}
-```
-
-### Policy Metadata Management
-
-**Create Policy Metadata:** `POST /api/v1/policy/metadata`
-
-```json
-{
-  "schema_id": "schema-123",
-  "records": [
-    {
-      "field_name": "person.fullName",
-      "display_name": "Full Name",
-      "access_control_type": "public"
-    }
-  ]
-}
-```
-
-**Update Allow List:** `POST /api/v1/policy/update-allowlist`
-
-```json
-{
-  "application_id": "passport-app",
-  "records": [
-    {
-      "field_name": "person.fullName",
-      "schema_id": "schema-123"
-    }
-  ],
-  "grant_duration": "ONE_MONTH"
-}
-```
-
-## Access Control Logic
-
-### Field Types
-
-1. **Public Fields** (`access_control_type: "public"`)
-   - Any app can access
-   - Consent required only if `consent_required: true`
-
-2. **Restricted Fields** (`access_control_type: "restricted"`)
-   - Only apps in `allow_list` can access
-   - Consent required if `consent_required: true`
-
-### Decision Logic
-
-- **Allow**: All requested fields are authorized for the app
-- **Deny**: Any requested field is not authorized for the app
-- **Consent Required**: Any requested field has `consent_required: true`
-
-### Consent Logic
-
-Consent requirement is calculated as: `!is_owner && access_control_type != "public"`
-
-- **Owner Fields** (`is_owner: true`): No consent required
-- **Public Fields**: No consent required for non-owners
-- **Restricted Fields**: Consent required for non-owners
-
-## Testing
-
-```bash
-# From the repo root
-go test ./cmd/pdp/... ./internal/pdp/... -count=1
-
-# Run with coverage
-go test ./cmd/pdp/... ./internal/pdp/... -cover
-
-# Test authorization scenarios
-curl -X POST http://localhost:8082/api/v1/policy/decide \
-  -H "Content-Type: application/json" \
-  -d '{
-    "applicationId": "passport-app",
-    "requiredFields": [
-      {
-        "fieldName": "person.fullName",
-        "schemaId": "schema-123"
-      }
-    ]
-  }'
-```
-
-## Architecture
-
-### Database Schema
-
-**`policy_metadata` Table:**
-- `id` (UUID) - Primary key
-- `schema_id` (TEXT) - Schema identifier
-- `field_name` (TEXT) - Data field name
-- `display_name` (TEXT) - Human-readable name
-- `access_control_type` (ENUM) - public/restricted
-- `is_owner` (BOOLEAN) - Field ownership flag
-- `allow_list` (JSONB) - Authorized applications with expiration
-- `created_at`, `updated_at` (TIMESTAMP)
-
-### Policy Evaluation Flow
-
-```
-Request → Load Policy Metadata → OPA Evaluation → Consent Check → Decision
-```
-
-## Health Check
-
-```bash
+docker compose up --build policy-decision-point
 curl http://localhost:8082/health
 ```
 
-**Response:**
-```json
-{
-  "service": "policy-decision-point",
-  "status": "healthy"
-}
+Native, against a PostgreSQL that already has an empty `pdp` database:
+
+```bash
+export DB_HOST=localhost DB_PORT=5432 DB_USERNAME=postgres DB_PASSWORD=<password> \
+       DB_NAME=pdp DB_SSLMODE=disable RUN_MIGRATION=true
+go run ./cmd/pdp        # or: make run policy-decision-point
 ```
+
+`RUN_MIGRATION=true` is required on the first start. It creates the enum types and the `policy_metadata` table. Without it a fresh database has no table.
+
+No binary loads a `.env` file. Export the variables, or pass `--env-file` to Docker. [.env.example](.env.example) is a template.
+
+## Configuration
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PORT` | `8082` | Listen port. The server binds on all interfaces. |
+| `ENVIRONMENT` | `local` | `production` switches the default log level to `warn`. |
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | |
+| `DB_USERNAME` / `DB_PASSWORD` | `postgres` / empty | |
+| `DB_NAME` | `pdp` | |
+| `DB_SSLMODE` | `require` | Use `disable` for a local PostgreSQL without TLS. |
+| `RUN_MIGRATION` | unset | Migrations run only when the value is exactly `true`. |
+| `IDP_ISSUER`, `IDP_AUDIENCE`, `IDP_JWKS_URL` | ThunderID dev values | Read and logged only. The PDP does not validate tokens. |
+
+Command-line flags: `-env`, `-port`, `-timeout` (default `10s`), `-log-level`, `-log-format`. There is no `LOG_LEVEL` variable. `-host`, `-cors` and `-rate-limit` are accepted but have no effect.
+
+Compose values (database `pdp`, `DB_SSLMODE=disable`, `RUN_MIGRATION=true`) are in [compose.yml](../../compose.yml).
+
+## API
+
+Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies are the bare resource and errors are `{"error": "<message>"}`.
+
+| Method and path | Purpose |
+|---|---|
+| `POST /api/v1/policy/decide` | Authorization decision for an application and a list of fields |
+| `GET /api/v1/policy/metadata?schemaId=` | List metadata records, optionally for one schema |
+| `POST /api/v1/policy/metadata` | Sync a schema's field metadata (`201`) |
+| `PATCH /api/v1/policy/metadata/{id}` | Edit `displayName`, `description` or `accessControlType` |
+| `DELETE /api/v1/policy/metadata/{id}` | Delete a record (`204`) |
+| `DELETE /api/v1/policy/metadata/{id}/allowlist/{applicationId}` | Revoke one application's access to one field (`204`) |
+| `POST /api/v1/policy/update-allowlist` | Grant an application access to fields for `30d` or `365d` |
+| `GET /health` | `{"service": "policy-decision-point", "status": "healthy"}` |
+| `GET /debug`, `GET /debug/db` | Version info; database status and record count |
+
+A decision request and response:
+
+```json
+{ "applicationId": "passport-app",
+  "requiredFields": [{ "schemaId": "drp-v1", "fieldName": "person.fullName" }] }
+```
+
+```json
+{ "appAuthorized": true, "unauthorizedFields": [],
+  "appAccessExpired": false, "expiredFields": [],
+  "appRequiresOwnerConsent": false, "consentRequiredFields": [] }
+```
+
+`applicationId` is the OIDC `client_id` of the calling application. Metadata and allow-list requests use camelCase keys; see the schemas in `openapi.yaml`.
+
+## How it works
+
+For each requested `(schemaId, fieldName)`, in order:
+
+1. No metadata record: the whole request fails with **HTTP 500**.
+2. The application is not in the field's allow-list: the field is *unauthorized*.
+3. The allow-list entry has expired: the field is *expired*.
+4. Otherwise the field needs owner consent if it is `restricted` and the caller is not the field's owner (`isOwner: false`).
+
+`appAuthorized` is true when no field is unauthorized. A `public` field still needs an allow-list entry. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
+
+## Security and deployment
+
+> **Deployment security: network isolation.** No PDP route is authenticated. Anyone who can reach port 8082 can read and rewrite policy. Expose it only on the internal network, reachable by the Orchestration Engine and Portal Backend.
+
+## Development
+
+```bash
+make validate-test policy-decision-point    # tests with -race and coverage
+go test ./cmd/pdp/... ./internal/pdp/... -count=1
+make quality-check policy-decision-point    # format, vet, lint, security
+```
+
+Tests use an in-memory SQLite database, so no PostgreSQL is needed. Code is in [`internal/pdp`](../../internal/pdp): `handler` (HTTP), `services` (decision and metadata logic), `models`, `db`, `config`.
+
+## More docs
+
+- [POLICY_MODEL.md](POLICY_MODEL.md): field semantics, decision rules, table schema
+- [openapi.yaml](openapi.yaml): API reference
+- [Orchestration Engine](../oe/README.md) and [Portal Backend](../pb/README.md): the two callers
