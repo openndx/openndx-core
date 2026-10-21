@@ -87,7 +87,7 @@ func (a *Client) CreateGroup(ctx context.Context, group *idp.Group) (*idp.GroupI
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -135,7 +135,7 @@ func (a *Client) GetGroup(ctx context.Context, groupId string) (*idp.GroupInfo, 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -201,7 +201,7 @@ func (a *Client) GetGroupByName(ctx context.Context, groupName string) (*string,
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -265,7 +265,7 @@ func (a *Client) UpdateGroup(ctx context.Context, groupId string, group *idp.Gro
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -313,7 +313,7 @@ func (a *Client) DeleteGroup(ctx context.Context, groupId string) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
@@ -363,7 +363,7 @@ func (a *Client) AddMemberToGroup(ctx context.Context, groupId *string, memberIn
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
@@ -415,7 +415,7 @@ func (a *Client) RemoveMemberFromGroup(ctx context.Context, groupId string, user
 
 	req.Header.Set("Content-Type", "application/scim+json")
 
-	res, err := a.Client.Do(req)
+	res, err := a.httpClient(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
