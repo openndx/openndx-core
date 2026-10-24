@@ -10,6 +10,9 @@ import (
 // TraceIDHeader is the HTTP header name for trace ID
 const TraceIDHeader = "X-Trace-ID"
 
+// maxTraceIDLen is the maximum accepted length for a client-supplied trace ID.
+const maxTraceIDLen = 64
+
 // traceIDKey is the context key for trace ID
 // This is used for distributed tracing and observability correlation
 type traceIDKey struct{}
@@ -30,38 +33,50 @@ func WithTraceID(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, traceIDKey{}, traceID)
 }
 
-// ExtractTraceIDFromRequest extracts trace ID from HTTP header and adds it to context
-// If no trace ID is found in header, generates a new one
-// This ensures trace ID propagation across HTTP service boundaries
-func ExtractTraceIDFromRequest(r *http.Request) context.Context {
-	traceID := r.Header.Get(TraceIDHeader)
-	if traceID == "" {
-		traceID = uuid.New().String()
+// isValidTraceID reports whether a client-supplied trace ID is safe to propagate.
+// Empty, oversized, or non alphanumeric/hyphen values are rejected so they cannot
+// pollute logs or break downstream parsers.
+func isValidTraceID(id string) bool {
+	if id == "" || len(id) > maxTraceIDLen {
+		return false
 	}
-	return WithTraceID(r.Context(), traceID)
+	for _, c := range id {
+		if !(c == '-' ||
+			(c >= '0' && c <= '9') ||
+			(c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z')) {
+			return false
+		}
+	}
+	return true
 }
 
-// TraceIDMiddleware extracts or generates a trace ID and adds it to the request context
-// It checks for X-Trace-ID header first, and if not present, generates a new UUID
-// The trace ID is also set in the response header for client visibility
+// resolveTraceID returns the request header value when valid, otherwise a new UUID.
+func resolveTraceID(r *http.Request) string {
+	traceID := r.Header.Get(TraceIDHeader)
+	if !isValidTraceID(traceID) {
+		return uuid.New().String()
+	}
+	return traceID
+}
+
+// ExtractTraceIDFromRequest extracts trace ID from HTTP header and adds it to context.
+// If no valid trace ID is found in the header, generates a new one.
+// This ensures trace ID propagation across HTTP service boundaries.
+func ExtractTraceIDFromRequest(r *http.Request) context.Context {
+	return WithTraceID(r.Context(), resolveTraceID(r))
+}
+
+// TraceIDMiddleware extracts or generates a trace ID and adds it to the request context.
+// It accepts X-Trace-ID only when the value has a bounded, safe shape; otherwise it
+// generates a new UUID. The trace ID is also set in the response header for client visibility.
 // This middleware should be applied early in the middleware chain to ensure trace ID
-// is available throughout the request lifecycle
+// is available throughout the request lifecycle.
 func TraceIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check for existing trace ID in header
-		traceID := r.Header.Get(TraceIDHeader)
-		if traceID == "" {
-			// Generate new trace ID if not present
-			traceID = uuid.New().String()
-		}
-
-		// Add trace ID to context using the shared traceIDKey
+		traceID := resolveTraceID(r)
 		ctx := WithTraceID(r.Context(), traceID)
-
-		// Set trace ID in response header for client visibility
 		w.Header().Set(TraceIDHeader, traceID)
-
-		// Continue with the updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
