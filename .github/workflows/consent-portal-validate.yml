@@ -49,6 +49,10 @@ jobs:
               working-directory: portals
               run: pnpm --filter consent-portal run lint
 
+            - name: Test
+              working-directory: portals
+              run: pnpm --filter consent-portal run test
+
             - name: Set lowercase repository owner
               id: repo
               run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
