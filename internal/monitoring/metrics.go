@@ -1,9 +1,15 @@
 package monitoring
 
 import (
+	"bufio"
+	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +28,9 @@ var (
 	// routeTemplates is a set of route templates (e.g., "/api/v1/schema/:id")
 	// that should be matched against incoming paths
 	routeTemplates = make([]string, 0)
+	// versionSegmentPattern matches version strings like "v1.0.0" or "2.3.1",
+	// but not filenames like "index.html" or "openapi.json".
+	versionSegmentPattern = regexp.MustCompile(`^v?\d+(\.\d+)+$`)
 )
 
 // ensureInitialized ensures OpenTelemetry is initialized with default config
@@ -74,13 +83,22 @@ func RegisterRoutes(routesList []string) {
 		normalizedRoute := strings.ReplaceAll(route, "{id}", ":id")
 
 		if strings.Contains(normalizedRoute, ":id") {
-			// This is a template - store with normalized :id syntax
-			routeTemplates = append(routeTemplates, normalizedRoute)
+			if !slices.Contains(routeTemplates, normalizedRoute) {
+				routeTemplates = append(routeTemplates, normalizedRoute)
+			}
 		} else {
 			// This is a static route - stored for exact O(1) lookup
 			routes[route] = true
 		}
 	}
+}
+
+// resetRouteRegistryForTest clears registered routes/templates. Tests only.
+func resetRouteRegistryForTest() {
+	routesMu.Lock()
+	defer routesMu.Unlock()
+	routes = make(map[string]bool)
+	routeTemplates = make([]string, 0)
 }
 
 // IsExactRoute checks if a route is exactly registered as a static route (no template matching).
@@ -106,7 +124,9 @@ func HTTPMetricsMiddleware(next http.Handler) http.Handler {
 	return otelHTTPMetricsMiddleware(next)
 }
 
-// responseWriter wraps http.ResponseWriter to capture status code
+// responseWriter wraps http.ResponseWriter to capture status code while
+// preserving optional interfaces (Flusher, Hijacker, ReaderFrom) from the
+// underlying writer via type-asserting passthroughs and Unwrap.
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -115,6 +135,30 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, fmt.Errorf("responseWriter: underlying ResponseWriter does not implement http.Hijacker")
+}
+
+func (rw *responseWriter) ReadFrom(r io.Reader) (int64, error) {
+	if rf, ok := rw.ResponseWriter.(io.ReaderFrom); ok {
+		return rf.ReadFrom(r)
+	}
+	return io.Copy(rw.ResponseWriter, r)
 }
 
 // normalizeRoute normalizes route paths for metrics by matching against registered routes/templates.
@@ -229,8 +273,8 @@ func looksLikeID(s string) bool {
 		return true
 	}
 
-	// Check for version strings (e.g., "v1.0.0", "2.3.1")
-	if strings.Contains(s, ".") && len(s) >= 3 {
+	// Check for version strings (e.g., "v1.0.0", "2.3.1") — not filenames like "index.html"
+	if versionSegmentPattern.MatchString(s) {
 		return true
 	}
 

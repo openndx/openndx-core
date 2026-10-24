@@ -127,6 +127,16 @@ func run() error {
 	handler := monitoring.HTTPMetricsMiddleware(cors.CORS(&cfg.CORS)(mux))
 	httpServer := utils.CreateServer(serverConfig, handler)
 
+	// Flush the meter provider after the server stops, including on failure.
+	// Shutdown is a no-op when metrics were never initialized.
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := monitoring.Shutdown(shutdownCtx); err != nil {
+			slog.Error("Metrics shutdown error", "error", err)
+		}
+	}()
+
 	// Start server with graceful shutdown
 	if err := utils.StartServerWithGracefulShutdown(httpServer, "consent-engine"); err != nil {
 		return fmt.Errorf("server failed: %w", err)
