@@ -23,7 +23,7 @@ Start the OE (see the [README](README.md#quick-start)) and, for the queries, the
 
 ```bash
 curl http://localhost:4000/health
-# {"message":"OpenNDX Server is Healthy!"}
+# {"service":"orchestration-engine","status":"healthy"}
 ```
 
 ### Change the schema

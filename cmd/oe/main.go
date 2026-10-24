@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
+	"strconv"
+	"time"
 
 	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/openndx/openndx-core/internal/authn"
@@ -17,15 +17,10 @@ import (
 	"github.com/openndx/openndx-core/internal/oe/middleware"
 	"github.com/openndx/openndx-core/internal/oe/policy"
 	"github.com/openndx/openndx-core/internal/oe/provider"
-	"github.com/openndx/openndx-core/internal/oe/server"
 	"github.com/openndx/openndx-core/internal/utils"
 )
 
 func main() {
-	// Create context with signal handling for graceful shutdown
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
 	config, err := loadConfig(os.Args[1:])
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -78,10 +73,20 @@ func main() {
 		log.Fatalf("Failed to initialize federator: %v", err)
 	}
 
-	// Run server with graceful shutdown support
-	// Server will stop when ctx is cancelled (on SIGINT/SIGTERM)
-	server.RunServer(ctx, config.Server.Port, config.Server.Timeout, server.Deps{
-		Federator:    federationObject,
-		Authenticate: authnManager.RequireAuthMiddleware(),
-	})
+	mux := http.NewServeMux()
+	// Consumer endpoint: requires a token the IdP issued for OE's audience.
+	mux.Handle("POST /public/graphql", authnManager.RequireAuthMiddleware()(federator.Handler(federationObject)))
+	mux.Handle("GET /health", utils.HealthHandler("orchestration-engine"))
+
+	httpServer := utils.CreateServer(&utils.ServerConfig{
+		Port:         strconv.Itoa(config.Server.Port),
+		ReadTimeout:  config.Server.Timeout,
+		WriteTimeout: config.Server.Timeout,
+		IdleTimeout:  60 * time.Second,
+	}, mux)
+
+	// Serves until SIGINT or SIGTERM, then shuts down gracefully.
+	if err := utils.StartServerWithGracefulShutdown(httpServer, "orchestration-engine"); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }

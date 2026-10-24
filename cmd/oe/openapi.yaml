@@ -20,7 +20,7 @@ paths:
   /health:
     get:
       summary: Health check
-      description: Returns a health check message.
+      description: Reports that the service is up.
       tags:
         - Health
       security: []
@@ -32,10 +32,13 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
+                  service:
+                    type: string
+                  status:
                     type: string
                 example:
-                  message: "OpenNDX Server is Healthy!"
+                  service: orchestration-engine
+                  status: healthy
 
 tags:
   - name: Health

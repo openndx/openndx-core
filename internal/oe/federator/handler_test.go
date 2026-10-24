@@ -1,4 +1,4 @@
-package server
+package federator
 
 import (
 	"bytes"
@@ -31,11 +31,15 @@ const (
 type stubFederator struct {
 	called   bool
 	consumer *auth.ConsumerAssertion
+	panics   bool
 }
 
 func (s *stubFederator) FederateQuery(_ context.Context, _ graphql.Request, consumer *auth.ConsumerAssertion) graphql.Response {
 	s.called = true
 	s.consumer = consumer
+	if s.panics {
+		panic("boom")
+	}
 	return graphql.Response{Data: map[string]interface{}{"ok": true}}
 }
 
@@ -89,9 +93,9 @@ func (idp *testIdP) sign(t *testing.T, claims jwt.MapClaims) string {
 	return signed
 }
 
-// newTestDeps returns server dependencies with no schema database, authenticating
-// consumers with internal/authn against idp, the way cmd/oe/main.go does.
-func newTestDeps(t *testing.T, idp *testIdP) Deps {
+// authenticatedHandler returns Handler(f) behind internal/authn's middleware
+// for idp, the way cmd/oe/main.go registers it.
+func authenticatedHandler(t *testing.T, idp *testIdP, f QueryFederator) http.Handler {
 	t.Helper()
 	manager, err := authn.NewManager(authn.Config{
 		JWKSURL:  idp.jwks.URL,
@@ -99,69 +103,34 @@ func newTestDeps(t *testing.T, idp *testIdP) Deps {
 		Audience: testAudience,
 	})
 	require.NoError(t, err)
-	return Deps{
-		Federator:    &stubFederator{},
-		Authenticate: manager.RequireAuthMiddleware(),
-	}
+	return manager.RequireAuthMiddleware()(Handler(f))
 }
 
-func postGraphQL(mux http.Handler, body []byte, token string) *httptest.ResponseRecorder {
+func postGraphQL(h http.Handler, body []byte, token string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/public/graphql", bytes.NewBuffer(body))
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 	return w
 }
 
-func TestSetupRouter_Health(t *testing.T) {
-	mux := SetupRouter(newTestDeps(t, newTestIdP(t)))
-
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	w := httptest.NewRecorder()
-
-	mux.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "OpenNDX Server is Healthy!")
-}
-
-// TestSetupRouter_NoSchemaManagementRoutes checks that the removed /sdl routes
-// are not served: the consumer schema comes only from the schema file.
-func TestSetupRouter_NoSchemaManagementRoutes(t *testing.T) {
-	mux := SetupRouter(newTestDeps(t, newTestIdP(t)))
-
-	for _, route := range []struct{ method, path string }{
-		{http.MethodGet, "/sdl"},
-		{http.MethodPost, "/sdl"},
-		{http.MethodGet, "/sdl/versions"},
-		{http.MethodPost, "/sdl/validate"},
-		{http.MethodPost, "/sdl/check-compatibility"},
-		{http.MethodPost, "/sdl/versions/1.0.0/activate"},
-	} {
-		req := httptest.NewRequest(route.method, route.path, nil)
-		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusNotFound, w.Code, "%s %s", route.method, route.path)
-	}
-}
-
-func TestSetupRouter_PublicGraphQL(t *testing.T) {
+func TestHandler(t *testing.T) {
 	idp := newTestIdP(t)
 	body, err := json.Marshal(graphql.Request{Query: "{ hello }"})
 	require.NoError(t, err)
 
 	t.Run("federates the query for the token's client_id", func(t *testing.T) {
-		deps := newTestDeps(t, idp)
-		federator := deps.Federator.(*stubFederator)
+		federator := &stubFederator{}
 		claims := idp.claims("app-1")
 		claims["sub"] = "service-account-1"
 
-		w := postGraphQL(SetupRouter(deps), body, idp.sign(t, claims))
+		w := postGraphQL(authenticatedHandler(t, idp, federator), body, idp.sign(t, claims))
 
 		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+		assert.JSONEq(t, `{"data":{"ok":true}}`, w.Body.String())
 		require.True(t, federator.called)
 		assert.Equal(t, &auth.ConsumerAssertion{
 			ApplicationID: "app-1",
@@ -171,12 +140,30 @@ func TestSetupRouter_PublicGraphQL(t *testing.T) {
 	})
 
 	t.Run("rejects invalid JSON from an authenticated consumer", func(t *testing.T) {
-		deps := newTestDeps(t, idp)
+		federator := &stubFederator{}
 
-		w := postGraphQL(SetupRouter(deps), []byte("invalid-json"), idp.sign(t, idp.claims("app-1")))
+		w := postGraphQL(authenticatedHandler(t, idp, federator), []byte("invalid-json"), idp.sign(t, idp.claims("app-1")))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.False(t, deps.Federator.(*stubFederator).called)
+		assert.False(t, federator.called)
+	})
+
+	t.Run("answers a federator panic with a GraphQL error", func(t *testing.T) {
+		federator := &stubFederator{panics: true}
+
+		w := postGraphQL(authenticatedHandler(t, idp, federator), body, idp.sign(t, idp.claims("app-1")))
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.JSONEq(t, `{"data":null,"errors":[{"message":"Internal server error: boom"}]}`, w.Body.String())
+	})
+
+	t.Run("fails closed without a consumer in the context", func(t *testing.T) {
+		federator := &stubFederator{}
+
+		w := postGraphQL(Handler(federator), body, "")
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.False(t, federator.called)
 	})
 
 	unsigned, err := jwt.NewWithClaims(jwt.SigningMethodNone, idp.claims("app-1")).SignedString(jwt.UnsafeAllowNoneSignatureType)
@@ -214,12 +201,12 @@ func TestSetupRouter_PublicGraphQL(t *testing.T) {
 		}()),
 	} {
 		t.Run("rejects "+name, func(t *testing.T) {
-			deps := newTestDeps(t, idp)
+			federator := &stubFederator{}
 
-			w := postGraphQL(SetupRouter(deps), body, token)
+			w := postGraphQL(authenticatedHandler(t, idp, federator), body, token)
 
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
-			assert.False(t, deps.Federator.(*stubFederator).called, "unauthorized requests must not reach the federator")
+			assert.False(t, federator.called, "unauthorized requests must not reach the federator")
 		})
 	}
 }

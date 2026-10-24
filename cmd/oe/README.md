@@ -61,7 +61,7 @@ Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATIO
 | Method and path | Auth | Purpose |
 |---|---|---|
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
-| `GET /health` | none | `{"message": "OpenNDX Server is Healthy!"}` |
+| `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
 
 [openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here and in [AUTHENTICATION.md](AUTHENTICATION.md).
 
@@ -100,7 +100,7 @@ sequenceDiagram
 - Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([AUTHENTICATION.md](AUTHENTICATION.md)).
 - With `pdp.url` empty, the OE returns provider data without any authorization or consent check. Always set it.
 - Keep provider and audit secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
-- CORS allows every origin.
+- The OE sends no CORS headers, so browsers can't call it directly. Its callers are machine clients.
 - Audit events (`DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH`) go to Argus. If Argus is down, batches are lost.
 
 ## Development
@@ -111,7 +111,7 @@ go test ./cmd/oe/... ./internal/oe/... -count=1
 make quality-check orchestration-engine
 ```
 
-[HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. Code is in [`internal/oe`](../../internal/oe): `server` (routes), `federator` (query splitting and merging; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`. The config loader is [config.go](config.go).
+[HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
 
 ## More docs
 
