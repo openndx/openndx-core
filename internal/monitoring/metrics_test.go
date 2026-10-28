@@ -1,7 +1,9 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -38,7 +40,7 @@ func TestHTTPMetricsMiddleware(t *testing.T) {
 	// Create a test handler
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	})
 
 	// Wrap with metrics middleware
@@ -68,6 +70,7 @@ func TestHTTPMetricsMiddleware(t *testing.T) {
 }
 
 func TestNormalizeRoute(t *testing.T) {
+	resetRouteRegistryForTest()
 	// Register routes for testing
 	RegisterRoutes([]string{
 		"/health",
@@ -106,6 +109,7 @@ func TestNormalizeRoute(t *testing.T) {
 }
 
 func TestRegisterRoutes(t *testing.T) {
+	resetRouteRegistryForTest()
 	// Test registering static routes
 	RegisterRoutes([]string{
 		"/static1",
@@ -149,6 +153,7 @@ func TestRegisterRoutes(t *testing.T) {
 }
 
 func TestIsExactRoute(t *testing.T) {
+	resetRouteRegistryForTest()
 	// Register some routes
 	RegisterRoutes([]string{
 		"/health",
@@ -235,8 +240,8 @@ func TestRecordBusinessEvent(t *testing.T) {
 }
 
 func TestNormalizeRouteFallbackWithIDInMiddle(t *testing.T) {
-	// Clear any previously registered routes to test fallback logic
-	// Note: In real usage, services should register routes, but fallback handles unregistered routes
+	resetRouteRegistryForTest()
+	// Fallback logic must work without registered templates.
 
 	tests := []struct {
 		input    string
@@ -298,9 +303,15 @@ func TestLooksLikeIDImprovedLogic(t *testing.T) {
 		{"v1.0.0", true, "Version string"},
 		{"2.3.1", true, "Version string"},
 
+		// Filenames with dots are NOT version strings
+		{"index.html", false, "Filename, not a version"},
+		{"openapi.json", false, "Filename, not a version"},
+		{"robots.txt", false, "Filename, not a version"},
+
 		// Numeric IDs should be detected
 		{"123", true, "All numeric"},
 		{"456789", true, "All numeric"},
+		{"12", true, "All numeric (short still an ID)"},
 
 		// Email addresses should be detected
 		{"user@example.com", true, "Email address"},
@@ -309,9 +320,8 @@ func TestLooksLikeIDImprovedLogic(t *testing.T) {
 		{"abc123def456", true, "Alphanumeric ID"},
 		{"app123", true, "Alphanumeric ID"},
 
-		// Short strings should NOT be detected (unless numeric)
+		// Short non-numeric strings should NOT be detected
 		{"abc", false, "Too short"},
-		{"12", false, "Too short even if numeric"},
 
 		// Common path words should NOT be detected (tested via isCommonPathWord)
 		{"api", false, "Common path word"},
@@ -370,6 +380,7 @@ func TestHistogramBucketsConfiguration(t *testing.T) {
 
 // TestRouteNormalizationWithStaticPaths tests that static paths with hyphens are not normalized
 func TestRouteNormalizationWithStaticPaths(t *testing.T) {
+	resetRouteRegistryForTest()
 	tests := []struct {
 		input    string
 		expected string
@@ -475,5 +486,123 @@ func TestNormalizeRouteWith404(t *testing.T) {
 	// This prevents cardinality explosion from random 404 paths
 	if w.Code != http.StatusNotFound {
 		t.Errorf("Expected 404, got %d", w.Code)
+	}
+}
+
+func TestRegisterRoutes_DeduplicatesTemplates(t *testing.T) {
+	resetRouteRegistryForTest()
+	RegisterRoutes([]string{"/api/v1/schema/:id", "/api/v1/schema/{id}"})
+	RegisterRoutes([]string{"/api/v1/schema/:id"})
+
+	routesMu.RLock()
+	defer routesMu.RUnlock()
+	if len(routeTemplates) != 1 {
+		t.Fatalf("expected 1 template after dedup, got %d: %v", len(routeTemplates), routeTemplates)
+	}
+	if routeTemplates[0] != "/api/v1/schema/:id" {
+		t.Fatalf("unexpected template: %q", routeTemplates[0])
+	}
+}
+
+func TestParseOTLPEndpointHost(t *testing.T) {
+	tests := []struct {
+		name        string
+		endpoint    string
+		insecure    bool
+		wantHost    string
+		wantInsec   bool
+		wantErrSub  string
+	}{
+		{
+			name:      "https endpoint",
+			endpoint:  "https://otel-collector:4318",
+			wantHost:  "otel-collector:4318",
+			wantInsec: false,
+		},
+		{
+			name:      "http with insecure",
+			endpoint:  "http://otel-collector:4318",
+			insecure:   true,
+			wantHost:  "otel-collector:4318",
+			wantInsec:  true,
+		},
+		{
+			name:       "scheme-less rejected",
+			endpoint:   "otel-collector:4318",
+			insecure:   true,
+			wantErrSub: "http:// or https:// scheme",
+		},
+		{
+			name:       "http without insecure rejected",
+			endpoint:   "http://otel-collector:4318",
+			wantErrSub: "must use HTTPS",
+		},
+		{
+			name:       "empty host rejected",
+			endpoint:   "https:///metrics",
+			wantErrSub: "must include a host",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			host, useInsecure, err := parseOTLPEndpointHost(tt.endpoint, tt.insecure)
+			if tt.wantErrSub != "" {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tt.wantErrSub) {
+					t.Fatalf("error %q does not contain %q", err.Error(), tt.wantErrSub)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if host != tt.wantHost {
+				t.Errorf("host = %q, want %q", host, tt.wantHost)
+			}
+			if useInsecure != tt.wantInsec {
+				t.Errorf("useInsecure = %v, want %v", useInsecure, tt.wantInsec)
+			}
+		})
+	}
+}
+
+func TestResponseWriterOptionalInterfaces(t *testing.T) {
+	rec := httptest.NewRecorder()
+	rw := &responseWriter{ResponseWriter: rec, statusCode: http.StatusOK}
+
+	if rw.Unwrap() != rec {
+		t.Error("Unwrap should return underlying ResponseWriter")
+	}
+	// httptest.ResponseRecorder implements Flusher
+	rw.Flush()
+
+	if _, ok := any(rw).(http.Flusher); !ok {
+		t.Error("responseWriter should implement http.Flusher")
+	}
+	if _, ok := any(rw).(http.Hijacker); !ok {
+		t.Error("responseWriter should implement http.Hijacker")
+	}
+	if _, ok := any(rw).(io.ReaderFrom); !ok {
+		t.Error("responseWriter should implement io.ReaderFrom")
+	}
+
+	// Recorder is not a Hijacker — should return a clear error, not panic.
+	if _, _, err := rw.Hijack(); err == nil {
+		t.Error("expected Hijack error when underlying writer lacks Hijacker")
+	}
+}
+
+func TestShutdownWithoutInit(t *testing.T) {
+	// When meterProvider was never set (or already cleared), Shutdown is a no-op.
+	// Do not call Initialize here — package init is once-per-process in tests.
+	prev := meterProvider
+	meterProvider = nil
+	t.Cleanup(func() { meterProvider = prev })
+
+	if err := Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown with nil provider: %v", err)
 	}
 }
