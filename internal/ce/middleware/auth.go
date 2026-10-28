@@ -25,16 +25,24 @@ const SubjectClaim = "sub"
 // OwnerSubject returns middleware that adds the data owner's UID to the request
 // context. It must run after internal/authn's RequireAuthMiddleware, which has
 // already validated the token. The UID is read from claim: "sub" is the token's
-// subject, and any other claim (e.g. "nic") is read from its extra claims. A
-// token without the claim is rejected with 401.
+// subject; standard identity claims use their dedicated accessors, and other
+// claims (e.g. "nic") are read from extra claims. A token without the claim is
+// rejected with 401.
 func OwnerSubject(claim string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authCtx := authn.GetAuthContext(r.Context())
 			var subject string
-			if claim == SubjectClaim {
+			switch claim {
+			case SubjectClaim:
 				subject = authCtx.Subject()
-			} else {
+			case "email":
+				subject = authCtx.Email()
+			case "ouId":
+				subject = authCtx.OUID()
+			case "ouHandle":
+				subject = authCtx.OUHandle()
+			default:
 				subject = authCtx.ExtraClaims().String(claim)
 			}
 			if subject == "" {
