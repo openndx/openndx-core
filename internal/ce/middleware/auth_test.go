@@ -105,20 +105,50 @@ func TestOwnerSubject_UsesTokenSubject(t *testing.T) {
 func TestOwnerSubject_UsesConfiguredClaim(t *testing.T) {
 	authenticate, key := newTestAuthn(t)
 
-	w, subject := serveAuthenticated(t, authenticate, "nic", "Bearer "+signToken(t, key, jwt.MapClaims{"nic": "199012345678"}))
+	for _, tc := range []struct{ claim, value, want string }{
+		{"nic", " 199012345678 ", "199012345678"},
+		{"email", " citizen@example.test ", "citizen@example.test"},
+		{"ouId", " citizens-ou ", "citizens-ou"},
+		{"ouHandle", " citizens ", "citizens"},
+	} {
+		t.Run(tc.claim, func(t *testing.T) {
+			w, subject := serveAuthenticated(t, authenticate, tc.claim, "Bearer "+signToken(t, key, jwt.MapClaims{tc.claim: tc.value}))
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "199012345678", subject)
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, tc.want, subject)
+		})
+	}
 }
 
 func TestOwnerSubject_RejectsTokenWithoutClaim(t *testing.T) {
 	authenticate, key := newTestAuthn(t)
 
-	w, subject := serveAuthenticated(t, authenticate, "nic", "Bearer "+signToken(t, key, nil))
+	for _, claim := range []string{"nic", "email", "ouId", "ouHandle"} {
+		for _, tc := range []struct {
+			name    string
+			present bool
+			value   any
+		}{
+			{name: "absent"},
+			{name: "null", present: true},
+			{name: "empty", present: true, value: ""},
+			{name: "blank", present: true, value: "   "},
+			{name: "number", present: true, value: 123},
+			{name: "array", present: true, value: []string{"citizen"}},
+			{name: "object", present: true, value: map[string]any{"id": "citizen"}},
+		} {
+			t.Run(claim+"/"+tc.name, func(t *testing.T) {
+				extra := jwt.MapClaims{}
+				if tc.present {
+					extra[claim] = tc.value
+				}
+				w, subject := serveAuthenticated(t, authenticate, claim, "Bearer "+signToken(t, key, extra))
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "UNAUTHORIZED")
-	assert.Empty(t, subject)
+				assert.Equal(t, http.StatusUnauthorized, w.Code)
+				assert.Empty(t, subject)
+			})
+		}
+	}
 }
 
 func TestOwnerSubject_RejectsRequestsAuthnRejects(t *testing.T) {
