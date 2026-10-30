@@ -181,7 +181,7 @@ func TestAuthMiddleware_IdentityClaims(t *testing.T) {
 		if authCtx.Email() != testEmail || authCtx.OUID() != testOUID || authCtx.OUHandle() != testOUHandle {
 			t.Fatalf("unexpected standard claims: %+v", authCtx.Principal)
 		}
-		if got := authCtx.ExtraClaims().String("phone_number"); got != testPhone {
+		if got := authCtx.Claims().String("phone_number"); got != testPhone {
 			t.Fatalf("phone_number = %q, want %q", got, testPhone)
 		}
 		w.WriteHeader(http.StatusOK)

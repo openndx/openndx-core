@@ -73,8 +73,8 @@ func TestExtractPrincipal_SurfacesScopesAndRoles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("extract: %v", err)
 		}
-		if !sameScopes(p.Scopes, []string{"nsw:task:read", "nsw:storage:read"}) {
-			t.Fatalf("user scopes = %v", p.Scopes)
+		if !sameScopes(p.Scopes(), []string{"nsw:task:read", "nsw:storage:read"}) {
+			t.Fatalf("user scopes = %v", p.Scopes())
 		}
 	})
 
@@ -88,11 +88,11 @@ func TestExtractPrincipal_SurfacesScopesAndRoles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("extract: %v", err)
 		}
-		if !sameScopes(p.Scopes, []string{"nsw:task:write", "nsw:consignment:read"}) {
-			t.Fatalf("client scopes = %v", p.Scopes)
+		if !sameScopes(p.Scopes(), []string{"nsw:task:write", "nsw:consignment:read"}) {
+			t.Fatalf("client scopes = %v", p.Scopes())
 		}
-		if !sameScopes(p.Roles, []string{"AgencyM2M"}) {
-			t.Fatalf("client roles = %v", p.Roles)
+		if !sameScopes(p.Roles(), []string{"AgencyM2M"}) {
+			t.Fatalf("client roles = %v", p.Roles())
 		}
 	})
 }

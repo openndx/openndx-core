@@ -11,16 +11,11 @@ import (
 
 // TestGetAuthContextFromRequest tests context retrieval.
 func TestGetAuthContext_FromRequest(t *testing.T) {
-	authCtx := &AuthContext{Principal: Principal{
-		Subject:  testUserID,
-		ClientID: testClientID,
-		Roles:    []string{"exporter"},
-		ExtraClaims: ExtraClaims{
-			"email":    testEmail,
-			"ouId":     testOUID,
-			"ouHandle": testOUHandle,
-		},
-	}}
+	authCtx := &AuthContext{Principal: Principal{claims: Claims{values: map[string]any{
+		"sub": testUserID, "client_id": testClientID,
+		"roles": []any{"exporter"}, "email": testEmail,
+		"ouId": testOUID, "ouHandle": testOUHandle,
+	}}}}
 	ctx := context.WithValue(context.Background(), AuthContextKey, authCtx)
 
 	retrieved := GetAuthContext(ctx)
@@ -54,15 +49,11 @@ func TestGetAuthContext_WrongType(t *testing.T) {
 // TestAuthContext_Accessors locks in that every accessor reads straight
 // through to the Principal and is nil-safe.
 func TestAuthContext_Accessors(t *testing.T) {
-	authCtx := &AuthContext{Principal: Principal{
-		Subject:  testUserID,
-		ClientID: testClientID,
-		Roles:    []string{"exporter"},
-		Scopes:   []string{"nsw:task:read"},
-		Email:    testEmail,
-		OUID:     testOUID,
-		OUHandle: testOUHandle,
-	}}
+	authCtx := &AuthContext{Principal: Principal{claims: Claims{values: map[string]any{
+		"sub": testUserID, "client_id": testClientID,
+		"roles": []any{"exporter"}, "scope": "nsw:task:read",
+		"email": testEmail, "ouId": testOUID, "ouHandle": testOUHandle,
+	}}}}
 
 	if got := authCtx.Email(); got != testEmail {
 		t.Errorf("Email() = %q, want %q", got, testEmail)
@@ -93,9 +84,9 @@ func TestAuthContext_Accessors(t *testing.T) {
 	}
 }
 
-// TestAuthContext_ExtraClaims completes the accessor seam: consumers should be
-// able to read extra claims without nil-checking two levels.
-func TestAuthContext_ExtraClaims(t *testing.T) {
+// TestAuthContext_Claims covers reading custom claims without nil-checking
+// the context or the claims view.
+func TestAuthContext_Claims(t *testing.T) {
 	tests := []struct {
 		name string
 		ctx  *AuthContext
@@ -103,17 +94,17 @@ func TestAuthContext_ExtraClaims(t *testing.T) {
 	}{
 		{"nil receiver", nil, ""},
 		{"empty context", &AuthContext{}, ""},
-		{"principal with claims", &AuthContext{Principal: Principal{ExtraClaims: ExtraClaims{"email": testEmail}}}, testEmail},
-		{"principal with nil claims", &AuthContext{Principal: Principal{Subject: testUserID}}, ""},
+		{"principal with claims", &AuthContext{Principal: Principal{claims: Claims{values: map[string]any{"phone_number": testPhone}}}}, testPhone},
+		{"principal with nil claims", &AuthContext{Principal: Principal{}}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Must not panic on any of these, including the nil receiver.
-			if got := tt.ctx.ExtraClaims().String("email"); got != tt.want {
-				t.Fatalf("ExtraClaims().String(email) = %q, want %q", got, tt.want)
+			if got := tt.ctx.Claims().String("phone_number"); got != tt.want {
+				t.Fatalf("Claims().String(phone_number) = %q, want %q", got, tt.want)
 			}
-			if got := tt.ctx.ExtraClaims().Strings("groups"); got != nil {
-				t.Fatalf("ExtraClaims().Strings(groups) = %#v, want nil", got)
+			if got := tt.ctx.Claims().Strings("groups"); got != nil {
+				t.Fatalf("Claims().Strings(groups) = %#v, want nil", got)
 			}
 		})
 	}

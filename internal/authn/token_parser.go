@@ -40,12 +40,12 @@ func (s *spaceDelimitedScope) UnmarshalJSON(data []byte) error {
 // the authz seam), the standard identity claims (email, ouId, ouHandle; each
 // optional unless configured as required), plus the JWT registered claims
 // (iss/aud/exp/...) needed for signature/expiry/issuer/audience validation.
-// Everything else (phone_number, given_name, ...) passes through as
-// ExtraClaims (see extra_claims.go) instead of a dedicated field.
+// The full payload is retained privately for the unified Claims view.
 //
 // Roles is captured shape-free (see rolesValue); parseRolesClaim enforces its
 // shape.
 type tokenClaims struct {
+	payload map[string]any
 	jwt.RegisteredClaims
 	ClientID string              `json:"client_id"`
 	Roles    rolesValue          `json:"roles"`
@@ -53,35 +53,6 @@ type tokenClaims struct {
 	Email    string              `json:"email"`
 	OUID     string              `json:"ouId"`
 	OUHandle string              `json:"ouHandle"`
-}
-
-// Principal is the authenticated caller a validated token describes. There is
-// one shape for every token, however it was obtained: a person signing in
-// through a client and a system using client credentials are distinguished
-// only by what they carry (roles, scopes, claims), never by kind.
-type Principal struct {
-	// Subject is the JWT "sub" claim: the identity provider's ID for the
-	// caller. Always non-empty: a token without "sub" is rejected.
-	Subject string `json:"subject"`
-	// ClientID is the JWT "client_id" claim: the OAuth2 client the token was
-	// issued to. Always non-empty: a token without "client_id" is rejected.
-	ClientID string `json:"clientId"`
-	// Roles is the JWT "roles" claim, nil when the token does not carry it. A
-	// "roles" claim that is not an array of strings rejects the token.
-	Roles []string `json:"roles"`
-	// Scopes is the space-delimited JWT "scope" claim, nil when the token does
-	// not carry it.
-	Scopes []string `json:"scopes"`
-
-	// Email, OUID and OUHandle are the standard identity claims "email",
-	// "ouId" and "ouHandle", whitespace-trimmed. Each is "" when the token
-	// does not carry it, unless configured as required (see ClaimsConfig),
-	// in which case such a token is rejected.
-	Email    string `json:"email,omitempty"`
-	OUID     string `json:"ouId,omitempty"`
-	OUHandle string `json:"ouHandle,omitempty"`
-
-	ExtraClaims ExtraClaims `json:"extraClaims,omitempty"`
 }
 
 type jwksResponse struct {
@@ -227,21 +198,11 @@ func (te *TokenExtractor) ExtractPrincipalFromHeader(authHeader string) (*Princi
 		}
 	}
 
-	extra, roles, err := resolveClaims(tokenString, claims)
-	if err != nil {
+	if _, err := parseRolesClaim(claims.Roles.value); err != nil {
 		return nil, err
 	}
 
-	return &Principal{
-		Subject:     claims.Subject,
-		ClientID:    claims.ClientID,
-		Roles:       roles,
-		Scopes:      claims.Scopes,
-		Email:       email,
-		OUID:        ouID,
-		OUHandle:    ouHandle,
-		ExtraClaims: extra,
-	}, nil
+	return &Principal{claims: validatedClaims(claims)}, nil
 }
 
 func (te *TokenExtractor) keyFunc(token *jwt.Token) (interface{}, error) {

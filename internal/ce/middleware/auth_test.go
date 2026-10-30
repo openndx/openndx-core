@@ -111,6 +111,60 @@ func TestOwnerSubject_UsesConfiguredClaim(t *testing.T) {
 	assert.Equal(t, "199012345678", subject)
 }
 
+func TestOwnerSubject_UsesStandardClaims(t *testing.T) {
+	authenticate, key := newTestAuthn(t)
+	for _, tc := range []struct {
+		claim string
+		value string
+		want  string
+	}{
+		{"email", "  owner@example.com \n", "owner@example.com"},
+		{"ouId", " OU-123 ", "OU-123"},
+		{"ouHandle", " organization ", "organization"},
+		{"client_id", "CONSENT_PORTAL", "CONSENT_PORTAL"},
+		{"jti", "token-123", "token-123"},
+	} {
+		t.Run(tc.claim, func(t *testing.T) {
+			w, subject := serveAuthenticated(t, authenticate, tc.claim,
+				"Bearer "+signToken(t, key, jwt.MapClaims{tc.claim: tc.value}))
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, tc.want, subject)
+		})
+	}
+}
+
+func TestOwnerSubject_RejectsNonStringIdentifiers(t *testing.T) {
+	authenticate, key := newTestAuthn(t)
+	for name, value := range map[string]any{
+		"null": nil, "blank": " \t ", "number": 123, "boolean": true,
+		"array": []string{"199012345678"}, "object": map[string]any{"nic": "199012345678"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w, subject := serveAuthenticated(t, authenticate, "nic",
+				"Bearer "+signToken(t, key, jwt.MapClaims{"nic": value}))
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
+			assert.Empty(t, subject)
+		})
+	}
+	// Registered numeric claims must not be converted into owner IDs either.
+	w, subject := serveAuthenticated(t, authenticate, "exp", "Bearer "+signToken(t, key, nil))
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Empty(t, subject)
+}
+
+func TestOwnerSubject_UsesExactClaimName(t *testing.T) {
+	authenticate, key := newTestAuthn(t)
+	token := "Bearer " + signToken(t, key, jwt.MapClaims{"NIC": "upper", "nic": "lower"})
+	for claim, want := range map[string]string{"NIC": "upper", "nic": "lower"} {
+		w, subject := serveAuthenticated(t, authenticate, claim, token)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, want, subject)
+	}
+	w, subject := serveAuthenticated(t, authenticate, "Nic", token)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Empty(t, subject)
+}
+
 func TestOwnerSubject_RejectsTokenWithoutClaim(t *testing.T) {
 	authenticate, key := newTestAuthn(t)
 

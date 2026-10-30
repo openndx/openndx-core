@@ -8,21 +8,8 @@ import (
 	"testing"
 )
 
-// TestFixedSchemaClaims_KeysAreFolded enforces the invariant the collision
-// guard depends on: lookups fold the candidate name, so a key that isn't
-// already lowercase would be unreachable and silently stop guarding.
-func TestFixedSchemaClaims_KeysAreFolded(t *testing.T) {
-	for name := range fixedSchemaClaims {
-		if folded := foldClaimName(name); folded != name {
-			t.Errorf("fixedSchemaClaims key %q is not folded (want %q)", name, folded)
-		}
-	}
-}
-
-// TestTokenClaims_JSONBindingIsCaseInsensitive documents why the collision
-// guard has to fold at all. encoding/json falls back to a case-insensitive
-// match on struct tags, so these payload keys reach the fixed-schema fields
-// even though a case-sensitive guard would not recognise them.
+// TestTokenClaims_JSONBindingIsCaseInsensitive checks that standard claim
+// canonicalization preserves encoding/json's case-insensitive struct binding.
 func TestTokenClaims_JSONBindingIsCaseInsensitive(t *testing.T) {
 	var c tokenClaims
 	raw := `{"Roles":["admin"],"Client_ID":"evil","SCOPE":"a b"}`
@@ -57,8 +44,8 @@ func TestParseRolesClaim(t *testing.T) {
 		{name: "array of strings", value: []any{"a", "b"}, want: []string{"a", "b"}},
 		{name: "elements are trimmed", value: []any{" a ", "b"}, want: []string{"a", "b"}},
 		{name: "empty array", value: []any{}, want: []string{}},
-		// Deliberately stricter than ExtraClaims.Strings: space-splitting a
-		// bare string would turn "Customs Officer" into two roles.
+		// Space-splitting a bare string would turn "Customs Officer"
+		// into two roles. Only scope accepts a space-delimited string.
 		{name: "space-delimited string", value: "a b", wantErr: true},
 		{name: "bare string", value: "admin", wantErr: true},
 		{name: "number", value: 42.0, wantErr: true},
@@ -98,8 +85,8 @@ func TestRolesClaim(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected a caller with no roles to authenticate, got %v", err)
 		}
-		if p.Roles != nil {
-			t.Fatalf("roles = %#v, want nil", p.Roles)
+		if p.Roles() != nil {
+			t.Fatalf("roles = %#v, want nil", p.Roles())
 		}
 	})
 
