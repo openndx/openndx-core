@@ -18,14 +18,14 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestNewPolicyMetadataService(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
 }
 
 func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -81,7 +81,7 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 
 func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -181,7 +181,7 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 
 func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -217,7 +217,7 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 
 func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -263,7 +263,7 @@ func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 // synchronization cannot restore a stale allow-list entry.
 func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -329,7 +329,7 @@ func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
 func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 	t.Run("CreatePolicyMetadata_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
@@ -344,7 +344,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_DeleteObsoleteRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create initial records
 		initialReq := &models.PolicyMetadataCreateRequest{
@@ -390,7 +390,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_TransactionRollback", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// This test verifies transaction rollback on error
 		// We'll create a request that should fail validation
@@ -413,7 +413,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_MixedNewAndUpdated", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create initial record
 		initialReq := &models.PolicyMetadataCreateRequest{
@@ -462,7 +462,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_WithOwner", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
@@ -487,7 +487,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 	t.Run("UpdateAllowList_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.AllowListUpdateRequest{
 			ApplicationID: "app-123",
@@ -503,7 +503,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_InvalidGrantDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -538,7 +538,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.AllowListUpdateRequest{
 			ApplicationID: "app-123",
@@ -558,7 +558,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_OneYearDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -599,7 +599,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_NilAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata first using the service
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -635,7 +635,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_ReupdateExistingAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -691,7 +691,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 
 	t.Run("UpdateAllowList_MultipleFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata for multiple fields
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -739,7 +739,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 	t.Run("GetPolicyDecision_ExpiredAccess", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create policy metadata
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -777,7 +777,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAccessExpired)
@@ -786,7 +786,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID: "app-123",
@@ -798,14 +798,14 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		_, err := service.GetPolicyDecision(req)
+		_, err := service.GetPolicyDecision(t.Context(), req)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "policy metadata not found")
 	})
 
 	t.Run("GetPolicyDecision_PublicFieldNoConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create public field
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -846,7 +846,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAuthorized)
@@ -856,7 +856,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MultipleSchemas", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create metadata for multiple schemas
 		createReq1 := &models.PolicyMetadataCreateRequest{
@@ -907,7 +907,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAuthorized)
@@ -916,7 +916,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_RestrictedFieldRequiresConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create restricted field with owner
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -958,7 +958,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAuthorized)
@@ -968,14 +968,14 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_EmptyRequiredFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID:  "app-123",
 			RequiredFields: []models.PolicyDecisionRequestRecord{},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAuthorized) // No fields means authorized
@@ -985,7 +985,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MixedAuthorizedUnauthorizedExpired", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 		// Create multiple fields with different states
 		createReq := &models.PolicyMetadataCreateRequest{
@@ -1045,7 +1045,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.GetPolicyDecision(req)
+		resp, err := service.GetPolicyDecision(t.Context(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.False(t, resp.AppAuthorized) // Has unauthorized fields
