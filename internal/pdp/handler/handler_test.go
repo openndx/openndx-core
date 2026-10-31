@@ -36,7 +36,7 @@ func TestRespondWithPolicyServiceError_HidesInternalDetails(t *testing.T) {
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -50,7 +50,7 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/update-allowlist", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -64,7 +64,7 @@ func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
 func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/decide", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -77,7 +77,7 @@ func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 
 func TestHandler_NewHandler(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.policyService)
 }
@@ -236,7 +236,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset database for each test
 			db := setupTestDB(t)
-			handler := NewHandler(db)
+			handler := NewHandler(db, testhelpers.Engine(t))
 
 			// Create initial record for update test
 			if tt.name == "Update existing policy metadata" {
@@ -276,7 +276,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 
 func TestHandler_ListPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -361,7 +361,7 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 
 func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -432,7 +432,7 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 
 func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -487,7 +487,7 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 
 func TestHandler_RevokeAllowListEntry(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
@@ -536,7 +536,7 @@ func TestHandler_RevokeAllowListEntry(t *testing.T) {
 
 func TestHandler_UpdateAllowList(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	// Create initial policy metadata
 	createReq := models.PolicyMetadataCreateRequest{
@@ -650,7 +650,7 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 
 func TestHandler_GetPolicyDecision(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db)
+	handler := NewHandler(db, testhelpers.Engine(t))
 
 	// Create policy metadata with allow list
 	createReq := models.PolicyMetadataCreateRequest{

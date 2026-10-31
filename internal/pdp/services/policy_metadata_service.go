@@ -1,11 +1,14 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -18,13 +21,15 @@ var (
 
 // PolicyMetadataService provides business logic for policy metadata operations
 type PolicyMetadataService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	engine *engine.Engine
 }
 
 // NewPolicyMetadataService creates a new policy metadata service
-func NewPolicyMetadataService(db *gorm.DB) *PolicyMetadataService {
+func NewPolicyMetadataService(db *gorm.DB, policyEngine *engine.Engine) *PolicyMetadataService {
 	return &PolicyMetadataService{
-		db: db,
+		db:     db,
+		engine: policyEngine,
 	}
 }
 
@@ -268,8 +273,17 @@ func (s *PolicyMetadataService) UpdateAllowList(req *models.AllowListUpdateReque
 	}, nil
 }
 
-// GetPolicyDecision evaluates policy decision based on policy metadata
-func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequest) (*models.PolicyDecisionResponse, error) {
+// policyClassOf derives a field's policy class from the access-control columns.
+// Temporary until the class is stored with the field (#723).
+func policyClassOf(pm *models.PolicyMetadata) string {
+	if !pm.IsOwner && pm.AccessControlType == models.AccessControlTypeRestricted {
+		return engine.ClassAllowlistConsent
+	}
+	return engine.ClassAllowlist
+}
+
+// GetPolicyDecision evaluates the policy for each requested field
+func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *models.PolicyDecisionRequest) (*models.PolicyDecisionResponse, error) {
 	// Collect all unique schema IDs from the request
 	schemaIDSet := make(map[string]struct{})
 	for _, record := range req.RequiredFields {
@@ -299,7 +313,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 	var unauthorizedFields []models.PolicyDecisionResponseFieldRecord
 	var expiredFields []models.PolicyDecisionResponseFieldRecord
 
-	// Iterate through required fields and perform logic using map lookup
+	now := time.Now()
 	for _, record := range req.RequiredFields {
 		key := record.SchemaID + ":" + record.FieldName
 		pm, exists := metadataMap[key]
@@ -307,40 +321,37 @@ func (s *PolicyMetadataService) GetPolicyDecision(req *models.PolicyDecisionRequ
 			return nil, fmt.Errorf("policy metadata not found for schema_id %s and field_name %s", record.SchemaID, record.FieldName)
 		}
 
-		// Check if application is authorized
-		if _, exists := pm.AllowList[req.ApplicationID]; !exists {
-			unauthorizedFields = append(unauthorizedFields, models.PolicyDecisionResponseFieldRecord{
-				FieldName:   pm.FieldName,
-				SchemaID:    pm.SchemaID,
-				DisplayName: pm.DisplayName,
-				Description: pm.Description,
-				Owner:       pm.Owner,
-			})
-			continue
+		input := engine.Input{
+			App:   engine.App{ID: req.ApplicationID},
+			Field: engine.Field{SchemaID: pm.SchemaID, FieldName: pm.FieldName, PolicyClass: policyClassOf(pm)},
+			Now:   now,
+		}
+		if entry, ok := pm.AllowList[req.ApplicationID]; ok {
+			input.Grant = &engine.Grant{ExpiresAt: entry.ExpiresAt}
 		}
 
-		// Check if access has expired
-		allowListEntry := pm.AllowList[req.ApplicationID]
-		if time.Now().After(allowListEntry.ExpiresAt) {
-			expiredFields = append(expiredFields, models.PolicyDecisionResponseFieldRecord{
-				FieldName:   pm.FieldName,
-				SchemaID:    pm.SchemaID,
-				DisplayName: pm.DisplayName,
-				Description: pm.Description,
-				Owner:       pm.Owner,
-			})
-			continue
+		// Decide denies the field when evaluation fails, so the error is only logged.
+		decision, err := s.engine.Decide(ctx, input)
+		if err != nil {
+			slog.ErrorContext(ctx, "Policy evaluation failed, denying field",
+				"schemaId", pm.SchemaID, "fieldName", pm.FieldName, "error", err)
 		}
 
-		// Check if owner consent is required
-		if !pm.IsOwner && pm.AccessControlType == models.AccessControlTypeRestricted {
-			consentRequiredFields = append(consentRequiredFields, models.PolicyDecisionResponseFieldRecord{
-				FieldName:   pm.FieldName,
-				SchemaID:    pm.SchemaID,
-				DisplayName: pm.DisplayName,
-				Description: pm.Description,
-				Owner:       pm.Owner,
-			})
+		fieldRecord := models.PolicyDecisionResponseFieldRecord{
+			FieldName:   pm.FieldName,
+			SchemaID:    pm.SchemaID,
+			DisplayName: pm.DisplayName,
+			Description: pm.Description,
+			Owner:       pm.Owner,
+		}
+		switch decision.Outcome {
+		case engine.OutcomeAllow:
+		case engine.OutcomeConsentRequired:
+			consentRequiredFields = append(consentRequiredFields, fieldRecord)
+		case engine.OutcomeExpired:
+			expiredFields = append(expiredFields, fieldRecord)
+		default:
+			unauthorizedFields = append(unauthorizedFields, fieldRecord)
 		}
 	}
 
