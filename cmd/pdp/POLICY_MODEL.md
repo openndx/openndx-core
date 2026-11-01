@@ -27,7 +27,7 @@ The allow-list is a JSON map stored on each record. The key is the application's
 
 ## Decision rules
 
-`POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), compiled into the PDP at build time and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
+`POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), embedded in the PDP at build time, compiled at startup and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
 
 Each field is sent to a **policy class**. Until the class is stored with the field, the PDP derives it: `restricted` with `isOwner` `false` is `allowlist_consent`, and everything else is `allowlist`. Both classes deny an application that is not on the allow-list, report an expired entry, and otherwise allow the field (`allowlist`) or require owner consent (`allowlist_consent`). An unknown class or a failed evaluation denies the field, which then appears in `unauthorizedFields`.
 

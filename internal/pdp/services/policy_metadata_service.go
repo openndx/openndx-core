@@ -313,7 +313,6 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 	var unauthorizedFields []models.PolicyDecisionResponseFieldRecord
 	var expiredFields []models.PolicyDecisionResponseFieldRecord
 
-	now := time.Now()
 	for _, record := range req.RequiredFields {
 		key := record.SchemaID + ":" + record.FieldName
 		pm, exists := metadataMap[key]
@@ -324,7 +323,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		input := engine.Input{
 			App:   engine.App{ID: req.ApplicationID},
 			Field: engine.Field{SchemaID: pm.SchemaID, FieldName: pm.FieldName, PolicyClass: policyClassOf(pm)},
-			Now:   now,
+			Now:   time.Now(),
 		}
 		if entry, ok := pm.AllowList[req.ApplicationID]; ok {
 			input.Grant = &engine.Grant{ExpiresAt: entry.ExpiresAt}
