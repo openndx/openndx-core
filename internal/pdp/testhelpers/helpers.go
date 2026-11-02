@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -23,6 +24,16 @@ func StringPtr(s string) *string {
 // OwnerPtr returns a pointer to the given Owner value.
 func OwnerPtr(o models.Owner) *models.Owner {
 	return &o
+}
+
+// Engine compiles the embedded policies for a test.
+func Engine(t *testing.T) *engine.Engine {
+	t.Helper()
+	e, err := engine.New(t.Context())
+	if err != nil {
+		t.Fatalf("Failed to compile policies: %v", err)
+	}
+	return e
 }
 
 // SetupTestDB creates an in-memory SQLite database for unit testing.

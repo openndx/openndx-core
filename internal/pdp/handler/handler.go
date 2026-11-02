@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/services"
 	"github.com/openndx/openndx-core/internal/utils"
@@ -19,8 +20,8 @@ type Handler struct {
 }
 
 // NewHandler creates a new API handler
-func NewHandler(db *gorm.DB) *Handler {
-	policyService := services.NewPolicyMetadataService(db)
+func NewHandler(db *gorm.DB, policyEngine *engine.Engine) *Handler {
+	policyService := services.NewPolicyMetadataService(db, policyEngine)
 	return &Handler{
 		policyService: policyService,
 	}
@@ -172,7 +173,7 @@ func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.policyService.GetPolicyDecision(&req)
+	resp, err := h.policyService.GetPolicyDecision(r.Context(), &req)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
