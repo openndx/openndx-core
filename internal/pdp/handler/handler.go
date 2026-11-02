@@ -43,6 +43,10 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.policyService.CreatePolicyMetadata(&req)
+	if errors.Is(err, services.ErrUnknownPolicyClass) {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -82,18 +86,9 @@ func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.AccessControlType.Set {
-		if req.AccessControlType.Value == nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "accessControlType cannot be null")
-			return
-		}
-
-		accessControlType := *req.AccessControlType.Value
-		if accessControlType != models.AccessControlTypePublic &&
-			accessControlType != models.AccessControlTypeRestricted {
-			utils.RespondWithError(w, http.StatusBadRequest, "accessControlType must be public or restricted")
-			return
-		}
+	if req.PolicyClass.Set && req.PolicyClass.Value == nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "policyClass cannot be null")
+		return
 	}
 
 	resp, err := h.policyService.PatchPolicyMetadata(id, &req)
@@ -189,6 +184,9 @@ func respondWithPolicyServiceError(w http.ResponseWriter, err error) {
 
 	case errors.Is(err, services.ErrAllowListEntryNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
+
+	case errors.Is(err, services.ErrUnknownPolicyClass):
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 
 	default:
 		slog.Error("Policy service request failed", "error", err)

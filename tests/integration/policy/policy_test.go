@@ -41,13 +41,12 @@ func cleanupPolicyMetadata(t *testing.T, schemaID string) {
 // Request/Response types matching PDP API
 
 type PolicyMetadataCreateRequestRecord struct {
-	FieldName         string  `json:"fieldName"`
-	DisplayName       *string `json:"displayName,omitempty"`
-	Description       *string `json:"description,omitempty"`
-	Source            string  `json:"source"`
-	IsOwner           bool    `json:"isOwner"`
-	AccessControlType string  `json:"accessControlType"`
-	Owner             *string `json:"owner,omitempty"`
+	FieldName   string  `json:"fieldName"`
+	DisplayName *string `json:"displayName,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Source      string  `json:"source"`
+	PolicyClass string  `json:"policyClass"`
+	Owner       *string `json:"owner,omitempty"`
 }
 
 type PolicyMetadataCreateRequest struct {
@@ -56,18 +55,18 @@ type PolicyMetadataCreateRequest struct {
 }
 
 type PolicyMetadataResponse struct {
-	ID                string                 `json:"id"`
-	SchemaID          string                 `json:"schemaId"`
-	FieldName         string                 `json:"fieldName"`
-	DisplayName       *string                `json:"displayName,omitempty"`
-	Description       *string                `json:"description,omitempty"`
-	Source            string                 `json:"source"`
-	IsOwner           bool                   `json:"isOwner"`
-	AccessControlType string                 `json:"accessControlType"`
-	AllowList         map[string]interface{} `json:"allowList"`
-	Owner             *string                `json:"owner,omitempty"`
-	CreatedAt         string                 `json:"createdAt"`
-	UpdatedAt         string                 `json:"updatedAt"`
+	ID           string                 `json:"id"`
+	SchemaID     string                 `json:"schemaId"`
+	FieldName    string                 `json:"fieldName"`
+	DisplayName  *string                `json:"displayName,omitempty"`
+	Description  *string                `json:"description,omitempty"`
+	Source       string                 `json:"source"`
+	PolicyClass  string                 `json:"policyClass"`
+	PolicyParams map[string]interface{} `json:"policyParams"`
+	AllowList    map[string]interface{} `json:"allowList"`
+	Owner        *string                `json:"owner,omitempty"`
+	CreatedAt    string                 `json:"createdAt"`
+	UpdatedAt    string                 `json:"updatedAt"`
 }
 
 type PolicyMetadataCreateResponse struct {
@@ -144,12 +143,11 @@ func TestPolicy_CreateMetadata(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				DisplayName:       &displayName,
-				Description:       &description,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "person.fullName",
+				DisplayName: &displayName,
+				Description: &description,
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -170,8 +168,8 @@ func TestPolicy_CreateMetadata(t *testing.T) {
 	assert.Len(t, createResponse.Records, 1, "Should return one record")
 	assert.Equal(t, schemaID, createResponse.Records[0].SchemaID)
 	assert.Equal(t, "person.fullName", createResponse.Records[0].FieldName)
-	assert.Equal(t, "public", createResponse.Records[0].AccessControlType)
-	assert.True(t, createResponse.Records[0].IsOwner)
+	assert.Equal(t, "allowlist", createResponse.Records[0].PolicyClass)
+	assert.Equal(t, map[string]interface{}{}, createResponse.Records[0].PolicyParams)
 
 	// Cleanup: Remove created policy metadata
 	t.Cleanup(func() {
@@ -195,10 +193,9 @@ func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 		SchemaID: "", // Missing schemaId
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "person.fullName",
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -230,10 +227,9 @@ func TestPolicy_UpdateAllowList(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "restricted",
+				FieldName:   "person.fullName",
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -308,10 +304,9 @@ func TestPolicy_GetPolicyDecision(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "person.fullName",
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -388,10 +383,9 @@ func TestPolicy_GetPolicyDecision_Unauthorized(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "restricted",
+				FieldName:   "person.fullName",
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -480,11 +474,10 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				DisplayName:       &displayName1,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "person.fullName",
+				DisplayName: &displayName1,
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -502,11 +495,10 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				DisplayName:       &displayName2,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "person.fullName",
+				DisplayName: &displayName2,
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}

@@ -15,30 +15,35 @@ const (
 	GrantDurationTypeOneYear  GrantDurationType = "365d"
 )
 
-// AccessControlType represents the access control type enum
-type AccessControlType string
+// PolicyParams holds a policy class's parameters for one field, stored as JSONB.
+type PolicyParams map[string]any
 
-const (
-	AccessControlTypePublic     AccessControlType = "public"
-	AccessControlTypeRestricted AccessControlType = "restricted"
-)
+// Scan implements the sql.Scanner interface for PolicyParams
+func (pp *PolicyParams) Scan(value interface{}) error {
+	var bytes []byte
+	switch v := value.(type) {
+	case nil:
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into PolicyParams", value)
+	}
 
-// Scan implements the sql.Scanner interface for AccessControlType
-func (act *AccessControlType) Scan(value interface{}) error {
-	if value == nil {
-		*act = AccessControlTypeRestricted
+	*pp = make(PolicyParams)
+	if len(bytes) == 0 {
 		return nil
 	}
-	if str, ok := value.(string); ok {
-		*act = AccessControlType(str)
-		return nil
-	}
-	return fmt.Errorf("cannot scan %T into AccessControlType", value)
+	return json.Unmarshal(bytes, pp)
 }
 
-// Value implements the driver.Valuer interface for AccessControlType
-func (act AccessControlType) Value() (driver.Value, error) {
-	return string(act), nil
+// Value implements the driver.Valuer interface for PolicyParams
+func (pp PolicyParams) Value() (driver.Value, error) {
+	if pp == nil {
+		return json.Marshal(map[string]any{})
+	}
+	return json.Marshal(pp)
 }
 
 // Source represents the source enum

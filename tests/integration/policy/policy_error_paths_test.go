@@ -19,15 +19,19 @@ import (
 func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 	schemaID := generateTestID("test-schema-rollback")
 
-	// Create a request that should fail validation (isOwner false but no owner specified)
+	// The second record names an unknown policy class, so the whole request fails
 	req := PolicyMetadataCreateRequest{
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "field1",
-				Source:            "primary",
-				IsOwner:           false, // Invalid: isOwner false but no owner specified
-				AccessControlType: "public",
+				FieldName:   "field1",
+				Source:      "primary",
+				PolicyClass: "allowlist",
+			},
+			{
+				FieldName:   "field2",
+				Source:      "primary",
+				PolicyClass: "no_such_class",
 			},
 		},
 	}
@@ -40,7 +44,7 @@ func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 	defer resp.Body.Close()
 
 	// Should return error due to validation failure
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "Should reject invalid request")
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Should reject invalid request")
 
 	// Verify transaction was rolled back - no records should exist
 	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
@@ -75,10 +79,9 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         fieldName,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   fieldName,
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -103,11 +106,10 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         fieldName,
-				DisplayName:       &displayName,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "restricted", // Changed
+				FieldName:   fieldName,
+				DisplayName: &displayName,
+				Source:      "primary",
+				PolicyClass: "allowlist_consent", // Changed
 			},
 		},
 	}
@@ -128,7 +130,7 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	// Verify it's the same record (same ID) but with updated values
 	assert.Equal(t, originalID, createResponse2.Records[0].ID, "Should update existing record, not create duplicate")
 	assert.Equal(t, "Updated Name", *createResponse2.Records[0].DisplayName)
-	assert.Equal(t, "restricted", createResponse2.Records[0].AccessControlType)
+	assert.Equal(t, "allowlist_consent", createResponse2.Records[0].PolicyClass)
 
 	// Verify only one record exists (no duplicates) by checking database directly
 	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
@@ -210,10 +212,9 @@ func TestPolicy_UpdateAllowList_InvalidGrantDuration(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "field1",
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   "field1",
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}
@@ -266,10 +267,9 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         fieldName,
-				Source:            "primary",
-				IsOwner:           true,
-				AccessControlType: "public",
+				FieldName:   fieldName,
+				Source:      "primary",
+				PolicyClass: "allowlist",
 			},
 		},
 	}

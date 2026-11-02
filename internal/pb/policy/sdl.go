@@ -36,13 +36,19 @@ func (h *sdlParser) ParseSDLToPolicyRequest(schemaID, sdl string) (*PolicyMetada
 			fieldPath := h.buildFieldPath(typeName, field.Name)
 
 			// Extract directives from field
-			record := h.createRecordFromField(fieldPath, field)
+			record, err := h.createRecordFromField(fieldPath, field)
+			if err != nil {
+				return nil, err
+			}
 			if record != nil {
 				records = append(records, *record)
 			}
 
 			// Handle nested object types
-			nestedRecords := h.processNestedFields(schema, fieldPath, field.Type, field)
+			nestedRecords, err := h.processNestedFields(schema, fieldPath, field.Type, field)
+			if err != nil {
+				return nil, err
+			}
 			records = append(records, nestedRecords...)
 		}
 	}
@@ -54,18 +60,27 @@ func (h *sdlParser) ParseSDLToPolicyRequest(schemaID, sdl string) (*PolicyMetada
 }
 
 // createRecordFromField creates a PolicyMetadataCreateRequestRecord from a GraphQL field
-func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefinition) *PolicyMetadataCreateRequestRecord {
+func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefinition) (*PolicyMetadataCreateRequestRecord, error) {
+	if err := h.rejectRemovedDirectives(fieldPath, field.Directives); err != nil {
+		return nil, err
+	}
+
 	// Extract directives
-	accessControlType := h.getDirectiveValue(field.Directives, "accessControl", "type")
+	accessControl := field.Directives.ForName("accessControl")
+	policyClass := h.getDirectiveValue(field.Directives, "accessControl", "policy")
 	sourceValue := h.getDirectiveValue(field.Directives, "source", "value")
 	displayName := h.getDirectiveValue(field.Directives, "displayName", "value")
 	description := h.getDirectiveValue(field.Directives, "description", "value")
-	isOwnerValue := h.getDirectiveValue(field.Directives, "isOwner", "value")
 	ownerValue := h.getDirectiveValue(field.Directives, "owner", "value")
 
+	if accessControl != nil && policyClass == "" {
+		return nil, fmt.Errorf("field %s: @accessControl needs a policy, e.g. @accessControl(policy: %q)",
+			fieldPath, PolicyClassAllowlistConsent)
+	}
+
 	// Skip if no relevant directives found
-	if accessControlType == "" && sourceValue == "" {
-		return nil
+	if accessControl == nil && sourceValue == "" {
+		return nil, nil
 	}
 
 	record := PolicyMetadataCreateRequestRecord{
@@ -89,17 +104,11 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 		record.Source = SourceFallback // default
 	}
 
-	// Set access control type (default to "public" if not specified)
-	if accessControlType != "" {
-		record.AccessControlType = AccessControlType(accessControlType)
+	// Set policy class (default to "allowlist" if not specified)
+	if policyClass != "" {
+		record.PolicyClass = policyClass
 	} else {
-		record.AccessControlType = AccessControlTypePublic // default
-	}
-
-	// Set isOwner (default to false)
-	record.IsOwner = false
-	if isOwnerValue == "true" {
-		record.IsOwner = true
+		record.PolicyClass = PolicyClassAllowlist // default
 	}
 
 	// Set owner if specified (can be null)
@@ -108,11 +117,24 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 		record.Owner = &owner
 	}
 
-	return &record
+	return &record, nil
+}
+
+// rejectRemovedDirectives fails on the access-control directives replaced by
+// policy classes. Ignoring them would quietly drop a consent requirement.
+func (h *sdlParser) rejectRemovedDirectives(fieldPath string, directives ast.DirectiveList) error {
+	if directives.ForName("isOwner") != nil {
+		return fmt.Errorf("field %s: @isOwner was removed; drop it and set the field's policy with @accessControl(policy: ...)", fieldPath)
+	}
+	if accessControl := directives.ForName("accessControl"); accessControl != nil && accessControl.Arguments.ForName("type") != nil {
+		return fmt.Errorf("field %s: @accessControl(type: ...) was removed; use @accessControl(policy: %q) or @accessControl(policy: %q)",
+			fieldPath, PolicyClassAllowlist, PolicyClassAllowlistConsent)
+	}
+	return nil
 }
 
 // processNestedFields recursively processes nested object fields
-func (h *sdlParser) processNestedFields(schema *ast.Schema, basePath string, fieldType *ast.Type, parentField *ast.FieldDefinition) []PolicyMetadataCreateRequestRecord {
+func (h *sdlParser) processNestedFields(schema *ast.Schema, basePath string, fieldType *ast.Type, parentField *ast.FieldDefinition) ([]PolicyMetadataCreateRequestRecord, error) {
 	var records []PolicyMetadataCreateRequestRecord
 
 	// Get the actual type name (handle lists and non-nulls)
@@ -124,18 +146,24 @@ func (h *sdlParser) processNestedFields(schema *ast.Schema, basePath string, fie
 			nestedPath := basePath + "." + nestedField.Name
 
 			// Create record for nested field
-			record := h.createRecordFromField(nestedPath, nestedField)
+			record, err := h.createRecordFromField(nestedPath, nestedField)
+			if err != nil {
+				return nil, err
+			}
 			if record != nil {
 				records = append(records, *record)
 			}
 
 			// Recursively process further nested fields
-			furtherNested := h.processNestedFields(schema, nestedPath, nestedField.Type, nestedField)
+			furtherNested, err := h.processNestedFields(schema, nestedPath, nestedField.Type, nestedField)
+			if err != nil {
+				return nil, err
+			}
 			records = append(records, furtherNested...)
 		}
 	}
 
-	return records
+	return records, nil
 }
 
 // buildFieldPath creates the dot-notation field path (e.g., "user.birthInfo")

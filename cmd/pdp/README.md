@@ -40,7 +40,7 @@ export DB_PASSWORD=<password>
 make run policy-decision-point    # or: go run ./cmd/pdp -config cmd/pdp/config.yaml
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path.
+[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path. Re-applying it to a v0.5 database converts `access_control_type` and `is_owner` to `policy_class` (see [POLICY_MODEL.md](POLICY_MODEL.md#table)).
 
 ## Configuration
 
@@ -69,17 +69,17 @@ The service checks the file at startup and exits with an error naming the bad ke
 
 Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies are the bare resource and errors are `{"error": "<message>"}`.
 
-| Method and path | Purpose |
-|---|---|
-| `POST /api/v1/policy/decide` | Authorization decision for an application and a list of fields |
-| `GET /api/v1/policy/metadata?schemaId=` | List metadata records, optionally for one schema |
-| `POST /api/v1/policy/metadata` | Sync a schema's field metadata (`201`) |
-| `PATCH /api/v1/policy/metadata/{id}` | Edit `displayName`, `description` or `accessControlType` |
-| `DELETE /api/v1/policy/metadata/{id}` | Delete a record (`204`) |
-| `DELETE /api/v1/policy/metadata/{id}/allowlist/{applicationId}` | Revoke one application's access to one field (`204`) |
-| `POST /api/v1/policy/update-allowlist` | Grant an application access to fields for `30d` or `365d` |
-| `GET /health` | `{"service": "policy-decision-point", "status": "healthy"}` |
-| `GET /debug`, `GET /debug/db` | Version info; database status and record count |
+| Method and path                                                 | Purpose                                                            |
+|-----------------------------------------------------------------|--------------------------------------------------------------------|
+| `POST /api/v1/policy/decide`                                    | Authorization decision for an application and a list of fields     |
+| `GET /api/v1/policy/metadata?schemaId=`                         | List metadata records, optionally for one schema                   |
+| `POST /api/v1/policy/metadata`                                  | Sync a schema's field metadata (`201`)                             |
+| `PATCH /api/v1/policy/metadata/{id}`                            | Edit `displayName`, `description`, `policyClass` or `policyParams` |
+| `DELETE /api/v1/policy/metadata/{id}`                           | Delete a record (`204`)                                            |
+| `DELETE /api/v1/policy/metadata/{id}/allowlist/{applicationId}` | Revoke one application's access to one field (`204`)               |
+| `POST /api/v1/policy/update-allowlist`                          | Grant an application access to fields for `30d` or `365d`          |
+| `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
+| `GET /debug`, `GET /debug/db`                                   | Version info; database status and record count                     |
 
 A decision request and response:
 
@@ -103,9 +103,9 @@ For each requested `(schemaId, fieldName)`, in order:
 1. No metadata record: the whole request fails with **HTTP 500**.
 2. The application is not in the field's allow-list: the field is *unauthorized*.
 3. The allow-list entry has expired: the field is *expired*.
-4. Otherwise the field needs owner consent if it is `restricted` and the caller is not the field's owner (`isOwner: false`).
+4. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`.
 
-`appAuthorized` is true when no field is unauthorized. A `public` field still needs an allow-list entry. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
+`appAuthorized` is true when no field is unauthorized. Both built-in policy classes need an allow-list entry. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
 
 ## Security and deployment
 

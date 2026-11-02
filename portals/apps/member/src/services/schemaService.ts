@@ -222,9 +222,8 @@ export class SchemaService {
 
     // 3. Add directive definitions
     const sdlWithDirectives = `
-      directive @accessControl(type: String) on FIELD_DEFINITION
+      directive @accessControl(policy: String) on FIELD_DEFINITION
 			directive @source(value: String) on FIELD_DEFINITION
-			directive @isOwner(value: Boolean) on FIELD_DEFINITION
 			directive @owner(value: String) on FIELD_DEFINITION
 			directive @description(value: String) on FIELD_DEFINITION
 
@@ -250,15 +249,15 @@ export class SchemaService {
 
         const directives = [...(node.directives ?? [])];
 
-        if (config.accessControlType) {
+        if (config.policyClass) {
           directives.push({
             kind: Kind.DIRECTIVE,
             name: { kind: Kind.NAME, value: "accessControl" },
             arguments: [
               {
                 kind: Kind.ARGUMENT,
-                name: { kind: Kind.NAME, value: "type" },
-                value: { kind: Kind.STRING, value: config.accessControlType },
+                name: { kind: Kind.NAME, value: "policy" },
+                value: { kind: Kind.STRING, value: config.policyClass },
               },
             ],
           });
@@ -273,20 +272,6 @@ export class SchemaService {
                 kind: Kind.ARGUMENT,
                 name: { kind: Kind.NAME, value: "value" },
                 value: { kind: Kind.STRING, value: config.source },
-              },
-            ],
-          });
-        }
-
-        if (config.isOwner !== null) {
-          directives.push({
-            kind: Kind.DIRECTIVE,
-            name: { kind: Kind.NAME, value: "isOwner" },
-            arguments: [
-              {
-                kind: Kind.ARGUMENT,
-                name: { kind: Kind.NAME, value: "value" },
-                value: { kind: Kind.BOOLEAN, value: config.isOwner },
               },
             ],
           });

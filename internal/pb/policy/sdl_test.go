@@ -39,10 +39,10 @@ func TestSDLParser_getDirectiveValue(t *testing.T) {
 			Name: "accessControl",
 			Arguments: ast.ArgumentList{
 				{
-					Name: "type",
+					Name: "policy",
 					Value: &ast.Value{
 						Kind: ast.StringValue,
-						Raw:  `"public"`,
+						Raw:  `"allowlist"`,
 					},
 				},
 			},
@@ -62,9 +62,9 @@ func TestSDLParser_getDirectiveValue(t *testing.T) {
 	}
 
 	t.Run("GetExistingDirective", func(t *testing.T) {
-		result := parser.getDirectiveValue(directives, "accessControl", "type")
+		result := parser.getDirectiveValue(directives, "accessControl", "policy")
 		// The value should have quotes stripped
-		assert.Contains(t, result, "public")
+		assert.Contains(t, result, "allowlist")
 	})
 
 	t.Run("GetNonExistentDirective", func(t *testing.T) {
@@ -177,17 +177,17 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithNestedFields(t *testing.T) {
 	parser := newSDLParser()
 
 	sdl := `
-	directive @accessControl(type: String) on FIELD_DEFINITION
+	directive @accessControl(policy: String) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 
 	type BirthInfo {
-	  birthCertificateID: ID! @accessControl(type: "public") @source(value: "fallback")
-	  birthPlace: String! @accessControl(type: "public") @source(value: "fallback")
+	  birthCertificateID: ID! @accessControl(policy: "allowlist") @source(value: "fallback")
+	  birthPlace: String! @accessControl(policy: "allowlist") @source(value: "fallback")
 	}
 
 	type User {
-	  id: ID! @accessControl(type: "public") @source(value: "fallback")
-	  birthInfo: BirthInfo @accessControl(type: "public") @source(value: "fallback")
+	  id: ID! @accessControl(policy: "allowlist") @source(value: "fallback")
+	  birthInfo: BirthInfo @accessControl(policy: "allowlist") @source(value: "fallback")
 	}
 
 	type Query {
@@ -219,15 +219,14 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithDirectives(t *testing.T) {
 	parser := newSDLParser()
 
 	sdl := `
-	directive @accessControl(type: String) on FIELD_DEFINITION
+	directive @accessControl(policy: String) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 	directive @displayName(value: String) on FIELD_DEFINITION
 	directive @description(value: String) on FIELD_DEFINITION
-	directive @isOwner(value: Boolean) on FIELD_DEFINITION
 	directive @owner(value: String) on FIELD_DEFINITION
 
 	type User {
-	  id: ID! @accessControl(type: "restricted") @source(value: "drc") @displayName(value: "User ID") @description(value: "Unique identifier") @isOwner(value: true) @owner(value: "member")
+	  id: ID! @accessControl(policy: "allowlist_consent") @source(value: "drc") @displayName(value: "User ID") @description(value: "Unique identifier") @owner(value: "member")
 	}
 
 	type Query {
@@ -249,15 +248,73 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithDirectives(t *testing.T) {
 	}
 
 	assert.NotNil(t, userIDRecord)
-	assert.Equal(t, AccessControlType("restricted"), userIDRecord.AccessControlType)
+	assert.Equal(t, PolicyClassAllowlistConsent, userIDRecord.PolicyClass)
 	assert.Equal(t, Source("drc"), userIDRecord.Source)
 	assert.NotNil(t, userIDRecord.DisplayName)
 	assert.Equal(t, "User ID", *userIDRecord.DisplayName)
 	assert.NotNil(t, userIDRecord.Description)
 	assert.Equal(t, "Unique identifier", *userIDRecord.Description)
-	assert.True(t, userIDRecord.IsOwner)
 	assert.NotNil(t, userIDRecord.Owner)
 	assert.Equal(t, Owner("member"), *userIDRecord.Owner)
+}
+
+func TestSDLParser_ParseSDLToPolicyRequest_DefaultsToAllowlist(t *testing.T) {
+	sdl := `
+	directive @source(value: String) on FIELD_DEFINITION
+
+	type User {
+	  id: ID! @source(value: "primary")
+	}
+	`
+
+	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
+	assert.NoError(t, err)
+	assert.Len(t, request.Records, 1)
+	assert.Equal(t, PolicyClassAllowlist, request.Records[0].PolicyClass)
+	assert.Nil(t, request.Records[0].Owner)
+}
+
+func TestSDLParser_ParseSDLToPolicyRequest_RejectsRemovedDirectives(t *testing.T) {
+	const directives = `
+	directive @accessControl(type: String, policy: String) on FIELD_DEFINITION
+	directive @source(value: String) on FIELD_DEFINITION
+	directive @isOwner(value: Boolean) on FIELD_DEFINITION
+	`
+
+	tests := []struct {
+		name    string
+		field   string
+		wantErr string
+	}{
+		{
+			name:    "accessControl type",
+			field:   `nic: String @accessControl(type: "restricted") @source(value: "primary")`,
+			wantErr: "field person.nic: @accessControl(type: ...) was removed",
+		},
+		{
+			name:    "isOwner",
+			field:   `nic: String @accessControl(policy: "allowlist") @isOwner(value: true)`,
+			wantErr: "field person.nic: @isOwner was removed",
+		},
+		{
+			name:    "accessControl without policy",
+			field:   `nic: String @accessControl @source(value: "primary")`,
+			wantErr: "field person.nic: @accessControl needs a policy",
+		},
+		{
+			name:    "removed directive on a nested field",
+			field:   "address: Address\n}\ntype Address {\n  city: String @accessControl(type: \"public\")",
+			wantErr: "@accessControl(type: ...) was removed",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sdl := directives + "type Person {\n  " + tt.field + "\n}\n"
+
+			_, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
+			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }
 
 func TestSDLParser_ParseSDLToPolicyRequest_NoDirectives(t *testing.T) {

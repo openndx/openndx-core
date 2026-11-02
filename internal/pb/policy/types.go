@@ -21,31 +21,15 @@ const (
 	GrantDurationTypeOneYear  GrantDurationType = "365d"
 )
 
-// AccessControlType represents the access control type enum
-type AccessControlType string
-
+// Built-in policy classes. The PDP decides which classes exist and rejects
+// any other name.
 const (
-	AccessControlTypePublic     AccessControlType = "public"
-	AccessControlTypeRestricted AccessControlType = "restricted"
+	PolicyClassAllowlist        = "allowlist"
+	PolicyClassAllowlistConsent = "allowlist_consent"
 )
 
-// Scan implements the sql.Scanner interface for AccessControlType
-func (act *AccessControlType) Scan(value interface{}) error {
-	if value == nil {
-		*act = AccessControlTypeRestricted
-		return nil
-	}
-	if str, ok := value.(string); ok {
-		*act = AccessControlType(str)
-		return nil
-	}
-	return fmt.Errorf("cannot scan %T into AccessControlType", value)
-}
-
-// Value implements the driver.Valuer interface for AccessControlType
-func (act *AccessControlType) Value() (driver.Value, error) {
-	return string(*act), nil
-}
+// PolicyParams holds a policy class's parameters for one field.
+type PolicyParams map[string]any
 
 // Source represents the source enum
 type Source string

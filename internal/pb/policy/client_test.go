@@ -27,16 +27,15 @@ func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
 	schemaID := "test-schema-123"
 	expectedRecords := []PolicyMetadataResponse{
 		{
-			ID:                "record-1",
-			SchemaID:          schemaID,
-			FieldName:         "personInfo.name",
-			DisplayName:       stringPtr("Name"),
-			Source:            SourcePrimary,
-			IsOwner:           false,
-			AccessControlType: AccessControlTypeRestricted,
-			AllowList:         AllowList{},
-			CreatedAt:         "2024-01-01T00:00:00Z",
-			UpdatedAt:         "2024-01-01T00:00:00Z",
+			ID:          "record-1",
+			SchemaID:    schemaID,
+			FieldName:   "personInfo.name",
+			DisplayName: stringPtr("Name"),
+			Source:      SourcePrimary,
+			PolicyClass: PolicyClassAllowlistConsent,
+			AllowList:   AllowList{},
+			CreatedAt:   "2024-01-01T00:00:00Z",
+			UpdatedAt:   "2024-01-01T00:00:00Z",
 		},
 	}
 
@@ -87,9 +86,10 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 	schemaID := "test-schema-123"
 	records := []PolicyMetadataCreateRequestRecord{
 		{
-			FieldName:         "email",
-			Source:            SourcePrimary,
-			AccessControlType: AccessControlTypePublic,
+			FieldName:    "email",
+			Source:       SourcePrimary,
+			PolicyClass:  PolicyClassAllowlist,
+			PolicyParams: PolicyParams{"purpose": "tax"},
 		},
 	}
 
@@ -126,7 +126,8 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 	if assert.Len(t, capturedReq.Records, 1) {
 		assert.Equal(t, "email", capturedReq.Records[0].FieldName)
 		assert.Equal(t, SourcePrimary, capturedReq.Records[0].Source)
-		assert.Equal(t, AccessControlTypePublic, capturedReq.Records[0].AccessControlType)
+		assert.Equal(t, PolicyClassAllowlist, capturedReq.Records[0].PolicyClass)
+		assert.Equal(t, PolicyParams{"purpose": "tax"}, capturedReq.Records[0].PolicyParams)
 	}
 }
 
@@ -139,7 +140,7 @@ func TestClient_CreatePolicyMetadataFromRecords_Non200Status(t *testing.T) {
 
 	service := NewClient(server.URL)
 	response, err := service.CreatePolicyMetadataFromRecords("schema-1", []PolicyMetadataCreateRequestRecord{
-		{FieldName: "email", Source: SourcePrimary, AccessControlType: AccessControlTypePublic},
+		{FieldName: "email", Source: SourcePrimary, PolicyClass: PolicyClassAllowlist},
 	})
 
 	assert.Error(t, err)
@@ -385,7 +386,7 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"records":[{"id":"pm-1","schemaId":"sch_1&x","fieldName":"person.name","source":"primary","isOwner":false,"accessControlType":"restricted","allowList":{}}]}`))
+		w.Write([]byte(`{"records":[{"id":"pm-1","schemaId":"sch_1&x","fieldName":"person.name","source":"primary","policyClass":"allowlist_consent","policyParams":{},"allowList":{}}]}`))
 	}))
 	defer server.Close()
 
@@ -395,7 +396,7 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, response.Records, 1)
 	assert.Equal(t, "pm-1", response.Records[0].ID)
-	assert.Equal(t, AccessControlTypeRestricted, response.Records[0].AccessControlType)
+	assert.Equal(t, PolicyClassAllowlistConsent, response.Records[0].PolicyClass)
 }
 
 func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
@@ -410,7 +411,7 @@ func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"pm-1","schemaId":"sch_1","fieldName":"person.name","displayName":"Name","accessControlType":"public"}`))
+		w.Write([]byte(`{"id":"pm-1","schemaId":"sch_1","fieldName":"person.name","displayName":"Name","policyClass":"allowlist"}`))
 	}))
 	defer server.Close()
 

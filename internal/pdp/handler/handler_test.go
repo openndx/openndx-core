@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -95,12 +96,11 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name"),
-						Description:       testhelpers.StringPtr("Complete name"),
-						Source:            models.SourcePrimary,
-						IsOwner:           true,
-						AccessControlType: models.AccessControlTypePublic,
+						FieldName:   "person.fullName",
+						DisplayName: testhelpers.StringPtr("Full Name"),
+						Description: testhelpers.StringPtr("Complete name"),
+						Source:      models.SourcePrimary,
+						PolicyClass: engine.ClassAllowlist,
 					},
 				},
 			},
@@ -124,12 +124,11 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name Updated"),
-						Description:       testhelpers.StringPtr("Updated description"),
-						Source:            models.SourcePrimary,
-						IsOwner:           true,
-						AccessControlType: models.AccessControlTypeRestricted,
+						FieldName:   "person.fullName",
+						DisplayName: testhelpers.StringPtr("Full Name Updated"),
+						Description: testhelpers.StringPtr("Updated description"),
+						Source:      models.SourcePrimary,
+						PolicyClass: engine.ClassAllowlistConsent,
 					},
 				},
 			},
@@ -142,8 +141,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				if len(resp.Records) != 1 {
 					t.Errorf("Expected 1 record, got %d", len(resp.Records))
 				}
-				if resp.Records[0].AccessControlType != models.AccessControlTypeRestricted {
-					t.Errorf("Expected AccessControlType restricted, got %s", resp.Records[0].AccessControlType)
+				if resp.Records[0].PolicyClass != engine.ClassAllowlistConsent {
+					t.Errorf("Expected PolicyClass allowlist_consent, got %s", resp.Records[0].PolicyClass)
 				}
 			},
 		},
@@ -156,22 +155,21 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "Service error - invalid field configuration",
+			name: "Unknown policy class",
 			requestBody: models.PolicyMetadataCreateRequest{
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:         "person.invalid",
-						Source:            models.SourcePrimary,
-						IsOwner:           false, // Invalid: isOwner false but no owner specified
-						AccessControlType: models.AccessControlTypePublic,
+						FieldName:   "person.invalid",
+						Source:      models.SourcePrimary,
+						PolicyClass: "no_such_class",
 					},
 				},
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusBadRequest,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				// Should return error response
-				assert.Contains(t, w.Body.String(), "owner")
+				assert.Contains(t, w.Body.String(), "unknown policy class")
+				assert.Contains(t, w.Body.String(), "person.invalid")
 			},
 		},
 		{
@@ -180,18 +178,16 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name"),
-						Source:            models.SourcePrimary,
-						IsOwner:           true,
-						AccessControlType: models.AccessControlTypePublic,
+						FieldName:   "person.fullName",
+						DisplayName: testhelpers.StringPtr("Full Name"),
+						Source:      models.SourcePrimary,
+						PolicyClass: engine.ClassAllowlist,
 					},
 					{
-						FieldName:         "person.email",
-						DisplayName:       testhelpers.StringPtr("Email"),
-						Source:            models.SourcePrimary,
-						IsOwner:           true,
-						AccessControlType: models.AccessControlTypeRestricted,
+						FieldName:   "person.email",
+						DisplayName: testhelpers.StringPtr("Email"),
+						Source:      models.SourcePrimary,
+						PolicyClass: engine.ClassAllowlist,
 					},
 				},
 			},
@@ -212,10 +208,9 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:         "person.fullName",
-						Source:            models.SourceFallback,
-						IsOwner:           true,
-						AccessControlType: models.AccessControlTypePublic,
+						FieldName:   "person.fullName",
+						Source:      models.SourceFallback,
+						PolicyClass: engine.ClassAllowlist,
 					},
 				},
 			},
@@ -244,11 +239,10 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 					SchemaID: "schema-123",
 					Records: []models.PolicyMetadataCreateRequestRecord{
 						{
-							FieldName:         "person.fullName",
-							DisplayName:       testhelpers.StringPtr("Full Name"),
-							Source:            models.SourcePrimary,
-							IsOwner:           true,
-							AccessControlType: models.AccessControlTypePublic,
+							FieldName:   "person.fullName",
+							DisplayName: testhelpers.StringPtr("Full Name"),
+							Source:      models.SourcePrimary,
+							PolicyClass: engine.ClassAllowlist,
 						},
 					},
 				}
@@ -282,18 +276,16 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				DisplayName: testhelpers.StringPtr("Name"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				DisplayName: testhelpers.StringPtr("Email"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -304,10 +296,9 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "other-schema",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "other.field",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "other.field",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -367,18 +358,16 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				DisplayName: testhelpers.StringPtr("Name"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				DisplayName: testhelpers.StringPtr("Email"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -430,6 +419,48 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 }
 
+func TestHandler_PatchPolicyMetadata_PolicyClass(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db, testhelpers.Engine(t))
+
+	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+		},
+	})
+	require.NoError(t, err)
+	id := createResp.Records[0].ID
+
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+		wantClass  string
+	}{
+		{"null class", `{"policyClass":null}`, http.StatusBadRequest, ""},
+		{"unknown class", `{"policyClass":"no_such_class"}`, http.StatusBadRequest, ""},
+		{"known class", `{"policyClass":"allowlist_consent"}`, http.StatusOK, engine.ClassAllowlistConsent},
+		{"removed accessControlType", `{"accessControlType":"restricted"}`, http.StatusBadRequest, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPatch, "/api/v1/policy/metadata/"+id, bytes.NewBufferString(tt.body))
+			req.SetPathValue("id", id)
+			w := httptest.NewRecorder()
+
+			handler.PatchPolicyMetadata(w, req)
+
+			require.Equal(t, tt.wantStatus, w.Code, w.Body.String())
+			if tt.wantClass != "" {
+				var resp models.PolicyMetadataResponse
+				require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+				assert.Equal(t, tt.wantClass, resp.PolicyClass)
+			}
+		})
+	}
+}
+
 func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db, testhelpers.Engine(t))
@@ -438,16 +469,14 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -493,10 +522,9 @@ func TestHandler_RevokeAllowListEntry(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -543,11 +571,10 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				DisplayName:       testhelpers.StringPtr("Full Name"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.fullName",
+				DisplayName: testhelpers.StringPtr("Full Name"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	}
@@ -657,19 +684,17 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.fullName",
-				DisplayName:       testhelpers.StringPtr("Full Name"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.fullName",
+				DisplayName: testhelpers.StringPtr("Full Name"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.nic",
-				DisplayName:       testhelpers.StringPtr("NIC"),
-				Source:            models.SourcePrimary,
-				IsOwner:           false,
-				AccessControlType: models.AccessControlTypeRestricted,
-				Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+				FieldName:   "person.nic",
+				DisplayName: testhelpers.StringPtr("NIC"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlistConsent,
+				Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
 			},
 		},
 	}

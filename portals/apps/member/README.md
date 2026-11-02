@@ -76,7 +76,7 @@ After sign-in the portal finds the user's member (cached in `localStorage` as `m
 |---|---|
 | `/` | The member's profile. |
 | `/schemas` | The member's approved schemas and submissions. |
-| `/schemas/new` | Register a schema: enter a provider's GraphQL endpoint, upload an introspection result JSON file, or paste SDL. Set each field's access (`@accessControl`, `@source`, `@isOwner`, `@owner`, `@description` directives); the portal builds the SDL from that and submits it. |
+| `/schemas/new` | Register a schema: enter a provider's GraphQL endpoint, upload an introspection result JSON file, or paste SDL. Set each field's access policy and source (`@accessControl(policy: ...)`, `@source`, `@owner`, `@description` directives); the portal builds the SDL from that and submits it. |
 | `/schemas/logs` | Provider-side audit logs. |
 | `/applications` | The member's applications and submissions. |
 | `/applications/new` | Register an application: pick fields from approved schemas and submit. |

@@ -104,12 +104,12 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 		schemaID: schemaID,
 		records: []policy.PolicyMetadataResponse{
 			{
-				ID:                "pm-1",
-				SchemaID:          schemaID,
-				FieldName:         "person.name",
-				Source:            policy.SourcePrimary,
-				AccessControlType: policy.AccessControlTypeRestricted,
-				AllowList:         policy.AllowList{"client-1": policy.AllowListEntry{}},
+				ID:          "pm-1",
+				SchemaID:    schemaID,
+				FieldName:   "person.name",
+				Source:      policy.SourcePrimary,
+				PolicyClass: policy.PolicyClassAllowlistConsent,
+				AllowList:   policy.AllowList{"client-1": policy.AllowListEntry{}},
 			},
 		},
 	}
@@ -278,12 +278,12 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("PDP validation error is passed through", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 		env.pdp.writeStatus = http.StatusBadRequest
-		env.pdp.writeBody = `{"error":"accessControlType must be public or restricted"}`
+		env.pdp.writeBody = `{"error":"unknown policy class \"secret\": must be one of allowlist, allowlist_consent"}`
 
-		w := env.serve(callertest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"accessControlType":"secret"}`)))
+		w := env.serve(callertest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"policyClass":"secret"}`)))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "accessControlType must be public or restricted")
+		assert.Contains(t, w.Body.String(), `unknown policy class \"secret\"`)
 	})
 
 	t.Run("PDP failure is reported as bad gateway", func(t *testing.T) {

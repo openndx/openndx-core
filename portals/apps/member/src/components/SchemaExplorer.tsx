@@ -44,7 +44,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             return false;
           }
         } else {
-          if (!config.accessControlType || !config.source || (config.isOwner === false && !config.owner)) {
+          if (!config.policyClass || !config.source || (config.policyClass === 'allowlist_consent' && !config.owner)) {
             console.error(`Invalid configuration for ${type.name}.${field.name}, field config:`, config);
             return false;
           }
@@ -71,7 +71,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             configured++;
           }
         } else {
-          if (config?.accessControlType && config?.source && (config?.isOwner === false ? config?.owner.trim() : true)) {
+          if (config?.policyClass && config?.source && (config?.policyClass === 'allowlist_consent' ? config?.owner.trim() : true)) {
             configured++;
           }
         }
