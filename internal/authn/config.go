@@ -24,7 +24,7 @@ type Config struct {
 }
 
 // ClaimsConfig configures each standard identity claim — "email", "ouId" and
-// "ouHandle" — which populate the Principal fields of the same name.
+// "ouHandle" — available through Principal accessors and Claims().
 //
 // ClaimsConfig carries yaml struct tags, so it can be populated generically
 // (e.g. via yaml.Unmarshal) as part of Config.
@@ -39,7 +39,7 @@ type ClaimConfig struct {
 	// Required rejects a token whose claim is absent or blank. The
 	// requirement applies to every token, including client-credentials
 	// tokens issued to systems, which typically carry no email or
-	// organization unit. Default false: the Principal field is "" instead.
+	// organization unit. Default false: the string accessor returns "" instead.
 	Required bool `yaml:"required"`
 }
 

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/openndx/openndx-core/internal/authn"
+	"github.com/openndx/openndx-core/internal/authn/authntest"
 	"github.com/openndx/openndx-core/internal/pb/caller"
 )
 
@@ -89,14 +90,15 @@ var (
 // WithAuth returns req carrying testUser as the principal internal/authn
 // would have validated, and its member if it has one.
 func WithAuth(req *http.Request, testUser TestUser) *http.Request {
+	claims := map[string]any{
+		"sub": testUser.Subject, "ouId": testUser.OuID,
+		"email": testUser.Email, "scope": testUser.Scopes,
+	}
+	if testUser.ClientID != "" {
+		claims["client_id"] = testUser.ClientID
+	}
 	ctx := context.WithValue(req.Context(), authn.AuthContextKey, &authn.AuthContext{
-		Principal: authn.Principal{
-			Subject:  testUser.Subject,
-			ClientID: testUser.ClientID,
-			OUID:     testUser.OuID,
-			Email:    testUser.Email,
-			Scopes:   testUser.Scopes,
-		},
+		Principal: authntest.MustPrincipal(claims),
 	})
 	if testUser.MemberID != "" {
 		ctx = caller.WithMemberID(ctx, testUser.MemberID)

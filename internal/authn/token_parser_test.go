@@ -47,9 +47,9 @@ func TestTokenExtractor_ExtractPrincipalFromHeader(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			if principal.Subject != tt.wantSubject || principal.ClientID != testClientID {
+			if principal.Subject() != tt.wantSubject || principal.ClientID() != testClientID {
 				t.Fatalf("unexpected principal: got (%q, %q) want (%q, %q)",
-					principal.Subject, principal.ClientID, tt.wantSubject, testClientID)
+					principal.Subject(), principal.ClientID(), tt.wantSubject, testClientID)
 			}
 		})
 	}
@@ -147,7 +147,7 @@ func TestTokenExtractor_IgnoresGrantType(t *testing.T) {
 		if err != nil {
 			t.Fatalf("grant_type %v: expected success, got %v", grantType, err)
 		}
-		if principal.Subject != testUserID || principal.ClientID != testClientID {
+		if principal.Subject() != testUserID || principal.ClientID() != testClientID {
 			t.Fatalf("grant_type %v: unexpected principal %#v", grantType, principal)
 		}
 	}
@@ -155,7 +155,7 @@ func TestTokenExtractor_IgnoresGrantType(t *testing.T) {
 
 // TestTokenExtractor_GrantTypeIsAnOrdinaryClaim covers the other half of
 // dropping dispatch: grant_type is no longer reserved, so it passes through to
-// ExtraClaims like any other claim for a consumer that cares.
+// Claims() like any other claim for a consumer that cares.
 func TestTokenExtractor_GrantTypeIsAnOrdinaryClaim(t *testing.T) {
 	extractor, privateKey, cleanup := newTokenExtractor(t)
 	defer cleanup()
@@ -167,8 +167,8 @@ func TestTokenExtractor_GrantTypeIsAnOrdinaryClaim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected success, got %v", err)
 	}
-	if got := principal.ExtraClaims.String("grant_type"); got != "client_credentials" {
-		t.Fatalf("ExtraClaims grant_type = %q, want client_credentials", got)
+	if got := principal.Claims().String("grant_type"); got != "client_credentials" {
+		t.Fatalf("Claims grant_type = %q, want client_credentials", got)
 	}
 }
 
@@ -204,7 +204,7 @@ func TestTokenExtractor_AcceptsAnyClientIDForAudience(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected success for a token issued for this audience, got %v", err)
 	}
-	if principal.ClientID != "SOME_OTHER_CLIENT" {
+	if principal.ClientID() != "SOME_OTHER_CLIENT" {
 		t.Fatalf("unexpected principal: %#v", principal)
 	}
 }
@@ -501,7 +501,7 @@ func TestTokenExtractor_StandardClaims(t *testing.T) {
 		if err != nil {
 			t.Fatalf("extract: %v", err)
 		}
-		if p.Email != testEmail || p.OUID != testOUID || p.OUHandle != testOUHandle {
+		if p.Email() != testEmail || p.OUID() != testOUID || p.OUHandle() != testOUHandle {
 			t.Fatalf("unexpected standard claims: %+v", p)
 		}
 	})
@@ -514,7 +514,7 @@ func TestTokenExtractor_StandardClaims(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected success with no standard claims, got %v", err)
 		}
-		if p.Email != "" || p.OUID != "" || p.OUHandle != "" {
+		if p.Email() != "" || p.OUID() != "" || p.OUHandle() != "" {
 			t.Fatalf("expected empty standard claims, got %+v", p)
 		}
 	})
