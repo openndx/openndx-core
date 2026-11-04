@@ -5,6 +5,7 @@
 #   field.schemaId     provider schema of the field
 #   field.fieldName    field path, for example person.fullName
 #   field.policyClass  name of a package under data.openndx.classes
+#   field.params       the class's parameters for this field; absent when there are none
 #   grant.expiresAt    RFC 3339 expiry of the app's grant; absent when the app has none
 #   now                RFC 3339 evaluation time
 #

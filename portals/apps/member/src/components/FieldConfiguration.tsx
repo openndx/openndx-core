@@ -1,8 +1,21 @@
 // components/FieldConfiguration.tsx
 import React from 'react';
 import type { GraphQLField } from '../types/graphql';
-import type { FieldConfiguration as FieldConfig } from '../types/graphql';
+import type { FieldConfiguration as FieldConfig, PolicyClass } from '../types/graphql';
 import { SchemaService } from '../services/schemaService';
+
+const POLICY_CLASS_OPTIONS: { value: PolicyClass; label: string; hint: string }[] = [
+  {
+    value: 'allowlist',
+    label: 'Approved applications',
+    hint: 'Applications on the allow-list read it without asking the owner.',
+  },
+  {
+    value: 'allowlist_consent',
+    label: 'Approved applications, with owner consent',
+    hint: 'Applications on the allow-list also need the owner to consent.',
+  },
+];
 
 interface FieldConfigurationProps {
   typeName: string;
@@ -18,32 +31,14 @@ export const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   onChange
 }) => {
 
-  const handleAccessControlChange = (accessControlType: 'public' | 'restricted' | '') => {
-    onChange(typeName, field.name, { ...configuration, accessControlType });
+  const handlePolicyClassChange = (policyClass: PolicyClass) => {
+    // Only consent fields need an owner: it's whose consent is asked
+    const owner = policyClass === 'allowlist_consent' ? configuration.owner || 'citizen' : '';
+    onChange(typeName, field.name, { ...configuration, policyClass, owner });
   };
 
   const handleSourceChange = (source: 'primary' | 'fallback') => {
-    const newConfig = { ...configuration, source };
-    
-    if (source === 'primary') {
-      newConfig.isOwner = configuration.isOwner ?? false;
-      newConfig.owner = 'citizen';
-    } else {
-      newConfig.isOwner = null;
-      newConfig.owner = '';
-    }
-    onChange(typeName, field.name, newConfig);
-  };
-
-  const handleIsOwnerChange = (isOwner: boolean | null) => {
-    const newConfig = { ...configuration, isOwner };
-    if (isOwner === false) {
-      newConfig.owner = 'citizen';
-    } else {
-      newConfig.owner = '';
-    }
-    
-    onChange(typeName, field.name, newConfig);
+    onChange(typeName, field.name, { ...configuration, source });
   };
 
   const handleOwnerChange = (owner: 'citizen' | '') => {
@@ -79,25 +74,28 @@ export const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         </div>
 
         <div className="flex-1 space-y-4 bg-white p-4 rounded-lg border border-gray-200">
-          {/* Access Control Configuration */}
+          {/* Access Policy Configuration */}
           {(!configuration.isQueryType && !configuration.isUserDefinedTypeField) && (
             <div className="bg-gray-50 p-3 rounded-lg border">
               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                Access Control <span className="text-red-600">*</span>
+                Access Policy <span className="text-red-600">*</span>
               </label>
-              <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
-                {(['public', 'restricted'] as const).map((option) => (
-                  <label key={option} className="flex items-center cursor-pointer hover:bg-white p-2 rounded transition-colors">
+              <div className="flex flex-col space-y-2">
+                {POLICY_CLASS_OPTIONS.map((option) => (
+                  <label key={option.value} className="flex items-start cursor-pointer hover:bg-white p-2 rounded transition-colors">
                     <input
                       type="radio"
-                      name={`accessControl-${typeName}-${field.name}`}
-                      value={option}
-                      checked={configuration.accessControlType === option}
-                      onChange={() => handleAccessControlChange(option)}
-                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                      name={`policyClass-${typeName}-${field.name}`}
+                      value={option.value}
+                      checked={configuration.policyClass === option.value}
+                      onChange={() => handlePolicyClassChange(option.value)}
+                      className="mr-2 mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 focus:ring-2"
                       required
                     />
-                    <span className="text-sm font-medium capitalize text-gray-700">{option}</span>
+                    <span>
+                      <span className="block text-sm font-medium text-gray-700">{option.label}</span>
+                      <span className="block text-xs text-gray-500">{option.hint}</span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -128,24 +126,8 @@ export const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </div>
           )}
 
-          {/* Is Owner Configuration */}
-          {(!configuration.isQueryType && !configuration.isUserDefinedTypeField && configuration.source === "primary") && (
-            <div className="bg-gray-50 p-3 rounded-lg border">
-              <label className="flex items-center cursor-pointer hover:bg-white p-2 rounded transition-colors">
-                <input
-                  type="checkbox"
-                  name={`isOwner-${typeName}-${field.name}`}
-                  checked={configuration.isOwner === true}
-                  onChange={(e) => handleIsOwnerChange(e.target.checked)}
-                  className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 focus:ring-2 rounded"
-                />
-                <span className="text-sm font-semibold text-gray-800">Is Owner</span>
-              </label>
-            </div>
-          )}
-
           {/* Owner Identifier */}
-          {(!configuration.isQueryType && !configuration.isUserDefinedTypeField && configuration.isOwner === false) && (
+          {(!configuration.isQueryType && !configuration.isUserDefinedTypeField && configuration.policyClass === 'allowlist_consent') && (
             <div className="bg-gray-50 p-3 rounded-lg border">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                 Owner <span className="text-red-600">*</span>

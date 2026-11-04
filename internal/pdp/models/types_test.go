@@ -9,58 +9,67 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAccessControlType_Scan(t *testing.T) {
+func TestPolicyParams_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
 		value   interface{}
-		want    AccessControlType
+		want    PolicyParams
 		wantErr bool
 	}{
 		{
-			name:    "nil value",
-			value:   nil,
-			want:    AccessControlTypeRestricted,
-			wantErr: false,
+			name:  "nil value",
+			value: nil,
+			want:  PolicyParams{},
 		},
 		{
-			name:    "valid string - public",
-			value:   "public",
-			want:    AccessControlTypePublic,
-			wantErr: false,
+			name:  "empty bytes",
+			value: []byte{},
+			want:  PolicyParams{},
 		},
 		{
-			name:    "valid string - restricted",
-			value:   "restricted",
-			want:    AccessControlTypeRestricted,
-			wantErr: false,
+			name:  "bytes",
+			value: []byte(`{"purpose":"tax"}`),
+			want:  PolicyParams{"purpose": "tax"},
+		},
+		{
+			name:  "string",
+			value: `{"maxAgeDays":30}`,
+			want:  PolicyParams{"maxAgeDays": float64(30)},
+		},
+		{
+			name:    "invalid JSON",
+			value:   []byte(`{`),
+			wantErr: true,
 		},
 		{
 			name:    "invalid type",
 			value:   123,
-			want:    "",
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var act AccessControlType
-			err := act.Scan(tt.value)
+			var pp PolicyParams
+			err := pp.Scan(tt.value)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.want, act)
+				assert.Equal(t, tt.want, pp)
 			}
 		})
 	}
 }
 
-func TestAccessControlType_Value(t *testing.T) {
-	act := AccessControlTypePublic
-	value, err := act.Value()
+func TestPolicyParams_Value(t *testing.T) {
+	value, err := PolicyParams(nil).Value()
 	assert.NoError(t, err)
-	assert.Equal(t, "public", value)
+	assert.Equal(t, []byte("{}"), value)
+
+	value, err = PolicyParams{"purpose": "tax"}.Value()
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{"purpose":"tax"}`, string(value.([]byte)))
 }
 
 func TestSource_Scan(t *testing.T) {

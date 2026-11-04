@@ -13,9 +13,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
 )
 
@@ -53,11 +56,13 @@ type App struct {
 	ID string `json:"id"`
 }
 
-// Field identifies the requested field and the policy class that governs it.
+// Field identifies the requested field, the policy class that governs it and
+// the class's parameters for this field.
 type Field struct {
-	SchemaID    string `json:"schemaId"`
-	FieldName   string `json:"fieldName"`
-	PolicyClass string `json:"policyClass"`
+	SchemaID    string         `json:"schemaId"`
+	FieldName   string         `json:"fieldName"`
+	PolicyClass string         `json:"policyClass"`
+	Params      map[string]any `json:"params,omitempty"`
 }
 
 // Grant is the requesting application's access to the field.
@@ -73,7 +78,8 @@ type Decision struct {
 
 // Engine holds the compiled policies.
 type Engine struct {
-	query rego.PreparedEvalQuery
+	query   rego.PreparedEvalQuery
+	classes map[string]struct{}
 }
 
 // New compiles the embedded policies. It fails if any of them does not compile.
@@ -83,16 +89,49 @@ func New(ctx context.Context) (*Engine, error) {
 		return nil, err
 	}
 
+	classes := make(map[string]struct{})
 	opts := []func(*rego.Rego){rego.Query(decisionQuery), rego.StrictBuiltinErrors(true)}
 	for name, src := range modules {
-		opts = append(opts, rego.Module(name, src))
+		module, err := ast.ParseModule(name, src)
+		if err != nil {
+			return nil, fmt.Errorf("parse policy %s: %w", name, err)
+		}
+		if class, ok := className(module); ok {
+			classes[class] = struct{}{}
+		}
+		opts = append(opts, rego.ParsedModule(module))
 	}
 	query, err := rego.New(opts...).PrepareForEval(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("compile policies: %w", err)
 	}
-	return &Engine{query: query}, nil
+	return &Engine{query: query, classes: classes}, nil
 }
+
+// HasClass reports whether a policy class with this name is loaded.
+func (e *Engine) HasClass(name string) bool {
+	_, ok := e.classes[name]
+	return ok
+}
+
+// Classes returns the names of the loaded policy classes, sorted.
+func (e *Engine) Classes() []string {
+	return slices.Sorted(maps.Keys(e.classes))
+}
+
+// className returns the class name of a module in package
+// openndx.classes.<name>. Other modules, such as the router, the shared
+// helpers or a nested package, are not classes.
+func className(module *ast.Module) (string, bool) {
+	path := module.Package.Path
+	if len(path) != 4 || !path[:3].Equal(classesRef) {
+		return "", false
+	}
+	name, ok := path[3].Value.(ast.String)
+	return string(name), ok
+}
+
+var classesRef = ast.MustParseRef("data.openndx.classes")
 
 // Decide evaluates the policy for one field. It always returns a usable
 // decision: when evaluation fails the decision is a deny and the error says why.

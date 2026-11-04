@@ -157,10 +157,10 @@ unit and its users in ThunderID's console first and pass its ID here.
 ondx schemas create --schema-id drp-person-v1 \
   --name "DRP Person Registry" --endpoint http://drp.example.gov.lk/graphql \
   --member-id <drpMemberId> \
-  --field person.fullName:public:primary \
-  --field person.otherNames:public:primary \
-  --field person.permanentAddress:restricted:primary \
-  --field person.profession:restricted:primary \
+  --field person.fullName:allowlist:primary \
+  --field person.otherNames:allowlist:primary \
+  --field person.permanentAddress:allowlist_consent:primary \
+  --field person.profession:allowlist_consent:primary \
   --pb-url http://localhost:8083
 ```
 

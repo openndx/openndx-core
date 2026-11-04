@@ -116,15 +116,15 @@ routing in OE are separate: OE still calls DRP and RGD independently.
   --schema-id drp-person-v1 --name "DRP Person Registry" \
   --endpoint http://host.docker.internal:9091 \
   --member-id "$DRP_MEMBER_ID" \
-  --field person.fullName:public:primary \
-  --field person.profession:restricted:primary
+  --field person.fullName:allowlist:primary \
+  --field person.profession:allowlist_consent:primary
 
 ./ondx schemas create --profile local \
   --schema-id rgd-person-v1 --name "RGD Birth Registry" \
   --endpoint http://host.docker.internal:8080/graphql \
   --member-id "$DRP_MEMBER_ID" \
-  --field getPersonInfo.birthPlace:restricted:primary \
-  --field getPersonInfo.district:restricted:primary
+  --field getPersonInfo.birthPlace:allowlist_consent:primary \
+  --field getPersonInfo.district:allowlist_consent:primary
 ```
 
 Keep the exact schema IDs and field names: they match `@sourceInfo` in
@@ -133,9 +133,10 @@ the policy metadata in PDP through Portal Backend. It does not change OE's
 checked-in provider configuration. The endpoints above are reachable from OE's
 Docker container; native OE uses the localhost endpoints in `config.example.yaml`.
 
-`public` fields still require an application grant. `restricted` fields also
-require the citizen's consent. Here `person.fullName` is public for the demo;
-the profession and birth fields exercise consent.
+The middle part of each `--field` is the field's PDP policy class. `allowlist`
+fields require an application grant. `allowlist_consent` fields also require
+the citizen's consent. Here `person.fullName` needs only the grant; the
+profession and birth fields exercise consent.
 
 ## 5. Create the consumer application
 
@@ -176,7 +177,7 @@ Stop if token retrieval fails. The `resource` selects OE's resource server;
 the data-consumer role supplies its `getdata` permission. This token is for
 consumer requests. Citizen approval uses the portal's own browser login.
 
-## 6. Verify a granted public field
+## 6. Verify a granted field that needs no consent
 
 Define a helper for submitting GraphQL queries. It fails on HTTP errors; each
 step also checks GraphQL errors because those can arrive with HTTP 200:
@@ -201,7 +202,7 @@ printf '%s' "$PUBLIC_RESPONSE" | jq -e '
 The assertion must print `true` and exit successfully. This proves the token,
 PDP grant, OE mapping, and DRP provider are working before adding consent.
 
-## 7. Grant the restricted fields with `ondx policy update`
+## 7. Grant the consent fields with `ondx policy update`
 
 Prepare a query spanning DRP and RGD:
 
@@ -215,7 +216,7 @@ printf '%s' "$DENIED_RESPONSE" | jq -e '
 ```
 
 PDP should deny this request because the application has not been granted the
-restricted fields yet. Add them through the CLI:
+consent fields yet. Add them through the CLI:
 
 ```bash
 ./ondx policy update --profile local --app-id "$APP_ID" \

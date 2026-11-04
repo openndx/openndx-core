@@ -320,11 +320,10 @@ func createPolicyMetadata(t *testing.T, schemaID, fieldName string) {
 		"schemaId": schemaID,
 		"records": []map[string]interface{}{
 			{
-				"fieldName":         fieldName,
-				"source":            "primary",
-				"isOwner":           false,
-				"owner":             "citizen", // Required when isOwner is false
-				"accessControlType": "restricted",
+				"fieldName":   fieldName,
+				"source":      "primary",
+				"owner":       "citizen",
+				"policyClass": "allowlist_consent",
 			},
 		},
 	}

@@ -462,8 +462,7 @@ components:
       required:
         - fieldName
         - source
-        - isOwner
-        - accessControlType
+        - policyClass
       properties:
         fieldName:
           type: string
@@ -482,21 +481,31 @@ components:
           description: Source system for this field
           enum: [ "primary", "fallback" ]
           example: "primary"
-        isOwner:
-          type: boolean
-          description: Whether the field owner is the data owner
-          example: true
-        accessControlType:
-          type: string
-          description: Access control type for the field
-          enum: [ "public", "restricted" ]
-          example: "restricted"
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          $ref: '#/components/schemas/PolicyParams'
         owner:
           type: string
-          description: Owner type when isOwner is false
+          description: Whose consent is asked for the field
           enum: [ "citizen" ]
           nullable: true
           example: "citizen"
+
+    PolicyClass:
+      type: string
+      description: >
+        Policy class that decides access to the field. The built-in classes are
+        allowlist (allow-listed applications, no consent) and allowlist_consent
+        (allow-listed applications with owner consent). A class the PDP has not
+        loaded is rejected with 400.
+      example: "allowlist_consent"
+
+    PolicyParams:
+      type: object
+      description: Parameters for the policy class, passed to it as field.params
+      additionalProperties: true
+      example: {}
 
     PolicyMetadataPatchRequest:
       type: object
@@ -513,11 +522,13 @@ components:
           nullable: true
           description: Updated description, or null to clear it
           example: "Citizen's preferred contact email"
-        accessControlType:
-          type: string
-          description: Updated access-control type
-          enum: [ "public", "restricted" ]
-          example: "restricted"
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Replacement parameters for the policy class, or null to clear them
 
     PolicyMetadataResponse:
       type: object
@@ -526,8 +537,8 @@ components:
         - schemaId
         - fieldName
         - source
-        - isOwner
-        - accessControlType
+        - policyClass
+        - policyParams
         - allowList
         - createdAt
         - updatedAt
@@ -553,13 +564,10 @@ components:
           type: string
           enum: [ "primary", "fallback" ]
           example: "primary"
-        isOwner:
-          type: boolean
-          example: true
-        accessControlType:
-          type: string
-          enum: [ "public", "restricted" ]
-          example: "restricted"
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          $ref: '#/components/schemas/PolicyParams'
         allowList:
           type: object
           description: Application IDs mapped to their access grant details

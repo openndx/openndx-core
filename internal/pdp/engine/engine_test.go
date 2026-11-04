@@ -74,6 +74,17 @@ func TestEngine_Decide(t *testing.T) {
 	}
 }
 
+func TestEngine_Classes(t *testing.T) {
+	e, err := New(t.Context())
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{ClassAllowlist, ClassAllowlistConsent}, e.Classes())
+	assert.True(t, e.HasClass(ClassAllowlist))
+	assert.True(t, e.HasClass(ClassAllowlistConsent))
+	assert.False(t, e.HasClass("no_such_class"))
+	assert.False(t, e.HasClass(""))
+}
+
 func TestToDecision_RejectsUnknownOutcome(t *testing.T) {
 	_, err := toDecision(map[string]any{"outcome": "maybe"})
 	assert.Error(t, err)

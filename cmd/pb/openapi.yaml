@@ -417,7 +417,7 @@ paths:
     patch:
       summary: Update a field's policy metadata
       description: |
-        Updates the displayName, description, or accessControlType of one
+        Updates the displayName, description, policyClass or policyParams of one
         field without resending the schema's other fields. Requires the
         schema:update permission, and members can only update their own
         schemas.
@@ -1164,8 +1164,7 @@ components:
       required:
         - fieldName
         - source
-        - isOwner
-        - accessControlType
+        - policyClass
       properties:
         fieldName:
           type: string
@@ -1181,15 +1180,28 @@ components:
         source:
           type: string
           enum: [primary, fallback]
-        isOwner:
-          type: boolean
-        accessControlType:
-          type: string
-          enum: [public, restricted]
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          $ref: '#/components/schemas/PolicyParams'
         owner:
           type: string
           enum: [citizen]
           nullable: true
+
+    PolicyClass:
+      type: string
+      description: |
+        PDP policy class that decides access to the field. The built-in
+        classes are allowlist (allow-listed applications, no consent) and
+        allowlist_consent (allow-listed applications with owner consent).
+        The PDP rejects a class it has not loaded.
+      example: allowlist_consent
+
+    PolicyParams:
+      type: object
+      description: Parameters for the policy class
+      additionalProperties: true
 
     PolicyMetadata:
       type: object
@@ -1212,11 +1224,10 @@ components:
         source:
           type: string
           enum: [primary, fallback]
-        isOwner:
-          type: boolean
-        accessControlType:
-          type: string
-          enum: [public, restricted]
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          $ref: '#/components/schemas/PolicyParams'
         allowList:
           type: object
           description: |
@@ -1259,7 +1270,8 @@ components:
       type: object
       description: |
         At least one property is required. Omitted properties are left
-        unchanged, and displayName/description can be cleared with null.
+        unchanged. displayName/description can be cleared with null, and
+        policyParams set to null resets to {}.
       additionalProperties: false
       minProperties: 1
       properties:
@@ -1269,9 +1281,12 @@ components:
         description:
           type: string
           nullable: true
-        accessControlType:
-          type: string
-          enum: [public, restricted]
+        policyClass:
+          $ref: '#/components/schemas/PolicyClass'
+        policyParams:
+          type: object
+          nullable: true
+          additionalProperties: true
 
     CreateSchemaRequest:
       type: object
@@ -1299,10 +1314,13 @@ components:
         sdl:
           type: string
           description: |
-            A GraphQL SDL string annotated with @accessControl/@source (and
-            optionally @displayName/@description/@isOwner/@owner) directives,
-            parsed into policy metadata records. Mutually exclusive with
-            fields - exactly one of sdl or fields must be provided.
+            A GraphQL SDL string annotated with @accessControl(policy: ...)
+            and @source (and optionally @displayName/@description/@owner)
+            directives, parsed into policy metadata records. A field with
+            @source but no @accessControl gets the allowlist class. The
+            removed @accessControl(type: ...) and @isOwner directives are
+            rejected with 400. Mutually exclusive with fields - exactly one
+            of sdl or fields must be provided.
         fields:
           type: array
           items:

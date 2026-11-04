@@ -32,9 +32,9 @@ type CreateSchemaRequest struct {
 	SchemaID          string  `json:"schemaId,omitempty"`
 	SchemaName        string  `json:"schemaName" validate:"required"`
 	SchemaDescription *string `json:"schemaDescription,omitempty"`
-	// SDL is a GraphQL SDL string annotated with @accessControl/@source (and
-	// optionally @displayName/@description/@isOwner/@owner) directives, parsed
-	// into policy metadata records. Mutually exclusive with Fields.
+	// SDL is a GraphQL SDL string annotated with @accessControl(policy: ...)
+	// and @source (and optionally @displayName/@description/@owner) directives,
+	// parsed into policy metadata records. Mutually exclusive with Fields.
 	SDL string `json:"sdl,omitempty"`
 	// Fields lets a caller declare policy metadata records directly, skipping
 	// SDL/GraphQL parsing entirely - each FieldName is used as-is (no forced

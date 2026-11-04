@@ -55,11 +55,12 @@ export interface IntrospectionResult {
   };
 }
 
+export type PolicyClass = 'allowlist' | 'allowlist_consent';
+
 export interface FieldConfiguration {
-  accessControlType: 'public' | 'restricted' | ''; // '' indicates not set
+  policyClass: PolicyClass | ''; // '' indicates not set
   source: 'primary' | 'fallback' | ''; // '' indicates not set
-  isOwner: boolean | null;
-  owner: 'citizen' | ''; // Owner Identifier
+  owner: 'citizen' | ''; // Whose consent is asked; set only for allowlist_consent
   description: string;
   isQueryType: boolean; // Is Field Defined Inside a Query Type
   isUserDefinedTypeField: boolean; // Is this field a User Defined Type field

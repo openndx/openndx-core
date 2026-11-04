@@ -66,9 +66,8 @@ export const SchemaRegistrationPage: React.FC<SchemaRegistrationPageProps> = ({
         if (type.name === "Query") {
           type.fields?.forEach(field => {
             initialConfigs[type.name][field.name] = {
-              accessControlType: '',
+              policyClass: '',
               source: '',
-              isOwner: null,
               owner: '',
               description: 'Default Description',
               isQueryType: true,
@@ -80,9 +79,8 @@ export const SchemaRegistrationPage: React.FC<SchemaRegistrationPageProps> = ({
           type.fields?.forEach(field => {
             const isUserDefinedTypeField_ = userDefinedTypes_.map(t => t.name).includes(SchemaService.getTypeString(field.type));
             initialConfigs[type.name][field.name] = {
-              accessControlType: isUserDefinedTypeField_ ? '' : 'public',
+              policyClass: isUserDefinedTypeField_ ? '' : 'allowlist',
               source: isUserDefinedTypeField_ ? '' : 'fallback',
-              isOwner: null,
               owner: '',
               description: field.description || isUserDefinedTypeField_ ? 'Default Description' : '',
               isQueryType: false,

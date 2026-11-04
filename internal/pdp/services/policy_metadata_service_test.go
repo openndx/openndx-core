@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -31,16 +32,14 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -50,10 +49,9 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "other-schema",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "other.field",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "other.field",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -87,19 +85,17 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				DisplayName: testhelpers.StringPtr("Name"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
-				Description:       testhelpers.StringPtr("Old description"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.email",
+				DisplayName: testhelpers.StringPtr("Email"),
+				Description: testhelpers.StringPtr("Old description"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -117,7 +113,8 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 
 	id := createResp.Records[1].ID
 
-	restricted := models.AccessControlTypeRestricted
+	consentClass := engine.ClassAllowlistConsent
+	params := models.PolicyParams{"purpose": "tax"}
 	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
 		DisplayName: models.OptionalPatchField[string]{
 			Set:   true,
@@ -127,16 +124,21 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 			Set:   true,
 			Value: nil,
 		},
-		AccessControlType: models.OptionalPatchField[models.AccessControlType]{
+		PolicyClass: models.OptionalPatchField[string]{
 			Set:   true,
-			Value: &restricted,
+			Value: &consentClass,
+		},
+		PolicyParams: models.OptionalPatchField[models.PolicyParams]{
+			Set:   true,
+			Value: &params,
 		},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.DisplayName)
 	assert.Equal(t, "Primary Email", *resp.DisplayName)
 	assert.Nil(t, resp.Description)
-	assert.Equal(t, models.AccessControlTypeRestricted, resp.AccessControlType)
+	assert.Equal(t, engine.ClassAllowlistConsent, resp.PolicyClass)
+	assert.Equal(t, params, resp.PolicyParams)
 	assert.Contains(t, resp.AllowList, "app-123")
 
 	var count int64
@@ -154,13 +156,13 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NotNil(t, nameRecord.DisplayName)
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 
-	// Reject any SQL statement that updates access_control_type. A display-only
+	// Reject any SQL statement that updates policy_class. A display-only
 	// patch must still succeed because it should update only the supplied field.
 	require.NoError(t, db.Exec(`
-		CREATE TRIGGER reject_access_control_type_update
-		BEFORE UPDATE OF access_control_type ON policy_metadata
+		CREATE TRIGGER reject_policy_class_update
+		BEFORE UPDATE OF policy_class ON policy_metadata
 		BEGIN
-			SELECT RAISE(FAIL, 'access_control_type was unexpectedly updated');
+			SELECT RAISE(FAIL, 'policy_class was unexpectedly updated');
 		END;
 	`).Error)
 
@@ -173,10 +175,49 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, displayOnlyResp.DisplayName)
 	assert.Equal(t, "Contact Email", *displayOnlyResp.DisplayName)
-	assert.Equal(t, models.AccessControlTypeRestricted, displayOnlyResp.AccessControlType)
+	assert.Equal(t, engine.ClassAllowlistConsent, displayOnlyResp.PolicyClass)
+	assert.Equal(t, params, displayOnlyResp.PolicyParams)
 
 	_, err = service.PatchPolicyMetadata("not-a-uuid", &models.PolicyMetadataPatchRequest{})
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
+}
+
+func TestPolicyMetadataService_PatchPolicyMetadata_PolicyClass(t *testing.T) {
+	db := setupTestDB(t)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+
+	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{
+				FieldName:    "person.email",
+				Source:       models.SourcePrimary,
+				PolicyClass:  engine.ClassAllowlist,
+				PolicyParams: models.PolicyParams{"purpose": "tax"},
+			},
+		},
+	})
+	require.NoError(t, err)
+	id := createResp.Records[0].ID
+
+	unknown := "no_such_class"
+	_, err = service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
+		PolicyClass: models.OptionalPatchField[string]{Set: true, Value: &unknown},
+	})
+	assert.ErrorIs(t, err, ErrUnknownPolicyClass)
+
+	_, err = service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
+		PolicyClass: models.OptionalPatchField[string]{Set: true},
+	})
+	assert.ErrorIs(t, err, ErrUnknownPolicyClass)
+
+	// null clears the parameters
+	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
+		PolicyParams: models.OptionalPatchField[models.PolicyParams]{Set: true},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, engine.ClassAllowlist, resp.PolicyClass)
+	assert.Equal(t, models.PolicyParams{}, resp.PolicyParams)
 }
 
 func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
@@ -187,16 +228,14 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.name",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypePublic,
+				FieldName:   "person.name",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -223,10 +262,9 @@ func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -269,11 +307,10 @@ func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				DisplayName: testhelpers.StringPtr("Email"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -304,11 +341,10 @@ func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Primary Email"),
-				Source:            models.SourcePrimary,
-				IsOwner:           true,
-				AccessControlType: models.AccessControlTypeRestricted,
+				FieldName:   "person.email",
+				DisplayName: testhelpers.StringPtr("Primary Email"),
+				Source:      models.SourcePrimary,
+				PolicyClass: engine.ClassAllowlist,
 			},
 		},
 	})
@@ -351,16 +387,14 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 				{
-					FieldName:         "field2",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field2",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -372,10 +406,9 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -392,23 +425,62 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
-		// This test verifies transaction rollback on error
-		// We'll create a request that should fail validation
+		// One unknown class rejects the whole request before anything is written
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           false, // Invalid: isOwner false but no owner specified
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
+				},
+				{
+					FieldName:   "field2",
+					Source:      models.SourcePrimary,
+					PolicyClass: "no_such_class",
 				},
 			},
 		}
 
-		// This should fail due to validation
 		_, err := service.CreatePolicyMetadata(req)
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrUnknownPolicyClass)
+		assert.ErrorContains(t, err, "field2")
+
+		var count int64
+		db.Model(&models.PolicyMetadata{}).Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
+
+	t.Run("CreatePolicyMetadata_StoresPolicyParams", func(t *testing.T) {
+		db := setupTestDB(t)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+
+		resp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+			SchemaID: "schema-123",
+			Records: []models.PolicyMetadataCreateRequestRecord{
+				{
+					FieldName:    "field1",
+					Source:       models.SourcePrimary,
+					PolicyClass:  engine.ClassAllowlistConsent,
+					PolicyParams: models.PolicyParams{"purpose": "tax"},
+				},
+				{
+					FieldName:   "field2",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Records, 2)
+
+		var records []models.PolicyMetadata
+		require.NoError(t, db.Order("field_name").Find(&records).Error)
+		require.Len(t, records, 2)
+		assert.Equal(t, engine.ClassAllowlistConsent, records[0].PolicyClass)
+		assert.Equal(t, models.PolicyParams{"purpose": "tax"}, records[0].PolicyParams)
+		assert.Equal(t, engine.ClassAllowlist, records[1].PolicyClass)
+		assert.Equal(t, models.PolicyParams{}, records[1].PolicyParams)
 	})
 
 	t.Run("CreatePolicyMetadata_MixedNewAndUpdated", func(t *testing.T) {
@@ -420,10 +492,9 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -435,18 +506,16 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					DisplayName:       testhelpers.StringPtr("Updated Field 1"),
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypeRestricted,
+					FieldName:   "field1",
+					DisplayName: testhelpers.StringPtr("Updated Field 1"),
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 				{
-					FieldName:         "field2",
-					DisplayName:       testhelpers.StringPtr("New Field 2"),
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field2",
+					DisplayName: testhelpers.StringPtr("New Field 2"),
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -468,11 +537,10 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           false,
-					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
-					AccessControlType: models.AccessControlTypeRestricted,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
+					PolicyClass: engine.ClassAllowlistConsent,
 				},
 			},
 		}
@@ -510,10 +578,9 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -565,10 +632,9 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -606,10 +672,9 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -642,10 +707,9 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -698,16 +762,14 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 				{
-					FieldName:         "field2",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field2",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -746,10 +808,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -812,10 +873,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -863,10 +923,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-1",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -877,10 +936,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-2",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field2",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "field2",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}
@@ -914,20 +972,18 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.Equal(t, 0, len(resp.UnauthorizedFields))
 	})
 
-	t.Run("GetPolicyDecision_RestrictedFieldRequiresConsent", func(t *testing.T) {
+	t.Run("GetPolicyDecision_AllowlistConsentFieldRequiresConsent", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
-		// Create restricted field with owner
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					IsOwner:           false,
-					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
-					AccessControlType: models.AccessControlTypeRestricted,
+					FieldName:   "field1",
+					Source:      models.SourcePrimary,
+					Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
+					PolicyClass: engine.ClassAllowlistConsent,
 				},
 			},
 		}
@@ -962,7 +1018,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.True(t, resp.AppAuthorized)
-		assert.True(t, resp.AppRequiresOwnerConsent) // Restricted field requires consent
+		assert.True(t, resp.AppRequiresOwnerConsent)
 		assert.Equal(t, 1, len(resp.ConsentRequiredFields))
 	})
 
@@ -992,22 +1048,19 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:         "authorized",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "authorized",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 				{
-					FieldName:         "expired",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "expired",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 				{
-					FieldName:         "unauthorized",
-					Source:            models.SourcePrimary,
-					IsOwner:           true,
-					AccessControlType: models.AccessControlTypePublic,
+					FieldName:   "unauthorized",
+					Source:      models.SourcePrimary,
+					PolicyClass: engine.ClassAllowlist,
 				},
 			},
 		}

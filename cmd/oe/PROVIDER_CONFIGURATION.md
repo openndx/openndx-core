@@ -16,8 +16,8 @@ The Policy Decision Point only answers for fields it has metadata for. A field w
 ondx schemas create --profile local \
   --schema-id drp-person-v1 --name "DRP Person Registry" \
   --endpoint http://localhost:9091 --member-id "$MEMBER_ID" \
-  --field person.fullName:public:primary \
-  --field person.profession:restricted:primary
+  --field person.fullName:allowlist:primary \
+  --field person.profession:allowlist_consent:primary
 ```
 
 The `--schema-id` becomes the `schemaId`, and each `--field` name becomes the PDP `fieldName`. See [the walkthrough](../../dev/WALKTHROUGH.md#4-register-members-and-both-provider-schemas) for the full sequence.

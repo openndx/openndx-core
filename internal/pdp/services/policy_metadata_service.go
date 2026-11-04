@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 var (
 	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
 	ErrAllowListEntryNotFound = errors.New("allow-list entry not found")
+	ErrUnknownPolicyClass     = errors.New("unknown policy class")
 )
 
 // PolicyMetadataService provides business logic for policy metadata operations
@@ -33,8 +35,24 @@ func NewPolicyMetadataService(db *gorm.DB, policyEngine *engine.Engine) *PolicyM
 	}
 }
 
+// checkPolicyClass rejects a policy class the engine has not loaded, so a field
+// is never stored with a class that would deny every request.
+func (s *PolicyMetadataService) checkPolicyClass(class string) error {
+	if !s.engine.HasClass(class) {
+		return fmt.Errorf("%w %q: must be one of %s",
+			ErrUnknownPolicyClass, class, strings.Join(s.engine.Classes(), ", "))
+	}
+	return nil
+}
+
 // CreatePolicyMetadata creates new policy metadata records with validation
 func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataCreateRequest) (*models.PolicyMetadataCreateResponse, error) {
+	for _, record := range req.Records {
+		if err := s.checkPolicyClass(record.PolicyClass); err != nil {
+			return nil, fmt.Errorf("field %s: %w", record.FieldName, err)
+		}
+	}
+
 	// Start transaction
 	tx := s.db.Begin()
 	if tx.Error != nil {
@@ -69,13 +87,18 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 	for _, record := range req.Records {
 		processedFields[record.FieldName] = struct{}{}
 
+		policyParams := record.PolicyParams
+		if policyParams == nil {
+			policyParams = make(models.PolicyParams)
+		}
+
 		if existing, exists := existingMap[record.FieldName]; exists {
 			// Update existing record in memory
 			existing.DisplayName = record.DisplayName
 			existing.Description = record.Description
 			existing.Source = record.Source
-			existing.IsOwner = record.IsOwner
-			existing.AccessControlType = record.AccessControlType
+			existing.PolicyClass = record.PolicyClass
+			existing.PolicyParams = policyParams
 			existing.Owner = record.Owner
 			existing.UpdatedAt = now
 
@@ -83,18 +106,18 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 		} else {
 			// Prepare new record
 			policyMetadata := models.PolicyMetadata{
-				ID:                uuid.New(),
-				SchemaID:          req.SchemaID,
-				FieldName:         record.FieldName,
-				DisplayName:       record.DisplayName,
-				Description:       record.Description,
-				Source:            record.Source,
-				IsOwner:           record.IsOwner,
-				AccessControlType: record.AccessControlType,
-				AllowList:         make(models.AllowList),
-				Owner:             record.Owner,
-				CreatedAt:         now,
-				UpdatedAt:         now,
+				ID:           uuid.New(),
+				SchemaID:     req.SchemaID,
+				FieldName:    record.FieldName,
+				DisplayName:  record.DisplayName,
+				Description:  record.Description,
+				Source:       record.Source,
+				PolicyClass:  record.PolicyClass,
+				PolicyParams: policyParams,
+				AllowList:    make(models.AllowList),
+				Owner:        record.Owner,
+				CreatedAt:    now,
+				UpdatedAt:    now,
 			}
 			newRecords = append(newRecords, policyMetadata)
 		}
@@ -131,8 +154,8 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 				"display_name",
 				"description",
 				"source",
-				"is_owner",
-				"access_control_type",
+				"policy_class",
+				"policy_params",
 				"owner",
 				"updated_at",
 			).
@@ -273,15 +296,6 @@ func (s *PolicyMetadataService) UpdateAllowList(req *models.AllowListUpdateReque
 	}, nil
 }
 
-// policyClassOf derives a field's policy class from the access-control columns.
-// Temporary until the class is stored with the field (#723).
-func policyClassOf(pm *models.PolicyMetadata) string {
-	if !pm.IsOwner && pm.AccessControlType == models.AccessControlTypeRestricted {
-		return engine.ClassAllowlistConsent
-	}
-	return engine.ClassAllowlist
-}
-
 // GetPolicyDecision evaluates the policy for each requested field
 func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *models.PolicyDecisionRequest) (*models.PolicyDecisionResponse, error) {
 	// Collect all unique schema IDs from the request
@@ -321,9 +335,14 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		}
 
 		input := engine.Input{
-			App:   engine.App{ID: req.ApplicationID},
-			Field: engine.Field{SchemaID: pm.SchemaID, FieldName: pm.FieldName, PolicyClass: policyClassOf(pm)},
-			Now:   time.Now(),
+			App: engine.App{ID: req.ApplicationID},
+			Field: engine.Field{
+				SchemaID:    pm.SchemaID,
+				FieldName:   pm.FieldName,
+				PolicyClass: pm.PolicyClass,
+				Params:      pm.PolicyParams,
+			},
+			Now: time.Now(),
 		}
 		if entry, ok := pm.AllowList[req.ApplicationID]; ok {
 			input.Grant = &engine.Grant{ExpiresAt: entry.ExpiresAt}
@@ -419,22 +438,27 @@ func (s *PolicyMetadataService) PatchPolicyMetadata(
 		updates["description"] = req.Description.Value
 	}
 
-	if req.AccessControlType.Set {
-		if req.AccessControlType.Value == nil {
-			return nil, errors.New("accessControlType cannot be null")
+	if req.PolicyClass.Set {
+		if req.PolicyClass.Value == nil {
+			return nil, fmt.Errorf("%w: policyClass cannot be null", ErrUnknownPolicyClass)
+		}
+		if err := s.checkPolicyClass(*req.PolicyClass.Value); err != nil {
+			return nil, err
 		}
 
-		accessControlType := *req.AccessControlType.Value
-		if accessControlType != models.AccessControlTypePublic &&
-			accessControlType != models.AccessControlTypeRestricted {
-			return nil, fmt.Errorf(
-				"invalid accessControlType: %s",
-				accessControlType,
-			)
+		policyMetadata.PolicyClass = *req.PolicyClass.Value
+		updates["policy_class"] = policyMetadata.PolicyClass
+	}
+
+	if req.PolicyParams.Set {
+		// null clears the parameters
+		policyParams := make(models.PolicyParams)
+		if req.PolicyParams.Value != nil && *req.PolicyParams.Value != nil {
+			policyParams = *req.PolicyParams.Value
 		}
 
-		policyMetadata.AccessControlType = accessControlType
-		updates["access_control_type"] = accessControlType
+		policyMetadata.PolicyParams = policyParams
+		updates["policy_params"] = policyParams
 	}
 
 	policyMetadata.UpdatedAt = time.Now()

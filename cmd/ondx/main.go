@@ -873,11 +873,7 @@ func runSchemasGet(ctx context.Context, args []string) error {
 		fmt.Println("  (none)")
 	}
 	for _, f := range fields.Items {
-		owner := ""
-		if f.IsOwner {
-			owner = ", owner"
-		}
-		fmt.Printf("  - %s:%s (%s%s)\n", s.SchemaID, f.FieldName, f.AccessControlType, owner)
+		fmt.Printf("  - %s:%s (%s)\n", s.SchemaID, f.FieldName, f.PolicyClass)
 	}
 	return nil
 }
@@ -899,18 +895,15 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
 	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
 	var fields stringSlice
-	fs.Var(&fields, "field", "Grantable field, as fieldName:accessControlType:source[:isOwner] (repeatable, required). accessControlType is 'public' or 'restricted'; source is 'primary' or 'fallback'; append ':isOwner' to mark this field as the record's owner-identifying field.")
+	fs.Var(&fields, "field", "Grantable field, as fieldName:policyClass:source (repeatable, required). policyClass is a PDP policy class such as 'allowlist' or 'allowlist_consent'; source is 'primary' or 'fallback'.")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage of schemas create:")
 		fs.PrintDefaults()
 		fmt.Fprint(fs.Output(), "\nEach -field declares one policy-metadata record directly, skipping GraphQL\n"+
 			"SDL parsing entirely - the fieldName is used as-is (no typename. prefix).\n"+
-			"Example: -field email:public:primary\n"+
-			"By default, isOwner is false and owner is set to \"citizen\" (the only\n"+
-			"owner value this system currently supports). Append \":isOwner\" to mark\n"+
-			"a field as the owner-identifying field instead, e.g. -field nic:public:primary:isOwner\n"+
-			"(isOwner true and owner unset are mutually exclusive - the PDP rejects\n"+
-			"records that don't follow exactly one of these two shapes).\n")
+			"Example: -field email:allowlist_consent:primary\n"+
+			"The owner is set to \"citizen\", the only owner value this system\n"+
+			"currently supports. The PDP rejects a policy class it doesn't know.\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -926,7 +919,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 		return fmt.Errorf("--member-id is required")
 	}
 	if len(fields) == 0 {
-		return fmt.Errorf("at least one --field fieldName:accessControlType:source is required")
+		return fmt.Errorf("at least one --field fieldName:policyClass:source is required")
 	}
 	if *pbURL == "" {
 		return fmt.Errorf("--pb-url is required (or set NDX_PB_URL, or configure it in a profile)")
@@ -935,31 +928,17 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	records := make([]policy.PolicyMetadataCreateRequestRecord, 0, len(fields))
 	for _, f := range fields {
 		parts := strings.Split(f, ":")
-		if len(parts) < 3 || len(parts) > 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-			return fmt.Errorf("invalid --field %q: expected fieldName:accessControlType:source[:isOwner]", f)
-		}
-		isOwner := false
-		if len(parts) == 4 {
-			if parts[3] != "isOwner" {
-				return fmt.Errorf("invalid --field %q: the optional 4th part must be exactly \"isOwner\"", f)
-			}
-			isOwner = true
+		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+			return fmt.Errorf("invalid --field %q: expected fieldName:policyClass:source", f)
 		}
 
-		record := policy.PolicyMetadataCreateRequestRecord{
-			FieldName:         parts[0],
-			AccessControlType: policy.AccessControlType(parts[1]),
-			Source:            policy.Source(parts[2]),
-			IsOwner:           isOwner,
-		}
-		// The PDP requires owner to be set when isOwner is false, and unset
-		// when isOwner is true - "citizen" is the only owner value this
-		// system currently supports.
-		if !isOwner {
-			owner := policy.OwnerCitizen
-			record.Owner = &owner
-		}
-		records = append(records, record)
+		owner := policy.OwnerCitizen
+		records = append(records, policy.PolicyMetadataCreateRequestRecord{
+			FieldName:   parts[0],
+			PolicyClass: parts[1],
+			Source:      policy.Source(parts[2]),
+			Owner:       &owner,
+		})
 	}
 
 	req := &schema.CreateSchemaRequest{
@@ -995,7 +974,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	fmt.Printf("Created schema %s (%s)\n", created.SchemaID, created.SchemaName)
 	fmt.Println("Fields:")
 	for _, r := range records {
-		fmt.Printf("  - %s:%s (%s)\n", created.SchemaID, r.FieldName, r.AccessControlType)
+		fmt.Printf("  - %s:%s (%s)\n", created.SchemaID, r.FieldName, r.PolicyClass)
 	}
 	return nil
 }

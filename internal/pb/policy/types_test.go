@@ -8,60 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAccessControlType_Scan(t *testing.T) {
-	tests := []struct {
-		name    string
-		value   interface{}
-		want    AccessControlType
-		wantErr bool
-	}{
-		{
-			name:    "nil value",
-			value:   nil,
-			want:    AccessControlTypeRestricted,
-			wantErr: false,
-		},
-		{
-			name:    "valid string - public",
-			value:   "public",
-			want:    AccessControlTypePublic,
-			wantErr: false,
-		},
-		{
-			name:    "valid string - restricted",
-			value:   "restricted",
-			want:    AccessControlTypeRestricted,
-			wantErr: false,
-		},
-		{
-			name:    "invalid type",
-			value:   123,
-			want:    "",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var act AccessControlType
-			err := act.Scan(tt.value)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.want, act)
-			}
-		})
-	}
-}
-
-func TestAccessControlType_Value(t *testing.T) {
-	act := AccessControlTypePublic
-	value, err := act.Value()
-	assert.NoError(t, err)
-	assert.Equal(t, "public", value)
-}
-
 func TestSource_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
