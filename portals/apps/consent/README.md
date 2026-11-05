@@ -94,9 +94,12 @@ All from `portals/`:
 ```bash
 pnpm --filter consent-portal run build     # type-check and production build
 pnpm --filter consent-portal run lint
+pnpm --filter consent-portal run test
 ```
 
-There is no test script. From the repo root, `make run consent-portal`, `make validate-build consent-portal` and `make check-lint consent-portal` wrap the same commands; `make validate-test consent-portal` runs the type-check and lint only. Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
+Vitest and React Testing Library cover `ConsentDetailPage`: approve and deny, revoke confirmation, a 409 reload, and inactive statuses. CI runs the same script in `.github/workflows/consent-portal-validate.yml`.
+
+From the repo root, `make run consent-portal`, `make validate-build consent-portal` and `make check-lint consent-portal` wrap the build and lint commands. `make validate-test consent-portal` runs the type-check and lint only. Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
 
 Source is in [`src`](src): `pages` (routes), `contexts/ConsentContext.tsx` (consent state and decisions), `components`, `types`.
 

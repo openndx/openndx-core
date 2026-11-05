@@ -34,7 +34,7 @@ pnpm install                               # once, for the whole workspace
 pnpm --filter consent-portal run dev       # or admin-portal, member-portal
 ```
 
-There are no root scripts. Run everything with `pnpm --filter <app> run <script>`. Every app has `dev`, `build` (`tsc -b && vite build`), `lint` and `preview`. None has a test script.
+There are no root scripts. Run everything with `pnpm --filter <app> run <script>`. Every app has `dev`, `build` (`tsc -b && vite build`), `lint` and `preview`. The consent portal also has `test` (`pnpm --filter consent-portal run test`).
 
 To run the consent portal with its backends, use Docker Compose from the repo root: `docker compose up --build consent-portal`.
 
