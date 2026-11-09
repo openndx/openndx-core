@@ -411,6 +411,16 @@ func TestFailurePath_ConsentEngine_ServiceUnavailable(t *testing.T) {
 
 	time.Sleep(servicePauseDelay)
 
+	// `docker compose pause` succeeds even when the Consent Engine isn't a Compose
+	// container, as in CI, which runs the services as binaries. Make sure the outage
+	// is real before asserting on it.
+	ceHealthURL := getEnvOrDefault("CONSENT_ENGINE_BASE_URL", "http://127.0.0.1:8081") + "/health"
+	if healthResp, err := (&http.Client{Timeout: time.Second}).Get(ceHealthURL); err == nil {
+		healthResp.Body.Close()
+		t.Skipf("Skipping test: Consent Engine at %s still responds after pausing its container; it is not running under Docker Compose", ceHealthURL)
+		return
+	}
+
 	token, err := createTestJWT(appID)
 	require.NoError(t, err)
 
