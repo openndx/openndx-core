@@ -26,8 +26,11 @@ One record describes one field of one schema. `(schemaId, fieldName)` is unique.
 | `allowlist`         | Yes                            | No             |
 | `allowlist_consent` | Yes                            | Yes            |
 | `consent`           | No                             | Yes            |
+| `open`              | No                             | No             |
 
 `consent` lets any authenticated application ask the owner, for data the owner alone should control. An admin doesn't have to put the application on the allow-list first, and an expired allow-list entry makes no difference.
+
+`open` is for public data. Any authenticated application reads the field without an allow-list entry or owner consent. The request still needs an application ID, so every access is attributed to an application in the audit trail.
 
 Each class is a Rego package `openndx.classes.<name>` under [`internal/pdp/engine/policies/classes`](../../internal/pdp/engine/policies/classes). The PDP accepts exactly the classes it has loaded.
 
@@ -41,11 +44,12 @@ The allow-list is a JSON map stored on each record. The key is the application's
 
 `POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), embedded in the PDP at build time, compiled at startup and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
 
-Each field is evaluated by its `policyClass`. `allowlist` and `allowlist_consent` deny an application that is not on the allow-list, report an expired entry, and otherwise allow the field (`allowlist`) or require owner consent (`allowlist_consent`). `consent` skips the allow-list and always requires owner consent. An unknown class or a failed evaluation denies the field, which then appears in `unauthorizedFields`.
+Each field is evaluated by its `policyClass`. `allowlist` and `allowlist_consent` deny an application that is not on the allow-list, report an expired entry, and otherwise allow the field (`allowlist`) or require owner consent (`allowlist_consent`). `consent` skips the allow-list and always requires owner consent. `open` skips both and allows the field. An unknown class or a failed evaluation denies the field, which then appears in `unauthorizedFields`.
 
 | Check                                                | Result                                                                                                      |
 |------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
 | No metadata record                                   | The whole request fails with HTTP 500 and `policy metadata not found for schema_id ... and field_name ...`. |
+| `policyClass` is `open`                              | Field is allowed, whatever the allow-list says.                                                             |
 | `policyClass` is `consent`                           | Field added to `consentRequiredFields`, whatever the allow-list says.                                       |
 | Application not in `allowList`                       | Field added to `unauthorizedFields`.                                                                        |
 | Entry present but past `expiresAt`                   | Field added to `expiredFields`.                                                                             |
@@ -74,7 +78,7 @@ The lists group the fields by outcome: `deny` goes to `unauthorizedFields`, `exp
 - `appAccessExpired` is `true` when `expiredFields` is not empty.
 - `appRequiresOwnerConsent` is `true` when `consentRequiredFields` is not empty.
 
-No built-in class lets every application read a field without consent. `allowlist` only removes the consent requirement for applications already on the allow-list, and `consent` opens a field to every application only once its owner consents.
+Only `open` lets every authenticated application read a field without an allow-list entry or consent. `allowlist` only removes the consent requirement for applications already on the allow-list, and `consent` opens a field to every application only once its owner consents.
 
 ## Table
 

@@ -27,6 +27,7 @@ const (
 	ClassAllowlist        = "allowlist"
 	ClassAllowlistConsent = "allowlist_consent"
 	ClassConsent          = "consent"
+	ClassOpen             = "open"
 )
 
 // Outcome is the decision for one field.

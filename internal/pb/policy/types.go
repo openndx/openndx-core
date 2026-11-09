@@ -27,6 +27,7 @@ const (
 	PolicyClassAllowlist        = "allowlist"
 	PolicyClassAllowlistConsent = "allowlist_consent"
 	PolicyClassConsent          = "consent"
+	PolicyClassOpen             = "open"
 )
 
 // PolicyParams holds a policy class's parameters for one field.

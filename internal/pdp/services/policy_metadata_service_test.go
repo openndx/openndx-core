@@ -1001,6 +1001,34 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		}, resp.Fields)
 	})
 
+	t.Run("GetPolicyDecision_OpenFieldWithoutAllowList", func(t *testing.T) {
+		db := setupTestDB(t)
+		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+
+		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+			SchemaID: "schema-123",
+			Records: []models.PolicyMetadataCreateRequestRecord{
+				{FieldName: "field1", Source: models.SourcePrimary, PolicyClass: engine.ClassOpen},
+			},
+		})
+		require.NoError(t, err)
+
+		// The app was never added to the allow-list.
+		resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+			ApplicationID:  "app-not-allowlisted",
+			RequiredFields: []models.PolicyDecisionRequestRecord{{FieldName: "field1", SchemaID: "schema-123"}},
+		})
+		require.NoError(t, err)
+		assert.True(t, resp.AppAuthorized)
+		assert.False(t, resp.AppRequiresOwnerConsent)
+		assert.False(t, resp.AppAccessExpired)
+		assert.Empty(t, resp.UnauthorizedFields)
+		assert.Empty(t, resp.ConsentRequiredFields)
+		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+			{SchemaID: "schema-123", FieldName: "field1", Outcome: "allow"},
+		}, resp.Fields)
+	})
+
 	t.Run("GetPolicyDecision_AllowlistConsentFieldRequiresConsent", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))

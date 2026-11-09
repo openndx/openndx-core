@@ -295,6 +295,24 @@ func TestSDLParser_ParseSDLToPolicyRequest_ConsentPolicy(t *testing.T) {
 	assert.Equal(t, OwnerCitizen, *request.Records[0].Owner)
 }
 
+func TestSDLParser_ParseSDLToPolicyRequest_OpenPolicy(t *testing.T) {
+	sdl := `
+	directive @accessControl(policy: String) on FIELD_DEFINITION
+	directive @source(value: String) on FIELD_DEFINITION
+
+	type Person {
+	  fullName: String @accessControl(policy: "open") @source(value: "primary")
+	}
+	`
+
+	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
+	require.NoError(t, err)
+	require.Len(t, request.Records, 1)
+	assert.Equal(t, "person.fullName", request.Records[0].FieldName)
+	assert.Equal(t, PolicyClassOpen, request.Records[0].PolicyClass)
+	assert.Nil(t, request.Records[0].Owner)
+}
+
 func TestSDLParser_ParseSDLToPolicyRequest_RejectsRemovedDirectives(t *testing.T) {
 	const directives = `
 	directive @accessControl(type: String, policy: String) on FIELD_DEFINITION
