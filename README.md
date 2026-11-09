@@ -44,7 +44,7 @@ Each core service keeps its own PostgreSQL database. Detail for every component 
 
 Ports are the Docker Compose defaults, and each can be changed in `.env`.
 
-The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees. Manage the platform through `ondx` or the Portal Backend API. See the [portal lifecycle decision](docs/PORTAL-LIFECYCLE.md).
+The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees. Manage the platform through `ondx` or the Portal Backend API.
 
 ### How a data request flows
 

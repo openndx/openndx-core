@@ -31,7 +31,6 @@ get_service_path() {
 }
 
 # Maintained services only; paused portals can be validated explicitly.
-# See docs/PORTAL-LIFECYCLE.md.
 ALL_SERVICES="portal-backend orchestration-engine consent-engine policy-decision-point consent-portal"
 
 # Get list of staged files

@@ -43,10 +43,8 @@ compatibility. Previously published images and release tags are retained as
 historical artifacts, and their old `latest` tags do not indicate current support.
 
 Use the `ondx` CLI or Portal Backend API for management. The Consent Portal and
-Portal Backend remain maintained and released. See the
-[portal lifecycle decision](PORTAL-LIFECYCLE.md) for scope, management alternatives,
-and restart criteria. The GoReleaser release footer includes this notice in future
-release notes.
+Portal Backend remain maintained and released. The GoReleaser release footer
+includes this notice in future release notes.
 
 ## Verification
 ```bash

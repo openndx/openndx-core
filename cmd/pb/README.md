@@ -16,7 +16,7 @@ flowchart LR
     PB -.->|audit events| A[Argus audit service]
 ```
 
-PB remains an actively maintained management API, used through the [`ondx` CLI](../ondx/README.md) or direct authenticated API calls. The [Admin and Member Portals](../../docs/PORTAL-LIFECYCLE.md) are paused, unsupported prototypes and do not provide a supported management interface. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
+PB remains an actively maintained management API, used through the [`ondx` CLI](../ondx/README.md) or direct authenticated API calls. The [Admin and Member Portals](../../portals/README.md) are paused, unsupported prototypes and do not provide a supported management interface. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
 
 ## Quick start
 

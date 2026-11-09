@@ -1,4 +1,4 @@
-# Development paused; manual validation only. See docs/PORTAL-LIFECYCLE.md.
+# Development paused; manual validation only.
 name: Validate Member Portal (Manual, Unsupported Prototype)
 
 on:

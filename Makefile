@@ -92,7 +92,7 @@ CONSENT_PORTAL_PATH := portals/apps/consent
 
 # Go services list
 GO_SERVICES := portal-backend orchestration-engine consent-engine policy-decision-point
-# Batch commands cover maintained components only; see docs/PORTAL-LIFECYCLE.md.
+# Batch commands cover maintained components only.
 FRONTEND_SERVICES := consent-portal
 PAUSED_FRONTEND_SERVICES := member-portal admin-portal
 

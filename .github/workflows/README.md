@@ -22,7 +22,6 @@ are paused, unsupported prototypes. They do not run on pull requests or shared
 workspace changes and do not publish images. Use **Run workflow** in Actions for
 an explicit prototype check. Their results do not establish compatibility with
 the current backend. Repository secret scanning continues to cover all source.
-See the [portal lifecycle decision](../../docs/PORTAL-LIFECYCLE.md).
 
 **What they do:**
 
