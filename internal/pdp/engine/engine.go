@@ -26,6 +26,7 @@ import (
 const (
 	ClassAllowlist        = "allowlist"
 	ClassAllowlistConsent = "allowlist_consent"
+	ClassConsent          = "consent"
 )
 
 // Outcome is the decision for one field.

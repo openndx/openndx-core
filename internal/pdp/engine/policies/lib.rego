@@ -1,6 +1,8 @@
 # Helpers shared by the policy classes.
 package openndx.lib
 
+has_app if input.app.id != ""
+
 has_grant if input.grant
 
 grant_expired if time.parse_rfc3339_ns(input.now) > time.parse_rfc3339_ns(input.grant.expiresAt)

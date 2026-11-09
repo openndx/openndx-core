@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -272,6 +273,26 @@ func TestSDLParser_ParseSDLToPolicyRequest_DefaultsToAllowlist(t *testing.T) {
 	assert.Len(t, request.Records, 1)
 	assert.Equal(t, PolicyClassAllowlist, request.Records[0].PolicyClass)
 	assert.Nil(t, request.Records[0].Owner)
+}
+
+func TestSDLParser_ParseSDLToPolicyRequest_ConsentPolicy(t *testing.T) {
+	sdl := `
+	directive @accessControl(policy: String) on FIELD_DEFINITION
+	directive @source(value: String) on FIELD_DEFINITION
+	directive @owner(value: String) on FIELD_DEFINITION
+
+	type Person {
+	  birthDate: String @accessControl(policy: "consent") @source(value: "primary") @owner(value: "citizen")
+	}
+	`
+
+	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
+	require.NoError(t, err)
+	require.Len(t, request.Records, 1)
+	assert.Equal(t, "person.birthDate", request.Records[0].FieldName)
+	assert.Equal(t, PolicyClassConsent, request.Records[0].PolicyClass)
+	require.NotNil(t, request.Records[0].Owner)
+	assert.Equal(t, OwnerCitizen, *request.Records[0].Owner)
 }
 
 func TestSDLParser_ParseSDLToPolicyRequest_RejectsRemovedDirectives(t *testing.T) {

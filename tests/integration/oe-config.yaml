@@ -17,7 +17,7 @@ idp:
 pdp:
   url: http://policy-decision-point:8082
 consentEngine:
-  url: http://consent-engine:8081
+  url: http://consent-engine:8081/internal/api/v1
 
 providers:
   - id: test-schema-123
