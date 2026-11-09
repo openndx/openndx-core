@@ -2,7 +2,6 @@
 import React from 'react';
 import type { GraphQLField } from '../types/graphql';
 import type { FieldConfiguration as FieldConfig, PolicyClass } from '../types/graphql';
-import { requiresOwnerConsent } from '../types/graphql';
 import { SchemaService } from '../services/schemaService';
 
 const POLICY_CLASS_OPTIONS: { value: PolicyClass; label: string; hint: string }[] = [
@@ -15,11 +14,6 @@ const POLICY_CLASS_OPTIONS: { value: PolicyClass; label: string; hint: string }[
     value: 'allowlist_consent',
     label: 'Approved applications, with owner consent',
     hint: 'Applications on the allow-list also need the owner to consent.',
-  },
-  {
-    value: 'consent',
-    label: 'Any application, with owner consent',
-    hint: 'Any application can ask; the owner decides. No allow-list entry is needed.',
   },
 ];
 
@@ -39,7 +33,7 @@ export const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
   const handlePolicyClassChange = (policyClass: PolicyClass) => {
     // Only consent fields need an owner: it's whose consent is asked
-    const owner = requiresOwnerConsent(policyClass) ? configuration.owner || 'citizen' : '';
+    const owner = policyClass === 'allowlist_consent' ? configuration.owner || 'citizen' : '';
     onChange(typeName, field.name, { ...configuration, policyClass, owner });
   };
 
@@ -133,7 +127,7 @@ export const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           )}
 
           {/* Owner Identifier */}
-          {(!configuration.isQueryType && !configuration.isUserDefinedTypeField && requiresOwnerConsent(configuration.policyClass)) && (
+          {(!configuration.isQueryType && !configuration.isUserDefinedTypeField && configuration.policyClass === 'allowlist_consent') && (
             <div className="bg-gray-50 p-3 rounded-lg border">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                 Owner <span className="text-red-600">*</span>
