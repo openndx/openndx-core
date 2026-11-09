@@ -48,7 +48,23 @@ Each field is evaluated by its `policyClass`. Both built-in classes deny an appl
 | Authorized, `policyClass` is `allowlist_consent`     | Field added to `consentRequiredFields`.                                                                     |
 | Authorized, `policyClass` is `allowlist`             | Field is allowed without consent.                                                                           |
 
-Response flags are derived from those lists:
+### Field outcomes
+
+`fields` in the response holds one entry per requested field, in request order:
+
+```json
+{"schemaId": "drp", "fieldName": "person.fullName", "outcome": "deny", "reason": "not_allowlisted"}
+```
+
+| Property      | Notes                                                                                                                         |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `outcome`     | One of `allow`, `deny`, `expired`, `consent_required`. The set is fixed: a class that returns anything else denies the field. |
+| `reason`      | Optional. Why the class chose the outcome, for example `not_allowlisted`, `grant_expired` or `unknown_policy_class`.          |
+| `obligations` | Optional. Extra actions the class asks the Orchestration Engine to take, for example `audit.consent_bypassed`.                |
+
+A class adds obligations by returning them, as a list or a set of strings, next to the outcome. A malformed `obligations` value denies the field, since the Orchestration Engine could not act on it. The Orchestration Engine records every field's outcome, reason and obligations in its `POLICY_CHECK` audit event, under `responseMetadata.fields`. The built-in classes return no obligations.
+
+The lists group the fields by outcome: `deny` goes to `unauthorizedFields`, `expired` to `expiredFields` and `consent_required` to `consentRequiredFields`, each with the field's display metadata. Response flags are derived from those lists:
 
 - `appAuthorized` is `true` when `unauthorizedFields` is empty.
 - `appAccessExpired` is `true` when `expiredFields` is not empty.
