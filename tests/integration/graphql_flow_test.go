@@ -447,72 +447,22 @@ func createConsent(t *testing.T, appID, schemaID, fieldName, ownerID string) str
 	return consentID
 }
 
-// approveConsent attempts to approve a consent record using PUT /api/v1/consents/{consentId} endpoint.
-// Requires JWT authentication with the subject claim matching the consent owner_id.
-// Note: The JWT verifier requires RSA-signed tokens. This function uses unsigned tokens for testing,
-// which will fail in environments where RSA-signed tokens are required. The function logs a warning
-// and returns without failing the test, as the test can proceed without explicit approval.
+// approveConsent approves a pending consent record directly in the Consent Engine's
+// database, as the CE's portal approval would: status approved, with a grant expiry.
+// The test CE verifies portal tokens against Google's keys (see ce-config.yaml), so the
+// portal API (PUT /api/v1/consents/{consentId}) can't be called with a valid token.
 func approveConsent(t *testing.T, consentID string) {
-	// Get the consent from DB to retrieve owner_id for the JWT subject
-	// (Internal API doesn't support getting by consentId directly)
 	db := getConsentDB(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	defer sqlDB.Close()
 
-	var ownerID string
-	err = db.Raw("SELECT owner_id FROM consent_records WHERE consent_id = ?", consentID).Scan(&ownerID).Error
-	require.NoError(t, err, "Failed to get consent owner_id from DB")
-	require.NotEmpty(t, ownerID, "Consent must have owner_id")
-
-	// Create JWT token with the subject (sub) claim matching the consent owner_id
-	// Note: The JWT verifier requires RSA signing, but in test environments unsigned tokens
-	// may be accepted if the consent engine is configured appropriately
-	claims := jwt.MapClaims{
-		"sub": ownerID,
-		"iss": "https://accounts.google.com", // Required by JWT verifier
-		"aud": "test-audience",               // Required by JWT verifier
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodNone, claims)
-	tokenString, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
-	require.NoError(t, err, "Failed to create JWT token for consent approval")
-
-	// Use PUT method with V1 portal endpoint: PUT /api/v1/consents/{consentId}
-	consentEngineBaseURL := getEnvOrDefault("CONSENT_ENGINE_BASE_URL", "http://127.0.0.1:8081")
-	approveURL := fmt.Sprintf("%s/api/v1/consents/%s", consentEngineBaseURL, consentID)
-
-	approveReq := map[string]interface{}{
-		"action": "approve",
-	}
-	jsonData, err := json.Marshal(approveReq)
-	require.NoError(t, err)
-
-	req, err := http.NewRequest("PUT", approveURL, bytes.NewBuffer(jsonData))
-	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
-
-	resp, err := testHTTPClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	var bodyStr string
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		bodyStr = string(bodyBytes)
-		if err != nil {
-			bodyStr = fmt.Sprintf("failed to read body: %v", err)
-			t.Logf("Failed to read consent approval response body: %v", err)
-		} else {
-			t.Logf("Consent approval response status: %d, body: %s", resp.StatusCode, bodyStr)
-		}
-		// Approval failed (likely due to JWT token verification requirements)
-		// This is non-fatal - the test can proceed without explicit approval
-		// as the orchestration engine handles CE_ERROR gracefully
-		t.Logf("WARNING: Consent approval failed (status %d). Test will continue without explicit approval.", resp.StatusCode)
-		t.Logf("Note: JWT verifier requires RSA-signed tokens. In test environments, approval may fail if unsigned tokens are used.")
-		return
-	}
+	now := time.Now()
+	result := db.Exec(
+		"UPDATE consent_records SET status = 'approved', grant_expires_at = ?, updated_at = ? WHERE consent_id = ? AND status = 'pending'",
+		now.Add(time.Hour), now, consentID)
+	require.NoError(t, result.Error)
+	require.Equal(t, int64(1), result.RowsAffected, "Consent %s should be pending before approval", consentID)
 	t.Logf("Consent %s approved", consentID)
 }
 
