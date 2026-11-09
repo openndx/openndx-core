@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -314,8 +315,15 @@ func parseGraphQLResponse(t *testing.T, resp *http.Response) map[string]interfac
 	return result
 }
 
-// createPolicyMetadata creates policy metadata in the PDP for the given schema and field.
+// createPolicyMetadata creates allowlist_consent policy metadata in the PDP for the given schema and field.
 func createPolicyMetadata(t *testing.T, schemaID, fieldName string) {
+	createPolicyMetadataWithClass(t, schemaID, fieldName, "allowlist_consent")
+}
+
+// createPolicyMetadataWithClass creates policy metadata in the PDP for the given schema and
+// field, governed by policyClass. The request syncs the whole schema, so it replaces any
+// other fields' metadata in schemaID.
+func createPolicyMetadataWithClass(t *testing.T, schemaID, fieldName, policyClass string) {
 	reqBody := map[string]interface{}{
 		"schemaId": schemaID,
 		"records": []map[string]interface{}{
@@ -323,7 +331,7 @@ func createPolicyMetadata(t *testing.T, schemaID, fieldName string) {
 				"fieldName":   fieldName,
 				"source":      "primary",
 				"owner":       "citizen",
-				"policyClass": "allowlist_consent",
+				"policyClass": policyClass,
 			},
 		},
 	}
@@ -798,6 +806,95 @@ func TestGraphQLFlow_UnauthorizedApp(t *testing.T) {
 			}
 		}
 	}
+}
+
+// getConsentID returns the ID of the Consent Engine's consent record for appID and ownerID.
+func getConsentID(t *testing.T, appID, ownerID string) string {
+	consentEngineBaseURL := getEnvOrDefault("CONSENT_ENGINE_BASE_URL", "http://127.0.0.1:8081")
+	checkURL := fmt.Sprintf("%s/internal/api/v1/consents?appId=%s&ownerId=%s",
+		consentEngineBaseURL, url.QueryEscape(appID), url.QueryEscape(ownerID))
+	resp, err := testHTTPClient.Get(checkURL)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Consent Engine should have a consent for %s/%s", appID, ownerID)
+
+	var result struct {
+		ConsentID string `json:"consentId"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	require.NotEmpty(t, result.ConsentID)
+	return result.ConsentID
+}
+
+// errorCode returns the extensions.code of the first GraphQL error in result, or "" if there is none.
+func errorCode(result map[string]interface{}) string {
+	errs, _ := result["errors"].([]interface{})
+	if len(errs) == 0 {
+		return ""
+	}
+	first, _ := errs[0].(map[string]interface{})
+	extensions, _ := first["extensions"].(map[string]interface{})
+	code, _ := extensions["code"].(string)
+	return code
+}
+
+// TestGraphQLFlow_ConsentClassWithoutAllowList covers a field with the consent policy
+// class queried by an application that is not on the field's allow-list: the PDP asks
+// for consent, the Orchestration Engine starts the consent flow, and once the citizen
+// approves, the data is returned.
+func TestGraphQLFlow_ConsentClassWithoutAllowList(t *testing.T) {
+	schemaID := "test-schema-123"
+	fieldName := "person.address"
+	appID := fmt.Sprintf("test-consent-class-app-%d", time.Now().UnixNano())
+
+	cleanup := &testCleanupRegistry{
+		schemaIDs: []string{schemaID},
+		appIDs:    []string{appID},
+	}
+	defer cleanup.cleanup(t)
+
+	// The app is deliberately never added to the allow-list.
+	createPolicyMetadataWithClass(t, schemaID, fieldName, "consent")
+
+	token, err := createTestJWT(appID)
+	require.NoError(t, err)
+	const query = `
+		query TestQuery($nic: String!) {
+			personInfo(nic: $nic) {
+				address
+			}
+		}
+	`
+	queryOE := func(t *testing.T) map[string]interface{} {
+		resp, err := makeGraphQLRequest(t, query, map[string]interface{}{"nic": testNIC}, token)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		return parseGraphQLResponse(t, resp)
+	}
+
+	t.Run("Asks_For_Consent", func(t *testing.T) {
+		result := queryOE(t)
+		t.Logf("Response before consent: %+v", result)
+		assert.Equal(t, "CE_NOT_APPROVED", errorCode(result),
+			"An app off the allow-list should be sent to the consent flow, not denied")
+	})
+
+	consentID := getConsentID(t, appID, testNIC)
+	cleanup.consentIDs = append(cleanup.consentIDs, consentID)
+
+	t.Run("Returns_Data_After_Approval", func(t *testing.T) {
+		approveConsent(t, consentID)
+
+		result := queryOE(t)
+		t.Logf("Response after consent: %+v", result)
+		require.Empty(t, result["errors"], "Query should succeed once the citizen approves")
+		data, ok := result["data"].(map[string]interface{})
+		require.True(t, ok, "Response should contain data")
+		personInfo, ok := data["personInfo"].(map[string]interface{})
+		require.True(t, ok, "Data should contain personInfo")
+		assert.NotEmpty(t, personInfo["address"])
+	})
 }
 
 // TestGraphQLFlow_ServiceTimeout tests resilience/failure when a dependency (PDP) is down or times out.

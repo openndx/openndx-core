@@ -55,12 +55,16 @@ export interface IntrospectionResult {
   };
 }
 
-export type PolicyClass = 'allowlist' | 'allowlist_consent';
+export type PolicyClass = 'allowlist' | 'allowlist_consent' | 'consent';
+
+// Policy classes that ask the owner's consent, so the field needs an owner.
+export const requiresOwnerConsent = (policyClass: PolicyClass | ''): boolean =>
+  policyClass === 'allowlist_consent' || policyClass === 'consent';
 
 export interface FieldConfiguration {
   policyClass: PolicyClass | ''; // '' indicates not set
   source: 'primary' | 'fallback' | ''; // '' indicates not set
-  owner: 'citizen' | ''; // Whose consent is asked; set only for allowlist_consent
+  owner: 'citizen' | ''; // Whose consent is asked; set only when requiresOwnerConsent(policyClass)
   description: string;
   isQueryType: boolean; // Is Field Defined Inside a Query Type
   isUserDefinedTypeField: boolean; // Is this field a User Defined Type field

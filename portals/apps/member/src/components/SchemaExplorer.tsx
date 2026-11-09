@@ -1,6 +1,7 @@
 // components/SchemaExplorer.tsx
 import React, { useState } from 'react';
 import type { FieldConfiguration as FieldConfig, GraphQLType } from '../types/graphql';
+import { requiresOwnerConsent } from '../types/graphql';
 import { FieldConfiguration } from './FieldConfiguration';
 
 interface SchemaExplorerProps {
@@ -44,7 +45,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             return false;
           }
         } else {
-          if (!config.policyClass || !config.source || (config.policyClass === 'allowlist_consent' && !config.owner)) {
+          if (!config.policyClass || !config.source || (requiresOwnerConsent(config.policyClass) && !config.owner)) {
             console.error(`Invalid configuration for ${type.name}.${field.name}, field config:`, config);
             return false;
           }
@@ -71,7 +72,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
             configured++;
           }
         } else {
-          if (config?.policyClass && config?.source && (config?.policyClass === 'allowlist_consent' ? config?.owner.trim() : true)) {
+          if (config?.policyClass && config?.source && (requiresOwnerConsent(config.policyClass) ? config.owner.trim() : true)) {
             configured++;
           }
         }

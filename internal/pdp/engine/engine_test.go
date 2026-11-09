@@ -59,6 +59,9 @@ func TestEngine_Decide(t *testing.T) {
 		{"allowlist_consent without grant", ClassAllowlistConsent, nil, Decision{Outcome: OutcomeDeny, Reason: "not_allowlisted"}},
 		{"allowlist_consent with expired grant", ClassAllowlistConsent, past, Decision{Outcome: OutcomeExpired, Reason: "grant_expired"}},
 		{"allowlist_consent with grant", ClassAllowlistConsent, future, Decision{Outcome: OutcomeConsentRequired}},
+		{"consent without grant", ClassConsent, nil, Decision{Outcome: OutcomeConsentRequired}},
+		{"consent with expired grant", ClassConsent, past, Decision{Outcome: OutcomeConsentRequired}},
+		{"consent with grant", ClassConsent, future, Decision{Outcome: OutcomeConsentRequired}},
 		{"unknown class", "no_such_class", future, Decision{Outcome: OutcomeDeny, Reason: "unknown_policy_class"}},
 	}
 	for _, tt := range tests {
@@ -79,9 +82,10 @@ func TestEngine_Classes(t *testing.T) {
 	e, err := New(t.Context())
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{ClassAllowlist, ClassAllowlistConsent}, e.Classes())
+	assert.Equal(t, []string{ClassAllowlist, ClassAllowlistConsent, ClassConsent}, e.Classes())
 	assert.True(t, e.HasClass(ClassAllowlist))
 	assert.True(t, e.HasClass(ClassAllowlistConsent))
+	assert.True(t, e.HasClass(ClassConsent))
 	assert.False(t, e.HasClass("no_such_class"))
 	assert.False(t, e.HasClass(""))
 }

@@ -102,11 +102,12 @@ A decision request and response:
 For each requested `(schemaId, fieldName)`, in order:
 
 1. No metadata record: the whole request fails with **HTTP 500**.
-2. The application is not in the field's allow-list: the field is *unauthorized*.
-3. The allow-list entry has expired: the field is *expired*.
-4. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`.
+2. The field's `policyClass` is `consent`: the field needs owner consent, whether or not the application is on the allow-list.
+3. The application is not in the field's allow-list: the field is *unauthorized*.
+4. The allow-list entry has expired: the field is *expired*.
+5. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`.
 
-`appAuthorized` is true when no field is unauthorized. Both built-in policy classes need an allow-list entry. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
+`appAuthorized` is true when no field is unauthorized. `allowlist` and `allowlist_consent` need an allow-list entry; `consent` does not. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
 
 ## Security and deployment
 
