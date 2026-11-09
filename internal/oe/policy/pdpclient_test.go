@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -155,6 +156,36 @@ func TestMakePdpRequest_ConsentRequired(t *testing.T) {
 
 	if field.Owner == nil || *field.Owner != owner {
 		t.Errorf("Expected Owner %s, got %v", owner, field.Owner)
+	}
+}
+
+// TestMakePdpRequest_FieldOutcomes decodes the per-field outcomes from the
+// PDP's wire format.
+func TestMakePdpRequest_FieldOutcomes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"fields": [
+				{"schemaId": "schema1", "fieldName": "a", "outcome": "allow", "obligations": ["audit.consent_bypassed"]},
+				{"schemaId": "schema1", "fieldName": "b", "outcome": "deny", "reason": "not_allowlisted"}
+			],
+			"appAuthorized": false,
+			"unauthorizedFields": [{"schemaId": "schema1", "fieldName": "b"}]
+		}`))
+	}))
+	defer server.Close()
+
+	response, err := NewPdpClient(server.URL).MakePdpRequest(context.Background(), &PdpRequest{AppId: "app1"})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	want := []FieldOutcome{
+		{SchemaID: "schema1", FieldName: "a", Outcome: OutcomeAllow, Obligations: []string{"audit.consent_bypassed"}},
+		{SchemaID: "schema1", FieldName: "b", Outcome: OutcomeDeny, Reason: "not_allowlisted"},
+	}
+	if !reflect.DeepEqual(response.Fields, want) {
+		t.Errorf("Expected fields %+v, got %+v", want, response.Fields)
 	}
 }
 

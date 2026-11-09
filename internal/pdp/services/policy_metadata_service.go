@@ -323,6 +323,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		metadataMap[key] = pm
 	}
 
+	fields := make([]models.PolicyDecisionFieldOutcome, 0, len(req.RequiredFields))
 	var consentRequiredFields []models.PolicyDecisionResponseFieldRecord
 	var unauthorizedFields []models.PolicyDecisionResponseFieldRecord
 	var expiredFields []models.PolicyDecisionResponseFieldRecord
@@ -355,6 +356,14 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 				"schemaId", pm.SchemaID, "fieldName", pm.FieldName, "error", err)
 		}
 
+		fields = append(fields, models.PolicyDecisionFieldOutcome{
+			SchemaID:    pm.SchemaID,
+			FieldName:   pm.FieldName,
+			Outcome:     string(decision.Outcome),
+			Reason:      decision.Reason,
+			Obligations: decision.Obligations,
+		})
+
 		fieldRecord := models.PolicyDecisionResponseFieldRecord{
 			FieldName:   pm.FieldName,
 			SchemaID:    pm.SchemaID,
@@ -374,6 +383,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 	}
 
 	response := &models.PolicyDecisionResponse{
+		Fields:                  fields,
 		ConsentRequiredFields:   consentRequiredFields,
 		UnauthorizedFields:      unauthorizedFields,
 		ExpiredFields:           expiredFields,

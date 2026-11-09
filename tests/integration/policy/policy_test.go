@@ -113,7 +113,16 @@ type PolicyDecisionResponseFieldRecord struct {
 	Owner       *string `json:"owner,omitempty"`
 }
 
+type PolicyDecisionFieldOutcome struct {
+	SchemaID    string   `json:"schemaId"`
+	FieldName   string   `json:"fieldName"`
+	Outcome     string   `json:"outcome"`
+	Reason      string   `json:"reason,omitempty"`
+	Obligations []string `json:"obligations,omitempty"`
+}
+
 type PolicyDecisionResponse struct {
+	Fields                  []PolicyDecisionFieldOutcome        `json:"fields"`
 	AppAuthorized           bool                                `json:"appAuthorized"`
 	UnauthorizedFields      []PolicyDecisionResponseFieldRecord `json:"unauthorizedFields"`
 	AppAccessExpired        bool                                `json:"appAccessExpired"`
@@ -425,6 +434,9 @@ func TestPolicy_GetPolicyDecision_Unauthorized(t *testing.T) {
 	assert.False(t, decisionResponse.AppAuthorized, "Application should not be authorized")
 	assert.Len(t, decisionResponse.UnauthorizedFields, 1, "Should have one unauthorized field")
 	assert.Equal(t, "person.fullName", decisionResponse.UnauthorizedFields[0].FieldName)
+	assert.Equal(t, []PolicyDecisionFieldOutcome{
+		{SchemaID: schemaID, FieldName: "person.fullName", Outcome: "deny", Reason: "not_allowlisted"},
+	}, decisionResponse.Fields)
 
 	// Cleanup
 	t.Cleanup(func() {

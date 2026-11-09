@@ -1020,6 +1020,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.True(t, resp.AppAuthorized)
 		assert.True(t, resp.AppRequiresOwnerConsent)
 		assert.Equal(t, 1, len(resp.ConsentRequiredFields))
+		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+			{SchemaID: "schema-123", FieldName: "field1", Outcome: "consent_required"},
+		}, resp.Fields)
 	})
 
 	t.Run("GetPolicyDecision_EmptyRequiredFields", func(t *testing.T) {
@@ -1037,6 +1040,8 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.True(t, resp.AppAuthorized) // No fields means authorized
 		assert.Equal(t, 0, len(resp.UnauthorizedFields))
 		assert.Equal(t, 0, len(resp.ConsentRequiredFields))
+		assert.NotNil(t, resp.Fields, "fields serializes as [] rather than null")
+		assert.Empty(t, resp.Fields)
 	})
 
 	t.Run("GetPolicyDecision_MixedAuthorizedUnauthorizedExpired", func(t *testing.T) {
@@ -1105,6 +1110,11 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.True(t, resp.AppAccessExpired)
 		assert.Equal(t, 1, len(resp.UnauthorizedFields))
 		assert.Equal(t, 1, len(resp.ExpiredFields))
+		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+			{SchemaID: "schema-123", FieldName: "authorized", Outcome: "allow"},
+			{SchemaID: "schema-123", FieldName: "expired", Outcome: "expired", Reason: "grant_expired"},
+			{SchemaID: "schema-123", FieldName: "unauthorized", Outcome: "deny", Reason: "not_allowlisted"},
+		}, resp.Fields)
 	})
 }
 

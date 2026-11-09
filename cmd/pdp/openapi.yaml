@@ -325,12 +325,18 @@ components:
                 description: Raw Schema Mapping of the data field being requested
     PolicyDecisionResponse:
       type: object
+      description: The decision for every requested field in `fields`. The lists and flags after it are derived from `fields`.
       properties:
+        fields:
+          type: array
+          description: The decision for each requested field, in request order.
+          items:
+            $ref: '#/components/schemas/PolicyDecisionFieldOutcome'
         appAuthorized:
           type: boolean
           description: Whether the request is allowed
           example: true
-        unAuthorizedFields:
+        unauthorizedFields:
           type: array
           description: List of fields that are not authorized
           items:
@@ -353,6 +359,34 @@ components:
           description: List of fields that require owner consent
           items:
             $ref: '#/components/schemas/PolicyDecisionResponseRecordInfo'
+
+    PolicyDecisionFieldOutcome:
+      type: object
+      required: [schemaId, fieldName, outcome]
+      properties:
+        schemaId:
+          type: string
+          description: Identifier of the data schema
+          example: "schema_001"
+        fieldName:
+          type: string
+          description: Name of the data field
+          example: "person.fullName"
+        outcome:
+          type: string
+          description: The field's decision. The set is fixed; a policy class that returns anything else denies the field.
+          enum: [allow, deny, expired, consent_required]
+          example: deny
+        reason:
+          type: string
+          description: Why the policy class chose the outcome. Omitted when the class gives none.
+          example: not_allowlisted
+        obligations:
+          type: array
+          description: Extra actions the policy asks the Orchestration Engine to take, which it records in the audit trail. Omitted when there are none.
+          items:
+            type: string
+          example: ["audit.consent_bypassed"]
 
     PolicyDecisionResponseRecordInfo:
       type: object

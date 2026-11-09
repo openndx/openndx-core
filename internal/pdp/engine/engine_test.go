@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/open-policy-agent/opa/v1/tester"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,13 +53,13 @@ func TestEngine_Decide(t *testing.T) {
 		grant *Grant
 		want  Decision
 	}{
-		{"allowlist without grant", ClassAllowlist, nil, Decision{OutcomeDeny, "not_allowlisted"}},
-		{"allowlist with expired grant", ClassAllowlist, past, Decision{OutcomeExpired, "grant_expired"}},
+		{"allowlist without grant", ClassAllowlist, nil, Decision{Outcome: OutcomeDeny, Reason: "not_allowlisted"}},
+		{"allowlist with expired grant", ClassAllowlist, past, Decision{Outcome: OutcomeExpired, Reason: "grant_expired"}},
 		{"allowlist with grant", ClassAllowlist, future, Decision{Outcome: OutcomeAllow}},
-		{"allowlist_consent without grant", ClassAllowlistConsent, nil, Decision{OutcomeDeny, "not_allowlisted"}},
-		{"allowlist_consent with expired grant", ClassAllowlistConsent, past, Decision{OutcomeExpired, "grant_expired"}},
+		{"allowlist_consent without grant", ClassAllowlistConsent, nil, Decision{Outcome: OutcomeDeny, Reason: "not_allowlisted"}},
+		{"allowlist_consent with expired grant", ClassAllowlistConsent, past, Decision{Outcome: OutcomeExpired, Reason: "grant_expired"}},
 		{"allowlist_consent with grant", ClassAllowlistConsent, future, Decision{Outcome: OutcomeConsentRequired}},
-		{"unknown class", "no_such_class", future, Decision{OutcomeDeny, "unknown_policy_class"}},
+		{"unknown class", "no_such_class", future, Decision{Outcome: OutcomeDeny, Reason: "unknown_policy_class"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -83,6 +84,54 @@ func TestEngine_Classes(t *testing.T) {
 	assert.True(t, e.HasClass(ClassAllowlistConsent))
 	assert.False(t, e.HasClass("no_such_class"))
 	assert.False(t, e.HasClass(""))
+}
+
+func TestToDecision_Obligations(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		want    []string
+		wantErr bool
+	}{
+		{"absent", nil, nil, false},
+		{"empty list", []any{}, nil, false},
+		{"list", []any{"audit.consent_bypassed", "notify.owner"}, []string{"audit.consent_bypassed", "notify.owner"}, false},
+		{"not a list", "audit.consent_bypassed", nil, true},
+		{"non-string item", []any{"audit.consent_bypassed", 1}, nil, true},
+		{"empty string item", []any{""}, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := map[string]any{"outcome": "allow"}
+			if tt.value != nil {
+				doc["obligations"] = tt.value
+			}
+			got, err := toDecision(doc)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, Decision{Outcome: OutcomeAllow, Obligations: tt.want}, got)
+		})
+	}
+}
+
+// TestToDecision_RegoSetObligations checks that obligations a policy builds as
+// a Rego set reach the decision, in sorted order.
+func TestToDecision_RegoSetObligations(t *testing.T) {
+	results, err := rego.New(
+		rego.Query("data.example.decision"),
+		rego.Module("example.rego", `package example
+
+decision := {"outcome": "allow", "obligations": {"notify.owner", "audit.consent_bypassed"}}`),
+	).Eval(t.Context())
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	got, err := toDecision(results[0].Expressions[0].Value)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"audit.consent_bypassed", "notify.owner"}, got.Obligations)
 }
 
 func TestToDecision_RejectsUnknownOutcome(t *testing.T) {

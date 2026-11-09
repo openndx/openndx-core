@@ -70,10 +70,13 @@ type Grant struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-// Decision is the policy result for one field.
+// Decision is the policy result for one field. Obligations name extra actions
+// the policy asks the Orchestration Engine to take, such as recording that
+// consent was bypassed.
 type Decision struct {
-	Outcome Outcome
-	Reason  string
+	Outcome     Outcome
+	Reason      string
+	Obligations []string
 }
 
 // Engine holds the compiled policies.
@@ -162,7 +165,36 @@ func toDecision(value any) (Decision, error) {
 		return Decision{}, fmt.Errorf("policy returned unknown outcome %q", outcome)
 	}
 	reason, _ := doc["reason"].(string)
-	return Decision{Outcome: Outcome(outcome), Reason: reason}, nil
+	obligations, err := toObligations(doc["obligations"])
+	if err != nil {
+		return Decision{}, err
+	}
+	return Decision{Outcome: Outcome(outcome), Reason: reason, Obligations: obligations}, nil
+}
+
+// toObligations reads the optional obligations of a decision: a list (or Rego
+// set) of non-empty strings. A malformed value fails the decision, because the
+// Orchestration Engine could not honor obligations it never receives.
+func toObligations(value any) ([]string, error) {
+	if value == nil {
+		return nil, nil
+	}
+	items, ok := value.([]any)
+	if !ok {
+		return nil, fmt.Errorf("policy obligations are %T, not a list", value)
+	}
+	obligations := make([]string, 0, len(items))
+	for _, item := range items {
+		obligation, ok := item.(string)
+		if !ok || obligation == "" {
+			return nil, fmt.Errorf("policy obligation %v is not a non-empty string", item)
+		}
+		obligations = append(obligations, obligation)
+	}
+	if len(obligations) == 0 {
+		return nil, nil
+	}
+	return obligations, nil
 }
 
 func deny(reason string) Decision {

@@ -143,8 +143,20 @@ type PolicyDecisionResponseFieldRecord struct {
 	Owner       *Owner  `json:"owner,omitempty"`
 }
 
-// PolicyDecisionResponse represents a policy decision response
+// PolicyDecisionFieldOutcome is the decision for one requested field.
+type PolicyDecisionFieldOutcome struct {
+	SchemaID    string   `json:"schemaId"`
+	FieldName   string   `json:"fieldName"`
+	Outcome     string   `json:"outcome"`
+	Reason      string   `json:"reason,omitempty"`
+	Obligations []string `json:"obligations,omitempty"`
+}
+
+// PolicyDecisionResponse represents a policy decision response. Fields holds
+// the decision for every requested field, in request order; the lists and
+// flags after it are derived from Fields.
 type PolicyDecisionResponse struct {
+	Fields                  []PolicyDecisionFieldOutcome        `json:"fields"`
 	AppAuthorized           bool                                `json:"appAuthorized"`
 	UnauthorizedFields      []PolicyDecisionResponseFieldRecord `json:"unauthorizedFields"`
 	AppAccessExpired        bool                                `json:"appAccessExpired"`

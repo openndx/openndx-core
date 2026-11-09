@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -122,6 +123,48 @@ func TestAuditor_PolicyCheck(t *testing.T) {
 		}
 		if _, ok := responseMetadata(t, event)["unauthorizedFields"]; !ok {
 			t.Error("Expected unauthorized fields in the response metadata")
+		}
+	})
+
+	t.Run("records per-field outcomes and obligations", func(t *testing.T) {
+		mockClient := newMockAuditClient(true)
+		auditor := NewAuditor(mockClient, "SERVICE", "orchestration-engine")
+
+		fields := []policy.FieldOutcome{
+			{SchemaID: "drp", FieldName: "person.name", Outcome: policy.OutcomeAllow, Obligations: []string{"audit.consent_bypassed"}},
+			{SchemaID: "drp", FieldName: "person.photo", Outcome: policy.OutcomeConsentRequired},
+		}
+		auditor.PolicyCheck(context.Background(), "app-1", &policy.PdpRequest{AppId: "app-1"},
+			&policy.PdpResponse{
+				Fields:                  fields,
+				AppAuthorized:           true,
+				AppRequiresOwnerConsent: true,
+				ConsentRequiredFields:   []policy.ConsentRequiredField{{SchemaID: "drp", FieldName: "person.photo"}},
+			}, nil)
+
+		event := mockClient.onlyEvent(t)
+		if event.Status != auditpkg.StatusSuccess {
+			t.Errorf("Expected a successful POLICY_CHECK, got %s", event.Status)
+		}
+		meta := responseMetadata(t, event)
+		got, ok := meta["fields"].([]policy.FieldOutcome)
+		if !ok || !reflect.DeepEqual(got, fields) {
+			t.Errorf("Expected fields %v in the response metadata, got %v", fields, meta["fields"])
+		}
+		if meta["consentRequired"] != true {
+			t.Errorf("Expected consentRequired alongside fields, got %v", meta["consentRequired"])
+		}
+	})
+
+	t.Run("omits fields when the PDP returns none", func(t *testing.T) {
+		mockClient := newMockAuditClient(true)
+		auditor := NewAuditor(mockClient, "SERVICE", "orchestration-engine")
+
+		auditor.PolicyCheck(context.Background(), "app-1", &policy.PdpRequest{AppId: "app-1"},
+			&policy.PdpResponse{AppAuthorized: true}, nil)
+
+		if _, ok := responseMetadata(t, mockClient.onlyEvent(t))["fields"]; ok {
+			t.Error("Expected no fields in the response metadata")
 		}
 	})
 

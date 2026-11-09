@@ -1,0 +1,83 @@
+{
+  "response": {
+    "data": {
+      "personInfo": {
+        "birthInfo": null,
+        "employer": null,
+        "fullName": "Nimal Perera"
+      }
+    }
+  },
+  "policyRequests": [
+    {
+      "applicationId": "app-golden",
+      "requiredFields": [
+        {
+          "fieldName": "person.employer.name",
+          "schemaId": "drp-v1"
+        },
+        {
+          "fieldName": "person.fullName",
+          "schemaId": "drp-v1"
+        },
+        {
+          "fieldName": "getPersonInfo.birthDate",
+          "schemaId": "rgd-v1"
+        }
+      ]
+    }
+  ],
+  "consentRequests": [],
+  "providerRequests": {
+    "drp-v1": [
+      {
+        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName employer { name } } }",
+        "variables": {
+          "nic": "199012345678"
+        }
+      }
+    ],
+    "rgd-v1": [
+      {
+        "query": "query Queryrgd_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthDate } }",
+        "variables": {
+          "nic": "199012345678"
+        }
+      }
+    ]
+  },
+  "auditEvents": [
+    {
+      "eventType": "DATA_REQUEST",
+      "status": "SUCCESS",
+      "actorType": "APPLICATION",
+      "actorId": "app-golden",
+      "targetType": "SERVICE",
+      "targetId": "SERVICE"
+    },
+    {
+      "eventType": "POLICY_CHECK",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "policy-decision-point"
+    },
+    {
+      "eventType": "PROVIDER_FETCH",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "drp-v1"
+    },
+    {
+      "eventType": "PROVIDER_FETCH",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "rgd-v1"
+    }
+  ]
+}

@@ -89,7 +89,8 @@ A decision request and response:
 ```
 
 ```json
-{ "appAuthorized": true, "unauthorizedFields": [],
+{ "fields": [{ "schemaId": "drp-v1", "fieldName": "person.fullName", "outcome": "allow" }],
+  "appAuthorized": true, "unauthorizedFields": [],
   "appAccessExpired": false, "expiredFields": [],
   "appRequiresOwnerConsent": false, "consentRequiredFields": [] }
 ```
