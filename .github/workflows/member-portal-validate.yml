@@ -1,14 +1,7 @@
-name: Validate Member Portal
+# Development paused; manual validation only. See docs/PORTAL-LIFECYCLE.md.
+name: Validate Member Portal (Manual, Unsupported Prototype)
 
 on:
-    pull_request:
-        branches: [main]
-        paths:
-            - "portals/apps/member/**"
-            - "portals/package.json"
-            - "portals/pnpm-workspace.yaml"
-            - "portals/pnpm-lock.yaml"
-            - ".github/workflows/member-portal-validate.yml"
     workflow_dispatch:
 
 concurrency:

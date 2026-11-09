@@ -14,7 +14,15 @@ Run on every PR when service code changes. Perform code quality checks and tests
 | `orchestration-engine-validate.yml`  | Orchestration Engine  | Changes to `cmd/oe/**`, `internal/oe/**`       |
 | `policy-decision-point-validate.yml` | Policy Decision Point | Changes to `cmd/pdp/**`, `internal/pdp/**`     |
 | `portal-backend-validate.yml`        | Portal Backend        | Changes to `cmd/pb/**`, `internal/pb/**`       |
+| `consent-portal-validate.yml`        | Consent Portal        | Consent app, workspace, or workflow changes  |
 | `integration-tests.yml`              | All Services          | Manual or scheduled                            |
+
+Admin and Member Portal validation workflows are **manual only** while the apps
+are paused, unsupported prototypes. They do not run on pull requests or shared
+workspace changes and do not publish images. Use **Run workflow** in Actions for
+an explicit prototype check. Their results do not establish compatibility with
+the current backend. Repository secret scanning continues to cover all source.
+See the [portal lifecycle decision](../../docs/PORTAL-LIFECYCLE.md).
 
 **What they do:**
 
@@ -35,7 +43,14 @@ Build and publish Docker images to GitHub Container Registry when code is merged
 | `orchestration-engine-publish.yml`  | Orchestration Engine  | `ghcr.io/{owner}/orchestration-engine`                      |
 | `policy-decision-point-publish.yml` | Policy Decision Point | `ghcr.io/{owner}/policy-decision-point`                     |
 | `portal-backend-publish.yml`        | Portal Backend        | `ghcr.io/{owner}/portal-backend`                            |
-| `release.yml`                       | All Services, `ondx`  | Builds all services + `ondx` CLI binaries with version tags |
+| `consent-portal-publish.yml`        | Consent Portal        | `ghcr.io/{owner}/consent-portal`                            |
+| `release.yml`                       | Maintained components, `ondx` | Four backend images, Consent Portal image, and `ondx` CLI binaries |
+
+Admin and Member Portal publishing workflows have been removed. Neither app is
+included in the release matrix. Historical images remain available but are
+unsupported. The release footer announces this change and directs operators to
+the CLI or Portal Backend API. The release workflow runs on version tag pushes
+or manual dispatch; see the [release guide](../../docs/RELEASE.md).
 
 **Triggers:**
 

@@ -4,13 +4,13 @@ The OpenNDX web apps, kept in one pnpm workspace. This page covers what they sha
 
 ## Overview
 
-| App | Users | Talks to | In Compose |
-|---|---|---|---|
-| [Consent Portal](apps/consent/README.md) (`consent-portal`) | Citizens approving or revoking access to their data | Consent Engine, identity provider | yes, port 5173 |
-| [Admin Portal](apps/admin/README.md) (`admin-portal`) | Operators managing members and reviewing submissions | Portal Backend, audit service, identity provider | no |
-| [Member Portal](apps/member/README.md) (`member-portal`) | Staff of member organizations registering schemas and applications | Portal Backend, audit service, identity provider | no |
+| App | Users | Talks to | Status | In Compose |
+|---|---|---|---|---|
+| [Consent Portal](apps/consent/README.md) (`consent-portal`) | Citizens approving or revoking access to their data | Consent Engine, identity provider | Actively maintained; released | yes, port 5173 |
+| [Admin Portal](apps/admin/README.md) (`admin-portal`) | Operators managing members and reviewing submissions | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no |
+| [Member Portal](apps/member/README.md) (`member-portal`) | Staff of member organizations registering schemas and applications | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no |
 
-All three are React 19, TypeScript, Vite and Tailwind apps served in Docker by nginx. The consent portal is current. The admin and member portals are documented as they are in the code, and each README lists the gaps that stop them working against the current Portal Backend.
+All three are React 19, TypeScript, Vite and Tailwind apps served in Docker by nginx. The consent portal is actively maintained. Admin and member remain in this workspace as unsupported prototypes, with no committed fixes, dependency updates, or compatibility guarantees. Each README describes the historical code and its integration gaps. Manage the platform through the [`ondx` CLI](../cmd/ondx/README.md) or [Portal Backend API](../cmd/pb/README.md). The [lifecycle decision](../docs/PORTAL-LIFECYCLE.md) defines release scope and restart criteria.
 
 ```
 portals/
@@ -30,8 +30,8 @@ Node 24+ and pnpm. The pinned pnpm version is picked up by `corepack enable`.
 
 ```bash
 cd portals
-pnpm install                               # once, for the whole workspace
-pnpm --filter consent-portal run dev       # or admin-portal, member-portal
+pnpm install --frozen-lockfile --filter consent-portal...
+pnpm --filter consent-portal run dev
 ```
 
 There are no root scripts. Run everything with `pnpm --filter <app> run <script>`. Every app has `dev`, `build` (`tsc -b && vite build`), `lint` and `preview`. None has a test script.
@@ -87,9 +87,11 @@ From the repo root, `make setup`, `validate-build`, `check-lint`, `quality-check
 
 ```bash
 make run consent-portal             # pnpm run dev in apps/consent
-make validate-build admin-portal    # build
-make check-lint member-portal
+make validate-build consent-portal # build
+make check-lint consent-portal
 ```
+
+Batch Make targets and automatic pre-commit validation cover only the maintained consent portal. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. Explicit Make and pnpm commands remain available for prototype exploration.
 
 `make validate-test <portal>` runs the TypeScript check and lint, not tests. `format`, `lint`, `staticcheck` and `security` are Go-only.
 

@@ -1,4 +1,4 @@
-name: Release - Build and Publish All Services
+name: Release - Build and Publish Maintained Components
 
 on:
   push:
@@ -88,6 +88,7 @@ jobs:
       # Never let one service's failure cancel the builds still in flight for the others.
       fail-fast: false
       matrix:
+        # Admin and Member Portals are paused prototypes; see docs/PORTAL-LIFECYCLE.md.
         service:
           - name: portal-backend
             context: .
@@ -109,21 +110,11 @@ jobs:
             dockerfile: ./cmd/oe/Dockerfile
             image: orchestration-engine
             description: Orchestration Engine service for coordinating data exchange workflows
-          - name: admin-portal
-            context: ./portals
-            dockerfile: ./portals/apps/admin/Dockerfile
-            image: admin-portal
-            description: Admin Portal for the Data Exchange platform
           - name: consent-portal
             context: ./portals
             dockerfile: ./portals/apps/consent/Dockerfile
             image: consent-portal
             description: Consent Portal for the Data Exchange platform
-          - name: member-portal
-            context: ./portals
-            dockerfile: ./portals/apps/member/Dockerfile
-            image: member-portal
-            description: Member Portal for the Data Exchange platform
 
     steps:
       - name: Checkout repository

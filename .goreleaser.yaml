@@ -48,25 +48,26 @@ release:
   footer: |
     ## Docker images
 
-    This release includes Docker images for all services and portals:
+    This release includes Docker images for the maintained services and Consent Portal:
 
     - **Portal Backend**: `ghcr.io/openndx/portal-backend:{{ .Version }}`
     - **Policy Decision Point**: `ghcr.io/openndx/policy-decision-point:{{ .Version }}`
     - **Consent Engine**: `ghcr.io/openndx/consent-engine:{{ .Version }}`
     - **Orchestration Engine**: `ghcr.io/openndx/orchestration-engine:{{ .Version }}`
-    - **Admin Portal**: `ghcr.io/openndx/admin-portal:{{ .Version }}`
     - **Consent Portal**: `ghcr.io/openndx/consent-portal:{{ .Version }}`
-    - **Member Portal**: `ghcr.io/openndx/member-portal:{{ .Version }}`
 
     ```bash
     docker pull ghcr.io/openndx/portal-backend:{{ .Version }}
     docker pull ghcr.io/openndx/policy-decision-point:{{ .Version }}
     docker pull ghcr.io/openndx/consent-engine:{{ .Version }}
     docker pull ghcr.io/openndx/orchestration-engine:{{ .Version }}
-    docker pull ghcr.io/openndx/admin-portal:{{ .Version }}
     docker pull ghcr.io/openndx/consent-portal:{{ .Version }}
-    docker pull ghcr.io/openndx/member-portal:{{ .Version }}
     ```
+
+    Admin and Member Portals are paused, unsupported prototypes and are excluded
+    from this release. Use the ondx CLI or Portal Backend API for management.
+    Previously published portal images are historical and unsupported. See the
+    [portal lifecycle decision](https://github.com/openndx/openndx-core/blob/{{ .Tag }}/docs/PORTAL-LIFECYCLE.md).
 
     ## ondx CLI
 

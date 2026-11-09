@@ -18,9 +18,10 @@ help:
 	@echo "    - policy-decision-point"
 	@echo ""
 	@echo "  Frontend Services:"
+	@echo "    - consent-portal"
+	@echo "  Paused prototypes (explicit commands only; unsupported):"
 	@echo "    - member-portal"
 	@echo "    - admin-portal"
-	@echo "    - consent-portal"
 	@echo ""
 	@echo "Commands:"
 	@echo "  setup [SERVICE]                - Install required modules/dependencies"
@@ -49,7 +50,7 @@ help:
 	@echo "  make setup portal-backend"
 	@echo "  make validate-build orchestration-engine"
 	@echo "  make validate-test consent-engine"
-	@echo "  make run member-portal"
+	@echo "  make run consent-portal"
 
 # Variables
 ROOT_DIR := $(shell pwd)
@@ -91,7 +92,9 @@ CONSENT_PORTAL_PATH := portals/apps/consent
 
 # Go services list
 GO_SERVICES := portal-backend orchestration-engine consent-engine policy-decision-point
-FRONTEND_SERVICES := member-portal admin-portal consent-portal
+# Batch commands cover maintained components only; see docs/PORTAL-LIFECYCLE.md.
+FRONTEND_SERVICES := consent-portal
+PAUSED_FRONTEND_SERVICES := member-portal admin-portal
 
 # =============================================================================
 # ROUTER HELPER FUNCTIONS
@@ -133,7 +136,7 @@ setup-go-service:
 # Setup for Frontend services
 setup-frontend-service:
 	@echo "Setting up Frontend service: $(SERVICE)"
-	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile
+	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile --filter $(SERVICE)...
 	@echo "✅ Frontend service $(SERVICE) dependencies installed"
 
 # Setup command router
@@ -167,7 +170,7 @@ validate-build-go-service: $(BIN_DIR)
 # Validate build for Frontend services
 validate-build-frontend-service:
 	@echo "Building Frontend service: $(SERVICE)"
-	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile
+	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile --filter $(SERVICE)...
 	@cd $(SERVICE_PATH) && pnpm run build
 	@echo "✅ Frontend service $(SERVICE) built successfully -> $(SERVICE_PATH)/dist/"
 
@@ -216,7 +219,7 @@ validate-test-go-rootmod-service:
 # Validate tests for Frontend services (lint + type check as test equivalent)
 validate-test-frontend-service:
 	@echo "Running tests for Frontend service: $(SERVICE)"
-	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile
+	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile --filter $(SERVICE)...
 	@echo "Running TypeScript compilation check..."
 	@cd $(SERVICE_PATH) && pnpm exec tsc --noEmit || (echo "❌ TypeScript compilation failed for $(SERVICE)" && exit 1)
 	@echo "Running lint checks..."
@@ -466,7 +469,7 @@ check-lint-go-rootmod-service:
 # Frontend service quality checks
 check-lint-frontend-service:
 	@echo "Running lint checks for Frontend service: $(SERVICE)"
-	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile
+	@cd $(SERVICE_PATH) && pnpm install --frozen-lockfile --filter $(SERVICE)...
 	@cd $(SERVICE_PATH) && pnpm run lint || (echo "❌ Lint checks failed for $(SERVICE)" && exit 1)
 	@echo "✅ Lint checks passed for Frontend service $(SERVICE)"
 
@@ -598,7 +601,7 @@ clean:
 	@echo "✅ All build artifacts cleaned"
 
 # Allow service names to be used as targets (ignore them)
-$(GO_SERVICES) $(FRONTEND_SERVICES):
+$(GO_SERVICES) $(FRONTEND_SERVICES) $(PAUSED_FRONTEND_SERVICES):
 	@:
 
 # =============================================================================

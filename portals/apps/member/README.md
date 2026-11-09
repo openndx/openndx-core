@@ -2,7 +2,9 @@
 
 The web app for staff of a member organization. As a **data provider** they register the schemas their systems expose; as a **data consumer** they register applications that request fields from those schemas. Both are submitted to an administrator for approval.
 
-> **Status: not yet adapted to the current Portal Backend.** The pages and flows below are what the code does, but its API and sign-in code predate the Portal Backend's bearer-token and scope checks and the move to organization-unit members, so it does not work against the current stack. [Status and known gaps](#status-and-known-gaps) lists what to change. This portal is not in the Docker Compose stack.
+> **Status: development paused; unsupported prototype.** This app is excluded from release images and automatic publishing. No fixes, dependency updates, or compatibility guarantees are committed while it is paused. Use the [`ondx` CLI](../../../cmd/ondx/README.md) or the [Portal Backend API](../../../cmd/pb/README.md) for management. See the [lifecycle decision](../../../docs/PORTAL-LIFECYCLE.md) for scope and restart criteria.
+
+> **Known integration gaps.** The pages and flows below are what the code does, but its API and sign-in code predate the Portal Backend's bearer-token and scope checks and the move to organization-unit members, so it does not work against the current stack. [Status and known gaps](#status-and-known-gaps) lists what to change. This portal is not in the Docker Compose stack.
 
 ## Overview
 
@@ -17,7 +19,7 @@ flowchart LR
 
 Stack: React 19, TypeScript, Vite, Tailwind, `@asgardeo/auth-react`. Submitted schemas and applications become real ones when an administrator approves them in the [Admin Portal](../admin/README.md).
 
-## Quick start
+## Local prototype exploration
 
 From `portals/` (Node 24+, pnpm; see [portals/README.md](../../README.md)):
 

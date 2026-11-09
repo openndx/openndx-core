@@ -30,8 +30,9 @@ get_service_path() {
     esac
 }
 
-# All available services
-ALL_SERVICES="portal-backend orchestration-engine consent-engine policy-decision-point member-portal admin-portal consent-portal"
+# Maintained services only; paused portals can be validated explicitly.
+# See docs/PORTAL-LIFECYCLE.md.
+ALL_SERVICES="portal-backend orchestration-engine consent-engine policy-decision-point consent-portal"
 
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
