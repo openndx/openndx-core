@@ -8,7 +8,6 @@ The management REST API of OpenNDX: members, provider schemas, consumer applicat
 
 ```mermaid
 flowchart LR
-    AP[Admin and Member portals] -->|REST, Bearer token| PB
     CLI[ondx CLI] -->|REST, Bearer token| PB
     PB --> DB[(PostgreSQL: portal_backend)]
     PB -->|metadata and allow-list| PDP[Policy Decision Point]
@@ -17,7 +16,7 @@ flowchart LR
     PB -.->|audit events| A[Argus audit service]
 ```
 
-PB is called by the [`ondx` CLI](../ondx/README.md) and by the admin and member portals. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
+PB remains an actively maintained management API, used through the [`ondx` CLI](../ondx/README.md) or direct authenticated API calls. The [Admin and Member Portals](../../portals/README.md) are paused, unsupported prototypes and do not provide a supported management interface. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
 
 ## Quick start
 

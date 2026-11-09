@@ -2,7 +2,9 @@
 
 The web app for OpenNDX operators. Administrators register and edit member organizations, review the schemas and applications that members submit, and browse the audit log.
 
-> **Status: not yet adapted to the current Portal Backend.** The pages and flows below are what the code does, but its API and sign-in code predate the Portal Backend's bearer-token and scope checks and the move to organization-unit members, so it does not work against the current stack. [Status and known gaps](#status-and-known-gaps) lists what to change. This portal is not in the Docker Compose stack.
+> **Status: development paused; unsupported prototype.** This app is excluded from release images and automatic publishing. No fixes, dependency updates, or compatibility guarantees are committed while it is paused. Use the [`ondx` CLI](../../../cmd/ondx/README.md) or the [Portal Backend API](../../../cmd/pb/README.md) for management.
+
+> **Known integration gaps.** The pages and flows below are what the code does, but its API and sign-in code predate the Portal Backend's bearer-token and scope checks and the move to organization-unit members, so it does not work against the current stack. [Status and known gaps](#status-and-known-gaps) lists what to change. This portal is not in the Docker Compose stack.
 
 ## Overview
 
@@ -16,7 +18,7 @@ flowchart LR
 
 Stack: React 19, TypeScript, Vite, Tailwind, `@asgardeo/auth-react`. Only users whose identity-provider roles include `VITE_IDP_ADMIN_ROLE` can use it; others see an error after sign-in. The members' side of the review workflow is the [Member Portal](../member/README.md).
 
-## Quick start
+## Local prototype exploration
 
 From `portals/` (Node 24+, pnpm; see [portals/README.md](../../README.md)):
 

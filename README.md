@@ -12,13 +12,11 @@ flowchart LR
     OE -->|sub-queries| PR[Data providers]
     Citizen --> CP[Consent Portal]
     CP --> CE
-    Operator[Operators and member staff] --> AP[Admin and Member Portals]
-    AP --> PB[Portal Backend]
-    CLI[ondx CLI] --> PB
+    Operator[Operators and member staff] --> CLI[ondx CLI]
+    CLI --> PB[Portal Backend]
     PB -->|policy metadata, allow-lists| PDP
     PB -->|application clients| IDP[ThunderID]
     CP -.->|sign in| IDP
-    AP -.->|sign in| IDP
     CLI -.->|sign in| IDP
     Consumer -.->|client credentials| IDP
     CE -.->|verify tokens| IDP
@@ -37,14 +35,16 @@ Each core service keeps its own PostgreSQL database. Detail for every component 
 | Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
 | `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
 | Consent Portal | Citizen app to approve or revoke consent | 5173 | [portals/apps/consent](portals/apps/consent/README.md) |
-| Admin Portal | Operator app: members and submission review (not in Compose) | n/a | [portals/apps/admin](portals/apps/admin/README.md) |
-| Member Portal | Member staff app: schemas and applications (not in Compose) | n/a | [portals/apps/member](portals/apps/member/README.md) |
+| Admin Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/admin](portals/apps/admin/README.md) |
+| Member Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/member](portals/apps/member/README.md) |
 | ThunderID | Identity provider bundled for local use | 8090 | [thunderid/](thunderid) |
 | Audit service | [Argus](https://github.com/LSFLK/argus), optional audit log | 3001 | external |
 | PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
 | Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
 
 Ports are the Docker Compose defaults, and each can be changed in `.env`.
+
+The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees. Manage the platform through `ondx` or the Portal Backend API.
 
 ### How a data request flows
 
@@ -53,7 +53,7 @@ Ports are the Docker Compose defaults, and each can be changed in `.env`.
 3. If consent is needed, the Consent Engine records a pending request. The consumer receives a consent link, the citizen approves it in the Consent Portal, and the consumer repeats the query.
 4. The Orchestration Engine fetches the data from the providers in parallel and returns the merged result.
 
-Providers, schemas, applications and their access are set up beforehand through the Portal Backend, using the portals or `ondx`. Details: [Orchestration Engine](cmd/oe/README.md#how-it-works).
+Providers, schemas, applications and their access are set up beforehand through the Portal Backend, using `ondx` or the management API. Details: [Orchestration Engine](cmd/oe/README.md#how-it-works).
 
 ## Quick start
 
@@ -67,7 +67,7 @@ docker compose up --build
 
 This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend, the Consent Portal and the audit service. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. The audit service is built from its GitHub source, so the first build needs network access.
 
-The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data. The Admin and Member Portals are not in Compose; see their READMEs.
+The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data. The Admin and Member Portals are paused, unsupported prototypes and are excluded from release images and Compose.
 
 ## Working on the code
 
@@ -81,7 +81,7 @@ make quality-check <service>     # format, lint, security
 make run <service>               # run one service
 ```
 
-`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend`, `consent-portal`, `admin-portal` or `member-portal`. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
+`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend` or `consent-portal`. Batch commands and automatic pre-commit validation cover these maintained components. Explicit commands for the paused `admin-portal` and `member-portal` prototypes remain available for local exploration. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
 To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
