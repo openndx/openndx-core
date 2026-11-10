@@ -1,4 +1,4 @@
-package application
+package consentbypass
 
 import (
 	"encoding/json"
@@ -14,22 +14,32 @@ import (
 	"gorm.io/gorm"
 )
 
-// GrantConsentBypass handles POST /api/v1/applications/{applicationId}/consent-bypass-grants.
+// Handler serves the consent bypass API.
+type Handler struct {
+	service *Service
+}
+
+// NewHandler creates a consent bypass Handler.
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
+}
+
+// Grant handles POST /api/v1/applications/{applicationId}/consent-bypass-grants.
 // The route requires consent-bypass:write. The audit event records who
 // granted the bypass.
-func (h *Handler) GrantConsentBypass(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Grant(w http.ResponseWriter, r *http.Request) {
 	applicationID := r.PathValue("applicationId")
 
-	var req ConsentBypassRequest
+	var req GrantRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	grants, err := h.service.GrantConsentBypass(r.Context(), applicationID, &req)
+	grants, err := h.service.Grant(r.Context(), applicationID, &req)
 	if err != nil {
 		middleware.LogAuditEvent(r, string(middleware.ResourceTypeConsentBypassGrants), &applicationID, string(middleware.AuditStatusFailure))
-		respondWithConsentBypassError(w, err)
+		respondWithError(w, err)
 		return
 	}
 
@@ -40,29 +50,29 @@ func (h *Handler) GrantConsentBypass(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, kernel.CollectionResponse{Items: grants, Count: len(grants)})
 }
 
-// ListConsentBypassGrants handles GET /api/v1/consent-bypass-grants. The route
-// requires consent-bypass:read.
-func (h *Handler) ListConsentBypassGrants(w http.ResponseWriter, r *http.Request) {
+// List handles GET /api/v1/consent-bypass-grants. The route requires
+// consent-bypass:read.
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	grants, err := h.service.ListConsentBypassGrants(r.Context(),
+	grants, err := h.service.List(r.Context(),
 		strings.TrimSpace(query.Get("applicationId")), strings.TrimSpace(query.Get("status")))
 	if err != nil {
-		respondWithConsentBypassError(w, err)
+		respondWithError(w, err)
 		return
 	}
 
 	utils.RespondWithSuccess(w, http.StatusOK, kernel.CollectionResponse{Items: grants, Count: len(grants)})
 }
 
-// RevokeConsentBypass handles POST /api/v1/consent-bypass-grants/{grantId}/revoke.
-// The route requires consent-bypass:write.
-func (h *Handler) RevokeConsentBypass(w http.ResponseWriter, r *http.Request) {
+// Revoke handles POST /api/v1/consent-bypass-grants/{grantId}/revoke. The
+// route requires consent-bypass:write.
+func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
 	grantID := r.PathValue("grantId")
 
-	grant, err := h.service.RevokeConsentBypass(r.Context(), grantID)
+	grant, err := h.service.Revoke(r.Context(), grantID)
 	if err != nil {
 		middleware.LogAuditEvent(r, string(middleware.ResourceTypeConsentBypassGrants), &grantID, string(middleware.AuditStatusFailure))
-		respondWithConsentBypassError(w, err)
+		respondWithError(w, err)
 		return
 	}
 
@@ -70,18 +80,18 @@ func (h *Handler) RevokeConsentBypass(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, grant)
 }
 
-// respondWithConsentBypassError maps consent bypass errors onto a response.
-// Client errors reported by the PDP, such as a field that asks for no
-// consent, are passed through; PDP failures are reported as a bad gateway.
-func respondWithConsentBypassError(w http.ResponseWriter, err error) {
+// respondWithError maps consent bypass errors onto a response. Client errors
+// reported by the PDP, such as a field that asks for no consent, are passed
+// through; PDP failures are reported as a bad gateway.
+func respondWithError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, "Application not found")
 		return
-	case errors.Is(err, ErrConsentBypassGrantNotFound):
+	case errors.Is(err, ErrGrantNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
-	case errors.Is(err, ErrInvalidConsentBypassRequest):
+	case errors.Is(err, ErrInvalidRequest):
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}

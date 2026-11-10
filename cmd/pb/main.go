@@ -20,6 +20,7 @@ import (
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/caller"
+	"github.com/openndx/openndx-core/internal/pb/consentbypass"
 	"github.com/openndx/openndx-core/internal/pb/idp/thunderid"
 	"github.com/openndx/openndx-core/internal/pb/member"
 	"github.com/openndx/openndx-core/internal/pb/policy"
@@ -85,6 +86,9 @@ func main() {
 	applicationService := application.NewService(gormDB, pdpClient, idpProvider)
 	applicationHandler := application.NewHandler(applicationService)
 
+	consentBypassService := consentbypass.NewService(gormDB, pdpClient)
+	consentBypassHandler := consentbypass.NewHandler(consentBypassService)
+
 	// Setup authentication: accept tokens the IdP issued for this API's
 	// audience, whichever client requested them.
 	authnManager, err := authn.NewManager(cfg.IDP.Config)
@@ -136,9 +140,9 @@ func main() {
 	apiMux.Handle("PUT /api/v1/applications/{applicationId}/policy", authzr.RequireScope(caller.ScopeApplicationWrite)(http.HandlerFunc(applicationHandler.UpdateApplicationPolicy)))
 
 	// Consent bypass grant endpoints
-	apiMux.Handle("POST /api/v1/applications/{applicationId}/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(applicationHandler.GrantConsentBypass)))
-	apiMux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(applicationHandler.ListConsentBypassGrants)))
-	apiMux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(applicationHandler.RevokeConsentBypass)))
+	apiMux.Handle("POST /api/v1/applications/{applicationId}/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(consentBypassHandler.Grant)))
+	apiMux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(consentBypassHandler.List)))
+	apiMux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(consentBypassHandler.Revoke)))
 
 	// Application submission endpoints
 	apiMux.Handle("GET /api/v1/application-submissions", authzr.RequireScope(caller.ScopeApplicationSubmissionRead)(http.HandlerFunc(applicationHandler.GetAllApplicationSubmissions)))

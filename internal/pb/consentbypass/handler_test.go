@@ -1,4 +1,4 @@
-package application
+package consentbypass
 
 import (
 	"encoding/json"
@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	"github.com/OpenNSW/core/authz"
+	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/caller"
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
-	"github.com/openndx/openndx-core/internal/pb/idp/idptest"
+	"github.com/openndx/openndx-core/internal/pb/database/dbtest"
+	"github.com/openndx/openndx-core/internal/pb/member"
 	"github.com/openndx/openndx-core/internal/pb/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,23 +114,32 @@ type bypassTestEnv struct {
 // cmd/pb/main.go gives them, over a fake PDP and one application whose IdP
 // client is "police-client".
 func newBypassTestEnv(t *testing.T) *bypassTestEnv {
-	db := setupSQLiteTestDB(t)
-	memberID := createTestMember(t, db, "bypass@example.com")
-	applicationID := createTestApplicationWithClientID(t, db, memberID, "police-client")
+	db := dbtest.SetupSQLiteDB(t, &member.Member{}, &application.Application{})
+	require.NoError(t, db.Create(&member.Member{
+		MemberID: "mem-bypass", Name: "Test Member", Email: "bypass@example.com",
+		PhoneNumber: "1234567890", OuID: "ou-bypass",
+	}).Error)
+	clientID := "police-client"
+	app := application.Application{
+		ApplicationID: "app-bypass", ApplicationName: "Test Application", MemberID: "mem-bypass",
+		SelectedFields: application.SelectedFieldRecords{{SchemaID: "drp", FieldName: "person.nic"}},
+		Version:        "1.0.0", IdpClientID: &clientID,
+	}
+	require.NoError(t, db.Create(&app).Error)
 
 	pdp := &bypassPDP{}
 	server := httptest.NewServer(pdp)
 	t.Cleanup(server.Close)
-	handler := NewHandler(NewService(db, policy.NewClient(server.URL), &idptest.Mock{}))
+	handler := NewHandler(NewService(db, policy.NewClient(server.URL)))
 
 	authzr, err := authz.New(caller.PrincipalFromContext)
 	require.NoError(t, err)
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/applications/{applicationId}/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(handler.GrantConsentBypass)))
-	mux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(handler.ListConsentBypassGrants)))
-	mux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(handler.RevokeConsentBypass)))
+	mux.Handle("POST /api/v1/applications/{applicationId}/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(handler.Grant)))
+	mux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(handler.List)))
+	mux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(handler.Revoke)))
 
-	return &bypassTestEnv{pdp: pdp, mux: mux, applicationID: applicationID}
+	return &bypassTestEnv{pdp: pdp, mux: mux, applicationID: app.ApplicationID}
 }
 
 func (e *bypassTestEnv) serve(method, path, body string, user callertest.TestUser) *httptest.ResponseRecorder {
@@ -148,8 +159,8 @@ func TestConsentBypassEndpoints_GrantListRevoke(t *testing.T) {
 	w := env.grant(callertest.AdminUser)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var created struct {
-		Items []ConsentBypassGrantResponse `json:"items"`
-		Count int                          `json:"count"`
+		Items []Grant `json:"items"`
+		Count int     `json:"count"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
 	require.Equal(t, 1, created.Count)
@@ -170,7 +181,7 @@ func TestConsentBypassEndpoints_GrantListRevoke(t *testing.T) {
 
 	w = env.serve(http.MethodPost, "/api/v1/consent-bypass-grants/"+grant.ID+"/revoke", "", callertest.AdminUser)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	var revoked ConsentBypassGrantResponse
+	var revoked Grant
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &revoked))
 	assert.Equal(t, policy.GrantStatusRevoked, revoked.Status)
 	assert.Equal(t, env.applicationID, revoked.ApplicationID)
@@ -255,7 +266,7 @@ func TestConsentBypassEndpoints_ListByApplication(t *testing.T) {
 	w := env.serve(http.MethodGet, "/api/v1/consent-bypass-grants?applicationId="+env.applicationID, "", callertest.AdminUser)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	var listed struct {
-		Items []ConsentBypassGrantResponse `json:"items"`
+		Items []Grant `json:"items"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &listed))
 	require.Len(t, listed.Items, 1, "plain grants are not listed")
