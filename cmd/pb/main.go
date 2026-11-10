@@ -86,7 +86,7 @@ func main() {
 	applicationService := application.NewService(gormDB, pdpClient, idpProvider)
 	applicationHandler := application.NewHandler(applicationService)
 
-	consentBypassService := consentbypass.NewService(gormDB, pdpClient)
+	consentBypassService := consentbypass.NewService(applicationService, pdpClient)
 	consentBypassHandler := consentbypass.NewHandler(consentBypassService)
 
 	// Setup authentication: accept tokens the IdP issued for this API's

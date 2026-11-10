@@ -306,6 +306,46 @@ func (s *Service) GetApplication(ctx context.Context, applicationID string) (*Ap
 	return response, nil
 }
 
+// ApplicationIDByClientID returns the ID of the application whose IdP client
+// is clientID, or "" when no application has that client.
+func (s *Service) ApplicationIDByClientID(ctx context.Context, clientID string) (string, error) {
+	var applications []Application
+	if err := s.db.WithContext(ctx).
+		Select("application_id").
+		Where("idp_client_id = ?", clientID).
+		Limit(1).
+		Find(&applications).Error; err != nil {
+		return "", fmt.Errorf("failed to look up application by client ID: %w", err)
+	}
+	if len(applications) == 0 {
+		return "", nil
+	}
+	return applications[0].ApplicationID, nil
+}
+
+// ApplicationIDsByClientIDs maps IdP client IDs to application IDs. A client
+// ID no application has is left out of the map.
+func (s *Service) ApplicationIDsByClientIDs(ctx context.Context, clientIDs []string) (map[string]string, error) {
+	byClientID := make(map[string]string, len(clientIDs))
+	if len(clientIDs) == 0 {
+		return byClientID, nil
+	}
+
+	var applications []Application
+	if err := s.db.WithContext(ctx).
+		Select("application_id", "idp_client_id").
+		Where("idp_client_id IN ?", clientIDs).
+		Find(&applications).Error; err != nil {
+		return nil, fmt.Errorf("failed to look up applications by client ID: %w", err)
+	}
+	for _, application := range applications {
+		if application.IdpClientID != nil {
+			byClientID[*application.IdpClientID] = application.ApplicationID
+		}
+	}
+	return byClientID, nil
+}
+
 // GetApplications retrieves all applications and filters by member ID if provided
 func (s *Service) GetApplications(ctx context.Context, MemberID *string) ([]ApplicationResponse, error) {
 	var applications []Application

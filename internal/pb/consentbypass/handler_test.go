@@ -1,7 +1,9 @@
 package consentbypass
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,12 +15,47 @@ import (
 	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/caller"
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
-	"github.com/openndx/openndx-core/internal/pb/database/dbtest"
-	"github.com/openndx/openndx-core/internal/pb/member"
 	"github.com/openndx/openndx-core/internal/pb/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
+
+// fakeApplications is the application context, holding applications by ID
+// with their IdP client IDs.
+type fakeApplications struct {
+	clientIDs map[string]string
+	// lookupErr, when set, fails every lookup by client ID
+	lookupErr error
+}
+
+func (f *fakeApplications) GetApplication(_ context.Context, applicationID string) (*application.ApplicationResponse, error) {
+	clientID, ok := f.clientIDs[applicationID]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &application.ApplicationResponse{ApplicationID: applicationID, IdpClientID: &clientID}, nil
+}
+
+func (f *fakeApplications) ApplicationIDByClientID(ctx context.Context, clientID string) (string, error) {
+	ids, err := f.ApplicationIDsByClientIDs(ctx, []string{clientID})
+	return ids[clientID], err
+}
+
+func (f *fakeApplications) ApplicationIDsByClientIDs(_ context.Context, clientIDs []string) (map[string]string, error) {
+	if f.lookupErr != nil {
+		return nil, f.lookupErr
+	}
+	byClientID := map[string]string{}
+	for applicationID, clientID := range f.clientIDs {
+		for _, wanted := range clientIDs {
+			if clientID == wanted {
+				byClientID[clientID] = applicationID
+			}
+		}
+	}
+	return byClientID, nil
+}
 
 // bypassPDP is an in-process PDP serving access grants from memory.
 type bypassPDP struct {
@@ -106,6 +143,7 @@ func (f *bypassPDP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type bypassTestEnv struct {
 	pdp           *bypassPDP
+	applications  *fakeApplications
 	mux           *http.ServeMux
 	applicationID string
 }
@@ -114,23 +152,12 @@ type bypassTestEnv struct {
 // cmd/pb/main.go gives them, over a fake PDP and one application whose IdP
 // client is "police-client".
 func newBypassTestEnv(t *testing.T) *bypassTestEnv {
-	db := dbtest.SetupSQLiteDB(t, &member.Member{}, &application.Application{})
-	require.NoError(t, db.Create(&member.Member{
-		MemberID: "mem-bypass", Name: "Test Member", Email: "bypass@example.com",
-		PhoneNumber: "1234567890", OuID: "ou-bypass",
-	}).Error)
-	clientID := "police-client"
-	app := application.Application{
-		ApplicationID: "app-bypass", ApplicationName: "Test Application", MemberID: "mem-bypass",
-		SelectedFields: application.SelectedFieldRecords{{SchemaID: "drp", FieldName: "person.nic"}},
-		Version:        "1.0.0", IdpClientID: &clientID,
-	}
-	require.NoError(t, db.Create(&app).Error)
+	applications := &fakeApplications{clientIDs: map[string]string{"app-bypass": "police-client"}}
 
 	pdp := &bypassPDP{}
 	server := httptest.NewServer(pdp)
 	t.Cleanup(server.Close)
-	handler := NewHandler(NewService(db, policy.NewClient(server.URL)))
+	handler := NewHandler(NewService(applications, policy.NewClient(server.URL)))
 
 	authzr, err := authz.New(caller.PrincipalFromContext)
 	require.NoError(t, err)
@@ -139,7 +166,7 @@ func newBypassTestEnv(t *testing.T) *bypassTestEnv {
 	mux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(handler.List)))
 	mux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(handler.Revoke)))
 
-	return &bypassTestEnv{pdp: pdp, mux: mux, applicationID: app.ApplicationID}
+	return &bypassTestEnv{pdp: pdp, applications: applications, mux: mux, applicationID: "app-bypass"}
 }
 
 func (e *bypassTestEnv) serve(method, path, body string, user callertest.TestUser) *httptest.ResponseRecorder {
@@ -185,6 +212,23 @@ func TestConsentBypassEndpoints_GrantListRevoke(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &revoked))
 	assert.Equal(t, policy.GrantStatusRevoked, revoked.Status)
 	assert.Equal(t, env.applicationID, revoked.ApplicationID)
+}
+
+func TestConsentBypassEndpoints_RevokeSurvivesApplicationLookupFailure(t *testing.T) {
+	env := newBypassTestEnv(t)
+	require.Equal(t, http.StatusOK, env.grant(callertest.AdminUser).Code)
+	grantID := env.pdp.grants[0].ID
+
+	// The PDP revokes the grant before PB looks up the application, so a
+	// failed lookup still reports the revoke, without an applicationId.
+	env.applications.lookupErr = errors.New("database unavailable")
+	w := env.serve(http.MethodPost, "/api/v1/consent-bypass-grants/"+grantID+"/revoke", "", callertest.AdminUser)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var revoked Grant
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &revoked))
+	assert.Equal(t, policy.GrantStatusRevoked, revoked.Status)
+	assert.Equal(t, "", revoked.ApplicationID)
+	assert.Equal(t, "police-client", revoked.IdpClientID)
 }
 
 func TestConsentBypassEndpoints_Scopes(t *testing.T) {

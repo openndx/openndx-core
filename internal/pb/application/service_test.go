@@ -1237,3 +1237,36 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestApplicationService_ApplicationIDsByClientID(t *testing.T) {
+	db := setupSQLiteTestDB(t)
+	memberID := createTestMember(t, db, "client-lookup@example.com")
+	policeApp := createTestApplicationWithClientID(t, db, memberID, "police-client")
+	taxApp := createTestApplicationWithClientID(t, db, memberID, "tax-client")
+	service := NewService(db, policy.NewClient("http://mock-pdp"), &idptest.Mock{})
+	ctx := context.Background()
+
+	t.Run("one client", func(t *testing.T) {
+		applicationID, err := service.ApplicationIDByClientID(ctx, "police-client")
+		assert.NoError(t, err)
+		assert.Equal(t, policeApp, applicationID)
+	})
+
+	t.Run("unknown client is empty, not an error", func(t *testing.T) {
+		applicationID, err := service.ApplicationIDByClientID(ctx, "unknown-client")
+		assert.NoError(t, err)
+		assert.Equal(t, "", applicationID)
+	})
+
+	t.Run("many clients leave out unknown ones", func(t *testing.T) {
+		byClientID, err := service.ApplicationIDsByClientIDs(ctx, []string{"police-client", "tax-client", "unknown-client"})
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]string{"police-client": policeApp, "tax-client": taxApp}, byClientID)
+	})
+
+	t.Run("no clients", func(t *testing.T) {
+		byClientID, err := service.ApplicationIDsByClientIDs(ctx, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, byClientID)
+	})
+}

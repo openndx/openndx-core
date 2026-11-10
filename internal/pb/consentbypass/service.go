@@ -2,8 +2,8 @@
 // context: granting an application access to fields without the owner's
 // consent, for a duration and with a legal basis, listing those grants and
 // revoking them. The grants live in the PDP, keyed by the application's IdP
-// client_id; PB stores nothing of its own and reads applications only to map
-// between the PB application ID and the IdP client_id.
+// client_id. PB stores nothing of its own for them; the application context
+// maps between the PB application ID and the IdP client_id.
 package consentbypass
 
 import (
@@ -16,7 +16,6 @@ import (
 
 	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/policy"
-	"gorm.io/gorm"
 )
 
 // ErrGrantNotFound is returned when a grant does not exist in the PDP or is
@@ -27,15 +26,26 @@ var ErrGrantNotFound = errors.New("consent bypass grant not found")
 // before asking the PDP.
 var ErrInvalidRequest = errors.New("invalid consent bypass request")
 
+// Applications is what consent bypass needs from the application context.
+// *application.Service implements it.
+type Applications interface {
+	// GetApplication returns gorm.ErrRecordNotFound for an unknown application.
+	GetApplication(ctx context.Context, applicationID string) (*application.ApplicationResponse, error)
+	// ApplicationIDByClientID returns "" when no application has the client.
+	ApplicationIDByClientID(ctx context.Context, clientID string) (string, error)
+	// ApplicationIDsByClientIDs leaves out clients no application has.
+	ApplicationIDsByClientIDs(ctx context.Context, clientIDs []string) (map[string]string, error)
+}
+
 // Service grants, lists and revokes consent bypass grants in the PDP.
 type Service struct {
-	db            *gorm.DB
+	applications  Applications
 	policyService *policy.Client
 }
 
 // NewService creates a consent bypass service.
-func NewService(db *gorm.DB, policyService *policy.Client) *Service {
-	return &Service{db: db, policyService: policyService}
+func NewService(applications Applications, policyService *policy.Client) *Service {
+	return &Service{applications: applications, policyService: policyService}
 }
 
 // Grant lets one application read fields without the owner's consent, for
@@ -53,8 +63,8 @@ func (s *Service) Grant(ctx context.Context, applicationID string, req *GrantReq
 		return nil, fmt.Errorf("%w: grantDuration is required", ErrInvalidRequest)
 	}
 
-	var app application.Application
-	if err := s.db.WithContext(ctx).First(&app, "application_id = ?", applicationID).Error; err != nil {
+	app, err := s.applications.GetApplication(ctx, applicationID)
+	if err != nil {
 		return nil, err
 	}
 	if app.IdpClientID == nil {
@@ -84,8 +94,8 @@ func (s *Service) List(ctx context.Context, applicationID, status string) ([]Gra
 	filter := policy.AccessGrantFilter{Status: status, ConsentBypass: &bypass}
 
 	if applicationID != "" {
-		var app application.Application
-		if err := s.db.WithContext(ctx).First(&app, "application_id = ?", applicationID).Error; err != nil {
+		app, err := s.applications.GetApplication(ctx, applicationID)
+		if err != nil {
 			return nil, err
 		}
 		if app.IdpClientID == nil {
@@ -99,7 +109,11 @@ func (s *Service) List(ctx context.Context, applicationID, status string) ([]Gra
 		return nil, err
 	}
 
-	applicationIDs, err := s.applicationIDsByClientID(ctx, resp.Records)
+	clientIDs := make([]string, 0, len(resp.Records))
+	for _, grant := range resp.Records {
+		clientIDs = append(clientIDs, grant.ApplicationID)
+	}
+	applicationIDs, err := s.applications.ApplicationIDsByClientIDs(ctx, clientIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -128,56 +142,35 @@ func (s *Service) Revoke(ctx context.Context, grantID string) (*Grant, error) {
 
 	// The PDP has revoked the grant. The lookup only fills the display-only
 	// applicationId, so its failure must not report the revoke as failed.
-	applicationIDs, err := s.applicationIDsByClientID(ctx, []policy.AccessGrant{*grant})
+	applicationID, err := s.applications.ApplicationIDByClientID(ctx, grant.ApplicationID)
 	if err != nil {
 		slog.Warn("Consent bypass revoked, but application lookup failed", "grantId", grantID, "error", err)
-		applicationIDs = map[string]string{}
 	}
-	response := toGrants([]policy.AccessGrant{*grant}, applicationIDs)[0]
+	response := toGrant(*grant, applicationID)
 	return &response, nil
-}
-
-// applicationIDsByClientID maps the grants' IdP client IDs to PB application IDs.
-func (s *Service) applicationIDsByClientID(ctx context.Context, grants []policy.AccessGrant) (map[string]string, error) {
-	clientIDs := make([]string, 0, len(grants))
-	for _, grant := range grants {
-		clientIDs = append(clientIDs, grant.ApplicationID)
-	}
-	byClientID := make(map[string]string, len(clientIDs))
-	if len(clientIDs) == 0 {
-		return byClientID, nil
-	}
-
-	var applications []application.Application
-	if err := s.db.WithContext(ctx).
-		Select("application_id", "idp_client_id").
-		Where("idp_client_id IN ?", clientIDs).
-		Find(&applications).Error; err != nil {
-		return nil, fmt.Errorf("failed to look up applications: %w", err)
-	}
-	for _, app := range applications {
-		if app.IdpClientID != nil {
-			byClientID[*app.IdpClientID] = app.ApplicationID
-		}
-	}
-	return byClientID, nil
 }
 
 func toGrants(grants []policy.AccessGrant, applicationIDs map[string]string) []Grant {
 	responses := make([]Grant, 0, len(grants))
 	for _, grant := range grants {
-		responses = append(responses, Grant{
-			ID:            grant.ID,
-			ApplicationID: applicationIDs[grant.ApplicationID],
-			IdpClientID:   grant.ApplicationID,
-			SchemaID:      grant.SchemaID,
-			FieldName:     grant.FieldName,
-			Status:        grant.Status,
-			LegalBasis:    grant.LegalBasis,
-			ExpiresAt:     grant.ExpiresAt,
-			CreatedAt:     grant.CreatedAt,
-			UpdatedAt:     grant.UpdatedAt,
-		})
+		responses = append(responses, toGrant(grant, applicationIDs[grant.ApplicationID]))
 	}
 	return responses
+}
+
+// toGrant converts a PDP grant, whose ApplicationID is the IdP client_id, into
+// a Grant for the PB application applicationID.
+func toGrant(grant policy.AccessGrant, applicationID string) Grant {
+	return Grant{
+		ID:            grant.ID,
+		ApplicationID: applicationID,
+		IdpClientID:   grant.ApplicationID,
+		SchemaID:      grant.SchemaID,
+		FieldName:     grant.FieldName,
+		Status:        grant.Status,
+		LegalBasis:    grant.LegalBasis,
+		ExpiresAt:     grant.ExpiresAt,
+		CreatedAt:     grant.CreatedAt,
+		UpdatedAt:     grant.UpdatedAt,
+	}
 }
