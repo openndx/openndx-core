@@ -167,6 +167,16 @@ func TestNew_RejectsCustomModules(t *testing.T) {
 			map[string]string{"window.rego": "package openndx.classes.window\n\ndecision := no_such_helper(input)\n"},
 			"compile policies",
 		},
+		{
+			"calls another service",
+			map[string]string{"window.rego": "package openndx.classes.window\n\ndecision := {\"outcome\": \"allow\"} if http.send({\"method\": \"GET\", \"url\": \"http://localhost\"}).status_code == 200\n"},
+			"undefined function http.send",
+		},
+		{
+			"looks up a host",
+			map[string]string{"window.rego": "package openndx.classes.window\n\ndecision := {\"outcome\": \"allow\"} if count(net.lookup_ip_addr(\"example.org\")) > 0\n"},
+			"undefined function net.lookup_ip_addr",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

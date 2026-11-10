@@ -53,7 +53,7 @@ The PDP evaluates the class once for each requested field.
 | `grant.consentBypass` | `true` for a [consent bypass grant](POLICY_MODEL.md#consent-bypass).                                 |
 | `now`                 | RFC 3339 evaluation time.                                                                            |
 
-The PDP passes these facts in and loads nothing else: a class can't query the database or call another service.
+The PDP passes these facts in and loads nothing else: a class can't query the database or call another service. The network built-ins `http.send` and `net.lookup_ip_addr` are not available, and a module that uses one does not compile.
 
 ### Decision
 
@@ -161,7 +161,7 @@ On Kubernetes, mount a ConfigMap of the `.rego` files at that path.
 **The PDP refuses to start** when:
 
 - the directory does not exist or is not a directory;
-- a module has a syntax error or does not compile;
+- a module has a syntax error or does not compile, which includes calling `http.send` or `net.lookup_ip_addr`;
 - a module redefines a built-in class;
 - a module is in another package under `openndx`, such as the router `openndx.pdp` or the helpers `openndx.lib`. Only `openndx.classes.<name>` is open to custom modules;
 - a class has no `decision` rule.

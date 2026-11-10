@@ -164,7 +164,11 @@ func New(ctx context.Context, opts ...Option) (*Engine, error) {
 		classes[class] = struct{}{}
 	}
 
-	regoOpts := []func(*rego.Rego){rego.Query(decisionQuery), rego.StrictBuiltinErrors(true)}
+	regoOpts := []func(*rego.Rego){
+		rego.Query(decisionQuery),
+		rego.StrictBuiltinErrors(true),
+		rego.Capabilities(capabilities()),
+	}
 	for _, module := range modules {
 		regoOpts = append(regoOpts, rego.ParsedModule(module))
 	}
@@ -173,6 +177,20 @@ func New(ctx context.Context, opts ...Option) (*Engine, error) {
 		return nil, fmt.Errorf("compile policies: %w", err)
 	}
 	return &Engine{query: query, classes: classes}, nil
+}
+
+// networkBuiltins are the OPA built-ins that reach the network. A decision is
+// made from its input alone, so a module that calls one does not compile.
+var networkBuiltins = []string{ast.HTTPSend.Name, ast.NetLookupIPAddr.Name}
+
+// capabilities returns this OPA version's capabilities without the network
+// built-ins.
+func capabilities() *ast.Capabilities {
+	caps := ast.CapabilitiesForThisVersion()
+	caps.Builtins = slices.DeleteFunc(caps.Builtins, func(b *ast.Builtin) bool {
+		return slices.Contains(networkBuiltins, b.Name)
+	})
+	return caps
 }
 
 // parseModules parses Rego sources, keyed by path.
