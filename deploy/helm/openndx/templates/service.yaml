@@ -1,0 +1,24 @@
+{{- $fullname := include "openndx.fullname" . }}
+{{- range $name, $c := include "openndx.components" . | fromYaml }}
+{{- if $c.enabled }}
+{{- $v := index $.Values $c.values }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-{{ $name }}
+  labels:
+    {{- include "openndx.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $c.component }}
+spec:
+  type: {{ $v.service.type }}
+  ports:
+    - port: {{ $v.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openndx.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $c.component }}
+{{- end }}
+{{- end }}
