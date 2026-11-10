@@ -531,9 +531,9 @@ components:
       description: >
         Policy class that decides access to the field. The built-in classes are
         allowlist (allow-listed applications, no consent), allowlist_consent
-        (allow-listed applications with owner consent) and consent (any
-        application, with owner consent). A class the PDP has not loaded is
-        rejected with 400.
+        (allow-listed applications with owner consent), consent (any
+        application, with owner consent) and open (any application, no
+        consent). A class the PDP has not loaded is rejected with 400.
       example: "allowlist_consent"
 
     PolicyParams:

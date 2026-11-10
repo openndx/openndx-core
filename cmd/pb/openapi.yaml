@@ -1194,8 +1194,9 @@ components:
       description: |
         PDP policy class that decides access to the field. The built-in
         classes are allowlist (allow-listed applications, no consent),
-        allowlist_consent (allow-listed applications with owner consent) and
-        consent (any application, with owner consent).
+        allowlist_consent (allow-listed applications with owner consent),
+        consent (any application, with owner consent) and open (any
+        application, no consent).
         The PDP rejects a class it has not loaded.
       example: allowlist_consent
 

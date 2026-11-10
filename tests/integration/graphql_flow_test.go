@@ -847,6 +847,47 @@ func TestGraphQLFlow_ConsentClassWithoutAllowList(t *testing.T) {
 	})
 }
 
+// TestGraphQLFlow_OpenClassWithoutAllowList covers a field with the open policy class
+// queried by an application that is not on the field's allow-list and has no consent:
+// the data is returned straight away.
+func TestGraphQLFlow_OpenClassWithoutAllowList(t *testing.T) {
+	schemaID := "test-schema-123"
+	fieldName := "person.fullName"
+	appID := fmt.Sprintf("test-open-class-app-%d", time.Now().UnixNano())
+
+	cleanup := &testCleanupRegistry{
+		schemaIDs: []string{schemaID},
+		appIDs:    []string{appID},
+	}
+	defer cleanup.cleanup(t)
+
+	// The app is deliberately never added to the allow-list, and no consent is created.
+	createPolicyMetadataWithClass(t, schemaID, fieldName, "open")
+
+	token, err := createTestJWT(appID)
+	require.NoError(t, err)
+
+	resp, err := makeGraphQLRequest(t, `
+		query TestQuery($nic: String!) {
+			personInfo(nic: $nic) {
+				fullName
+			}
+		}
+	`, map[string]interface{}{"nic": testNIC}, token)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	result := parseGraphQLResponse(t, resp)
+	t.Logf("Response: %+v", result)
+	require.Empty(t, result["errors"], "An open field should need neither an allow-list entry nor consent")
+	data, ok := result["data"].(map[string]interface{})
+	require.True(t, ok, "Response should contain data")
+	personInfo, ok := data["personInfo"].(map[string]interface{})
+	require.True(t, ok, "Data should contain personInfo")
+	assert.NotEmpty(t, personInfo["fullName"])
+}
+
 // TestGraphQLFlow_ServiceTimeout tests resilience/failure when a dependency (PDP) is down or times out.
 func TestGraphQLFlow_ServiceTimeout(t *testing.T) {
 	testID := fmt.Sprintf("%d", time.Now().UnixNano())

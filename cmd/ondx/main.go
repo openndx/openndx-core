@@ -895,7 +895,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
 	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
 	var fields stringSlice
-	fs.Var(&fields, "field", "Grantable field, as fieldName:policyClass:source (repeatable, required). policyClass is a PDP policy class: 'allowlist', 'allowlist_consent' or 'consent'; source is 'primary' or 'fallback'.")
+	fs.Var(&fields, "field", "Grantable field, as fieldName:policyClass:source (repeatable, required). policyClass is a PDP policy class: 'allowlist', 'allowlist_consent', 'consent' or 'open'; source is 'primary' or 'fallback'.")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage of schemas create:")
 		fs.PrintDefaults()

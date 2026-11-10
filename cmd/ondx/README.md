@@ -80,7 +80,7 @@ Every command that logs in or calls the Portal Backend also accepts `--profile`,
 
 ### `ondx schemas`
 
-- `create`: requires `--name`, `--endpoint` (the provider's GraphQL URL), `--member-id` and at least one `--field fieldName:policyClass:source`. `policyClass` is a PDP policy class: `allowlist`, `allowlist_consent` or `consent` (see [POLICY_MODEL.md](../pdp/POLICY_MODEL.md)); `source` is `primary` or `fallback`. Optional `--schema-id` (3 to 64 lowercase letters, digits, `.`, `_` or `-`; defaults to a generated UUID; cannot change later; a taken ID fails with `409`) and `--description`. Use the ID that the Orchestration Engine's `@sourceInfo(schemaId: ...)` names. Prints each field as `schemaId:fieldName`, the form `applications create` expects.
+- `create`: requires `--name`, `--endpoint` (the provider's GraphQL URL), `--member-id` and at least one `--field fieldName:policyClass:source`. `policyClass` is a PDP policy class: `allowlist`, `allowlist_consent`, `consent` or `open` (see [POLICY_MODEL.md](../pdp/POLICY_MODEL.md)); `source` is `primary` or `fallback`. Optional `--schema-id` (3 to 64 lowercase letters, digits, `.`, `_` or `-`; defaults to a generated UUID; cannot change later; a taken ID fails with `409`) and `--description`. Use the ID that the Orchestration Engine's `@sourceInfo(schemaId: ...)` names. Prints each field as `schemaId:fieldName`, the form `applications create` expects.
 - `list` **†**: `--member-id` filters to one member.
 - `get` **†**: `--schema-id` (required). Prints the fields as `schemaId:fieldName`.
 
