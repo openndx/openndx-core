@@ -16,6 +16,7 @@ import (
 
 	"github.com/openndx/openndx-core/internal/pb/application"
 	"github.com/openndx/openndx-core/internal/pb/policy"
+	"gorm.io/gorm"
 )
 
 // ErrGrantNotFound is returned when a grant does not exist in the PDP or is
@@ -31,10 +32,11 @@ var ErrInvalidRequest = errors.New("invalid consent bypass request")
 type Applications interface {
 	// GetApplication returns gorm.ErrRecordNotFound for an unknown application.
 	GetApplication(ctx context.Context, applicationID string) (*application.ApplicationResponse, error)
-	// ApplicationIDByClientID returns "" when no application has the client.
-	ApplicationIDByClientID(ctx context.Context, clientID string) (string, error)
-	// ApplicationIDsByClientIDs leaves out clients no application has.
-	ApplicationIDsByClientIDs(ctx context.Context, clientIDs []string) (map[string]string, error)
+	// GetApplicationByClientID returns gorm.ErrRecordNotFound when no
+	// application has the client.
+	GetApplicationByClientID(ctx context.Context, clientID string) (*application.ApplicationResponse, error)
+	// GetApplicationsByClientIDs skips clients no application has.
+	GetApplicationsByClientIDs(ctx context.Context, clientIDs []string) ([]application.ApplicationResponse, error)
 }
 
 // Service grants, lists and revokes consent bypass grants in the PDP.
@@ -113,9 +115,15 @@ func (s *Service) List(ctx context.Context, applicationID, status string) ([]Gra
 	for _, grant := range resp.Records {
 		clientIDs = append(clientIDs, grant.ApplicationID)
 	}
-	applicationIDs, err := s.applications.ApplicationIDsByClientIDs(ctx, clientIDs)
+	applications, err := s.applications.GetApplicationsByClientIDs(ctx, clientIDs)
 	if err != nil {
 		return nil, err
+	}
+	applicationIDs := make(map[string]string, len(applications))
+	for _, app := range applications {
+		if app.IdpClientID != nil {
+			applicationIDs[*app.IdpClientID] = app.ApplicationID
+		}
 	}
 	return toGrants(resp.Records, applicationIDs), nil
 }
@@ -142,8 +150,13 @@ func (s *Service) Revoke(ctx context.Context, grantID string) (*Grant, error) {
 
 	// The PDP has revoked the grant. The lookup only fills the display-only
 	// applicationId, so its failure must not report the revoke as failed.
-	applicationID, err := s.applications.ApplicationIDByClientID(ctx, grant.ApplicationID)
-	if err != nil {
+	// A client no application has leaves it empty.
+	var applicationID string
+	app, err := s.applications.GetApplicationByClientID(ctx, grant.ApplicationID)
+	switch {
+	case err == nil:
+		applicationID = app.ApplicationID
+	case !errors.Is(err, gorm.ErrRecordNotFound):
 		slog.Warn("Consent bypass revoked, but application lookup failed", "grantId", grantID, "error", err)
 	}
 	response := toGrant(*grant, applicationID)

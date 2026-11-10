@@ -306,44 +306,36 @@ func (s *Service) GetApplication(ctx context.Context, applicationID string) (*Ap
 	return response, nil
 }
 
-// ApplicationIDByClientID returns the ID of the application whose IdP client
-// is clientID, or "" when no application has that client.
-func (s *Service) ApplicationIDByClientID(ctx context.Context, clientID string) (string, error) {
-	var applications []Application
-	if err := s.db.WithContext(ctx).
-		Select("application_id").
-		Where("idp_client_id = ?", clientID).
-		Limit(1).
-		Find(&applications).Error; err != nil {
-		return "", fmt.Errorf("failed to look up application by client ID: %w", err)
+// GetApplicationByClientID retrieves the application whose IdP client is
+// clientID. It returns gorm.ErrRecordNotFound when no application has that
+// client.
+func (s *Service) GetApplicationByClientID(ctx context.Context, clientID string) (*ApplicationResponse, error) {
+	var application Application
+	if err := s.db.WithContext(ctx).First(&application, "idp_client_id = ?", clientID).Error; err != nil {
+		return nil, err
 	}
-	if len(applications) == 0 {
-		return "", nil
-	}
-	return applications[0].ApplicationID, nil
+
+	response := toApplicationResponse(application)
+	return &response, nil
 }
 
-// ApplicationIDsByClientIDs maps IdP client IDs to application IDs. A client
-// ID no application has is left out of the map.
-func (s *Service) ApplicationIDsByClientIDs(ctx context.Context, clientIDs []string) (map[string]string, error) {
-	byClientID := make(map[string]string, len(clientIDs))
+// GetApplicationsByClientIDs retrieves the applications whose IdP clients are
+// among clientIDs. A client ID no application has is skipped.
+func (s *Service) GetApplicationsByClientIDs(ctx context.Context, clientIDs []string) ([]ApplicationResponse, error) {
 	if len(clientIDs) == 0 {
-		return byClientID, nil
+		return []ApplicationResponse{}, nil
 	}
 
 	var applications []Application
-	if err := s.db.WithContext(ctx).
-		Select("application_id", "idp_client_id").
-		Where("idp_client_id IN ?", clientIDs).
-		Find(&applications).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("idp_client_id IN ?", clientIDs).Find(&applications).Error; err != nil {
 		return nil, fmt.Errorf("failed to look up applications by client ID: %w", err)
 	}
+
+	responses := make([]ApplicationResponse, 0, len(applications))
 	for _, application := range applications {
-		if application.IdpClientID != nil {
-			byClientID[*application.IdpClientID] = application.ApplicationID
-		}
+		responses = append(responses, toApplicationResponse(application))
 	}
-	return byClientID, nil
+	return responses, nil
 }
 
 // GetApplications retrieves all applications and filters by member ID if provided
@@ -365,24 +357,30 @@ func (s *Service) GetApplications(ctx context.Context, MemberID *string) ([]Appl
 	// Pre-allocate slice with known capacity for better performance
 	responses := make([]ApplicationResponse, 0, len(applications))
 	for _, application := range applications {
-		resp := ApplicationResponse{
-			ApplicationID:    application.ApplicationID,
-			ApplicationName:  application.ApplicationName,
-			SelectedFields:   application.SelectedFields,
-			MemberID:         application.MemberID,
-			IdpApplicationID: application.IdpApplicationID,
-			IdpClientID:      application.IdpClientID,
-			Version:          application.Version,
-			CreatedAt:        application.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:        application.UpdatedAt.Format(time.RFC3339),
-		}
-		if application.ApplicationDescription != nil && *application.ApplicationDescription != "" {
-			resp.ApplicationDescription = application.ApplicationDescription
-		}
-		responses = append(responses, resp)
+		responses = append(responses, toApplicationResponse(application))
 	}
 
 	return responses, nil
+}
+
+// toApplicationResponse converts an application into its response. An empty
+// description is left out.
+func toApplicationResponse(application Application) ApplicationResponse {
+	response := ApplicationResponse{
+		ApplicationID:    application.ApplicationID,
+		ApplicationName:  application.ApplicationName,
+		SelectedFields:   application.SelectedFields,
+		MemberID:         application.MemberID,
+		IdpApplicationID: application.IdpApplicationID,
+		IdpClientID:      application.IdpClientID,
+		Version:          application.Version,
+		CreatedAt:        application.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        application.UpdatedAt.Format(time.RFC3339),
+	}
+	if application.ApplicationDescription != nil && *application.ApplicationDescription != "" {
+		response.ApplicationDescription = application.ApplicationDescription
+	}
+	return response
 }
 
 // CreateApplicationSubmission creates a new application submission

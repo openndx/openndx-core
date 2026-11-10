@@ -37,24 +37,30 @@ func (f *fakeApplications) GetApplication(_ context.Context, applicationID strin
 	return &application.ApplicationResponse{ApplicationID: applicationID, IdpClientID: &clientID}, nil
 }
 
-func (f *fakeApplications) ApplicationIDByClientID(ctx context.Context, clientID string) (string, error) {
-	ids, err := f.ApplicationIDsByClientIDs(ctx, []string{clientID})
-	return ids[clientID], err
+func (f *fakeApplications) GetApplicationByClientID(ctx context.Context, clientID string) (*application.ApplicationResponse, error) {
+	applications, err := f.GetApplicationsByClientIDs(ctx, []string{clientID})
+	if err != nil {
+		return nil, err
+	}
+	if len(applications) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &applications[0], nil
 }
 
-func (f *fakeApplications) ApplicationIDsByClientIDs(_ context.Context, clientIDs []string) (map[string]string, error) {
+func (f *fakeApplications) GetApplicationsByClientIDs(_ context.Context, clientIDs []string) ([]application.ApplicationResponse, error) {
 	if f.lookupErr != nil {
 		return nil, f.lookupErr
 	}
-	byClientID := map[string]string{}
+	applications := []application.ApplicationResponse{}
 	for applicationID, clientID := range f.clientIDs {
 		for _, wanted := range clientIDs {
 			if clientID == wanted {
-				byClientID[clientID] = applicationID
+				applications = append(applications, application.ApplicationResponse{ApplicationID: applicationID, IdpClientID: &clientID})
 			}
 		}
 	}
-	return byClientID, nil
+	return applications, nil
 }
 
 // bypassPDP is an in-process PDP serving access grants from memory.

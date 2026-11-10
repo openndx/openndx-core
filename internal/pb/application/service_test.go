@@ -1238,7 +1238,7 @@ func TestApplicationService_CreateApplicationSubmission_EdgeCases(t *testing.T) 
 	})
 }
 
-func TestApplicationService_ApplicationIDsByClientID(t *testing.T) {
+func TestApplicationService_GetApplicationsByClientID(t *testing.T) {
 	db := setupSQLiteTestDB(t)
 	memberID := createTestMember(t, db, "client-lookup@example.com")
 	policeApp := createTestApplicationWithClientID(t, db, memberID, "police-client")
@@ -1247,26 +1247,33 @@ func TestApplicationService_ApplicationIDsByClientID(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("one client", func(t *testing.T) {
-		applicationID, err := service.ApplicationIDByClientID(ctx, "police-client")
+		application, err := service.GetApplicationByClientID(ctx, "police-client")
 		assert.NoError(t, err)
-		assert.Equal(t, policeApp, applicationID)
+		assert.Equal(t, policeApp, application.ApplicationID)
+		assert.Equal(t, "police-client", *application.IdpClientID)
+		assert.Equal(t, memberID, application.MemberID)
+		assert.Equal(t, "Test Application", application.ApplicationName)
 	})
 
-	t.Run("unknown client is empty, not an error", func(t *testing.T) {
-		applicationID, err := service.ApplicationIDByClientID(ctx, "unknown-client")
-		assert.NoError(t, err)
-		assert.Equal(t, "", applicationID)
+	t.Run("unknown client is not found", func(t *testing.T) {
+		application, err := service.GetApplicationByClientID(ctx, "unknown-client")
+		assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+		assert.Nil(t, application)
 	})
 
-	t.Run("many clients leave out unknown ones", func(t *testing.T) {
-		byClientID, err := service.ApplicationIDsByClientIDs(ctx, []string{"police-client", "tax-client", "unknown-client"})
+	t.Run("many clients skip unknown ones", func(t *testing.T) {
+		applications, err := service.GetApplicationsByClientIDs(ctx, []string{"police-client", "tax-client", "unknown-client"})
 		assert.NoError(t, err)
+		byClientID := map[string]string{}
+		for _, application := range applications {
+			byClientID[*application.IdpClientID] = application.ApplicationID
+		}
 		assert.Equal(t, map[string]string{"police-client": policeApp, "tax-client": taxApp}, byClientID)
 	})
 
 	t.Run("no clients", func(t *testing.T) {
-		byClientID, err := service.ApplicationIDsByClientIDs(ctx, nil)
+		applications, err := service.GetApplicationsByClientIDs(ctx, nil)
 		assert.NoError(t, err)
-		assert.Empty(t, byClientID)
+		assert.Empty(t, applications)
 	})
 }
