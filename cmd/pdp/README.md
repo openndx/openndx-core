@@ -62,6 +62,7 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `database.postgres.sslMode` | `require` | Use `disable` for a local PostgreSQL without TLS. |
 | `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool. |
 | `database.idleTimeout` | `30m` | Closes connections idle this long. |
+| `policy.modulesDir` | none | Directory of [custom policy classes](CUSTOM_POLICY_CLASSES.md), compiled with the built-in ones at startup. The PDP does not start if the directory is missing or a module in it does not load. Left out, only the built-in classes are loaded. |
 
 The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect.
 
@@ -129,5 +130,6 @@ Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configur
 ## More docs
 
 - [POLICY_MODEL.md](POLICY_MODEL.md): field semantics, decision rules, table schema
+- [CUSTOM_POLICY_CLASSES.md](CUSTOM_POLICY_CLASSES.md): writing, testing and deploying a policy class of your own
 - [openapi.yaml](openapi.yaml): API reference
 - [Orchestration Engine](../oe/README.md) and [Portal Backend](../pb/README.md): the two callers

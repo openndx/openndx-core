@@ -13,9 +13,16 @@ import (
 
 // TestRegoPolicies runs the _test.rego files next to the embedded policies.
 func TestRegoPolicies(t *testing.T) {
-	sources, err := readModules(true)
+	sources, err := readModules(policyFS, "policies", true)
 	require.NoError(t, err)
 
+	assert.Positive(t, runRegoTests(t, sources), "no Rego tests found")
+}
+
+// runRegoTests runs the Rego tests in sources, reports the failing ones and
+// returns how many tests ran.
+func runRegoTests(t *testing.T, sources map[string]string) int {
+	t.Helper()
 	modules := make(map[string]*ast.Module, len(sources))
 	for path, src := range sources {
 		module, err := ast.ParseModule(path, src)
@@ -36,7 +43,7 @@ func TestRegoPolicies(t *testing.T) {
 			}
 		}
 	}
-	assert.Positive(t, count, "no Rego tests found")
+	return count
 }
 
 func TestEngine_Decide(t *testing.T) {

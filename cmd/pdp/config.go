@@ -22,6 +22,14 @@ type Config struct {
 	Environment string         `yaml:"environment"`
 	Logging     logging.Config `yaml:"logging"`
 	Database    DatabaseConfig `yaml:"database"`
+	Policy      PolicyConfig   `yaml:"policy"`
+}
+
+// PolicyConfig holds the policy engine settings.
+type PolicyConfig struct {
+	// ModulesDir is a directory of custom policy classes, compiled with the
+	// built-in ones at startup. Empty loads the built-in classes only.
+	ModulesDir string `yaml:"modulesDir"`
 }
 
 // ServerConfig holds the HTTP server settings.

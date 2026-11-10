@@ -50,6 +50,14 @@ func run() error {
 		"build_time", BuildTime,
 		"git_commit", GitCommit)
 
+	// Compile the policies first: a custom policy class that does not load
+	// stops the PDP before it connects to anything.
+	policyEngine, err := engine.New(context.Background(), engine.WithModulesDir(cfg.Policy.ModulesDir))
+	if err != nil {
+		return fmt.Errorf("initialize policy engine: %w", err)
+	}
+	slog.Info("Policy engine ready", "classes", policyEngine.Classes(), "modules_dir", cfg.Policy.ModulesDir)
+
 	gormDB, sqlDB, err := database.OpenGORM(context.Background(), cfg.Database.Config, cfg.Database.IdleTimeout)
 	if err != nil {
 		return fmt.Errorf("initialize database: %w", err)
@@ -61,11 +69,6 @@ func run() error {
 			slog.Info("Database connection closed successfully")
 		}
 	}()
-
-	policyEngine, err := engine.New(context.Background())
-	if err != nil {
-		return fmt.Errorf("initialize policy engine: %w", err)
-	}
 
 	// Initialize V1 handlers
 	v1Handler := handler.NewHandler(gormDB, policyEngine)

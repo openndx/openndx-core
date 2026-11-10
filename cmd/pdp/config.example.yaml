@@ -31,3 +31,10 @@ database:
       maxIdleConns: 5
       maxConnLifetimeSeconds: 3600
   idleTimeout: 30m
+
+# Custom policy classes: every .rego file in this directory is compiled with
+# the built-in classes at startup. See CUSTOM_POLICY_CLASSES.md. Left out, only
+# the built-in classes are loaded. A relative path is taken from the directory
+# the PDP is started in.
+# policy:
+#   modulesDir: cmd/pdp/examples/policies

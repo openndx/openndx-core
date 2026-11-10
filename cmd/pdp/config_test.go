@@ -42,6 +42,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	assert.Empty(t, cfg.Environment)
 	assert.Equal(t, logging.Config{Level: "info", Format: "json"}, cfg.Logging)
 	assert.Equal(t, 30*time.Minute, cfg.Database.IdleTimeout)
+	assert.Empty(t, cfg.Policy.ModulesDir, "only the built-in policy classes are loaded by default")
 
 	pg := cfg.Database.Postgres
 	require.NotNil(t, pg)
@@ -79,11 +80,14 @@ database:
       maxIdleConns: 10
       maxConnLifetimeSeconds: 600
   idleTimeout: 5m
+policy:
+  modulesDir: /etc/pdp/policies
 `)
 
 	cfg, err := loadConfig([]string{"-config", path})
 	require.NoError(t, err)
 
+	assert.Equal(t, "/etc/pdp/policies", cfg.Policy.ModulesDir)
 	assert.Equal(t, ServerConfig{Port: 9090, Timeout: 3 * time.Second}, cfg.Server)
 	assert.Equal(t, "staging", cfg.Environment)
 	assert.Equal(t, logging.Config{Level: "warn", Format: "text"}, cfg.Logging)

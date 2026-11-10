@@ -31,7 +31,7 @@ One record describes one field of one schema. `(schemaId, fieldName)` is unique.
 
 `open` is for public data. Any authenticated application reads the field without an allow-list entry or owner consent. The request still needs an application ID, so every access is attributed to an application in the audit trail.
 
-Each class is a Rego package `openndx.classes.<name>` under [`internal/pdp/engine/policies/classes`](../../internal/pdp/engine/policies/classes). The PDP accepts exactly the classes it has loaded.
+Each class is a Rego package `openndx.classes.<name>`. The four above are built in, under [`internal/pdp/engine/policies/classes`](../../internal/pdp/engine/policies/classes). A deployment adds its own by pointing `policy.modulesDir` at a directory of Rego files: see [Custom policy classes](CUSTOM_POLICY_CLASSES.md). The PDP accepts exactly the classes it has loaded.
 
 ## Access grants
 
@@ -69,7 +69,7 @@ The PDP doesn't authenticate callers or decide who may grant a bypass. That is a
 
 ## Decision rules
 
-`POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), embedded in the PDP at build time, compiled at startup and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
+`POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), embedded in the PDP at build time, compiled at startup together with any [custom policy classes](CUSTOM_POLICY_CLASSES.md) and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
 
 For each field the PDP loads the application's active grant, if any, and passes it to the field's `policyClass` as `input.grant`, with its expiry and `consentBypass`. When the application holds both kinds, the bypass grant is passed while it is unexpired, otherwise the plain one. `allowlist` and `allowlist_consent` deny an application without a grant, report an expired grant, and otherwise allow the field (`allowlist`) or require owner consent (`allowlist_consent`). `consent` skips the allow-list and requires owner consent. `open` skips both and allows the field. An unknown class or a failed evaluation denies the field, which then appears in `unauthorizedFields`.
 
