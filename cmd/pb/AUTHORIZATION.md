@@ -30,9 +30,11 @@ A scope is `<resource>:<action>`:
 | Schema submissions | `schema-submission:read`, `schema-submission:write` | `schema-submission:read-all`, `schema-submission:write-all` |
 | Applications | `application:read`, `application:write` | `application:read-all`, `application:write-all` |
 | Application submissions | `application-submission:read`, `application-submission:write` | `application-submission:read-all`, `application-submission:write-all` |
+| Consent bypass grants | | `consent-bypass:read`, `consent-bypass:write` |
 
 - `GET` routes require `<resource>:read`. `POST`, `PUT`, `PATCH` and `DELETE` routes require `<resource>:write`.
 - The exception is `POST /api/v1/members`, which requires `member:write-all`.
+- Consent bypass grants always span every member, so their scopes have no own-member form; see [Consent bypass](#consent-bypass).
 - Policy-metadata routes under `/schemas/{schemaId}/` use the schema scopes, and `PUT /applications/{applicationId}/policy` uses the application scopes.
 - The `-all` scopes never open a route by themselves. Handlers check them to widen access beyond the caller's own member. A caller that works across members therefore needs both, for example `schema:read` and `schema:read-all`.
 
@@ -55,7 +57,7 @@ PB never reads role names. ThunderID grants scopes through roles on PB's resourc
 
 | Role | Scopes |
 |---|---|
-| `OpenNDX_Admin` | All twenty scopes |
+| `OpenNDX_Admin` | All twenty-two scopes, including `consent-bypass:read` and `consent-bypass:write` |
 | `OpenNDX_Member` | `read` and `write` on members, schemas, schema submissions, applications and application submissions (no `-all`) |
 
 ThunderID issues only the scopes a client requests and the user's roles allow, so clients must request the scopes they need, together with `resource=<IDP_AUDIENCE>`. The `ondx` `local` profile requests all of them; the portals take theirs from their scope setting.
@@ -67,6 +69,20 @@ A schema or application submission becomes a schema or application when its stat
 - Any caller allowed to update a submission can set its status, including to `approved`. There is no separate reviewer scope, so with the bundled roles a member can approve its own submission, and an admin holding the `-all` write scopes can approve any.
 - Each `PUT` that sets `status` to `approved` creates a new schema or application, including when the submission is already approved.
 - If the creation fails, the submission's status is set back to `pending`.
+
+## Consent bypass
+
+A consent bypass grant lets one application read fields that ask for the owner's consent without asking, for example a legally authorized police system. Granting one is a single admin action.
+
+| Route | Needs |
+|---|---|
+| `POST /api/v1/applications/{applicationId}/consent-bypass-grants` (grant) | `consent-bypass:write` |
+| `GET /api/v1/consent-bypass-grants` (list) | `consent-bypass:read` |
+| `POST /api/v1/consent-bypass-grants/{grantId}/revoke` | `consent-bypass:write` |
+
+- A grant needs a legal basis and a duration, and takes effect at once. Granting a field again renews the application's grant with the new duration and legal basis. Revoking takes effect immediately.
+- The audit event for each grant and revoke records the caller's token `sub` as actor, so the audit trail shows who granted or revoked a bypass. The PDP stores only the grant.
+- With the bundled roles only `OpenNDX_Admin` holds the consent bypass scopes.
 
 ## Audit
 

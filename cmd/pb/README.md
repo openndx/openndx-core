@@ -69,6 +69,7 @@ All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full sc
 | Schema submissions | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}` | `schema-submission:read`<br>`schema-submission:write` |
 | Applications | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write` |
 | Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
+| Consent bypass grants | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke` | `consent-bypass:read`<br>`consent-bypass:write` |
 
 Outside `/api/v1`, with no authentication: `GET /health` (`503` if the database is down), `GET /debug` and `GET /debug/db`. The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
 
