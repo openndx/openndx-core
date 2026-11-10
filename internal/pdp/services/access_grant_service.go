@@ -6,14 +6,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 // CreateAccessGrants grants an application access to fields for the requested
-// duration. A field the application already holds an active grant for has that
-// grant's expiry renewed. Every field must have policy metadata.
+// duration. A field the application already holds an active grant of the same
+// kind for has that grant's expiry renewed, so renewing plain grants never
+// touches a consent bypass grant and the other way round. Every field must
+// have policy metadata.
+//
+// With req.ConsentBypass set, the grants are consent bypass grants. They need
+// a legal basis, which a renewal replaces, and every field must ask for the
+// owner's consent: open and allowlist fields are rejected.
 func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreateRequest) (*models.AccessGrantListResponse, error) {
 	if strings.TrimSpace(req.ApplicationID) == "" {
 		return nil, fmt.Errorf("%w: applicationId is required", ErrInvalidGrantRequest)
@@ -22,6 +29,15 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 		if record.SchemaID == "" || record.FieldName == "" {
 			return nil, fmt.Errorf("%w: every record needs a schemaId and a fieldName", ErrInvalidGrantRequest)
 		}
+	}
+	var legalBasis *string
+	if basis := strings.TrimSpace(req.LegalBasis); req.ConsentBypass {
+		if basis == "" {
+			return nil, fmt.Errorf("%w: legalBasis is required for consent bypass grants", ErrInvalidGrantRequest)
+		}
+		legalBasis = &basis
+	} else if basis != "" {
+		return nil, fmt.Errorf("%w: legalBasis applies to consent bypass grants only", ErrInvalidGrantRequest)
 	}
 
 	now := time.Now().UTC()
@@ -52,19 +68,24 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 			return fmt.Errorf("failed to fetch policy metadata records: %w", err)
 		}
 
-		known := make(map[string]struct{}, len(metadata))
+		classes := make(map[string]string, len(metadata))
 		for _, pm := range metadata {
-			known[pm.SchemaID+":"+pm.FieldName] = struct{}{}
+			classes[pm.SchemaID+":"+pm.FieldName] = pm.PolicyClass
 		}
 		for _, record := range req.Records {
-			if _, ok := known[record.SchemaID+":"+record.FieldName]; !ok {
+			class, ok := classes[record.SchemaID+":"+record.FieldName]
+			if !ok {
 				return fmt.Errorf("%w for schema_id %s and field_name %s",
 					ErrPolicyMetadataNotFound, record.SchemaID, record.FieldName)
+			}
+			if req.ConsentBypass && (class == engine.ClassOpen || class == engine.ClassAllowlist) {
+				return fmt.Errorf("%w: field %s of schema %s has policy class %s, which asks for no consent to bypass",
+					ErrInvalidGrantRequest, record.FieldName, record.SchemaID, class)
 			}
 		}
 
 		for _, record := range req.Records {
-			grant, err := upsertActiveGrant(tx, req.ApplicationID, record, expiresAt, now)
+			grant, err := upsertActiveGrant(tx, req.ApplicationID, record, legalBasis, expiresAt, now)
 			if err != nil {
 				return err
 			}
@@ -80,18 +101,22 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 }
 
 // upsertActiveGrant renews the application's active grant for the field, or
-// creates one when there is none.
+// creates one when there is none. A non-nil legalBasis makes it a consent
+// bypass grant.
 func upsertActiveGrant(
 	tx *gorm.DB,
 	applicationID string,
 	record models.AccessGrantCreateRequestRecord,
+	legalBasis *string,
 	expiresAt, now time.Time,
 ) (*models.AccessGrant, error) {
+	consentBypass := legalBasis != nil
+
 	// Find rather than Take: no active grant yet is the usual case, not an error.
 	var grant models.AccessGrant
 	result := tx.
-		Where("schema_id = ? AND field_name = ? AND application_id = ? AND status = ?",
-			record.SchemaID, record.FieldName, applicationID, models.GrantStatusActive).
+		Where("schema_id = ? AND field_name = ? AND application_id = ? AND status = ? AND consent_bypass = ?",
+			record.SchemaID, record.FieldName, applicationID, models.GrantStatusActive, consentBypass).
 		Limit(1).
 		Find(&grant)
 
@@ -106,6 +131,8 @@ func upsertActiveGrant(
 			ApplicationID: applicationID,
 			ExpiresAt:     expiresAt,
 			Status:        models.GrantStatusActive,
+			ConsentBypass: consentBypass,
+			LegalBasis:    legalBasis,
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
@@ -114,9 +141,10 @@ func upsertActiveGrant(
 		}
 	default:
 		grant.ExpiresAt = expiresAt
+		grant.LegalBasis = legalBasis
 		grant.UpdatedAt = now
 		if err := tx.Model(&grant).
-			Select("expires_at", "updated_at").
+			Select("expires_at", "legal_basis", "updated_at").
 			Updates(&grant).Error; err != nil {
 			return nil, fmt.Errorf("failed to renew access grant: %w", err)
 		}
@@ -139,6 +167,9 @@ func (s *PolicyMetadataService) ListAccessGrants(filter models.AccessGrantFilter
 		}
 		query = query.Where("status = ?", filter.Status)
 	}
+	if filter.ConsentBypass != nil {
+		query = query.Where("consent_bypass = ?", *filter.ConsentBypass)
+	}
 
 	var grants []models.AccessGrant
 	if err := query.
@@ -152,6 +183,21 @@ func (s *PolicyMetadataService) ListAccessGrants(filter models.AccessGrantFilter
 		records = append(records, grants[i].ToResponse())
 	}
 	return &models.AccessGrantListResponse{Records: records}, nil
+}
+
+// GetAccessGrant returns one access grant.
+func (s *PolicyMetadataService) GetAccessGrant(id string) (*models.AccessGrantResponse, error) {
+	var grant models.AccessGrant
+	result := s.db.Where("CAST(id AS TEXT) = ?", id).Limit(1).Find(&grant)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to fetch access grant: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrAccessGrantNotFound, id)
+	}
+
+	response := grant.ToResponse()
+	return &response, nil
 }
 
 // RevokeAccessGrant revokes one active grant. The grant is kept, with status

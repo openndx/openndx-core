@@ -16,7 +16,7 @@ import (
 
 var (
 	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
-	ErrAccessGrantNotFound    = errors.New("active access grant not found")
+	ErrAccessGrantNotFound    = errors.New("access grant not found")
 	ErrInvalidGrantRequest    = errors.New("invalid access grant request")
 	ErrUnknownPolicyClass     = errors.New("unknown policy class")
 )
@@ -223,9 +223,11 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		Find(&grants).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch access grants: %w", err)
 	}
+	now := time.Now()
 	grantMap := make(map[string]*models.AccessGrant, len(grants))
 	for i := range grants {
-		grantMap[grants[i].SchemaID+":"+grants[i].FieldName] = &grants[i]
+		key := grants[i].SchemaID + ":" + grants[i].FieldName
+		grantMap[key] = preferredGrant(grantMap[key], &grants[i], now)
 	}
 
 	fields := make([]models.PolicyDecisionFieldOutcome, 0, len(req.RequiredFields))
@@ -248,10 +250,10 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 				PolicyClass: pm.PolicyClass,
 				Params:      pm.PolicyParams,
 			},
-			Now: time.Now(),
+			Now: now,
 		}
 		if grant, ok := grantMap[key]; ok {
-			input.Grant = &engine.Grant{ExpiresAt: grant.ExpiresAt}
+			input.Grant = &engine.Grant{ExpiresAt: grant.ExpiresAt, ConsentBypass: grant.ConsentBypass}
 		}
 
 		// Decide denies the field when evaluation fails, so the error is only logged.
@@ -298,6 +300,23 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 	}
 
 	return response, nil
+}
+
+// preferredGrant picks the grant to evaluate when an application holds both a
+// plain and a consent bypass grant for a field: the bypass grant while it is
+// unexpired, otherwise the plain one. current may be nil.
+func preferredGrant(current, candidate *models.AccessGrant, now time.Time) *models.AccessGrant {
+	if current == nil {
+		return candidate
+	}
+	bypass, plain := current, candidate
+	if !bypass.ConsentBypass {
+		bypass, plain = candidate, current
+	}
+	if bypass.ConsentBypass && now.Before(bypass.ExpiresAt) {
+		return bypass
+	}
+	return plain
 }
 
 // ListPolicyMetadata returns policy metadata records, optionally filtered by schema.

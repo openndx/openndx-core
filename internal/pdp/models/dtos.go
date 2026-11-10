@@ -102,12 +102,17 @@ type AccessGrantCreateRequestRecord struct {
 }
 
 // AccessGrantCreateRequest grants one application access to fields for a
-// duration. A field the application already holds an active grant for has
-// that grant renewed.
+// duration. A field the application already holds an active grant of the same
+// kind for has that grant renewed.
+//
+// With ConsentBypass set, the grants are consent bypass grants: LegalBasis is
+// required, and every field must ask for the owner's consent.
 type AccessGrantCreateRequest struct {
 	ApplicationID string                           `json:"applicationId"`
 	Records       []AccessGrantCreateRequestRecord `json:"records"`
 	GrantDuration GrantDurationType                `json:"grantDuration"`
+	ConsentBypass bool                             `json:"consentBypass,omitempty"`
+	LegalBasis    string                           `json:"legalBasis,omitempty"`
 }
 
 // AccessGrantResponse is one access grant.
@@ -118,6 +123,8 @@ type AccessGrantResponse struct {
 	ApplicationID string      `json:"applicationId"`
 	ExpiresAt     string      `json:"expiresAt"`
 	Status        GrantStatus `json:"status"`
+	ConsentBypass bool        `json:"consentBypass"`
+	LegalBasis    *string     `json:"legalBasis,omitempty"`
 	CreatedAt     string      `json:"createdAt"`
 	UpdatedAt     string      `json:"updatedAt"`
 }
@@ -132,6 +139,8 @@ type AccessGrantFilter struct {
 	ApplicationID string
 	SchemaID      string
 	Status        GrantStatus
+	// ConsentBypass, when set, matches only bypass (true) or plain (false) grants.
+	ConsentBypass *bool
 }
 
 // PolicyDecisionRequestRecord represents a policy decision request record

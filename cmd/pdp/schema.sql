@@ -59,6 +59,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_metadata_schema_field
 
 -- One application's access to one field. Revoked grants are kept as a record.
 -- Deleting a field's policy metadata deletes its grants.
+--
+-- A consent bypass grant lets the application read a field that asks for the
+-- owner's consent without asking. It records the legal basis for it.
 CREATE TABLE IF NOT EXISTS access_grants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schema_id VARCHAR(255) NOT NULL,
@@ -67,15 +70,20 @@ CREATE TABLE IF NOT EXISTS access_grants (
     expires_at TIMESTAMPTZ NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
         CONSTRAINT access_grants_status_check CHECK (status IN ('active', 'revoked')),
+    consent_bypass BOOLEAN NOT NULL DEFAULT false,
+    legal_basis TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT access_grants_field_fkey FOREIGN KEY (schema_id, field_name)
-        REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE
+        REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE,
+    -- A bypass grant always records its legal basis
+    CONSTRAINT access_grants_bypass_check CHECK (NOT consent_bypass OR legal_basis IS NOT NULL)
 );
 
--- At most one active grant per application and field
+-- At most one active plain grant and one active bypass grant per application
+-- and field
 CREATE UNIQUE INDEX IF NOT EXISTS idx_access_grants_active
-    ON access_grants(schema_id, field_name, application_id)
+    ON access_grants(schema_id, field_name, application_id, consent_bypass)
     WHERE status = 'active';
 
 CREATE INDEX IF NOT EXISTS idx_access_grants_application

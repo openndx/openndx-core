@@ -25,3 +25,21 @@ test_requires_consent_with_grant if {
 		"grant": {"expiresAt": "2027-01-01T00:00:00Z"},
 	}
 }
+
+bypass := {"expiresAt": "2027-01-01T00:00:00Z", "consentBypass": true}
+
+test_bypass_skips_consent if {
+	pdp.decision == {"outcome": "allow", "reason": "consent_bypassed", "obligations": ["audit.consent_bypassed"]} with input as {
+		"now": now,
+		"field": field,
+		"grant": bypass,
+	}
+}
+
+test_expired_bypass_is_expired if {
+	pdp.decision == {"outcome": "expired", "reason": "grant_expired"} with input as {
+		"now": now,
+		"field": field,
+		"grant": object.union(bypass, {"expiresAt": "2026-10-31T11:59:59Z"}),
+	}
+}

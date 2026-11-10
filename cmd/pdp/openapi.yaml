@@ -97,6 +97,12 @@ paths:
           description: Only grants with this status
           schema:
             $ref: '#/components/schemas/GrantStatus'
+        - name: consentBypass
+          in: query
+          required: false
+          description: Only consent bypass grants (true) or only plain grants (false)
+          schema:
+            type: boolean
       responses:
         '200':
           description: Access grants retrieved successfully
@@ -105,7 +111,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccessGrantListResponse'
         '400':
-          description: Unknown status
+          description: Unknown status, or consentBypass is not a boolean
           content:
             application/json:
               schema:
@@ -121,8 +127,15 @@ paths:
       description: |
         Grant an application access to fields for a duration, starting now.
         Call this when a consumer application is approved for specific fields.
-        A field the application already holds an active grant for has that
-        grant's expiry renewed instead of a second grant being created.
+        A field the application already holds an active grant of the same kind
+        for has that grant's expiry renewed instead of a second grant being
+        created.
+
+        With consentBypass true and a legalBasis, the grants are consent bypass
+        grants: the application reads the fields without asking for the
+        owner's consent. Every field's class must ask for consent. Plain and
+        bypass grants are renewed separately. The PDP doesn't authenticate
+        callers; Portal Backend decides who may grant a bypass.
       tags:
         - Access Grants
       requestBody:
@@ -139,13 +152,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccessGrantListResponse'
         '400':
-          description: Invalid body, missing applicationId, record without schemaId or fieldName, or unknown grantDuration
+          description: |
+            Invalid body, missing applicationId, record without schemaId or
+            fieldName, or unknown grantDuration. For consent bypass: missing
+            legalBasis, or a field whose class asks for no consent (open or
+            allowlist). A legalBasis without consentBypass is also rejected.
+            Nothing is written.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: A requested field has no policy metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/policy/grants/{id}:
+    get:
+      summary: Get an Access Grant
+      tags:
+        - Access Grants
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifier of the access grant
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The access grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessGrant'
+        '404':
+          description: No grant with this ID
           content:
             application/json:
               schema:
@@ -713,6 +762,14 @@ components:
               schemaId:
                 type: string
                 example: "schema_001"
+        consentBypass:
+          type: boolean
+          default: false
+          description: Grant consent bypass instead of plain access. Requires legalBasis.
+        legalBasis:
+          type: string
+          description: Why the application may read the fields without consent, for example the law that authorizes it. Consent bypass grants only.
+          example: "Police Act s.12"
 
     AccessGrant:
       type: object
@@ -723,6 +780,7 @@ components:
         - applicationId
         - expiresAt
         - status
+        - consentBypass
         - createdAt
         - updatedAt
       properties:
@@ -745,6 +803,12 @@ components:
           description: The grant gives no access after this time; the field is then expired
         status:
           $ref: '#/components/schemas/GrantStatus'
+        consentBypass:
+          type: boolean
+          description: True for a consent bypass grant, which lets the application skip the owner's consent
+        legalBasis:
+          type: string
+          description: Why the application may skip consent. Set for consent bypass grants only.
         createdAt:
           type: string
           format: date-time
