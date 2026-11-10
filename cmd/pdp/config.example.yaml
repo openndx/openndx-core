@@ -35,6 +35,6 @@ database:
 # Custom policy classes: every .rego file in this directory is compiled with
 # the built-in classes at startup. See CUSTOM_POLICY_CLASSES.md. Left out, only
 # the built-in classes are loaded. A relative path is taken from the directory
-# the PDP is started in.
+# the PDP is started in, which is cmd/pdp for `make run`.
 # policy:
-#   modulesDir: cmd/pdp/examples/policies
+#   modulesDir: examples/policies
