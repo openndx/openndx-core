@@ -535,6 +535,71 @@ func TestHandler_RevokeAccessGrant(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, revoke("not-a-uuid").Code)
 }
 
+func TestHandler_ConsentBypassGrants(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db, testhelpers.Engine(t))
+
+	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{FieldName: "person.nic", Source: models.SourcePrimary, PolicyClass: engine.ClassConsent},
+			{FieldName: "person.name", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+		},
+	})
+	require.NoError(t, err)
+
+	serve := func(method, path, body string, h http.HandlerFunc, pathValues ...string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+		for i := 0; i+1 < len(pathValues); i += 2 {
+			req.SetPathValue(pathValues[i], pathValues[i+1])
+		}
+		w := httptest.NewRecorder()
+		h(w, req)
+		return w
+	}
+	grant := func(body string) *httptest.ResponseRecorder {
+		return serve(http.MethodPost, "/api/v1/policy/grants", body, handler.CreateAccessGrants)
+	}
+	bypass := func(field, legalBasis string) *httptest.ResponseRecorder {
+		return grant(`{"applicationId":"police","grantDuration":"30d","consentBypass":true,"legalBasis":"` + legalBasis +
+			`","records":[{"schemaId":"schema-123","fieldName":"` + field + `"}]}`)
+	}
+
+	w := bypass("person.nic", "Police Act s.12")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var created models.AccessGrantListResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&created))
+	require.Len(t, created.Records, 1)
+	id := created.Records[0].ID
+	assert.Equal(t, models.GrantStatusActive, created.Records[0].Status)
+	assert.True(t, created.Records[0].ConsentBypass)
+
+	assert.Equal(t, http.StatusBadRequest, bypass("person.nic", " ").Code, "legal basis required")
+	assert.Equal(t, http.StatusBadRequest, bypass("person.name", "Police Act s.12").Code, "allowlist field asks for no consent")
+	assert.Equal(t, http.StatusNotFound, bypass("person.missing", "Police Act s.12").Code)
+	assert.Equal(t, http.StatusBadRequest,
+		grant(`{"applicationId":"police","grantDuration":"30d","legalBasis":"Police Act s.12",`+
+			`"records":[{"schemaId":"schema-123","fieldName":"person.nic"}]}`).Code,
+		"legal basis on a plain grant")
+
+	w = serve(http.MethodGet, "/api/v1/policy/grants/"+id, "", handler.GetAccessGrant, "id", id)
+	require.Equal(t, http.StatusOK, w.Code)
+	var got models.AccessGrantResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	assert.True(t, got.ConsentBypass)
+	require.NotNil(t, got.LegalBasis)
+	assert.Equal(t, "Police Act s.12", *got.LegalBasis)
+	assert.Equal(t, http.StatusNotFound,
+		serve(http.MethodGet, "/api/v1/policy/grants/x", "", handler.GetAccessGrant, "id", "not-a-uuid").Code)
+
+	w = serve(http.MethodGet, "/api/v1/policy/grants?consentBypass=true", "", handler.ListAccessGrants)
+	require.Equal(t, http.StatusOK, w.Code)
+	var listed models.AccessGrantListResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&listed))
+	require.Len(t, listed.Records, 1)
+	assert.Equal(t, id, listed.Records[0].ID)
+}
+
 func TestHandler_ListAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db, testhelpers.Engine(t))
@@ -571,6 +636,7 @@ func TestHandler_ListAccessGrants(t *testing.T) {
 	assert.Equal(t, "person.email", resp.Records[0].FieldName)
 
 	assert.Equal(t, http.StatusBadRequest, list("?status=pending").Code)
+	assert.Equal(t, http.StatusBadRequest, list("?consentBypass=maybe").Code)
 }
 
 func TestHandler_CreateAccessGrants(t *testing.T) {

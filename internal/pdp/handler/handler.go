@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/openndx/openndx-core/internal/pdp/engine"
@@ -129,14 +130,33 @@ func (h *Handler) CreateAccessGrants(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
+// GetAccessGrant handles reading one access grant.
+func (h *Handler) GetAccessGrant(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.policyService.GetAccessGrant(r.PathValue("id"))
+	if err != nil {
+		respondWithPolicyServiceError(w, err)
+		return
+	}
+
+	utils.RespondWithSuccess(w, http.StatusOK, resp)
+}
+
 // ListAccessGrants handles listing access grants, filtered by application,
-// schema or status.
+// schema, status or kind.
 func (h *Handler) ListAccessGrants(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	filter := models.AccessGrantFilter{
 		ApplicationID: strings.TrimSpace(query.Get("applicationId")),
 		SchemaID:      strings.TrimSpace(query.Get("schemaId")),
 		Status:        models.GrantStatus(strings.TrimSpace(query.Get("status"))),
+	}
+	if value := strings.TrimSpace(query.Get("consentBypass")); value != "" {
+		consentBypass, err := strconv.ParseBool(value)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "consentBypass must be true or false")
+			return
+		}
+		filter.ConsentBypass = &consentBypass
 	}
 
 	resp, err := h.policyService.ListAccessGrants(filter)

@@ -6,8 +6,13 @@
 #   field.fieldName    field path, for example person.fullName
 #   field.policyClass  name of a package under data.openndx.classes
 #   field.params       the class's parameters for this field; absent when there are none
-#   grant.expiresAt    RFC 3339 expiry of the app's grant; absent when the app has none
+#   grant              the app's grant for the field; absent when the app has none
+#     .expiresAt       RFC 3339 expiry
+#     .consentBypass   true for a consent bypass grant
 #   now                RFC 3339 evaluation time
+#
+# When the app holds both a plain and a consent bypass grant for the field, the
+# PDP passes the bypass grant while it is unexpired, otherwise the plain one.
 #
 # Output: {"outcome": "allow" | "deny" | "expired" | "consent_required",
 #          "reason": string, "obligations": [string]}

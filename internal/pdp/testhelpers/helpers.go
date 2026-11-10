@@ -79,17 +79,20 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 			application_id TEXT NOT NULL,
 			expires_at DATETIME NOT NULL,
 			status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+			consent_bypass BOOLEAN NOT NULL DEFAULT false,
+			legal_basis TEXT,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (schema_id, field_name)
-				REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE
+				REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE,
+			CHECK (NOT consent_bypass OR legal_basis IS NOT NULL)
 		)
 	`
 	if err := db.Exec(createGrantsSQL).Error; err != nil {
 		t.Fatalf("Failed to create access_grants table: %v", err)
 	}
 	if err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_access_grants_active
-		ON access_grants(schema_id, field_name, application_id) WHERE status = 'active'`).Error; err != nil {
+		ON access_grants(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'`).Error; err != nil {
 		t.Fatalf("Failed to create access_grants index: %v", err)
 	}
 

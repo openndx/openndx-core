@@ -80,6 +80,7 @@ func run() error {
 	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", v1Handler.DeletePolicyMetadata)
 	mux.HandleFunc("GET /api/v1/policy/grants", v1Handler.ListAccessGrants)
 	mux.HandleFunc("POST /api/v1/policy/grants", v1Handler.CreateAccessGrants)
+	mux.HandleFunc("GET /api/v1/policy/grants/{id}", v1Handler.GetAccessGrant)
 	mux.HandleFunc("POST /api/v1/policy/grants/{id}/revoke", v1Handler.RevokeAccessGrant)
 	mux.HandleFunc("POST /api/v1/policy/decide", v1Handler.GetPolicyDecision)
 

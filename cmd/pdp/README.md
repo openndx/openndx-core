@@ -76,8 +76,9 @@ Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies 
 | `POST /api/v1/policy/metadata`                                  | Sync a schema's field metadata (`201`)                             |
 | `PATCH /api/v1/policy/metadata/{id}`                            | Edit `displayName`, `description`, `policyClass` or `policyParams` |
 | `DELETE /api/v1/policy/metadata/{id}`                           | Delete a record and its grants (`204`)                             |
-| `GET /api/v1/policy/grants?applicationId=&schemaId=&status=`    | List access grants, optionally filtered                            |
-| `POST /api/v1/policy/grants`                                    | Grant an application access to fields for `30d` or `365d`          |
+| `GET /api/v1/policy/grants?applicationId=&schemaId=&status=&consentBypass=` | List access grants, optionally filtered                |
+| `POST /api/v1/policy/grants`                                    | Grant an application access to fields for `30d` or `365d`; with `consentBypass` and `legalBasis`, a consent bypass |
+| `GET /api/v1/policy/grants/{id}`                                | Read one grant                                                     |
 | `POST /api/v1/policy/grants/{id}/revoke`                        | Revoke one grant; it is kept with status `revoked`                 |
 | `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
 | `GET /debug`, `GET /debug/db`                                   | Version info; database status and record count                     |
@@ -104,12 +105,12 @@ For each requested `(schemaId, fieldName)`, in order:
 
 1. No metadata record: the whole request fails with **HTTP 500**.
 2. The field's `policyClass` is `open`: the field is allowed, whether or not the application holds a grant.
-3. The field's `policyClass` is `consent`: the field needs owner consent, whether or not the application holds a grant.
+3. The field's `policyClass` is `consent`: the field needs owner consent, whether or not the application holds a grant, unless it holds an unexpired consent bypass grant.
 4. The application holds no active grant for the field: the field is *unauthorized*.
 5. The grant has expired: the field is *expired*.
-6. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`.
+6. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`. An unexpired consent bypass grant allows an `allowlist_consent` field without consent.
 
-`appAuthorized` is true when no field is unauthorized. `allowlist` and `allowlist_consent` need an active grant; `consent` and `open` do not. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
+`appAuthorized` is true when no field is unauthorized. `allowlist` and `allowlist_consent` need an active grant; `consent` and `open` do not. A field allowed through a consent bypass carries the `audit.consent_bypassed` obligation, which the Orchestration Engine records in its audit event. Field semantics, the consent bypass workflow and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
 
 ## Security and deployment
 

@@ -74,6 +74,20 @@ func TestAccessGrant_ToResponse(t *testing.T) {
 	}, g.ToResponse())
 }
 
+func TestAccessGrant_ToResponse_ConsentBypass(t *testing.T) {
+	legalBasis := "Police Act s.12"
+	g := AccessGrant{
+		ID:            uuid.New(),
+		Status:        GrantStatusActive,
+		ConsentBypass: true,
+		LegalBasis:    &legalBasis,
+	}
+
+	response := g.ToResponse()
+	assert.True(t, response.ConsentBypass)
+	assert.Equal(t, &legalBasis, response.LegalBasis)
+}
+
 func TestPolicyMetadata_ToResponse_NilPolicyParams(t *testing.T) {
 	pm := PolicyMetadata{ID: uuid.New(), PolicyClass: "allowlist"}
 

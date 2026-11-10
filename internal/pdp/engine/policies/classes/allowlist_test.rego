@@ -33,3 +33,13 @@ test_allows_with_grant if {
 		"grant": {"expiresAt": "2027-01-01T00:00:00Z"},
 	}
 }
+
+# allowlist asks for no consent, so a bypass grant is ordinary access with no
+# bypass obligation.
+test_bypass_grant_is_plain_access if {
+	pdp.decision == {"outcome": "allow"} with input as {
+		"now": now,
+		"field": field,
+		"grant": {"expiresAt": "2027-01-01T00:00:00Z", "consentBypass": true},
+	}
+}

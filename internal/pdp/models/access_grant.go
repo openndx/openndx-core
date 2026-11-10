@@ -27,7 +27,12 @@ func (s GrantStatus) IsValid() bool {
 }
 
 // AccessGrant represents the access_grants table: one application's access to
-// one field. A field has at most one active grant per application.
+// one field. A field has at most one active plain grant and one active consent
+// bypass grant per application.
+//
+// A consent bypass grant lets the application read a field that asks for the
+// owner's consent without asking. It records the legal basis for doing so.
+// Deciding who may create one is left to the caller, the Portal Backend.
 type AccessGrant struct {
 	ID            uuid.UUID   `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()"`
 	SchemaID      string      `gorm:"column:schema_id;not null"`
@@ -35,6 +40,8 @@ type AccessGrant struct {
 	ApplicationID string      `gorm:"column:application_id;not null"`
 	ExpiresAt     time.Time   `gorm:"column:expires_at;not null"`
 	Status        GrantStatus `gorm:"column:status;not null"`
+	ConsentBypass bool        `gorm:"column:consent_bypass;not null"`
+	LegalBasis    *string     `gorm:"column:legal_basis"`
 	CreatedAt     time.Time   `gorm:"column:created_at;not null"`
 	UpdatedAt     time.Time   `gorm:"column:updated_at;not null"`
 }
@@ -53,6 +60,8 @@ func (g *AccessGrant) ToResponse() AccessGrantResponse {
 		ApplicationID: g.ApplicationID,
 		ExpiresAt:     g.ExpiresAt.UTC().Format(time.RFC3339),
 		Status:        g.Status,
+		ConsentBypass: g.ConsentBypass,
+		LegalBasis:    g.LegalBasis,
 		CreatedAt:     g.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     g.UpdatedAt.UTC().Format(time.RFC3339),
 	}

@@ -70,6 +70,9 @@ type Field struct {
 // Grant is the requesting application's access to the field.
 type Grant struct {
 	ExpiresAt time.Time `json:"expiresAt"`
+	// ConsentBypass marks a grant that lets the application skip the owner's
+	// consent while it is unexpired.
+	ConsentBypass bool `json:"consentBypass"`
 }
 
 // Decision is the policy result for one field. Obligations name extra actions
