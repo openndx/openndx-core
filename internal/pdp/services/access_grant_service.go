@@ -185,10 +185,25 @@ func (s *PolicyMetadataService) ListAccessGrants(filter models.AccessGrantFilter
 	return &models.AccessGrantListResponse{Records: records}, nil
 }
 
+// parseAccessGrantID parses a grant ID. An ID that is not a UUID can't name a
+// grant, so it is reported as not found. Querying the uuid column directly,
+// not CAST(id AS TEXT), lets PostgreSQL use the primary key index.
+func parseAccessGrantID(id string) (uuid.UUID, error) {
+	grantID, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%w: %s", ErrAccessGrantNotFound, id)
+	}
+	return grantID, nil
+}
+
 // GetAccessGrant returns one access grant.
 func (s *PolicyMetadataService) GetAccessGrant(id string) (*models.AccessGrantResponse, error) {
+	grantID, err := parseAccessGrantID(id)
+	if err != nil {
+		return nil, err
+	}
 	var grant models.AccessGrant
-	result := s.db.Where("CAST(id AS TEXT) = ?", id).Limit(1).Find(&grant)
+	result := s.db.Where("id = ?", grantID).Limit(1).Find(&grant)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to fetch access grant: %w", result.Error)
 	}
@@ -203,11 +218,15 @@ func (s *PolicyMetadataService) GetAccessGrant(id string) (*models.AccessGrantRe
 // RevokeAccessGrant revokes one active grant. The grant is kept, with status
 // revoked, and no longer gives the application access.
 func (s *PolicyMetadataService) RevokeAccessGrant(id string) (*models.AccessGrantResponse, error) {
+	grantID, err := parseAccessGrantID(id)
+	if err != nil {
+		return nil, err
+	}
 	var grant models.AccessGrant
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		result := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("CAST(id AS TEXT) = ? AND status = ?", id, models.GrantStatusActive).
+			Where("id = ? AND status = ?", grantID, models.GrantStatusActive).
 			Limit(1).
 			Find(&grant)
 		if result.Error != nil {

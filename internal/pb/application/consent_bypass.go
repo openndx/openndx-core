@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -106,9 +107,12 @@ func (s *Service) RevokeConsentBypass(ctx context.Context, grantID string) (*Con
 		return nil, err
 	}
 
+	// The PDP has revoked the grant. The lookup only fills the display-only
+	// applicationId, so its failure must not report the revoke as failed.
 	applicationIDs, err := s.applicationIDsByClientID(ctx, []policy.AccessGrant{*grant})
 	if err != nil {
-		return nil, err
+		slog.Warn("Consent bypass revoked, but application lookup failed", "grantId", grantID, "error", err)
+		applicationIDs = map[string]string{}
 	}
 	response := toConsentBypassGrants([]policy.AccessGrant{*grant}, applicationIDs)[0]
 	return &response, nil
