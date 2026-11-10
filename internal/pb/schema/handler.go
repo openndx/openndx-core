@@ -393,7 +393,7 @@ func (h *Handler) RevokeSchemaPolicyAllowListEntry(w http.ResponseWriter, r *htt
 // Client errors reported by the PDP are passed through, while PDP failures and
 // unreachable PDPs are reported as a bad gateway.
 func respondWithPolicyMetadataError(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrPolicyMetadataNotFound) {
+	if errors.Is(err, ErrPolicyMetadataNotFound) || errors.Is(err, ErrAllowListEntryNotFound) {
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}

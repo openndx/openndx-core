@@ -114,21 +114,21 @@ func (s *Service) CreateApplication(ctx context.Context, req *CreateApplicationR
 		return nil, fmt.Errorf("failed to create application: %w", err)
 	}
 
-	// Step 3: Update allow list in PDP (Saga Pattern)
-	// The allow-list is keyed by the IdP OIDC client_id, not the portal's random
+	// Step 3: Grant the application access to its fields in the PDP (Saga Pattern)
+	// Grants are keyed by the IdP OIDC client_id, not the portal's random
 	// ApplicationID UUID. This is the identifier the Orchestration Engine extracts
 	// from the IdP-issued token (via the client_id fallback) when asking the PDP for
 	// a decision, so both sides must agree on it. See issue #447.
 	if application.IdpClientID == nil {
-		return nil, fmt.Errorf("cannot update allow list: application IdpClientID is nil")
+		return nil, fmt.Errorf("cannot grant access: application IdpClientID is nil")
 	}
-	policyReq := policy.AllowListUpdateRequest{
+	policyReq := policy.AccessGrantCreateRequest{
 		ApplicationID: *application.IdpClientID,
 		Records:       application.SelectedFields,
 		GrantDuration: policy.GrantDurationTypeOneMonth, // Default duration
 	}
 
-	_, err := s.policyService.UpdateAllowList(policyReq)
+	_, err := s.policyService.CreateAccessGrants(policyReq)
 	if err != nil {
 		// Compensation: Attempt both cleanup operations regardless of individual failures
 		// This ensures we don't leave orphaned resources in either system
@@ -248,13 +248,13 @@ func (s *Service) UpdateApplicationPolicy(ctx context.Context, applicationID str
 		grantDuration = *req.GrantDuration
 	}
 
-	policyReq := policy.AllowListUpdateRequest{
+	policyReq := policy.AccessGrantCreateRequest{
 		ApplicationID: *application.IdpClientID,
 		Records:       req.SelectedFields,
 		GrantDuration: grantDuration,
 	}
 
-	if _, err := s.policyService.UpdateAllowList(policyReq); err != nil {
+	if _, err := s.policyService.CreateAccessGrants(policyReq); err != nil {
 		return nil, fmt.Errorf("failed to update allow list: %w", err)
 	}
 

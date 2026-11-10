@@ -112,38 +112,47 @@ func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// RevokeAllowListEntry handles removing one application from a field's allow-list.
-func (h *Handler) RevokeAllowListEntry(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	id := r.PathValue("id")
-
-	applicationID := strings.TrimSpace(r.PathValue("applicationId"))
-	if applicationID == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "applicationId is required")
-		return
-	}
-
-	if err := h.policyService.RevokeAllowListEntry(id, applicationID); err != nil {
-		respondWithPolicyServiceError(w, err)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// UpdateAllowList handles updating the allow list for a policy
-func (h *Handler) UpdateAllowList(w http.ResponseWriter, r *http.Request) {
-	var req models.AllowListUpdateRequest
+// CreateAccessGrants handles granting an application access to fields.
+func (h *Handler) CreateAccessGrants(w http.ResponseWriter, r *http.Request) {
+	var req models.AccessGrantCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	resp, err := h.policyService.UpdateAllowList(&req)
+	resp, err := h.policyService.CreateAccessGrants(&req)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithPolicyServiceError(w, err)
+		return
+	}
+
+	utils.RespondWithSuccess(w, http.StatusOK, resp)
+}
+
+// ListAccessGrants handles listing access grants, filtered by application,
+// schema or status.
+func (h *Handler) ListAccessGrants(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	filter := models.AccessGrantFilter{
+		ApplicationID: strings.TrimSpace(query.Get("applicationId")),
+		SchemaID:      strings.TrimSpace(query.Get("schemaId")),
+		Status:        models.GrantStatus(strings.TrimSpace(query.Get("status"))),
+	}
+
+	resp, err := h.policyService.ListAccessGrants(filter)
+	if err != nil {
+		respondWithPolicyServiceError(w, err)
+		return
+	}
+
+	utils.RespondWithSuccess(w, http.StatusOK, resp)
+}
+
+// RevokeAccessGrant handles revoking one active access grant.
+func (h *Handler) RevokeAccessGrant(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.policyService.RevokeAccessGrant(r.PathValue("id"))
+	if err != nil {
+		respondWithPolicyServiceError(w, err)
 		return
 	}
 
@@ -182,10 +191,11 @@ func respondWithPolicyServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, services.ErrPolicyMetadataNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 
-	case errors.Is(err, services.ErrAllowListEntryNotFound):
+	case errors.Is(err, services.ErrAccessGrantNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 
-	case errors.Is(err, services.ErrUnknownPolicyClass):
+	case errors.Is(err, services.ErrUnknownPolicyClass),
+		errors.Is(err, services.ErrInvalidGrantRequest):
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 
 	default:

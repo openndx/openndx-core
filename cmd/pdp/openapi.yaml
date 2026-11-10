@@ -70,33 +70,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/policy/update-allowlist:
-    post:
-      summary: Update Allow List for Data Fields
-      description: Update the allow list for data fields to grant application access. This endpoint should be called when a consumer application is approved for access to specific data fields.
+  /api/v1/policy/grants:
+    get:
+      summary: List Access Grants
+      description: List access grants, optionally filtered by application, schema and status. Revoked grants are kept and listed unless filtered out.
       tags:
-        - Policy Metadata Management
+        - Access Grants
+      parameters:
+        - name: applicationId
+          in: query
+          required: false
+          description: Only grants held by this application (its OIDC client_id)
+          schema:
+            type: string
+          example: "passport-app"
+        - name: schemaId
+          in: query
+          required: false
+          description: Only grants for fields of this schema
+          schema:
+            type: string
+          example: "schema_001"
+        - name: status
+          in: query
+          required: false
+          description: Only grants with this status
+          schema:
+            $ref: '#/components/schemas/GrantStatus'
+      responses:
+        '200':
+          description: Access grants retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessGrantListResponse'
+        '400':
+          description: Unknown status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Grant Access to Fields
+      description: |
+        Grant an application access to fields for a duration, starting now.
+        Call this when a consumer application is approved for specific fields.
+        A field the application already holds an active grant for has that
+        grant's expiry renewed instead of a second grant being created.
+      tags:
+        - Access Grants
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AllowListUpdateRequest'
+              $ref: '#/components/schemas/AccessGrantCreateRequest'
       responses:
         '200':
-          description: Allow list updated successfully
+          description: The application's active grant for each requested field, in request order
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AllowListUpdateResponse'
+                $ref: '#/components/schemas/AccessGrantListResponse'
         '400':
-          description: Bad request - invalid input data
+          description: Invalid body, missing applicationId, record without schemaId or fieldName, or unknown grantDuration
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Field not found
+          description: A requested field has no policy metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/policy/grants/{id}/revoke:
+    post:
+      summary: Revoke an Access Grant
+      description: Revoke one active grant. The grant is kept with status revoked and no longer gives the application access.
+      tags:
+        - Access Grants
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifier of the access grant
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access grant revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessGrant'
+        '404':
+          description: No active grant with this ID
           content:
             application/json:
               schema:
@@ -110,7 +191,7 @@ paths:
   /api/v1/policy/metadata:
     get:
       summary: List Policy Metadata
-      description: List current policy metadata records and allow-list state, optionally filtered by schema.
+      description: List current policy metadata records, optionally filtered by schema. Access grants are listed with GET /api/v1/policy/grants.
       tags:
         - Policy Metadata Management
       parameters:
@@ -136,7 +217,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Create or Update Policy Metadata
-      description: Synchronize all policy metadata records for a schema. Existing fields omitted from the request are deleted.
+      description: Synchronize all policy metadata records for a schema. Existing fields omitted from the request are deleted, together with their access grants.
       tags:
         - Policy Metadata Management
       requestBody:
@@ -174,7 +255,7 @@ paths:
           type: string
     patch:
       summary: Update Policy Metadata
-      description: Update selected properties of one policy metadata record without changing other records or its allow-list.
+      description: Update selected properties of one policy metadata record without changing other records or its access grants.
       tags:
         - Policy Metadata Management
       requestBody:
@@ -210,7 +291,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
       summary: Delete Policy Metadata
-      description: Delete one policy metadata record by ID.
+      description: Delete one policy metadata record by ID, together with its access grants.
       tags:
         - Policy Metadata Management
       responses:
@@ -218,46 +299,6 @@ paths:
           description: Policy metadata deleted successfully
         '404':
           description: Policy metadata record not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/policy/metadata/{id}/allowlist/{applicationId}:
-    delete:
-      summary: Revoke an Allow-list Entry
-      description: Remove one application's access entry from one policy metadata record.
-      tags:
-        - Policy Metadata Management
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: Identifier of the policy metadata record
-          schema:
-            type: string
-        - name: applicationId
-          in: path
-          required: true
-          description: Application identifier to remove from the allow-list
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Allow-list entry revoked successfully
-        '400':
-          description: Invalid application ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Policy metadata record or allow-list entry not found
           content:
             application/json:
               schema:
@@ -574,7 +615,6 @@ components:
         - source
         - policyClass
         - policyParams
-        - allowList
         - createdAt
         - updatedAt
       properties:
@@ -603,11 +643,6 @@ components:
           $ref: '#/components/schemas/PolicyClass'
         policyParams:
           $ref: '#/components/schemas/PolicyParams'
-        allowList:
-          type: object
-          description: Application IDs mapped to their access grant details
-          additionalProperties:
-            $ref: '#/components/schemas/AllowListEntry'
         owner:
           type: string
           enum: [ "citizen" ]
@@ -617,19 +652,6 @@ components:
           type: string
           format: date-time
         updatedAt:
-          type: string
-          format: date-time
-
-    AllowListEntry:
-      type: object
-      required:
-        - expires_at
-        - updated_at
-      properties:
-        expires_at:
-          type: string
-          format: date-time
-        updated_at:
           type: string
           format: date-time
 
@@ -653,7 +675,14 @@ components:
           items:
             $ref: '#/components/schemas/PolicyMetadataResponse'
 
-    AllowListUpdateRequest:
+    GrantStatus:
+      type: string
+      enum: [ "active", "revoked" ]
+      description: |
+        active grants access until expiresAt; revoked no longer grants access
+        and is kept as a record.
+
+    AccessGrantCreateRequest:
       type: object
       required:
         - applicationId
@@ -662,15 +691,16 @@ components:
       properties:
         applicationId:
           type: string
-          description: App that is being granted access
+          description: OIDC client_id of the application being granted access
           example: "passport-app"
         grantDuration:
           type: string
-          description: Duration of access grant in format like 30d, 1h, etc.
+          enum: [ "30d", "365d" ]
+          description: How long the grants last, from the time of the call
           example: "30d"
         records:
           type: array
-          description: List of field records to update the allow list for
+          description: Fields to grant access to
           items:
             type: object
             required:
@@ -679,38 +709,58 @@ components:
             properties:
               fieldName:
                 type: string
-                description: Name of the field to update
                 example: "person.fullName"
               schemaId:
                 type: string
-                description: Identifier of the data schema
                 example: "schema_001"
 
-    AllowListUpdateResponse:
+    AccessGrant:
       type: object
+      required:
+        - id
+        - schemaId
+        - fieldName
+        - applicationId
+        - expiresAt
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          example: "7d3f8a52-1c4e-4b8a-9f6d-2e5b7c9a1d04"
+        schemaId:
+          type: string
+          example: "schema_001"
+        fieldName:
+          type: string
+          example: "person.fullName"
+        applicationId:
+          type: string
+          description: OIDC client_id of the application holding the grant
+          example: "passport-app"
+        expiresAt:
+          type: string
+          format: date-time
+          description: The grant gives no access after this time; the field is then expired
+        status:
+          $ref: '#/components/schemas/GrantStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AccessGrantListResponse:
+      type: object
+      required:
+        - records
       properties:
         records:
           type: array
-          description: List of updated field records
           items:
-            type: object
-            properties:
-              fieldName:
-                type: string
-                description: Name of the field updated
-                example: "person.fullName"
-              schemaId:
-                type: string
-                description: Identifier of the data schema
-                example: "schema_001"
-              applicationId:
-                type: string
-                description: ID of the application granted access
-                example: "passport-app"
-              expiresAt:
-                type: string
-                description: Expiration timestamp as a string (e.g., Unix timestamp or ISO 8601)
-                example: "1704067199"
+            $ref: '#/components/schemas/AccessGrant'
 
 tags:
   - name: Health
@@ -720,4 +770,6 @@ tags:
   - name: Debug
     description: Debug and diagnostic operations
   - name: Policy Metadata Management
-    description: Policy metadata and allow list management operations
+    description: Policy metadata management operations
+  - name: Access Grants
+    description: Grant, list and revoke applications' access to fields

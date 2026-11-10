@@ -23,10 +23,12 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
-		// Mock PDP, capturing the allow-list request body so we can assert the key.
-		var capturedAllowList policy.AllowListUpdateRequest
+		// Mock PDP, capturing the grant request so we can assert the path and key.
+		var capturedAllowList policy.AccessGrantCreateRequest
+		var capturedRequest string
 		mockTransport := &MockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
+				capturedRequest = req.Method + " " + req.URL.Path
 				if req.Body != nil {
 					body, _ := io.ReadAll(req.Body)
 					_ = json.Unmarshal(body, &capturedAllowList)
@@ -91,8 +93,9 @@ func TestApplicationService_CreateApplication(t *testing.T) {
 			assert.Equal(t, "ou-123", capturedIdpApp.OuID)
 		}
 
-		// The PDP allow-list must be keyed by the IdP OIDC client_id (the identity OE
+		// PDP grants must be keyed by the IdP OIDC client_id (the identity OE
 		// presents from the token), not the portal's random ApplicationID UUID. See #447.
+		assert.Equal(t, "POST /api/v1/policy/grants", capturedRequest)
 		assert.Equal(t, "mock-client-id", capturedAllowList.ApplicationID)
 
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -181,7 +184,7 @@ func TestApplicationService_CreateApplication_ExternallyProvisioned(t *testing.T
 		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
-		var capturedAllowList policy.AllowListUpdateRequest
+		var capturedAllowList policy.AccessGrantCreateRequest
 		mockTransport := &MockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				if req.Body != nil {
@@ -418,7 +421,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
-		var capturedAllowList policy.AllowListUpdateRequest
+		var capturedAllowList policy.AccessGrantCreateRequest
 		mockTransport := &MockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				if req.Body != nil {
@@ -472,7 +475,7 @@ func TestApplicationService_UpdateApplicationPolicy(t *testing.T) {
 		db, mock, cleanup := dbtest.SetupMockDB(t)
 		defer cleanup()
 
-		var capturedAllowList policy.AllowListUpdateRequest
+		var capturedAllowList policy.AccessGrantCreateRequest
 		mockTransport := &MockRoundTripper{
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				if req.Body != nil {

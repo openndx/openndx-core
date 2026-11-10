@@ -44,12 +44,13 @@ func Engine(t *testing.T) *engine.Engine {
 // For integration-style tests that need real PostgreSQL behavior (transactions, complex queries),
 // use SetupPostgresTestDB instead.
 func SetupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	// Enforce foreign keys so deleting a field deletes its access grants, as in PostgreSQL.
+	db, err := gorm.Open(sqlite.Open("file::memory:?_foreign_keys=on"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	// Create table manually for SQLite compatibility
+	// Create tables manually for SQLite compatibility
 	createTableSQL := `
 		CREATE TABLE IF NOT EXISTS policy_metadata (
 			id TEXT PRIMARY KEY,
@@ -60,7 +61,6 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 			source TEXT NOT NULL DEFAULT 'fallback',
 			policy_class TEXT NOT NULL,
 			policy_params TEXT NOT NULL DEFAULT '{}',
-			allow_list TEXT NOT NULL DEFAULT '{}',
 			owner TEXT,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -69,6 +69,28 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	`
 	if err := db.Exec(createTableSQL).Error; err != nil {
 		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	createGrantsSQL := `
+		CREATE TABLE IF NOT EXISTS access_grants (
+			id TEXT PRIMARY KEY,
+			schema_id TEXT NOT NULL,
+			field_name TEXT NOT NULL,
+			application_id TEXT NOT NULL,
+			expires_at DATETIME NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (schema_id, field_name)
+				REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE
+		)
+	`
+	if err := db.Exec(createGrantsSQL).Error; err != nil {
+		t.Fatalf("Failed to create access_grants table: %v", err)
+	}
+	if err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_access_grants_active
+		ON access_grants(schema_id, field_name, application_id) WHERE status = 'active'`).Error; err != nil {
+		t.Fatalf("Failed to create access_grants index: %v", err)
 	}
 
 	return db
@@ -218,7 +240,10 @@ func CleanupTestData(t *testing.T, db *gorm.DB) {
 		return
 	}
 
-	// Delete all policy metadata
+	// Delete all access grants and policy metadata
+	if err := db.Exec("DELETE FROM access_grants").Error; err != nil {
+		t.Logf("Warning: could not cleanup access_grants: %v", err)
+	}
 	if err := db.Exec("DELETE FROM policy_metadata").Error; err != nil {
 		t.Logf("Warning: could not cleanup policy_metadata: %v", err)
 	}

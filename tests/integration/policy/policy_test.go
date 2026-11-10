@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -73,26 +74,30 @@ type PolicyMetadataCreateResponse struct {
 	Records []PolicyMetadataResponse `json:"records"`
 }
 
-type AllowListUpdateRequestRecord struct {
+type AccessGrantCreateRequestRecord struct {
 	FieldName string `json:"fieldName"`
 	SchemaID  string `json:"schemaId"`
 }
 
-type AllowListUpdateRequest struct {
-	ApplicationID string                         `json:"applicationId"`
-	Records       []AllowListUpdateRequestRecord `json:"records"`
-	GrantDuration string                         `json:"grantDuration"`
+type AccessGrantCreateRequest struct {
+	ApplicationID string                           `json:"applicationId"`
+	Records       []AccessGrantCreateRequestRecord `json:"records"`
+	GrantDuration string                           `json:"grantDuration"`
 }
 
-type AllowListUpdateResponseRecord struct {
-	FieldName string `json:"fieldName"`
-	SchemaID  string `json:"schemaId"`
-	ExpiresAt string `json:"expiresAt"`
-	UpdatedAt string `json:"updatedAt"`
+type AccessGrant struct {
+	ID            string `json:"id"`
+	FieldName     string `json:"fieldName"`
+	SchemaID      string `json:"schemaId"`
+	ApplicationID string `json:"applicationId"`
+	ExpiresAt     string `json:"expiresAt"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
 }
 
-type AllowListUpdateResponse struct {
-	Records []AllowListUpdateResponseRecord `json:"records"`
+type AccessGrantListResponse struct {
+	Records []AccessGrant `json:"records"`
 }
 
 type PolicyDecisionRequestRecord struct {
@@ -228,8 +233,8 @@ func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 	}
 }
 
-// TestPolicy_UpdateAllowList tests updating allow list via HTTP API
-func TestPolicy_UpdateAllowList(t *testing.T) {
+// TestPolicy_AccessGrants tests granting, listing and revoking access via HTTP API
+func TestPolicy_AccessGrants(t *testing.T) {
 	// First, create policy metadata
 	schemaID := generateTestID("test-schema-allowlist")
 	req := PolicyMetadataCreateRequest{
@@ -251,11 +256,11 @@ func TestPolicy_UpdateAllowList(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Now update allow list
+	// Now grant access
 	appID := generateTestID("test-app")
-	updateReq := AllowListUpdateRequest{
+	updateReq := AccessGrantCreateRequest{
 		ApplicationID: appID,
-		Records: []AllowListUpdateRequestRecord{
+		Records: []AccessGrantCreateRequestRecord{
 			{
 				FieldName: "person.fullName",
 				SchemaID:  schemaID,
@@ -267,25 +272,52 @@ func TestPolicy_UpdateAllowList(t *testing.T) {
 	updateBody, err := json.Marshal(updateReq)
 	require.NoError(t, err)
 
-	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBuffer(updateBody))
+	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBuffer(updateBody))
 	require.NoError(t, err)
 	defer updateResp.Body.Close()
 
 	// Read response body for debugging
 	bodyBytes, _ := io.ReadAll(updateResp.Body)
 	if updateResp.StatusCode != http.StatusOK {
-		t.Logf("UpdateAllowList failed with status %d, body: %s", updateResp.StatusCode, string(bodyBytes))
+		t.Logf("CreateAccessGrants failed with status %d, body: %s", updateResp.StatusCode, string(bodyBytes))
 	}
 	assert.Equal(t, http.StatusOK, updateResp.StatusCode, "Expected 200 OK, got %d with body: %s", updateResp.StatusCode, string(bodyBytes))
 
-	var updateResponse AllowListUpdateResponse
+	var updateResponse AccessGrantListResponse
 	err = json.Unmarshal(bodyBytes, &updateResponse)
 	require.NoError(t, err, "Failed to decode response: %s", string(bodyBytes))
 
-	assert.Len(t, updateResponse.Records, 1, "Should return one record, got %d", len(updateResponse.Records))
-	assert.Equal(t, "person.fullName", updateResponse.Records[0].FieldName)
-	assert.Equal(t, schemaID, updateResponse.Records[0].SchemaID)
-	assert.NotEmpty(t, updateResponse.Records[0].ExpiresAt, "Should have expiration time")
+	require.Len(t, updateResponse.Records, 1, "Should return one record, got %d", len(updateResponse.Records))
+	grant := updateResponse.Records[0]
+	assert.Equal(t, "person.fullName", grant.FieldName)
+	assert.Equal(t, schemaID, grant.SchemaID)
+	assert.Equal(t, appID, grant.ApplicationID)
+	assert.Equal(t, "active", grant.Status)
+	assert.NotEmpty(t, grant.ExpiresAt, "Should have expiration time")
+
+	// List the application's grants
+	listResp, err := http.Get(pdpBaseURL + "/api/v1/policy/grants?applicationId=" + url.QueryEscape(appID))
+	require.NoError(t, err)
+	defer func() { _ = listResp.Body.Close() }()
+	require.Equal(t, http.StatusOK, listResp.StatusCode)
+	var listResponse AccessGrantListResponse
+	require.NoError(t, json.NewDecoder(listResp.Body).Decode(&listResponse))
+	require.Len(t, listResponse.Records, 1)
+	assert.Equal(t, grant.ID, listResponse.Records[0].ID)
+
+	// Revoke the grant; it is kept with status revoked
+	revokeResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants/"+grant.ID+"/revoke", "application/json", nil)
+	require.NoError(t, err)
+	defer func() { _ = revokeResp.Body.Close() }()
+	require.Equal(t, http.StatusOK, revokeResp.StatusCode)
+	var revoked AccessGrant
+	require.NoError(t, json.NewDecoder(revokeResp.Body).Decode(&revoked))
+	assert.Equal(t, "revoked", revoked.Status)
+
+	againResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants/"+grant.ID+"/revoke", "application/json", nil)
+	require.NoError(t, err)
+	_ = againResp.Body.Close()
+	assert.Equal(t, http.StatusNotFound, againResp.StatusCode, "A revoked grant can't be revoked again")
 
 	// Cleanup
 	t.Cleanup(func() {
@@ -293,9 +325,9 @@ func TestPolicy_UpdateAllowList(t *testing.T) {
 	})
 }
 
-// TestPolicy_UpdateAllowList_InvalidJSON tests invalid JSON handling
-func TestPolicy_UpdateAllowList_InvalidJSON(t *testing.T) {
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBufferString("invalid json"))
+// TestPolicy_CreateAccessGrants_InvalidJSON tests invalid JSON handling
+func TestPolicy_CreateAccessGrants_InvalidJSON(t *testing.T) {
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBufferString("invalid json"))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -328,10 +360,10 @@ func TestPolicy_GetPolicyDecision(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Add to allow list
-	allowListReq := AllowListUpdateRequest{
+	// Grant access
+	allowListReq := AccessGrantCreateRequest{
 		ApplicationID: appID,
-		Records: []AllowListUpdateRequestRecord{
+		Records: []AccessGrantCreateRequestRecord{
 			{
 				FieldName: "person.fullName",
 				SchemaID:  schemaID,
@@ -343,7 +375,7 @@ func TestPolicy_GetPolicyDecision(t *testing.T) {
 	allowListBody, err := json.Marshal(allowListReq)
 	require.NoError(t, err)
 
-	allowListResp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBuffer(allowListBody))
+	allowListResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBuffer(allowListBody))
 	require.NoError(t, err)
 	allowListResp.Body.Close()
 	assert.Equal(t, http.StatusOK, allowListResp.StatusCode)

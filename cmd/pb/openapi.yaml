@@ -473,9 +473,10 @@ paths:
     delete:
       summary: Revoke an application's access to a field
       description: |
-        Removes one application from the field's allow-list. Requires the
-        schema:update permission, and members can only revoke access to
-        their own schemas.
+        Removes one application from the field's allow-list by revoking its
+        active access grant in the PDP. The PDP keeps the revoked grant as a
+        record. Requires the schema:update permission, and members can only
+        revoke access to their own schemas.
       operationId: revokeSchemaPolicyAllowListEntry
       tags:
         - Schemas
@@ -1233,8 +1234,9 @@ components:
         allowList:
           type: object
           description: |
-            Applications granted access to the field, keyed by the
-            application's IdP client ID.
+            Applications holding an active access grant for the field in the
+            PDP, keyed by the application's IdP client ID. A grant past
+            expires_at is still listed; the PDP reports the field as expired.
           additionalProperties:
             $ref: '#/components/schemas/AllowListEntry'
         owner:

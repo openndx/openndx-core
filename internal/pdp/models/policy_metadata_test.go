@@ -28,7 +28,6 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 		Source:       SourcePrimary,
 		PolicyClass:  "allowlist_consent",
 		PolicyParams: PolicyParams{"purpose": "tax"},
-		AllowList:    make(AllowList),
 		Owner:        &owner,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -44,10 +43,35 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 	assert.Equal(t, pm.Source, response.Source)
 	assert.Equal(t, pm.PolicyClass, response.PolicyClass)
 	assert.Equal(t, pm.PolicyParams, response.PolicyParams)
-	assert.Equal(t, pm.AllowList, response.AllowList)
 	assert.Equal(t, pm.Owner, response.Owner)
 	assert.Equal(t, pm.CreatedAt.Format(time.RFC3339), response.CreatedAt)
 	assert.Equal(t, pm.UpdatedAt.Format(time.RFC3339), response.UpdatedAt)
+}
+
+func TestAccessGrant_ToResponse(t *testing.T) {
+	ist := time.FixedZone("IST", 5*3600+1800)
+	g := AccessGrant{
+		ID:            uuid.New(),
+		SchemaID:      "schema-123",
+		FieldName:     "person.fullName",
+		ApplicationID: "client-1",
+		ExpiresAt:     time.Date(2026, 2, 1, 5, 30, 0, 0, ist),
+		Status:        GrantStatusActive,
+		CreatedAt:     time.Date(2026, 1, 1, 5, 30, 0, 0, ist),
+		UpdatedAt:     time.Date(2026, 1, 2, 5, 30, 0, 0, ist),
+	}
+
+	assert.Equal(t, "access_grants", g.TableName())
+	assert.Equal(t, AccessGrantResponse{
+		ID:            g.ID.String(),
+		SchemaID:      "schema-123",
+		FieldName:     "person.fullName",
+		ApplicationID: "client-1",
+		ExpiresAt:     "2026-02-01T00:00:00Z",
+		Status:        GrantStatusActive,
+		CreatedAt:     "2026-01-01T00:00:00Z",
+		UpdatedAt:     "2026-01-02T00:00:00Z",
+	}, g.ToResponse())
 }
 
 func TestPolicyMetadata_ToResponse_NilPolicyParams(t *testing.T) {

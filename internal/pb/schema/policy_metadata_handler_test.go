@@ -27,12 +27,13 @@ type pdpCall struct {
 	Body   string
 }
 
-// fakePDP is an in-process PDP that serves the policy metadata of one schema and
-// records the requests it receives.
+// fakePDP is an in-process PDP that serves the policy metadata and access
+// grants of one schema and records the requests it receives.
 type fakePDP struct {
 	schemaID string
 	records  []policy.PolicyMetadataResponse
-	// writeStatus and writeBody override the response to PATCH/DELETE requests
+	grants   []policy.AccessGrant
+	// writeStatus and writeBody override the response to write requests
 	writeStatus int
 	writeBody   string
 	calls       []pdpCall
@@ -43,6 +44,21 @@ func (f *fakePDP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.calls = append(f.calls, pdpCall{Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Body: string(body)})
 
 	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method == http.MethodGet && r.URL.Path == "/api/v1/policy/grants" {
+		query := r.URL.Query()
+		grants := []policy.AccessGrant{}
+		for _, grant := range f.grants {
+			if (query.Get("schemaId") == "" || query.Get("schemaId") == grant.SchemaID) &&
+				(query.Get("applicationId") == "" || query.Get("applicationId") == grant.ApplicationID) &&
+				(query.Get("status") == "" || query.Get("status") == grant.Status) {
+				grants = append(grants, grant)
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(policy.AccessGrantListResponse{Records: grants})
+		return
+	}
 
 	if r.Method == http.MethodGet {
 		records := []policy.PolicyMetadataResponse{}
@@ -69,12 +85,22 @@ func (f *fakePDP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(record)
 	case http.MethodDelete:
 		w.WriteHeader(http.StatusNoContent)
+	case http.MethodPost:
+		for i, grant := range f.grants {
+			if r.URL.Path == "/api/v1/policy/grants/"+grant.ID+"/revoke" {
+				f.grants[i].Status = policy.GrantStatusRevoked
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(f.grants[i])
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
-// writeCalls returns the PATCH/DELETE requests received by the fake PDP
+// writeCalls returns the write requests received by the fake PDP
 func (f *fakePDP) writeCalls() []pdpCall {
 	var calls []pdpCall
 	for _, call := range f.calls {
@@ -109,7 +135,19 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 				FieldName:   "person.name",
 				Source:      policy.SourcePrimary,
 				PolicyClass: policy.PolicyClassAllowlistConsent,
-				AllowList:   policy.AllowList{"client-1": policy.AllowListEntry{}},
+			},
+		},
+		grants: []policy.AccessGrant{
+			{
+				ID: "grant-1", SchemaID: schemaID, FieldName: "person.name", ApplicationID: "client-1",
+				ExpiresAt: "2030-01-01T00:00:00Z", Status: policy.GrantStatusActive,
+				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-02T00:00:00Z",
+			},
+			{
+				// Revoked grants are not part of the allow-list.
+				ID: "grant-0", SchemaID: schemaID, FieldName: "person.name", ApplicationID: "client-2",
+				ExpiresAt: "2030-01-01T00:00:00Z", Status: policy.GrantStatusRevoked,
+				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-02T00:00:00Z",
 			},
 		},
 	}
@@ -174,8 +212,15 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 		assert.Equal(t, 1, response.Count)
 		assert.Equal(t, "pm-1", response.Items[0].ID)
-		assert.Contains(t, response.Items[0].AllowList, "client-1")
+		assert.Equal(t, policy.AllowList{
+			"client-1": {
+				ExpiresAt: time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt: time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+			},
+		}, response.Items[0].AllowList)
 		assert.Equal(t, "schemaId="+env.schemaID, env.pdp.calls[0].Query)
+		assert.Equal(t, "/api/v1/policy/grants", env.pdp.calls[1].Path)
+		assert.Equal(t, "schemaId="+env.schemaID+"&status=active", env.pdp.calls[1].Query)
 	})
 
 	t.Run("Owner member lists policy metadata of their schema", func(t *testing.T) {
@@ -240,6 +285,7 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 		var response policy.PolicyMetadataResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
 		assert.Equal(t, "Patched", *response.DisplayName)
+		assert.Contains(t, response.AllowList, "client-1")
 
 		calls := env.pdp.writeCalls()
 		require.Len(t, calls, 1)
@@ -357,19 +403,30 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
 		calls := env.pdp.writeCalls()
 		require.Len(t, calls, 1)
-		assert.Equal(t, http.MethodDelete, calls[0].Method)
-		assert.Equal(t, "/api/v1/policy/metadata/pm-1/allowlist/client-1", calls[0].Path)
+		assert.Equal(t, http.MethodPost, calls[0].Method)
+		assert.Equal(t, "/api/v1/policy/grants/grant-1/revoke", calls[0].Path)
+		assert.Equal(t, policy.GrantStatusRevoked, env.pdp.grants[0].Status)
 	})
 
-	t.Run("Missing allow-list entry returns not found", func(t *testing.T) {
+	t.Run("Application without an active grant returns not found", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
-		env.pdp.writeStatus = http.StatusNotFound
-		env.pdp.writeBody = `{"error":"allow-list entry not found: client-2"}`
 
+		// client-2's grant is already revoked
 		w := env.serve(callertest.NewAdminRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-2"), nil))
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Contains(t, w.Body.String(), "allow-list entry not found")
+		assert.Empty(t, env.pdp.writeCalls())
+	})
+
+	t.Run("PDP failure while revoking is reported as bad gateway", func(t *testing.T) {
+		env := newPolicyMetadataTestEnv(t)
+		env.pdp.writeStatus = http.StatusInternalServerError
+		env.pdp.writeBody = `{"error":"internal server error"}`
+
+		w := env.serve(callertest.NewAdminRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-1"), nil))
+
+		assert.Equal(t, http.StatusBadGateway, w.Code)
 	})
 
 	t.Run("Record from another schema is not found and not forwarded", func(t *testing.T) {

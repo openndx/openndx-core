@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
@@ -102,10 +103,10 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, createResp.Records, 2)
 
-	_, err = service.UpdateAllowList(&models.AllowListUpdateRequest{
+	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
 		ApplicationID: "app-123",
 		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AllowListUpdateRequestRecord{
+		Records: []models.AccessGrantCreateRequestRecord{
 			{FieldName: "person.email", SchemaID: "schema-123"},
 		},
 	})
@@ -139,7 +140,12 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	assert.Nil(t, resp.Description)
 	assert.Equal(t, engine.ClassAllowlistConsent, resp.PolicyClass)
 	assert.Equal(t, params, resp.PolicyParams)
-	assert.Contains(t, resp.AllowList, "app-123")
+
+	// Patching a field keeps its grants.
+	grants, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-123"})
+	require.NoError(t, err)
+	require.Len(t, grants.Records, 1)
+	assert.Equal(t, "person.email", grants.Records[0].FieldName)
 
 	var count int64
 	require.NoError(t, db.Model(&models.PolicyMetadata{}).
@@ -242,6 +248,16 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, createResp.Records, 2)
 
+	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records: []models.AccessGrantCreateRequestRecord{
+			{FieldName: "person.name", SchemaID: "schema-123"},
+			{FieldName: "person.email", SchemaID: "schema-123"},
+		},
+	})
+	require.NoError(t, err)
+
 	id := createResp.Records[1].ID
 	require.NoError(t, service.DeletePolicyMetadata(id))
 
@@ -250,116 +266,185 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 	require.Len(t, records, 1)
 	assert.Equal(t, "person.name", records[0].FieldName)
 
+	// Deleting a field deletes its grants.
+	var grants []models.AccessGrant
+	require.NoError(t, db.Find(&grants).Error)
+	require.Len(t, grants, 1)
+	assert.Equal(t, "person.name", grants[0].FieldName)
+
 	err = service.DeletePolicyMetadata(id)
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
 
-func TestPolicyMetadataService_RevokeAllowListEntry(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
-
-	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:   "person.email",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
-			},
-		},
-	})
-	require.NoError(t, err)
-	require.Len(t, createResp.Records, 1)
-
-	for _, applicationID := range []string{"app-123", "app-456"} {
-		_, err = service.UpdateAllowList(&models.AllowListUpdateRequest{
-			ApplicationID: applicationID,
-			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
-				{FieldName: "person.email", SchemaID: "schema-123"},
-			},
-		})
-		require.NoError(t, err)
-	}
-
-	id := createResp.Records[0].ID
-	require.NoError(t, service.RevokeAllowListEntry(id, "app-123"))
-
-	var policyMetadata models.PolicyMetadata
-	require.NoError(t, db.First(&policyMetadata, "id = ?", id).Error)
-	assert.NotContains(t, policyMetadata.AllowList, "app-123")
-	assert.Contains(t, policyMetadata.AllowList, "app-456")
-
-	err = service.RevokeAllowListEntry(id, "app-123")
-	assert.ErrorIs(t, err, ErrAllowListEntryNotFound)
-
-	err = service.RevokeAllowListEntry("not-a-uuid", "app-456")
-	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
-}
-
-// TestCreatePolicyMetadata_DoesNotUpdateAllowList verifies that schema
-// synchronization cannot restore a stale allow-list entry.
-func TestCreatePolicyMetadata_DoesNotUpdateAllowList(t *testing.T) {
+// TestCreatePolicyMetadata_KeepsAndDropsGrants verifies that schema
+// synchronization keeps the grants of fields it updates and deletes the
+// grants of fields it removes.
+func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:   "person.email",
-				DisplayName: testhelpers.StringPtr("Email"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
-			},
+			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Email"), Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.phone", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
 		},
 	})
 	require.NoError(t, err)
 
-	_, err = service.UpdateAllowList(&models.AllowListUpdateRequest{
+	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
 		ApplicationID: "app-A",
 		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AllowListUpdateRequestRecord{
+		Records: []models.AccessGrantCreateRequestRecord{
 			{FieldName: "person.email", SchemaID: "schema-123"},
+			{FieldName: "person.phone", SchemaID: "schema-123"},
 		},
 	})
 	require.NoError(t, err)
-
-	// Simulate a concurrent revoke after schema synchronization has read the
-	// stale row but immediately before it writes its metadata update.
-	require.NoError(t, db.Exec(`
-		CREATE TRIGGER revoke_before_schema_sync_update
-		BEFORE UPDATE OF display_name ON policy_metadata
-		BEGIN
-			UPDATE policy_metadata
-			SET allow_list = '{}'
-			WHERE id = OLD.id;
-		END;
-	`).Error)
 
 	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:   "person.email",
-				DisplayName: testhelpers.StringPtr("Primary Email"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
-			},
+			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Primary Email"), Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
 		},
 	})
 	require.NoError(t, err)
 
-	var policyMetadata models.PolicyMetadata
-	require.NoError(t, db.Where(
-		"schema_id = ? AND field_name = ?",
-		"schema-123",
-		"person.email",
-	).First(&policyMetadata).Error)
-	require.NotNil(t, policyMetadata.DisplayName)
-	assert.Equal(t, "Primary Email", *policyMetadata.DisplayName)
-	assert.NotContains(t, policyMetadata.AllowList, "app-A")
-	assert.Empty(t, policyMetadata.AllowList)
+	grants, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-A"})
+	require.NoError(t, err)
+	require.Len(t, grants.Records, 1)
+	assert.Equal(t, "person.email", grants.Records[0].FieldName)
+	assert.Equal(t, models.GrantStatusActive, grants.Records[0].Status)
+}
+
+func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
+	db := setupTestDB(t)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+
+	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+		},
+	})
+	require.NoError(t, err)
+
+	grantIDs := map[string]string{}
+	for _, applicationID := range []string{"app-123", "app-456"} {
+		resp, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
+			ApplicationID: applicationID,
+			GrantDuration: models.GrantDurationTypeOneMonth,
+			Records: []models.AccessGrantCreateRequestRecord{
+				{FieldName: "person.email", SchemaID: "schema-123"},
+			},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Records, 1)
+		grantIDs[applicationID] = resp.Records[0].ID
+	}
+
+	revoked, err := service.RevokeAccessGrant(grantIDs["app-123"])
+	require.NoError(t, err)
+	assert.Equal(t, models.GrantStatusRevoked, revoked.Status)
+
+	decide := func(applicationID string) []models.PolicyDecisionFieldOutcome {
+		resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+			ApplicationID:  applicationID,
+			RequiredFields: []models.PolicyDecisionRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
+		})
+		require.NoError(t, err)
+		return resp.Fields
+	}
+	assert.Equal(t, "deny", decide("app-123")[0].Outcome)
+	assert.Equal(t, "allow", decide("app-456")[0].Outcome)
+
+	// The revoked grant is kept as a record.
+	revokedOnly, err := service.ListAccessGrants(models.AccessGrantFilter{Status: models.GrantStatusRevoked})
+	require.NoError(t, err)
+	require.Len(t, revokedOnly.Records, 1)
+	assert.Equal(t, "app-123", revokedOnly.Records[0].ApplicationID)
+
+	_, err = service.RevokeAccessGrant(grantIDs["app-123"])
+	assert.ErrorIs(t, err, ErrAccessGrantNotFound)
+
+	_, err = service.RevokeAccessGrant("not-a-uuid")
+	assert.ErrorIs(t, err, ErrAccessGrantNotFound)
+
+	// Granting again after a revoke creates a new active grant.
+	resp, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records:       []models.AccessGrantCreateRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
+	})
+	require.NoError(t, err)
+	assert.NotEqual(t, grantIDs["app-123"], resp.Records[0].ID)
+	assert.Equal(t, "allow", decide("app-123")[0].Outcome)
+}
+
+func TestPolicyMetadataService_ListAccessGrants(t *testing.T) {
+	db := setupTestDB(t)
+	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+
+	for _, schemaID := range []string{"schema-1", "schema-2"} {
+		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+			SchemaID: schemaID,
+			Records: []models.PolicyMetadataCreateRequestRecord{
+				{FieldName: "field1", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			},
+		})
+		require.NoError(t, err)
+	}
+	for _, applicationID := range []string{"app-A", "app-B"} {
+		_, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
+			ApplicationID: applicationID,
+			GrantDuration: models.GrantDurationTypeOneMonth,
+			Records: []models.AccessGrantCreateRequestRecord{
+				{FieldName: "field1", SchemaID: "schema-1"},
+				{FieldName: "field1", SchemaID: "schema-2"},
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	all, err := service.ListAccessGrants(models.AccessGrantFilter{})
+	require.NoError(t, err)
+	assert.Len(t, all.Records, 4)
+
+	byApp, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-A"})
+	require.NoError(t, err)
+	require.Len(t, byApp.Records, 2)
+	assert.Equal(t, "schema-1", byApp.Records[0].SchemaID)
+	assert.Equal(t, "schema-2", byApp.Records[1].SchemaID)
+
+	bySchemaAndApp, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-B", SchemaID: "schema-2"})
+	require.NoError(t, err)
+	require.Len(t, bySchemaAndApp.Records, 1)
+	assert.Equal(t, "app-B", bySchemaAndApp.Records[0].ApplicationID)
+
+	none, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-C"})
+	require.NoError(t, err)
+	assert.NotNil(t, none.Records, "records serializes as [] rather than null")
+	assert.Empty(t, none.Records)
+
+	_, err = service.ListAccessGrants(models.AccessGrantFilter{Status: "pending"})
+	assert.ErrorIs(t, err, ErrInvalidGrantRequest)
+}
+
+// insertGrant stores an active grant directly, for example one that has
+// already expired.
+func insertGrant(t *testing.T, db *gorm.DB, schemaID, fieldName, applicationID string, expiresAt time.Time) {
+	t.Helper()
+	now := time.Now().UTC()
+	require.NoError(t, db.Create(&models.AccessGrant{
+		ID:            uuid.New(),
+		SchemaID:      schemaID,
+		FieldName:     fieldName,
+		ApplicationID: applicationID,
+		ExpiresAt:     expiresAt,
+		Status:        models.GrantStatusActive,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}).Error)
 }
 
 func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
@@ -552,24 +637,24 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 	})
 }
 
-func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
-	t.Run("UpdateAllowList_EmptyRecords", func(t *testing.T) {
+func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
+	t.Run("CreateAccessGrants_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
-		req := &models.AllowListUpdateRequest{
+		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records:       []models.AllowListUpdateRequestRecord{},
+			Records:       []models.AccessGrantCreateRequestRecord{},
 		}
 
-		resp, err := service.UpdateAllowList(req)
+		resp, err := service.CreateAccessGrants(req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, 0, len(resp.Records))
 	})
 
-	t.Run("UpdateAllowList_InvalidGrantDuration", func(t *testing.T) {
+	t.Run("CreateAccessGrants_InvalidGrantDuration", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
@@ -587,10 +672,10 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		_, err := service.CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
-		req := &models.AllowListUpdateRequest{
+		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: "invalid-duration",
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -598,19 +683,19 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			},
 		}
 
-		_, err = service.UpdateAllowList(req)
-		assert.Error(t, err)
+		_, err = service.CreateAccessGrants(req)
+		assert.ErrorIs(t, err, ErrInvalidGrantRequest)
 		assert.Contains(t, err.Error(), "invalid grant duration")
 	})
 
-	t.Run("UpdateAllowList_FieldNotFound", func(t *testing.T) {
+	t.Run("CreateAccessGrants_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
-		req := &models.AllowListUpdateRequest{
+		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "nonexistent",
 					SchemaID:  "schema-123",
@@ -618,12 +703,11 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			},
 		}
 
-		_, err := service.UpdateAllowList(req)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "policy metadata not found")
+		_, err := service.CreateAccessGrants(req)
+		assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 	})
 
-	t.Run("UpdateAllowList_OneYearDuration", func(t *testing.T) {
+	t.Run("CreateAccessGrants_OneYearDuration", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
@@ -641,10 +725,10 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		_, err := service.CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
-		req := &models.AllowListUpdateRequest{
+		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneYear,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -652,7 +736,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.UpdateAllowList(req)
+		resp, err := service.CreateAccessGrants(req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, 1, len(resp.Records))
@@ -663,42 +747,25 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		assert.WithinDuration(t, expectedExpiry, expiresAt, 5*time.Second)
 	})
 
-	t.Run("UpdateAllowList_NilAllowList", func(t *testing.T) {
+	t.Run("CreateAccessGrants_InvalidRequest", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
-		// Create policy metadata first using the service
-		createReq := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
-				},
-			},
-		}
-		_, err := service.CreatePolicyMetadata(createReq)
-		assert.NoError(t, err)
+		_, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
+			ApplicationID: " ",
+			GrantDuration: models.GrantDurationTypeOneMonth,
+		})
+		assert.ErrorIs(t, err, ErrInvalidGrantRequest)
 
-		// Now update allow list
-		req := &models.AllowListUpdateRequest{
+		_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
-				{
-					FieldName: "field1",
-					SchemaID:  "schema-123",
-				},
-			},
-		}
-
-		resp, err := service.UpdateAllowList(req)
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
+			Records:       []models.AccessGrantCreateRequestRecord{{FieldName: "field1"}},
+		})
+		assert.ErrorIs(t, err, ErrInvalidGrantRequest)
 	})
 
-	t.Run("UpdateAllowList_ReupdateExistingAllowList", func(t *testing.T) {
+	t.Run("CreateAccessGrants_RenewsActiveGrant", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
@@ -717,35 +784,42 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// First update
-		req1 := &models.AllowListUpdateRequest{
+		req1 := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
 				},
 			},
 		}
-		resp1, err := service.UpdateAllowList(req1)
+		resp1, err := service.CreateAccessGrants(req1)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp1)
 
 		// Re-update with different duration
-		req2 := &models.AllowListUpdateRequest{
+		req2 := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneYear,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
 				},
 			},
 		}
-		resp2, err := service.UpdateAllowList(req2)
+		resp2, err := service.CreateAccessGrants(req2)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp2)
 		assert.Equal(t, 1, len(resp2.Records))
+
+		// The active grant is renewed, not duplicated.
+		assert.Equal(t, resp1.Records[0].ID, resp2.Records[0].ID)
+		assert.Equal(t, resp1.Records[0].CreatedAt, resp2.Records[0].CreatedAt)
+		var count int64
+		require.NoError(t, db.Model(&models.AccessGrant{}).Count(&count).Error)
+		assert.Equal(t, int64(1), count)
 
 		// Verify expiration is approximately 1 year from now
 		expiresAt, _ := time.Parse(time.RFC3339, resp2.Records[0].ExpiresAt)
@@ -753,7 +827,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		assert.WithinDuration(t, expectedExpiry, expiresAt, 5*time.Second)
 	})
 
-	t.Run("UpdateAllowList_MultipleFields", func(t *testing.T) {
+	t.Run("CreateAccessGrants_MultipleFields", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
 
@@ -776,10 +850,10 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 		_, err := service.CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
-		req := &models.AllowListUpdateRequest{
+		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -791,7 +865,7 @@ func TestPolicyMetadataService_UpdateAllowList_EdgeCases(t *testing.T) {
 			},
 		}
 
-		resp, err := service.UpdateAllowList(req)
+		resp, err := service.CreateAccessGrants(req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, 2, len(resp.Records))
@@ -817,16 +891,8 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		_, err := service.CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
-		// Manually set expired allow list entry
-		var pm models.PolicyMetadata
-		db.Where("field_name = ?", "field1").First(&pm)
-		pm.AllowList = models.AllowList{
-			"app-123": {
-				ExpiresAt: time.Now().AddDate(0, 0, -1), // Expired yesterday
-				UpdatedAt: time.Now(),
-			},
-		}
-		db.Save(&pm)
+		// A grant that expired yesterday
+		insertGrant(t, db, "schema-123", "field1", "app-123", time.Now().AddDate(0, 0, -1))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID: "app-123",
@@ -883,17 +949,17 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Add to allow list
-		updateReq := &models.AllowListUpdateRequest{
+		updateReq := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
 				},
 			},
 		}
-		_, err = service.UpdateAllowList(updateReq)
+		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
 		req := &models.PolicyDecisionRequest{
@@ -946,15 +1012,15 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Add both to allow list
-		updateReq := &models.AllowListUpdateRequest{
+		updateReq := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{FieldName: "field1", SchemaID: "schema-1"},
 				{FieldName: "field2", SchemaID: "schema-2"},
 			},
 		}
-		_, err = service.UpdateAllowList(updateReq)
+		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
 		req := &models.PolicyDecisionRequest{
@@ -1048,17 +1114,17 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Add to allow list
-		updateReq := &models.AllowListUpdateRequest{
+		updateReq := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
 				},
 			},
 		}
-		_, err = service.UpdateAllowList(updateReq)
+		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
 		req := &models.PolicyDecisionRequest{
@@ -1130,26 +1196,18 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Add authorized field to allow list
-		updateReq1 := &models.AllowListUpdateRequest{
+		updateReq1 := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
+			Records: []models.AccessGrantCreateRequestRecord{
 				{FieldName: "authorized", SchemaID: "schema-123"},
 			},
 		}
-		_, err = service.UpdateAllowList(updateReq1)
+		_, err = service.CreateAccessGrants(updateReq1)
 		assert.NoError(t, err)
 
-		// Manually set expired allow list entry
-		var pmExpired models.PolicyMetadata
-		db.Where("field_name = ?", "expired").First(&pmExpired)
-		pmExpired.AllowList = models.AllowList{
-			"app-123": {
-				ExpiresAt: time.Now().AddDate(0, 0, -1), // Expired yesterday
-				UpdatedAt: time.Now(),
-			},
-		}
-		db.Save(&pmExpired)
+		// A grant that expired yesterday
+		insertGrant(t, db, "schema-123", "expired", "app-123", time.Now().AddDate(0, 0, -1))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID: "app-123",
@@ -1180,7 +1238,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 // as they cannot be properly mocked with SQLite. These error scenarios should be tested
 // in integration tests with a real PostgreSQL database.
 
-// Error path tests for UpdateAllowList
+// Error path tests for CreateAccessGrants
 // Note: Tests that require closing database connections to simulate errors have been removed
 // as they cannot be properly mocked with SQLite. These error scenarios should be tested
 // in integration tests with a real PostgreSQL database.

@@ -3,6 +3,8 @@ package policy
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"time"
 )
 
 // Request and Response DTOs for Policy Metadata and Allow List Management
@@ -107,22 +109,53 @@ func (r PolicyMetadataPatchRequest) IsEmpty() bool {
 		!r.PolicyParams.Set
 }
 
-// AllowListUpdateRequest represents the request to update allow list
-type AllowListUpdateRequest struct {
+// AccessGrantCreateRequest grants one application access to fields for a
+// duration. The PDP renews a field's existing active grant.
+type AccessGrantCreateRequest struct {
 	ApplicationID string                `json:"applicationId" validate:"required"`
 	Records       []SelectedFieldRecord `json:"records" validate:"required,dive"`
 	GrantDuration GrantDurationType     `json:"grantDuration" validate:"required,grant_duration_type_enum"`
 }
 
-// AllowListUpdateResponseRecord represents one record in the allow list update response
-type AllowListUpdateResponseRecord struct {
-	FieldName string `json:"fieldName"`
-	SchemaID  string `json:"schemaId"`
-	ExpiresAt string `json:"expiresAt"`
-	UpdatedAt string `json:"updatedAt"`
+// Access grant statuses
+const (
+	GrantStatusActive  = "active"
+	GrantStatusRevoked = "revoked"
+)
+
+// AccessGrant is one application's access to one field in the PDP.
+type AccessGrant struct {
+	ID            string `json:"id"`
+	SchemaID      string `json:"schemaId"`
+	FieldName     string `json:"fieldName"`
+	ApplicationID string `json:"applicationId"`
+	ExpiresAt     string `json:"expiresAt"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
 }
 
-// AllowListUpdateResponse represents the response from allow list update
-type AllowListUpdateResponse struct {
-	Records []AllowListUpdateResponseRecord `json:"records"`
+// AllowListEntry returns the grant as an allow-list entry.
+func (g AccessGrant) AllowListEntry() (AllowListEntry, error) {
+	expiresAt, err := time.Parse(time.RFC3339, g.ExpiresAt)
+	if err != nil {
+		return AllowListEntry{}, fmt.Errorf("access grant %s: invalid expiresAt: %w", g.ID, err)
+	}
+	updatedAt, err := time.Parse(time.RFC3339, g.UpdatedAt)
+	if err != nil {
+		return AllowListEntry{}, fmt.Errorf("access grant %s: invalid updatedAt: %w", g.ID, err)
+	}
+	return AllowListEntry{ExpiresAt: expiresAt, UpdatedAt: updatedAt}, nil
+}
+
+// AccessGrantListResponse holds access grants, for both creating and listing them.
+type AccessGrantListResponse struct {
+	Records []AccessGrant `json:"records"`
+}
+
+// AccessGrantFilter narrows a grant listing. Empty fields match every grant.
+type AccessGrantFilter struct {
+	ApplicationID string
+	SchemaID      string
+	Status        string
 }
