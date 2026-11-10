@@ -359,7 +359,7 @@ func createPolicyMetadataWithClass(t *testing.T, schemaID, fieldName, policyClas
 	}()
 }
 
-// updatePDPAllowlist adds an application to the PDP allowlist for the given schema and field.
+// updatePDPAllowlist grants an application access to the given schema field in the PDP.
 func updatePDPAllowlist(t *testing.T, appID, schemaID, fieldName string) {
 	allowListReq := map[string]interface{}{
 		"applicationId": appID,
@@ -374,7 +374,7 @@ func updatePDPAllowlist(t *testing.T, appID, schemaID, fieldName string) {
 	allowListData, err := json.Marshal(allowListReq)
 	require.NoError(t, err)
 
-	allowListResp, err := testHTTPClient.Post(pdpURL+"/update-allowlist", "application/json", bytes.NewBuffer(allowListData))
+	allowListResp, err := testHTTPClient.Post(pdpURL+"/grants", "application/json", bytes.NewBuffer(allowListData))
 	require.NoError(t, err)
 	defer func() {
 		io.Copy(io.Discard, allowListResp.Body)

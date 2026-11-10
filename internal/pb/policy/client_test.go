@@ -221,14 +221,18 @@ func TestClient_CreatePolicyMetadata_NetworkError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to send request to PDP")
 }
 
-func TestClient_UpdateAllowList_Success(t *testing.T) {
+func TestClient_CreateAccessGrants_Success(t *testing.T) {
 	applicationID := "test-app-123"
-	expectedRecords := []AllowListUpdateResponseRecord{
+	expectedRecords := []AccessGrant{
 		{
-			FieldName: "personInfo.name",
-			SchemaID:  "test-schema-123",
-			ExpiresAt: "2024-02-01T00:00:00Z",
-			UpdatedAt: "2024-01-01T00:00:00Z",
+			ID:            "grant-1",
+			FieldName:     "personInfo.name",
+			SchemaID:      "test-schema-123",
+			ApplicationID: applicationID,
+			ExpiresAt:     "2024-02-01T00:00:00Z",
+			Status:        GrantStatusActive,
+			CreatedAt:     "2024-01-01T00:00:00Z",
+			UpdatedAt:     "2024-01-01T00:00:00Z",
 		},
 	}
 
@@ -236,11 +240,11 @@ func TestClient_UpdateAllowList_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify the request
 		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "/api/v1/policy/update-allowlist", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/grants", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		// Verify request body
-		var req AllowListUpdateRequest
+		var req AccessGrantCreateRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		require.NoError(t, err)
 		assert.Equal(t, applicationID, req.ApplicationID)
@@ -248,7 +252,7 @@ func TestClient_UpdateAllowList_Success(t *testing.T) {
 		assert.Equal(t, GrantDurationTypeOneMonth, req.GrantDuration)
 
 		// Send response
-		response := AllowListUpdateResponse{
+		response := AccessGrantListResponse{
 			Records: expectedRecords,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -259,7 +263,7 @@ func TestClient_UpdateAllowList_Success(t *testing.T) {
 
 	service := NewClient(server.URL)
 
-	request := AllowListUpdateRequest{
+	request := AccessGrantCreateRequest{
 		ApplicationID: applicationID,
 		Records: []SelectedFieldRecord{
 			{
@@ -270,15 +274,16 @@ func TestClient_UpdateAllowList_Success(t *testing.T) {
 		GrantDuration: GrantDurationTypeOneMonth,
 	}
 
-	response, err := service.UpdateAllowList(request)
+	response, err := service.CreateAccessGrants(request)
 	require.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.Len(t, response.Records, 1)
 	assert.Equal(t, expectedRecords[0].FieldName, response.Records[0].FieldName)
 	assert.Equal(t, expectedRecords[0].SchemaID, response.Records[0].SchemaID)
+	assert.Equal(t, "grant-1", response.Records[0].ID)
 }
 
-func TestClient_UpdateAllowList_Non200Status(t *testing.T) {
+func TestClient_CreateAccessGrants_Non200Status(t *testing.T) {
 	// Create a mock HTTP server that returns 400
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -288,7 +293,7 @@ func TestClient_UpdateAllowList_Non200Status(t *testing.T) {
 
 	service := NewClient(server.URL)
 
-	request := AllowListUpdateRequest{
+	request := AccessGrantCreateRequest{
 		ApplicationID: "test-app",
 		Records: []SelectedFieldRecord{
 			{
@@ -299,13 +304,13 @@ func TestClient_UpdateAllowList_Non200Status(t *testing.T) {
 		GrantDuration: GrantDurationTypeOneMonth,
 	}
 
-	response, err := service.UpdateAllowList(request)
+	response, err := service.CreateAccessGrants(request)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "PDP returned status 400")
 }
 
-func TestClient_UpdateAllowList_InvalidJSONResponse(t *testing.T) {
+func TestClient_CreateAccessGrants_InvalidJSONResponse(t *testing.T) {
 	// Create a mock HTTP server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -316,7 +321,7 @@ func TestClient_UpdateAllowList_InvalidJSONResponse(t *testing.T) {
 
 	service := NewClient(server.URL)
 
-	request := AllowListUpdateRequest{
+	request := AccessGrantCreateRequest{
 		ApplicationID: "test-app",
 		Records: []SelectedFieldRecord{
 			{
@@ -327,17 +332,17 @@ func TestClient_UpdateAllowList_InvalidJSONResponse(t *testing.T) {
 		GrantDuration: GrantDurationTypeOneMonth,
 	}
 
-	response, err := service.UpdateAllowList(request)
+	response, err := service.CreateAccessGrants(request)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "failed to parse response")
 }
 
-func TestClient_UpdateAllowList_NetworkError(t *testing.T) {
+func TestClient_CreateAccessGrants_NetworkError(t *testing.T) {
 	// Use an invalid URL to simulate network error
 	service := NewClient("http://invalid-host:9999")
 
-	request := AllowListUpdateRequest{
+	request := AccessGrantCreateRequest{
 		ApplicationID: "test-app",
 		Records: []SelectedFieldRecord{
 			{
@@ -348,15 +353,15 @@ func TestClient_UpdateAllowList_NetworkError(t *testing.T) {
 		GrantDuration: GrantDurationTypeOneMonth,
 	}
 
-	response, err := service.UpdateAllowList(request)
+	response, err := service.CreateAccessGrants(request)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "failed to send request to PDP")
 }
 
-func TestClient_UpdateAllowList_MarshalError(t *testing.T) {
+func TestClient_CreateAccessGrants_MarshalError(t *testing.T) {
 	// Create a valid request - marshal errors are unlikely with our models
-	request := AllowListUpdateRequest{
+	request := AccessGrantCreateRequest{
 		ApplicationID: "test-app",
 		Records: []SelectedFieldRecord{
 			{
@@ -439,46 +444,82 @@ func TestClient_DeletePolicyMetadata_Success(t *testing.T) {
 	assert.NoError(t, service.DeletePolicyMetadata("pm-1"))
 }
 
-func TestClient_RevokeAllowListEntry_Success(t *testing.T) {
+func TestClient_RevokeAccessGrant_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodDelete, r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata/pm-1/allowlist/client-1", r.URL.Path)
-		w.WriteHeader(http.StatusNoContent)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/v1/policy/grants/grant%2F1/revoke", r.URL.EscapedPath())
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"grant/1","schemaId":"sch_1","fieldName":"person.name","applicationId":"client-1","status":"revoked"}`))
 	}))
 	defer server.Close()
 
 	service := NewClient(server.URL)
 
-	assert.NoError(t, service.RevokeAllowListEntry("pm-1", "client-1"))
+	grant, err := service.RevokeAccessGrant("grant/1")
+	require.NoError(t, err)
+	assert.Equal(t, GrantStatusRevoked, grant.Status)
+	assert.Equal(t, "client-1", grant.ApplicationID)
 }
 
-func TestClient_RevokeAllowListEntry_EscapesPathSegments(t *testing.T) {
+func TestClient_ListAccessGrants_Filters(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/v1/policy/metadata/pm-1/allowlist/client%2F1", r.URL.EscapedPath())
-		w.WriteHeader(http.StatusNoContent)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/api/v1/policy/grants", r.URL.Path)
+		assert.Equal(t, "client&1", r.URL.Query().Get("applicationId"))
+		assert.Equal(t, "sch_1", r.URL.Query().Get("schemaId"))
+		assert.Equal(t, "active", r.URL.Query().Get("status"))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"records":[{"id":"g-1","schemaId":"sch_1","fieldName":"person.name","applicationId":"client&1","expiresAt":"2026-02-01T00:00:00Z","status":"active","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"}]}`))
 	}))
 	defer server.Close()
 
 	service := NewClient(server.URL)
 
-	assert.NoError(t, service.RevokeAllowListEntry("pm-1", "client/1"))
+	response, err := service.ListAccessGrants(AccessGrantFilter{ApplicationID: "client&1", SchemaID: "sch_1", Status: GrantStatusActive})
+	require.NoError(t, err)
+	require.Len(t, response.Records, 1)
+	entry, err := response.Records[0].AllowListEntry()
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), entry.ExpiresAt.UTC())
+	assert.Equal(t, time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC), entry.UpdatedAt.UTC())
+}
+
+func TestClient_ListAccessGrants_NoFilter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/policy/grants", r.URL.Path)
+		assert.Empty(t, r.URL.RawQuery)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"records":[]}`))
+	}))
+	defer server.Close()
+
+	response, err := NewClient(server.URL).ListAccessGrants(AccessGrantFilter{})
+	require.NoError(t, err)
+	assert.Empty(t, response.Records)
+}
+
+func TestAccessGrant_AllowListEntry_InvalidTime(t *testing.T) {
+	_, err := AccessGrant{ID: "g-1", ExpiresAt: "soon", UpdatedAt: "2026-01-02T00:00:00Z"}.AllowListEntry()
+	assert.ErrorContains(t, err, "invalid expiresAt")
 }
 
 func TestClient_PolicyMetadata_ReturnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error":"allow-list entry not found: client-1"}`))
+		_, _ = w.Write([]byte(`{"error":"active access grant not found: g-1"}`))
 	}))
 	defer server.Close()
 
 	service := NewClient(server.URL)
 
-	err := service.RevokeAllowListEntry("pm-1", "client-1")
+	_, err := service.RevokeAccessGrant("g-1")
 	var pdpErr *Error
 	require.ErrorAs(t, err, &pdpErr)
 	assert.Equal(t, http.StatusNotFound, pdpErr.StatusCode)
-	assert.Equal(t, "allow-list entry not found: client-1", pdpErr.Message)
+	assert.Equal(t, "active access grant not found: g-1", pdpErr.Message)
 }
 
 func TestClient_PolicyMetadata_NetworkError(t *testing.T) {

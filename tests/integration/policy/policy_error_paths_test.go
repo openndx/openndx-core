@@ -3,7 +3,6 @@ package policy
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -153,12 +152,12 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	})
 }
 
-// TestPolicy_UpdateAllowList_FieldNotFound tests error handling when
-// trying to update allow list for a field that doesn't exist.
-func TestPolicy_UpdateAllowList_FieldNotFound(t *testing.T) {
-	req := AllowListUpdateRequest{
+// TestPolicy_CreateAccessGrants_FieldNotFound tests error handling when
+// trying to grant access to a field that doesn't exist.
+func TestPolicy_CreateAccessGrants_FieldNotFound(t *testing.T) {
+	req := AccessGrantCreateRequest{
 		ApplicationID: "app-123",
-		Records: []AllowListUpdateRequestRecord{
+		Records: []AccessGrantCreateRequestRecord{
 			{
 				FieldName: "nonexistent-field",
 				SchemaID:  "nonexistent-schema",
@@ -170,12 +169,12 @@ func TestPolicy_UpdateAllowList_FieldNotFound(t *testing.T) {
 	reqBody, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Should return error for field not found
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "Should return error for field not found")
+	// Should return not found for a field without policy metadata
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode, "Should return not found for field not found")
 }
 
 // TestPolicy_GetPolicyDecision_FieldNotFound tests error handling when
@@ -202,9 +201,9 @@ func TestPolicy_GetPolicyDecision_FieldNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "Should return error for field not found")
 }
 
-// TestPolicy_UpdateAllowList_InvalidGrantDuration tests error handling
+// TestPolicy_CreateAccessGrants_InvalidGrantDuration tests error handling
 // for invalid grant duration values.
-func TestPolicy_UpdateAllowList_InvalidGrantDuration(t *testing.T) {
+func TestPolicy_CreateAccessGrants_InvalidGrantDuration(t *testing.T) {
 	schemaID := generateTestID("test-schema-invalid-duration")
 
 	// Create policy metadata first
@@ -227,11 +226,11 @@ func TestPolicy_UpdateAllowList_InvalidGrantDuration(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Try to update with invalid grant duration
-	updateReq := AllowListUpdateRequest{
+	// Try to grant with invalid grant duration
+	updateReq := AccessGrantCreateRequest{
 		ApplicationID: "app-123",
 		GrantDuration: "invalid-duration",
-		Records: []AllowListUpdateRequestRecord{
+		Records: []AccessGrantCreateRequestRecord{
 			{
 				FieldName: "field1",
 				SchemaID:  schemaID,
@@ -242,12 +241,12 @@ func TestPolicy_UpdateAllowList_InvalidGrantDuration(t *testing.T) {
 	updateBody, err := json.Marshal(updateReq)
 	require.NoError(t, err)
 
-	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBuffer(updateBody))
+	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBuffer(updateBody))
 	require.NoError(t, err)
 	defer updateResp.Body.Close()
 
-	// Should return error for invalid grant duration
-	assert.Equal(t, http.StatusInternalServerError, updateResp.StatusCode, "Should return error for invalid grant duration")
+	// Should reject an invalid grant duration
+	assert.Equal(t, http.StatusBadRequest, updateResp.StatusCode, "Should return bad request for invalid grant duration")
 
 	// Cleanup
 	t.Cleanup(func() {
@@ -282,11 +281,11 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Update allow list
-	updateReq := AllowListUpdateRequest{
+	// Grant access
+	updateReq := AccessGrantCreateRequest{
 		ApplicationID: appID,
 		GrantDuration: "30d",
-		Records: []AllowListUpdateRequestRecord{
+		Records: []AccessGrantCreateRequestRecord{
 			{
 				FieldName: fieldName,
 				SchemaID:  schemaID,
@@ -297,12 +296,12 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 	updateBody, err := json.Marshal(updateReq)
 	require.NoError(t, err)
 
-	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/update-allowlist", "application/json", bytes.NewBuffer(updateBody))
+	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/grants", "application/json", bytes.NewBuffer(updateBody))
 	require.NoError(t, err)
 	updateResp.Body.Close()
 	assert.Equal(t, http.StatusOK, updateResp.StatusCode)
 
-	// Manually set expired allow list entry via database (simulating expired access)
+	// Manually expire the grant via database (simulating expired access)
 	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
 		Port:     "5433",
 		Database: "policy_db",
@@ -316,23 +315,12 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 		return
 	}
 
-	// Get the record and manually expire it
-	var result struct {
-		AllowList string `gorm:"column:allow_list"`
-	}
-	err = db.Table("policy_metadata").
-		Where("schema_id = ? AND field_name = ?", schemaID, fieldName).
-		Select("allow_list").
-		Scan(&result).Error
-	require.NoError(t, err)
-
-	// Update with expired timestamp (yesterday)
-	expiredTime := time.Now().AddDate(0, 0, -1).Format(time.RFC3339)
-	expiredJSON := fmt.Sprintf(`{"%s":{"expires_at":"%s","updated_at":"%s"}}`, appID, expiredTime, time.Now().Format(time.RFC3339))
-	err = db.Table("policy_metadata").
-		Where("schema_id = ? AND field_name = ?", schemaID, fieldName).
-		Update("allow_list", expiredJSON).Error
-	require.NoError(t, err)
+	// Expire the grant (yesterday)
+	result := db.Table("access_grants").
+		Where("schema_id = ? AND field_name = ? AND application_id = ? AND status = 'active'", schemaID, fieldName, appID).
+		Update("expires_at", time.Now().AddDate(0, 0, -1))
+	require.NoError(t, result.Error)
+	require.Equal(t, int64(1), result.RowsAffected)
 
 	// Test policy decision with expired access
 	decisionReq := PolicyDecisionRequest{

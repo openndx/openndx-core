@@ -48,16 +48,16 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestHandler_UpdateAllowList_InvalidJSON(t *testing.T) {
+func TestHandler_CreateAccessGrants_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(db, testhelpers.Engine(t))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/update-allowlist", bytes.NewBufferString("invalid json"))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/grants", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	handler.UpdateAllowList(w, req)
+	handler.CreateAccessGrants(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -304,15 +304,6 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
-		ApplicationID: "app-123",
-		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AllowListUpdateRequestRecord{
-			{FieldName: "person.email", SchemaID: "schema-123"},
-		},
-	})
-	require.NoError(t, err)
-
 	allReq := httptest.NewRequest(
 		http.MethodGet,
 		"/api/v1/policy/metadata",
@@ -347,7 +338,6 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	require.Len(t, filteredResp.Records, 2)
 	assert.Equal(t, "person.email", filteredResp.Records[0].FieldName)
 	assert.Equal(t, "person.name", filteredResp.Records[1].FieldName)
-	assert.Contains(t, filteredResp.Records[0].AllowList, "app-123")
 }
 
 func TestHandler_PatchPolicyMetadata(t *testing.T) {
@@ -375,14 +365,6 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	require.Len(t, createResp.Records, 2)
 
 	emailID := createResp.Records[1].ID
-	_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
-		ApplicationID: "app-123",
-		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AllowListUpdateRequestRecord{
-			{FieldName: "person.email", SchemaID: "schema-123"},
-		},
-	})
-	require.NoError(t, err)
 
 	req := httptest.NewRequest(
 		http.MethodPatch,
@@ -401,7 +383,6 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
 	require.NotNil(t, resp.DisplayName)
 	assert.Equal(t, "Primary Email", *resp.DisplayName)
-	assert.Contains(t, resp.AllowList, "app-123")
 
 	var count int64
 	require.NoError(t, db.Model(&models.PolicyMetadata{}).
@@ -514,55 +495,85 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, unknownRecorder.Code)
 }
 
-func TestHandler_RevokeAllowListEntry(t *testing.T) {
+func TestHandler_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db, testhelpers.Engine(t))
 
-	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:   "person.email",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
-			},
+			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
 		},
 	})
 	require.NoError(t, err)
-	require.Len(t, createResp.Records, 1)
 
+	grants, err := handler.policyService.CreateAccessGrants(&models.AccessGrantCreateRequest{
+		ApplicationID: "app-123",
+		GrantDuration: models.GrantDurationTypeOneMonth,
+		Records:       []models.AccessGrantCreateRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
+	})
+	require.NoError(t, err)
+	grantID := grants.Records[0].ID
+
+	revoke := func(id string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/grants/"+id+"/revoke", nil)
+		req.SetPathValue("id", id)
+		w := httptest.NewRecorder()
+		handler.RevokeAccessGrant(w, req)
+		return w
+	}
+
+	w := revoke(grantID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp models.AccessGrantResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	assert.Equal(t, grantID, resp.ID)
+	assert.Equal(t, models.GrantStatusRevoked, resp.Status)
+
+	// A revoked grant can't be revoked again.
+	assert.Equal(t, http.StatusNotFound, revoke(grantID).Code)
+	assert.Equal(t, http.StatusNotFound, revoke("not-a-uuid").Code)
+}
+
+func TestHandler_ListAccessGrants(t *testing.T) {
+	db := setupTestDB(t)
+	handler := NewHandler(db, testhelpers.Engine(t))
+
+	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		SchemaID: "schema-123",
+		Records: []models.PolicyMetadataCreateRequestRecord{
+			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+		},
+	})
+	require.NoError(t, err)
 	for _, applicationID := range []string{"app-123", "app-456"} {
-		_, err = handler.policyService.UpdateAllowList(&models.AllowListUpdateRequest{
+		_, err = handler.policyService.CreateAccessGrants(&models.AccessGrantCreateRequest{
 			ApplicationID: applicationID,
 			GrantDuration: models.GrantDurationTypeOneMonth,
-			Records: []models.AllowListUpdateRequestRecord{
-				{FieldName: "person.email", SchemaID: "schema-123"},
-			},
+			Records:       []models.AccessGrantCreateRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
 		})
 		require.NoError(t, err)
 	}
 
-	req := httptest.NewRequest(
-		http.MethodDelete,
-		"/api/v1/policy/metadata/"+createResp.Records[0].ID+"/allowlist/app-123",
-		nil,
-	)
-	req.SetPathValue("id", createResp.Records[0].ID)
-	req.SetPathValue("applicationId", "app-123")
-	w := httptest.NewRecorder()
+	list := func(query string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/policy/grants"+query, nil)
+		w := httptest.NewRecorder()
+		handler.ListAccessGrants(w, req)
+		return w
+	}
 
-	handler.RevokeAllowListEntry(w, req)
+	w := list("?applicationId=app-456&schemaId=schema-123&status=active")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp models.AccessGrantListResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	require.Len(t, resp.Records, 1)
+	assert.Equal(t, "app-456", resp.Records[0].ApplicationID)
+	assert.Equal(t, "person.email", resp.Records[0].FieldName)
 
-	assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-	assert.Empty(t, w.Body.String())
-
-	var policyMetadata models.PolicyMetadata
-	require.NoError(t, db.First(&policyMetadata, "id = ?", createResp.Records[0].ID).Error)
-	assert.NotContains(t, policyMetadata.AllowList, "app-123")
-	assert.Contains(t, policyMetadata.AllowList, "app-456")
+	assert.Equal(t, http.StatusBadRequest, list("?status=pending").Code)
 }
 
-func TestHandler_UpdateAllowList(t *testing.T) {
+func TestHandler_CreateAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(db, testhelpers.Engine(t))
 
@@ -583,16 +594,16 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    models.AllowListUpdateRequest
+		requestBody    models.AccessGrantCreateRequest
 		expectedStatus int
 		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
 	}{
 		{
-			name: "Update allow list successfully",
-			requestBody: models.AllowListUpdateRequest{
+			name: "Grant access successfully",
+			requestBody: models.AccessGrantCreateRequest{
 				ApplicationID: "app-123",
 				GrantDuration: models.GrantDurationTypeOneMonth,
-				Records: []models.AllowListUpdateRequestRecord{
+				Records: []models.AccessGrantCreateRequestRecord{
 					{
 						FieldName: "person.fullName",
 						SchemaID:  "schema-123",
@@ -601,68 +612,72 @@ func TestHandler_UpdateAllowList(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp models.AllowListUpdateResponse
-				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-					t.Fatalf("Failed to decode response: %v", err)
-				}
-				if len(resp.Records) != 1 {
-					t.Errorf("Expected 1 record, got %d", len(resp.Records))
-				}
-				if resp.Records[0].FieldName != "person.fullName" {
-					t.Errorf("Expected fieldName person.fullName, got %s", resp.Records[0].FieldName)
-				}
-				if resp.Records[0].ExpiresAt == "" {
-					t.Error("Expected expiresAt to be set")
-				}
+				var resp models.AccessGrantListResponse
+				require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+				require.Len(t, resp.Records, 1)
+				assert.NotEmpty(t, resp.Records[0].ID)
+				assert.Equal(t, "person.fullName", resp.Records[0].FieldName)
+				assert.Equal(t, "app-123", resp.Records[0].ApplicationID)
+				assert.Equal(t, models.GrantStatusActive, resp.Records[0].Status)
+				assert.NotEmpty(t, resp.Records[0].ExpiresAt)
 			},
 		},
 		{
 			name: "Field not found",
-			requestBody: models.AllowListUpdateRequest{
+			requestBody: models.AccessGrantCreateRequest{
 				ApplicationID: "app-123",
 				GrantDuration: models.GrantDurationTypeOneMonth,
-				Records: []models.AllowListUpdateRequestRecord{
+				Records: []models.AccessGrantCreateRequestRecord{
 					{
 						FieldName: "person.nonexistent",
 						SchemaID:  "schema-123",
 					},
 				},
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name: "Empty request body",
-			requestBody: models.AllowListUpdateRequest{
+			name: "Missing application ID",
+			requestBody: models.AccessGrantCreateRequest{
 				ApplicationID: "",
 				GrantDuration: models.GrantDurationTypeOneMonth,
-				Records:       []models.AllowListUpdateRequestRecord{},
+				Records:       []models.AccessGrantCreateRequestRecord{},
 			},
-			expectedStatus: http.StatusOK, // Handler doesn't validate, service will handle
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "Service error - invalid grant duration",
-			requestBody: models.AllowListUpdateRequest{
+			name: "No records",
+			requestBody: models.AccessGrantCreateRequest{
+				ApplicationID: "app-123",
+				GrantDuration: models.GrantDurationTypeOneMonth,
+				Records:       []models.AccessGrantCreateRequestRecord{},
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Invalid grant duration",
+			requestBody: models.AccessGrantCreateRequest{
 				ApplicationID: "app-123",
 				GrantDuration: "invalid-duration", // Invalid grant duration
-				Records: []models.AllowListUpdateRequestRecord{
+				Records: []models.AccessGrantCreateRequestRecord{
 					{
 						FieldName: "person.fullName",
 						SchemaID:  "schema-123",
 					},
 				},
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/update-allowlist", bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/grants", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.UpdateAllowList(w, req)
+			handler.CreateAccessGrants(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
@@ -704,17 +719,17 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 	}
 
 	// Update allow list for authorized field
-	updateReq := models.AllowListUpdateRequest{
+	updateReq := models.AccessGrantCreateRequest{
 		ApplicationID: "app-123",
 		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AllowListUpdateRequestRecord{
+		Records: []models.AccessGrantCreateRequestRecord{
 			{
 				FieldName: "person.fullName",
 				SchemaID:  "schema-123",
 			},
 		},
 	}
-	_, err = handler.policyService.UpdateAllowList(&updateReq)
+	_, err = handler.policyService.CreateAccessGrants(&updateReq)
 	if err != nil {
 		t.Fatalf("Failed to update allow list: %v", err)
 	}
@@ -871,17 +886,17 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup: Update allow list for consent-required test case before making the request
 			if tt.name == "Consent required - restricted field in allow list" {
-				updateReq := models.AllowListUpdateRequest{
+				updateReq := models.AccessGrantCreateRequest{
 					ApplicationID: "app-123",
 					GrantDuration: models.GrantDurationTypeOneMonth,
-					Records: []models.AllowListUpdateRequestRecord{
+					Records: []models.AccessGrantCreateRequestRecord{
 						{
 							FieldName: "person.nic",
 							SchemaID:  "schema-123",
 						},
 					},
 				}
-				_, err := handler.policyService.UpdateAllowList(&updateReq)
+				_, err := handler.policyService.CreateAccessGrants(&updateReq)
 				if err != nil {
 					t.Fatalf("Failed to update allow list for test setup: %v", err)
 				}

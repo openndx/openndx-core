@@ -16,7 +16,6 @@ type PolicyMetadata struct {
 	Source       Source       `gorm:"column:source;type:source_enum;not null;default:'fallback'" json:"source"`
 	PolicyClass  string       `gorm:"column:policy_class;type:text;not null" json:"policyClass"`
 	PolicyParams PolicyParams `gorm:"column:policy_params;type:jsonb;not null;default:'{}'" json:"policyParams"`
-	AllowList    AllowList    `gorm:"column:allow_list;type:jsonb;not null;default:'{}'" json:"allowList"`
 	Owner        *Owner       `gorm:"column:owner;type:owner_enum;" json:"owner"`
 	CreatedAt    time.Time    `gorm:"column:created_at;type:timestamp;default:CURRENT_TIMESTAMP;not null" json:"createdAt"`
 	UpdatedAt    time.Time    `gorm:"column:updated_at;type:timestamp;default:CURRENT_TIMESTAMP" json:"updatedAt"`
@@ -42,7 +41,6 @@ func (pm *PolicyMetadata) ToResponse() PolicyMetadataResponse {
 		Source:       pm.Source,
 		PolicyClass:  pm.PolicyClass,
 		PolicyParams: policyParams,
-		AllowList:    pm.AllowList,
 		Owner:        pm.Owner,
 		CreatedAt:    pm.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    pm.UpdatedAt.Format(time.RFC3339),

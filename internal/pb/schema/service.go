@@ -18,6 +18,10 @@ import (
 // exist in the requested schema.
 var ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
 
+// ErrAllowListEntryNotFound is returned when an application holds no active
+// grant for a field.
+var ErrAllowListEntryNotFound = errors.New("allow-list entry not found")
+
 var (
 	// ErrInvalidSchemaID is returned when a caller-supplied schema ID doesn't
 	// match schemaIDPattern.
@@ -232,51 +236,118 @@ func (s *Service) GetSchemas(memberID *string) ([]*SchemaResponse, error) {
 	return responses, nil
 }
 
-// ListPolicyMetadata lists the PDP policy metadata records of a schema
+// ListPolicyMetadata lists the PDP policy metadata records of a schema, each
+// with its allow-list: the applications holding an active grant for the field.
 func (s *Service) ListPolicyMetadata(schemaID string) (*policy.PolicyMetadataListResponse, error) {
-	return s.policyService.ListPolicyMetadata(schemaID)
+	list, err := s.policyService.ListPolicyMetadata(schemaID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.attachAllowLists(schemaID, list.Records); err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 // PatchPolicyMetadata updates selected properties of one of a schema's policy metadata records
 func (s *Service) PatchPolicyMetadata(schemaID, id string, req *policy.PolicyMetadataPatchRequest) (*policy.PolicyMetadataResponse, error) {
-	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
+	if _, err := s.findPolicyMetadataInSchema(schemaID, id); err != nil {
 		return nil, err
 	}
-	return s.policyService.PatchPolicyMetadata(id, req)
+	record, err := s.policyService.PatchPolicyMetadata(id, req)
+	if err != nil {
+		return nil, err
+	}
+	records := []policy.PolicyMetadataResponse{*record}
+	if err := s.attachAllowLists(schemaID, records); err != nil {
+		return nil, err
+	}
+	return &records[0], nil
 }
 
 // DeletePolicyMetadata deletes one of a schema's policy metadata records
 func (s *Service) DeletePolicyMetadata(schemaID, id string) error {
-	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
+	if _, err := s.findPolicyMetadataInSchema(schemaID, id); err != nil {
 		return err
 	}
 	return s.policyService.DeletePolicyMetadata(id)
 }
 
-// RevokeAllowListEntry removes one application from the allow-list of one of a schema's fields
+// RevokeAllowListEntry removes one application from the allow-list of one of a
+// schema's fields by revoking the application's active grant for the field.
 func (s *Service) RevokeAllowListEntry(schemaID, id, applicationID string) error {
-	if err := s.ensurePolicyMetadataInSchema(schemaID, id); err != nil {
-		return err
-	}
-	return s.policyService.RevokeAllowListEntry(id, applicationID)
-}
-
-// ensurePolicyMetadataInSchema checks that the policy metadata record belongs to
-// the schema, so that ownership of one schema cannot be used to change the
-// policy metadata of another.
-func (s *Service) ensurePolicyMetadataInSchema(schemaID, id string) error {
-	list, err := s.policyService.ListPolicyMetadata(schemaID)
+	record, err := s.findPolicyMetadataInSchema(schemaID, id)
 	if err != nil {
 		return err
 	}
 
-	for _, record := range list.Records {
-		if record.ID == id {
-			return nil
+	grants, err := s.policyService.ListAccessGrants(policy.AccessGrantFilter{
+		ApplicationID: applicationID,
+		SchemaID:      schemaID,
+		Status:        policy.GrantStatusActive,
+	})
+	if err != nil {
+		return err
+	}
+	for _, grant := range grants.Records {
+		if grant.FieldName == record.FieldName {
+			_, err := s.policyService.RevokeAccessGrant(grant.ID)
+			return err
 		}
 	}
 
-	return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+	return fmt.Errorf("%w: %s", ErrAllowListEntryNotFound, applicationID)
+}
+
+// attachAllowLists sets each record's allow-list from the schema's active
+// access grants in the PDP.
+func (s *Service) attachAllowLists(schemaID string, records []policy.PolicyMetadataResponse) error {
+	grants, err := s.policyService.ListAccessGrants(policy.AccessGrantFilter{
+		SchemaID: schemaID,
+		Status:   policy.GrantStatusActive,
+	})
+	if err != nil {
+		return err
+	}
+
+	byField := make(map[string]policy.AllowList)
+	for _, grant := range grants.Records {
+		entry, err := grant.AllowListEntry()
+		if err != nil {
+			return err
+		}
+		if byField[grant.FieldName] == nil {
+			byField[grant.FieldName] = make(policy.AllowList)
+		}
+		byField[grant.FieldName][grant.ApplicationID] = entry
+	}
+
+	for i := range records {
+		allowList := byField[records[i].FieldName]
+		if allowList == nil {
+			allowList = make(policy.AllowList)
+		}
+		records[i].AllowList = allowList
+	}
+	return nil
+}
+
+// findPolicyMetadataInSchema returns the policy metadata record if it belongs
+// to the schema, so that ownership of one schema cannot be used to change the
+// policy metadata of another.
+func (s *Service) findPolicyMetadataInSchema(schemaID, id string) (*policy.PolicyMetadataResponse, error) {
+	list, err := s.policyService.ListPolicyMetadata(schemaID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range list.Records {
+		if list.Records[i].ID == id {
+			return &list.Records[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
 }
 
 // CreateSchemaSubmission creates a new schema

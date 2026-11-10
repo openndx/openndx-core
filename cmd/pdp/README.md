@@ -1,6 +1,6 @@
 # Policy Decision Point (PDP)
 
-Stores field-level policy metadata and per-application allow-lists, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
+Stores field-level policy metadata and per-application access grants, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
 
 ## Overview
 
@@ -9,16 +9,16 @@ The PDP is a leaf service. It calls nothing else and stores everything in its ow
 ```mermaid
 flowchart LR
     OE[Orchestration Engine] -->|POST /policy/decide| PDP
-    PB[Portal Backend] -->|metadata and allow-list| PDP
+    PB[Portal Backend] -->|metadata and access grants| PDP
     PDP --> DB[(PostgreSQL: pdp)]
 ```
 
 | Caller | Uses |
 |---|---|
 | Orchestration Engine | `POST /api/v1/policy/decide` before every federated query |
-| Portal Backend | metadata and allow-list endpoints, when schemas and applications are approved or edited |
+| Portal Backend | metadata and access grant endpoints, when schemas and applications are approved or edited |
 
-There is no policy language or rules engine. The decision is a lookup over the `policy_metadata` table (see [POLICY_MODEL.md](POLICY_MODEL.md)).
+Each field's policy class, a Rego policy evaluated with the embedded OPA library, decides from the field's `policy_metadata` record and the application's grant in `access_grants` (see [POLICY_MODEL.md](POLICY_MODEL.md)).
 
 ## Quick start
 
@@ -40,7 +40,7 @@ export DB_PASSWORD=<password>
 make run policy-decision-point    # or: go run ./cmd/pdp -config cmd/pdp/config.yaml
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path. Re-applying it to a v0.5 database converts `access_control_type` and `is_owner` to `policy_class` (see [POLICY_MODEL.md](POLICY_MODEL.md#table)).
+[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path. Re-applying it to a v0.5 database converts `access_control_type` and `is_owner` to `policy_class` (see [POLICY_MODEL.md](POLICY_MODEL.md#tables)).
 
 ## Configuration
 
@@ -75,9 +75,10 @@ Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies 
 | `GET /api/v1/policy/metadata?schemaId=`                         | List metadata records, optionally for one schema                   |
 | `POST /api/v1/policy/metadata`                                  | Sync a schema's field metadata (`201`)                             |
 | `PATCH /api/v1/policy/metadata/{id}`                            | Edit `displayName`, `description`, `policyClass` or `policyParams` |
-| `DELETE /api/v1/policy/metadata/{id}`                           | Delete a record (`204`)                                            |
-| `DELETE /api/v1/policy/metadata/{id}/allowlist/{applicationId}` | Revoke one application's access to one field (`204`)               |
-| `POST /api/v1/policy/update-allowlist`                          | Grant an application access to fields for `30d` or `365d`          |
+| `DELETE /api/v1/policy/metadata/{id}`                           | Delete a record and its grants (`204`)                             |
+| `GET /api/v1/policy/grants?applicationId=&schemaId=&status=`    | List access grants, optionally filtered                            |
+| `POST /api/v1/policy/grants`                                    | Grant an application access to fields for `30d` or `365d`          |
+| `POST /api/v1/policy/grants/{id}/revoke`                        | Revoke one grant; it is kept with status `revoked`                 |
 | `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
 | `GET /debug`, `GET /debug/db`                                   | Version info; database status and record count                     |
 
@@ -95,20 +96,20 @@ A decision request and response:
   "appRequiresOwnerConsent": false, "consentRequiredFields": [] }
 ```
 
-`applicationId` is the OIDC `client_id` of the calling application. Metadata and allow-list requests use camelCase keys; see the schemas in `openapi.yaml`.
+`applicationId` is the OIDC `client_id` of the calling application. Metadata and grant requests use camelCase keys; see the schemas in `openapi.yaml`.
 
 ## How it works
 
 For each requested `(schemaId, fieldName)`, in order:
 
 1. No metadata record: the whole request fails with **HTTP 500**.
-2. The field's `policyClass` is `open`: the field is allowed, whether or not the application is on the allow-list.
-3. The field's `policyClass` is `consent`: the field needs owner consent, whether or not the application is on the allow-list.
-4. The application is not in the field's allow-list: the field is *unauthorized*.
-5. The allow-list entry has expired: the field is *expired*.
+2. The field's `policyClass` is `open`: the field is allowed, whether or not the application holds a grant.
+3. The field's `policyClass` is `consent`: the field needs owner consent, whether or not the application holds a grant.
+4. The application holds no active grant for the field: the field is *unauthorized*.
+5. The grant has expired: the field is *expired*.
 6. Otherwise the field needs owner consent if its `policyClass` is `allowlist_consent`, and is allowed if it is `allowlist`.
 
-`appAuthorized` is true when no field is unauthorized. `allowlist` and `allowlist_consent` need an allow-list entry; `consent` and `open` do not. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
+`appAuthorized` is true when no field is unauthorized. `allowlist` and `allowlist_consent` need an active grant; `consent` and `open` do not. Field semantics and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
 
 ## Security and deployment
 
@@ -122,7 +123,7 @@ go test ./cmd/pdp/... ./internal/pdp/... -count=1
 make quality-check policy-decision-point    # format, vet, lint, security
 ```
 
-Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp): `handler` (HTTP), `services` (decision and metadata logic), `models`.
+Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp): `handler` (HTTP), `services` (decision, metadata and grant logic), `models`.
 
 ## More docs
 

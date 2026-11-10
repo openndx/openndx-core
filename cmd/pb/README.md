@@ -87,11 +87,11 @@ sequenceDiagram
     PB->>IDP: create M2M client in the member's organization unit, assign role
     IDP-->>PB: client_id and client_secret
     PB->>DB: insert application
-    PB->>PDP: update allow-list for client_id (30 days)
+    PB->>PDP: grant client_id access to the fields (30 days)
     PB-->>C: application and idpClientSecret (shown once)
 ```
 
-- The PDP allow-list is keyed by the IdP `client_id`, which is the identity the Orchestration Engine reads from consumer tokens.
+- PDP access grants are keyed by the IdP `client_id`, which is the identity the Orchestration Engine reads from consumer tokens. The `allowList` in policy metadata responses lists the applications with an active grant.
 - `POST /schemas` stores the schema, then registers its policy metadata in the PDP, and removes the schema if that fails.
 - A submission is a request that becomes a schema or application when its status is set to `approved` (`PUT .../{submissionId}`); the creation steps above then run, and the status goes back to `pending` if they fail. Who may set that status is described in [AUTHORIZATION.md](AUTHORIZATION.md#submission-approval).
 - A caller reaches its own member's records. Reaching other members' records needs the matching `-all` scope as well.

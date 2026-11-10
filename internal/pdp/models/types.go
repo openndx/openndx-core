@@ -15,6 +15,18 @@ const (
 	GrantDurationTypeOneYear  GrantDurationType = "365d"
 )
 
+// ExpiresAt returns when a grant of this duration starting at from expires,
+// or false for an unknown duration.
+func (d GrantDurationType) ExpiresAt(from time.Time) (time.Time, bool) {
+	switch d {
+	case GrantDurationTypeOneMonth:
+		return from.AddDate(0, 1, 0), true
+	case GrantDurationTypeOneYear:
+		return from.AddDate(1, 0, 0), true
+	}
+	return time.Time{}, false
+}
+
 // PolicyParams holds a policy class's parameters for one field, stored as JSONB.
 type PolicyParams map[string]any
 
@@ -95,47 +107,4 @@ func (o *Owner) Scan(value interface{}) error {
 // Value implements the driver.Valuer interface for Owner
 func (o Owner) Value() (driver.Value, error) {
 	return string(o), nil
-}
-
-// AllowListEntry represents an entry in the allow list
-type AllowListEntry struct {
-	ExpiresAt time.Time `json:"expires_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// AllowList represents the JSONB allow list as a HashMap with custom scanning
-// Key: application_id, Value: AllowListEntry
-type AllowList map[string]AllowListEntry
-
-// Scan implements the sql.Scanner interface for AllowList
-func (al *AllowList) Scan(value interface{}) error {
-	if value == nil {
-		*al = make(AllowList)
-		return nil
-	}
-
-	var bytes []byte
-	switch v := value.(type) {
-	case []byte:
-		bytes = v
-	case string:
-		bytes = []byte(v)
-	default:
-		return fmt.Errorf("cannot scan %T into AllowList", value)
-	}
-
-	if len(bytes) == 0 {
-		*al = make(AllowList)
-		return nil
-	}
-
-	return json.Unmarshal(bytes, al)
-}
-
-// Value implements the driver.Valuer interface for AllowList
-func (al AllowList) Value() (driver.Value, error) {
-	if len(al) == 0 {
-		return json.Marshal(map[string]AllowListEntry{})
-	}
-	return json.Marshal(al)
 }

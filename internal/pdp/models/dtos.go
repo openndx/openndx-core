@@ -34,7 +34,6 @@ type PolicyMetadataResponse struct {
 	Source       Source       `json:"source"`
 	PolicyClass  string       `json:"policyClass"`
 	PolicyParams PolicyParams `json:"policyParams"`
-	AllowList    AllowList    `json:"allowList"`
 	Owner        *Owner       `json:"owner,omitempty"`
 	CreatedAt    string       `json:"createdAt"`
 	UpdatedAt    string       `json:"updatedAt"`
@@ -96,30 +95,43 @@ func (r PolicyMetadataPatchRequest) IsEmpty() bool {
 		!r.PolicyParams.Set
 }
 
-// AllowListUpdateRequestRecord represents the one record of request to update allow list
-type AllowListUpdateRequestRecord struct {
-	FieldName string `json:"fieldName" validate:"required"`
-	SchemaID  string `json:"schemaId" validate:"required"`
-}
-
-// AllowListUpdateRequest represents the request to update allow list
-type AllowListUpdateRequest struct {
-	ApplicationID string                         `json:"applicationId" validate:"required"`
-	Records       []AllowListUpdateRequestRecord `json:"records" validate:"required,dive"`
-	GrantDuration GrantDurationType              `json:"grantDuration" validate:"required,grant_duration_type_enum"`
-}
-
-// AllowListUpdateResponseRecord represents one record in the allow list update response
-type AllowListUpdateResponseRecord struct {
+// AccessGrantCreateRequestRecord names one field an application is granted.
+type AccessGrantCreateRequestRecord struct {
 	FieldName string `json:"fieldName"`
 	SchemaID  string `json:"schemaId"`
-	ExpiresAt string `json:"expiresAt"`
-	UpdatedAt string `json:"updatedAt"`
 }
 
-// AllowListUpdateResponse represents the response from allow list update
-type AllowListUpdateResponse struct {
-	Records []AllowListUpdateResponseRecord `json:"records"`
+// AccessGrantCreateRequest grants one application access to fields for a
+// duration. A field the application already holds an active grant for has
+// that grant renewed.
+type AccessGrantCreateRequest struct {
+	ApplicationID string                           `json:"applicationId"`
+	Records       []AccessGrantCreateRequestRecord `json:"records"`
+	GrantDuration GrantDurationType                `json:"grantDuration"`
+}
+
+// AccessGrantResponse is one access grant.
+type AccessGrantResponse struct {
+	ID            string      `json:"id"`
+	SchemaID      string      `json:"schemaId"`
+	FieldName     string      `json:"fieldName"`
+	ApplicationID string      `json:"applicationId"`
+	ExpiresAt     string      `json:"expiresAt"`
+	Status        GrantStatus `json:"status"`
+	CreatedAt     string      `json:"createdAt"`
+	UpdatedAt     string      `json:"updatedAt"`
+}
+
+// AccessGrantListResponse holds access grants, for both creating and listing them.
+type AccessGrantListResponse struct {
+	Records []AccessGrantResponse `json:"records"`
+}
+
+// AccessGrantFilter narrows a grant listing. Empty fields match every grant.
+type AccessGrantFilter struct {
+	ApplicationID string
+	SchemaID      string
+	Status        GrantStatus
 }
 
 // PolicyDecisionRequestRecord represents a policy decision request record

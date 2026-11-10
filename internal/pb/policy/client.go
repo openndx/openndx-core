@@ -106,55 +106,52 @@ func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest
 	return &response, nil
 }
 
-// UpdateAllowList sends a request to update the allow list in the PDP
-func (c *Client) UpdateAllowList(request AllowListUpdateRequest) (*AllowListUpdateResponse, error) {
-	// Marshal request to JSON
-	reqBody, err := json.Marshal(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+// CreateAccessGrants grants an application access to fields in the PDP,
+// renewing any active grant it already holds for a field.
+func (c *Client) CreateAccessGrants(request AccessGrantCreateRequest) (*AccessGrantListResponse, error) {
+	var response AccessGrantListResponse
+	if err := c.doRequest(http.MethodPost, "/api/v1/policy/grants", request, http.StatusOK, &response); err != nil {
+		return nil, err
 	}
 
-	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/policy/update-allowlist", c.baseURL)
-	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	slog.Info("Successfully granted access in PDP", "applicationId", request.ApplicationID, "grants", len(response.Records))
+	return &response, nil
+}
+
+// ListAccessGrants lists the PDP's access grants that match the filter.
+func (c *Client) ListAccessGrants(filter AccessGrantFilter) (*AccessGrantListResponse, error) {
+	query := url.Values{}
+	if filter.ApplicationID != "" {
+		query.Set("applicationId", filter.ApplicationID)
+	}
+	if filter.SchemaID != "" {
+		query.Set("schemaId", filter.SchemaID)
+	}
+	if filter.Status != "" {
+		query.Set("status", filter.Status)
+	}
+	path := "/api/v1/policy/grants"
+	if len(query) > 0 {
+		path += "?" + query.Encode()
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	// Send request
-	slog.Debug("Sending allow list update request to PDP", "url", url, "applicationId", request.ApplicationID)
-	resp, err := c.HTTPClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request to PDP: %w", err)
+	var response AccessGrantListResponse
+	if err := c.doRequest(http.MethodGet, path, nil, http.StatusOK, &response); err != nil {
+		return nil, err
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			slog.Error("failed to close response body", "error", err)
-		}
-	}(resp.Body)
+	return &response, nil
+}
 
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+// RevokeAccessGrant revokes one active access grant in the PDP.
+func (c *Client) RevokeAccessGrant(id string) (*AccessGrant, error) {
+	path := "/api/v1/policy/grants/" + url.PathEscape(id) + "/revoke"
+
+	var response AccessGrant
+	if err := c.doRequest(http.MethodPost, path, nil, http.StatusOK, &response); err != nil {
+		return nil, err
 	}
 
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		slog.Error("PDP returned error", "status", resp.StatusCode, "body", string(respBody))
-		return nil, fmt.Errorf("PDP returned status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	// Parse response
-	var response AllowListUpdateResponse
-	if err := json.Unmarshal(respBody, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	slog.Info("Successfully updated allow list in PDP", "applicationId", request.ApplicationID, "recordsUpdated", len(response.Records))
+	slog.Info("Successfully revoked access grant in PDP", "id", id, "applicationId", response.ApplicationID)
 	return &response, nil
 }
 
@@ -203,18 +200,6 @@ func (c *Client) DeletePolicyMetadata(id string) error {
 	}
 
 	slog.Info("Successfully deleted policy metadata in PDP", "id", id)
-	return nil
-}
-
-// RevokeAllowListEntry removes one application from a field's allow-list in the PDP
-func (c *Client) RevokeAllowListEntry(id string, applicationID string) error {
-	path := fmt.Sprintf("/api/v1/policy/metadata/%s/allowlist/%s", url.PathEscape(id), url.PathEscape(applicationID))
-
-	if err := c.doRequest(http.MethodDelete, path, nil, http.StatusNoContent, nil); err != nil {
-		return err
-	}
-
-	slog.Info("Successfully revoked allow-list entry in PDP", "id", id, "applicationId", applicationID)
 	return nil
 }
 
