@@ -110,11 +110,14 @@ func (r PolicyMetadataPatchRequest) IsEmpty() bool {
 }
 
 // AccessGrantCreateRequest grants one application access to fields for a
-// duration. The PDP renews a field's existing active grant.
+// duration. The PDP renews a field's existing active grant of the same kind.
+// With ConsentBypass set and a LegalBasis, the grants are consent bypass grants.
 type AccessGrantCreateRequest struct {
 	ApplicationID string                `json:"applicationId" validate:"required"`
 	Records       []SelectedFieldRecord `json:"records" validate:"required,dive"`
 	GrantDuration GrantDurationType     `json:"grantDuration" validate:"required,grant_duration_type_enum"`
+	ConsentBypass bool                  `json:"consentBypass,omitempty"`
+	LegalBasis    string                `json:"legalBasis,omitempty"`
 }
 
 // Access grant statuses
@@ -131,8 +134,11 @@ type AccessGrant struct {
 	ApplicationID string `json:"applicationId"`
 	ExpiresAt     string `json:"expiresAt"`
 	Status        string `json:"status"`
-	CreatedAt     string `json:"createdAt"`
-	UpdatedAt     string `json:"updatedAt"`
+	// ConsentBypass marks a grant that lets the application skip the owner's consent.
+	ConsentBypass bool    `json:"consentBypass"`
+	LegalBasis    *string `json:"legalBasis,omitempty"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
 }
 
 // AllowListEntry returns the grant as an allow-list entry.
@@ -158,4 +164,6 @@ type AccessGrantFilter struct {
 	ApplicationID string
 	SchemaID      string
 	Status        string
+	// ConsentBypass, when set, matches only bypass (true) or plain (false) grants.
+	ConsentBypass *bool
 }

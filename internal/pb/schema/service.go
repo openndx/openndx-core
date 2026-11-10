@@ -281,10 +281,12 @@ func (s *Service) RevokeAllowListEntry(schemaID, id, applicationID string) error
 		return err
 	}
 
+	plain := false
 	grants, err := s.policyService.ListAccessGrants(policy.AccessGrantFilter{
 		ApplicationID: applicationID,
 		SchemaID:      schemaID,
 		Status:        policy.GrantStatusActive,
+		ConsentBypass: &plain,
 	})
 	if err != nil {
 		return err
@@ -300,11 +302,14 @@ func (s *Service) RevokeAllowListEntry(schemaID, id, applicationID string) error
 }
 
 // attachAllowLists sets each record's allow-list from the schema's active
-// access grants in the PDP.
+// plain access grants in the PDP. Consent bypass grants are managed through
+// the consent bypass API and are not part of the allow-list.
 func (s *Service) attachAllowLists(schemaID string, records []policy.PolicyMetadataResponse) error {
+	plain := false
 	grants, err := s.policyService.ListAccessGrants(policy.AccessGrantFilter{
-		SchemaID: schemaID,
-		Status:   policy.GrantStatusActive,
+		SchemaID:      schemaID,
+		Status:        policy.GrantStatusActive,
+		ConsentBypass: &plain,
 	})
 	if err != nil {
 		return err

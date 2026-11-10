@@ -34,4 +34,5 @@ const (
 	ResourceTypeSchemaSubmissions      ResourceType = "SCHEMA-SUBMISSIONS"
 	ResourceTypeApplications           ResourceType = "APPLICATIONS"
 	ResourceTypeApplicationSubmissions ResourceType = "APPLICATION-SUBMISSIONS"
+	ResourceTypeConsentBypassGrants    ResourceType = "CONSENT-BYPASS-GRANTS"
 )

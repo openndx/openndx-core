@@ -51,7 +51,8 @@ func (f *fakePDP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, grant := range f.grants {
 			if (query.Get("schemaId") == "" || query.Get("schemaId") == grant.SchemaID) &&
 				(query.Get("applicationId") == "" || query.Get("applicationId") == grant.ApplicationID) &&
-				(query.Get("status") == "" || query.Get("status") == grant.Status) {
+				(query.Get("status") == "" || query.Get("status") == grant.Status) &&
+				(query.Get("consentBypass") == "" || query.Get("consentBypass") == fmt.Sprint(grant.ConsentBypass)) {
 				grants = append(grants, grant)
 			}
 		}
@@ -149,6 +150,12 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 				ExpiresAt: "2030-01-01T00:00:00Z", Status: policy.GrantStatusRevoked,
 				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-02T00:00:00Z",
 			},
+			{
+				// Consent bypass grants are not part of the allow-list either.
+				ID: "grant-bypass", SchemaID: schemaID, FieldName: "person.name", ApplicationID: "client-3",
+				ExpiresAt: "2030-01-01T00:00:00Z", Status: policy.GrantStatusActive, ConsentBypass: true,
+				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-02T00:00:00Z",
+			},
 		},
 	}
 	server := httptest.NewServer(pdp)
@@ -220,7 +227,7 @@ func TestSchemaPolicyMetadataEndpoints_List(t *testing.T) {
 		}, response.Items[0].AllowList)
 		assert.Equal(t, "schemaId="+env.schemaID, env.pdp.calls[0].Query)
 		assert.Equal(t, "/api/v1/policy/grants", env.pdp.calls[1].Path)
-		assert.Equal(t, "schemaId="+env.schemaID+"&status=active", env.pdp.calls[1].Query)
+		assert.Equal(t, "consentBypass=false&schemaId="+env.schemaID+"&status=active", env.pdp.calls[1].Query)
 	})
 
 	t.Run("Owner member lists policy metadata of their schema", func(t *testing.T) {
@@ -416,6 +423,16 @@ func TestSchemaPolicyMetadataEndpoints_RevokeAllowListEntry(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Contains(t, w.Body.String(), "allow-list entry not found")
+		assert.Empty(t, env.pdp.writeCalls())
+	})
+
+	t.Run("Consent bypass grant is not revoked through the allow-list", func(t *testing.T) {
+		env := newPolicyMetadataTestEnv(t)
+
+		// client-3 holds only a consent bypass grant
+		w := env.serve(callertest.NewAdminRequest(http.MethodDelete, env.url("/pm-1/allowlist/client-3"), nil))
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, env.pdp.writeCalls())
 	})
 

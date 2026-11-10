@@ -36,6 +36,12 @@ const (
 	ScopeApplicationSubmissionWrite    = "application-submission:write"
 	ScopeApplicationSubmissionReadAll  = "application-submission:read-all"
 	ScopeApplicationSubmissionWriteAll = "application-submission:write-all"
+
+	// Consent bypass grants let an application skip the owner's consent. They
+	// span every organization unit: read lists them, and write grants and
+	// revokes them.
+	ScopeConsentBypassRead  = "consent-bypass:read"
+	ScopeConsentBypassWrite = "consent-bypass:write"
 )
 
 // AllScopes is every PB scope. A client can request all of them: ThunderID
@@ -46,4 +52,5 @@ var AllScopes = []string{
 	ScopeSchemaSubmissionRead, ScopeSchemaSubmissionWrite, ScopeSchemaSubmissionReadAll, ScopeSchemaSubmissionWriteAll,
 	ScopeApplicationRead, ScopeApplicationWrite, ScopeApplicationReadAll, ScopeApplicationWriteAll,
 	ScopeApplicationSubmissionRead, ScopeApplicationSubmissionWrite, ScopeApplicationSubmissionReadAll, ScopeApplicationSubmissionWriteAll,
+	ScopeConsentBypassRead, ScopeConsentBypassWrite,
 }

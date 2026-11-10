@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -114,7 +115,8 @@ func (c *Client) CreateAccessGrants(request AccessGrantCreateRequest) (*AccessGr
 		return nil, err
 	}
 
-	slog.Info("Successfully granted access in PDP", "applicationId", request.ApplicationID, "grants", len(response.Records))
+	slog.Info("Successfully granted access in PDP", "applicationId", request.ApplicationID,
+		"consentBypass", request.ConsentBypass, "grants", len(response.Records))
 	return &response, nil
 }
 
@@ -130,6 +132,9 @@ func (c *Client) ListAccessGrants(filter AccessGrantFilter) (*AccessGrantListRes
 	if filter.Status != "" {
 		query.Set("status", filter.Status)
 	}
+	if filter.ConsentBypass != nil {
+		query.Set("consentBypass", strconv.FormatBool(*filter.ConsentBypass))
+	}
 	path := "/api/v1/policy/grants"
 	if len(query) > 0 {
 		path += "?" + query.Encode()
@@ -137,6 +142,15 @@ func (c *Client) ListAccessGrants(filter AccessGrantFilter) (*AccessGrantListRes
 
 	var response AccessGrantListResponse
 	if err := c.doRequest(http.MethodGet, path, nil, http.StatusOK, &response); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+// GetAccessGrant reads one access grant from the PDP.
+func (c *Client) GetAccessGrant(id string) (*AccessGrant, error) {
+	var response AccessGrant
+	if err := c.doRequest(http.MethodGet, "/api/v1/policy/grants/"+url.PathEscape(id), nil, http.StatusOK, &response); err != nil {
 		return nil, err
 	}
 	return &response, nil

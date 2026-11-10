@@ -135,6 +135,11 @@ func main() {
 	apiMux.Handle("PUT /api/v1/applications/{applicationId}", authzr.RequireScope(caller.ScopeApplicationWrite)(http.HandlerFunc(applicationHandler.UpdateApplication)))
 	apiMux.Handle("PUT /api/v1/applications/{applicationId}/policy", authzr.RequireScope(caller.ScopeApplicationWrite)(http.HandlerFunc(applicationHandler.UpdateApplicationPolicy)))
 
+	// Consent bypass grant endpoints
+	apiMux.Handle("POST /api/v1/applications/{applicationId}/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(applicationHandler.GrantConsentBypass)))
+	apiMux.Handle("GET /api/v1/consent-bypass-grants", authzr.RequireScope(caller.ScopeConsentBypassRead)(http.HandlerFunc(applicationHandler.ListConsentBypassGrants)))
+	apiMux.Handle("POST /api/v1/consent-bypass-grants/{grantId}/revoke", authzr.RequireScope(caller.ScopeConsentBypassWrite)(http.HandlerFunc(applicationHandler.RevokeConsentBypass)))
+
 	// Application submission endpoints
 	apiMux.Handle("GET /api/v1/application-submissions", authzr.RequireScope(caller.ScopeApplicationSubmissionRead)(http.HandlerFunc(applicationHandler.GetAllApplicationSubmissions)))
 	apiMux.Handle("POST /api/v1/application-submissions", authzr.RequireScope(caller.ScopeApplicationSubmissionWrite)(http.HandlerFunc(applicationHandler.CreateApplicationSubmission)))

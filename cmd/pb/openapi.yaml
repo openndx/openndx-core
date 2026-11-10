@@ -802,6 +802,140 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/applications/{applicationId}/consent-bypass-grants:
+    post:
+      summary: Grant consent bypass
+      description: |
+        Lets the application read the fields without the owner's consent, for
+        the requested duration. The grants are active at once. A field the
+        application already holds a bypass grant for has that grant renewed
+        with the new duration and legal basis. Each field's policy class must
+        ask for consent (consent or allowlist_consent). The audit event
+        records the caller as the one who granted it. Requires
+        consent-bypass:write.
+      operationId: grantConsentBypass
+      tags:
+        - Consent Bypass Grants
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The application ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentBypassRequest'
+      responses:
+        '200':
+          description: The active grants, created or renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentBypassGrantCollection'
+        '400':
+          description: Missing fields, legalBasis or grantDuration, or a field whose class asks for no consent; nothing is granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Application or field not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/consent-bypass-grants:
+    get:
+      summary: List consent bypass grants
+      description: |
+        Lists consent bypass grants across applications. Requires
+        consent-bypass:read.
+      operationId: listConsentBypassGrants
+      tags:
+        - Consent Bypass Grants
+      parameters:
+        - name: applicationId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Only grants for this application
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, revoked]
+          description: Only grants with this status
+      responses:
+        '200':
+          description: The grants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentBypassGrantCollection'
+        '400':
+          description: Unknown status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/consent-bypass-grants/{grantId}/revoke:
+    post:
+      summary: Revoke a consent bypass grant
+      description: |
+        Revokes an active consent bypass grant, effective immediately. The
+        grant is kept as revoked. Requires consent-bypass:write.
+      operationId: revokeConsentBypass
+      tags:
+        - Consent Bypass Grants
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The grant ID
+      responses:
+        '200':
+          description: The revoked grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentBypassGrant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No active consent bypass grant with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
   /api/v1/application-submissions:
     get:
       summary: List all application submissions
@@ -1234,9 +1368,11 @@ components:
         allowList:
           type: object
           description: |
-            Applications holding an active access grant for the field in the
-            PDP, keyed by the application's IdP client ID. A grant past
+            Applications holding an active plain access grant for the field in
+            the PDP, keyed by the application's IdP client ID. A grant past
             expires_at is still listed; the PDP reports the field as expired.
+            Consent bypass grants are not listed here; see
+            /api/v1/consent-bypass-grants.
           additionalProperties:
             $ref: '#/components/schemas/AllowListEntry'
         owner:
@@ -1510,6 +1646,66 @@ components:
         grantDuration:
           $ref: '#/components/schemas/GrantDurationType'
 
+    ConsentBypassRequest:
+      type: object
+      required:
+        - fields
+        - legalBasis
+        - grantDuration
+      properties:
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SelectedFieldRecord'
+          description: Fields the application may read without the owner's consent
+        legalBasis:
+          type: string
+          description: Why the application may skip consent, for example the law that authorizes it
+          example: "Police Act s.12"
+        grantDuration:
+          $ref: '#/components/schemas/GrantDurationType'
+
+    ConsentBypassGrant:
+      type: object
+      properties:
+        id:
+          type: string
+        applicationId:
+          type: string
+          description: The PB application, or empty when the grant's IdP client belongs to none
+        idpClientId:
+          type: string
+          description: The IdP client ID the PDP grant is keyed by
+        schemaId:
+          type: string
+        fieldName:
+          type: string
+        status:
+          type: string
+          enum: [active, revoked]
+        legalBasis:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConsentBypassGrantCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentBypassGrant'
+        count:
+          type: integer
+
     CreateApplicationSubmissionRequest:
       type: object
       required:
@@ -1657,3 +1853,5 @@ tags:
     description: Application management endpoints
   - name: Application Submissions
     description: Application submission management endpoints
+  - name: Consent Bypass Grants
+    description: Grant and revoke access that lets an application skip the owner's consent

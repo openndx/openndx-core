@@ -127,6 +127,14 @@ resources:
         handle: read-all
       - name: Write all
         handle: write-all
+  - name: Consent bypass
+    handle: consent-bypass
+    description: Grants that let an application read data without the owner's consent
+    actions:
+      - name: Read
+        handle: read
+      - name: Write
+        handle: write
 
 ---
 # Grants members of the OpenNDX Admins group (thunderid/bootstrap/users.yaml,
@@ -159,6 +167,8 @@ permissions:
       - application-submission:write
       - application-submission:read-all
       - application-submission:write-all
+      - consent-bypass:read
+      - consent-bypass:write
 assignments:
   - id: 01900000-0000-7000-8000-0000000000b2
     type: group
