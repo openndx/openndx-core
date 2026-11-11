@@ -40,7 +40,7 @@ export DB_PASSWORD=<password>
 make run policy-decision-point    # or: go run ./cmd/pdp -config cmd/pdp/config.yaml
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path. Re-applying it to an older database converts `policy_class` (and, from v0.5, `access_control_type` and `is_owner`) to `requires_allowlist` and `requires_consent` (see [POLICY_MODEL.md](POLICY_MODEL.md#tables)).
+[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path.
 
 ## Configuration
 

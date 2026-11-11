@@ -137,9 +137,4 @@ Only a field with both flags `false` lets every authenticated application read i
 
 A partial unique index on `(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'` keeps one active grant of each kind per application and field.
 
-Applying `schema.sql` to an older database keeps each field's current decision:
-
-- A database with policy classes gets `requires_allowlist` and `requires_consent` in place of `policy_class` and `policy_params`. `allowlist_consent` becomes both `true`, `allowlist` becomes allow-list only, `consent` becomes consent only, and `open` becomes both `false`. Any other class becomes both `true`.
-- A v0.5 database first converts `access_control_type` and `is_owner`: `restricted` fields with `is_owner` false require the allow-list and consent, and every other field requires the allow-list only.
-
 Source: [`internal/pdp/models`](../../internal/pdp/models).
