@@ -159,10 +159,13 @@ ondx schemas create --schema-id drp-person-v1 \
   --member-id <drpMemberId> \
   --field person.fullName:allowlist:primary \
   --field person.otherNames:allowlist:primary \
-  --field person.permanentAddress:allowlist_consent:primary \
-  --field person.profession:allowlist_consent:primary \
+  --field person.permanentAddress:allowlist+consent:primary \
+  --field person.profession:allowlist+consent:primary \
   --pb-url http://localhost:8083
 ```
+
+The middle part of each `--field` is what the PDP requires before an application reads the field:
+`allowlist` (an access grant), `consent` (the owner's consent), `allowlist+consent` or `none`.
 
 This prints each field as `schemaId:fieldName` — copy that shape directly into the next steps.
 A field must be registered here before any application can be granted it.
