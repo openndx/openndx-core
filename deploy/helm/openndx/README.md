@@ -1,6 +1,6 @@
 # OpenNDX Helm Chart
 
-Single umbrella Helm chart for deploying the maintained OpenNDX services on Kubernetes.
+A single Helm chart for deploying the maintained OpenNDX services on Kubernetes.
 
 ## Components
 
