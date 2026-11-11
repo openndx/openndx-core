@@ -8,9 +8,14 @@
 #   - consentPortal       (Optional - enabled by default)
 #   - portalBackend       (Optional - enabled by default)
 #
-# External infrastructure (PostgreSQL, Identity Provider / ThunderID, Argus
-# Audit Service) should be provisioned separately via their own Helm charts or
-# managed cloud services; each service's `config` points at it.
+# The embedded identity provider, ThunderID, is required and is installed from
+# its published chart (oci://ghcr.io/thunder-id/helm-charts/thunderid) as a
+# release named `thunderid`, which serves at http://thunderid-service:8090.
+# The idp URLs below assume that; see README.md#embedded-identity-provider-thunderid.
+#
+# Other infrastructure (PostgreSQL, the Argus Audit Service) is provisioned
+# separately via its own Helm chart or a managed cloud service; each service's
+# `config` points at it.
 #
 # Each Go service's `config` block IS its config.yaml, with the same schema as
 # cmd/<svc>/config.example.yaml (keys are listed in cmd/<svc>/README.md). The
@@ -123,7 +128,7 @@ orchestrationEngine:
     schemaPath: schema.graphql
     foundationalIdArgName: nic
     idp:
-      jwksURL: http://thunderid:8090/oauth2/jwks
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
       issuer: http://localhost:8090
       audience: http://api.openndx.local
       insecureSkipTLSVerify: false
@@ -352,7 +357,7 @@ consentEngine:
     cors:
       allowedOrigins: []
     idp:
-      jwksURL: http://thunderid:8090/oauth2/jwks
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
       issuer: http://localhost:8090
       audience: CONSENT_PORTAL
       subjectClaim: nic
@@ -507,12 +512,12 @@ portalBackend:
       allowedOrigins:
         - http://localhost:5173
     idp:
-      jwksURL: http://thunderid:8090/oauth2/jwks
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
       issuer: http://localhost:8090
       audience: http://pb.openndx.local
       insecureSkipTLSVerify: false
       management:
-        baseURL: http://thunderid:8090
+        baseURL: http://thunderid-service:8090
         clientID: PORTAL_BACKEND
         clientSecret: "{{env:PORTAL_BACKEND_CLIENT_SECRET}}"
         scopes:
