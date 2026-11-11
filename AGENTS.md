@@ -25,7 +25,7 @@ docker compose up --build               # full local stack
 
 - Unit tests need no database: PDP and PB tests use in-memory SQLite (PDP helpers in `internal/pdp/testhelpers`, PB in `internal/pb/database/dbtest`).
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
-- PDP policies are Rego with `_test.rego` files beside them in `internal/pdp/engine/policies`; `go test ./internal/pdp/engine` runs them.
+- PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.
 - Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `cd tests/integration && ./run-local-tests.sh`, or bring up `docker-compose.test.yml` and `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
 - `TestLooksLikeIDImprovedLogic` in `internal/monitoring` fails on `main`; it is not caused by your change.
 
@@ -35,7 +35,7 @@ A consumer sends one GraphQL query to the **Orchestration Engine**. For every re
 
 **OE (`internal/oe`)**: `federator` holds the pipeline: `schema` compiles the consumer schema, where `@sourceInfo(schemaId, providerField)` maps each field to a provider schema field; `plan` and `execute` build and run provider sub-queries; `merge` assembles the response; `access` applies PDP and consent results. `policy` and `consent` are HTTP clients for the PDP and CE. If `pdp.url` is empty the OE skips authorization and consent entirely.
 
-**PDP (`internal/pdp`)**: decisions are Rego policies evaluated with the embedded OPA library (`engine`, policies embedded with `//go:embed`). The router `openndx.pdp` dispatches each field to `openndx.classes.<policyClass>`; built-in classes are `allowlist`, `allowlist_consent`, `consent` and `open`. Facts (field metadata, the application's access) stay in Postgres and are passed to Rego as `input` (`app`, `field`, `grant`, `now`), never loaded into OPA's store. Outcomes are a fixed set (`allow`, `deny`, `expired`, `consent_required`) plus optional obligations; an unknown class or evaluation error denies the field (fail closed). See `cmd/pdp/POLICY_MODEL.md`.
+**PDP (`internal/pdp`)**: each field's policy is two flags, `requiresAllowlist` and `requiresConsent`. `decision.Decide` combines them with the application's grant for the field (plain or consent bypass, with an expiry), loaded from Postgres. A consent bypass grant overrides consent. Outcomes are a fixed set (`allow`, `deny`, `expired`, `consent_required`) plus optional obligations (`audit.consent_bypassed`). A metadata record missing either flag is rejected, never read as `false`. See `cmd/pdp/POLICY_MODEL.md`.
 
 **PB (`internal/pb`)**: one package per bounded context (`member`, `schema`, `application`, `consentbypass`), each with service and handler, and a model when it stores data in PB; `kernel` is the shared kernel, `caller` resolves scopes and the caller's member, `policy` is the PDP client and owns the PDP DTOs PB depends on, `idp/thunderid` the ThunderID client. Contexts expose handlers only: **every route is registered explicitly in `cmd/pb/main.go`**. Multi-system writes (DB, IdP, PDP) are sagas with compensation on failure. PDP access is keyed by the IdP `client_id`, the identity the OE reads from consumer tokens.
 

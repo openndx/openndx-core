@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ func TestRespondWithPolicyServiceError_HidesInternalDetails(t *testing.T) {
 func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -51,7 +50,7 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 func TestHandler_CreateAccessGrants_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/grants", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -65,7 +64,7 @@ func TestHandler_CreateAccessGrants_InvalidJSON(t *testing.T) {
 func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/decide", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -78,7 +77,7 @@ func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 
 func TestHandler_NewHandler(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 	assert.NotNil(t, handler)
 	assert.NotNil(t, handler.policyService)
 }
@@ -96,11 +95,11 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:   "person.fullName",
-						DisplayName: testhelpers.StringPtr("Full Name"),
-						Description: testhelpers.StringPtr("Complete name"),
-						Source:      models.SourcePrimary,
-						PolicyClass: engine.ClassAllowlist,
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name"),
+						Description:       testhelpers.StringPtr("Complete name"),
+						Source:            models.SourcePrimary,
+						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
 				},
 			},
@@ -124,11 +123,11 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:   "person.fullName",
-						DisplayName: testhelpers.StringPtr("Full Name Updated"),
-						Description: testhelpers.StringPtr("Updated description"),
-						Source:      models.SourcePrimary,
-						PolicyClass: engine.ClassAllowlistConsent,
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name Updated"),
+						Description:       testhelpers.StringPtr("Updated description"),
+						Source:            models.SourcePrimary,
+						RequiresAllowlist: new(true), RequiresConsent: new(true),
 					},
 				},
 			},
@@ -141,9 +140,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				if len(resp.Records) != 1 {
 					t.Errorf("Expected 1 record, got %d", len(resp.Records))
 				}
-				if resp.Records[0].PolicyClass != engine.ClassAllowlistConsent {
-					t.Errorf("Expected PolicyClass allowlist_consent, got %s", resp.Records[0].PolicyClass)
-				}
+				assert.True(t, resp.Records[0].RequiresAllowlist)
+				assert.True(t, resp.Records[0].RequiresConsent)
 			},
 		},
 		{
@@ -155,20 +153,20 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "Unknown policy class",
+			name: "Missing policy flag",
 			requestBody: models.PolicyMetadataCreateRequest{
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:   "person.invalid",
-						Source:      models.SourcePrimary,
-						PolicyClass: "no_such_class",
+						FieldName:         "person.invalid",
+						Source:            models.SourcePrimary,
+						RequiresAllowlist: new(false),
 					},
 				},
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				assert.Contains(t, w.Body.String(), "unknown policy class")
+				assert.Contains(t, w.Body.String(), "requiresConsent")
 				assert.Contains(t, w.Body.String(), "person.invalid")
 			},
 		},
@@ -178,16 +176,16 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:   "person.fullName",
-						DisplayName: testhelpers.StringPtr("Full Name"),
-						Source:      models.SourcePrimary,
-						PolicyClass: engine.ClassAllowlist,
+						FieldName:         "person.fullName",
+						DisplayName:       testhelpers.StringPtr("Full Name"),
+						Source:            models.SourcePrimary,
+						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
 					{
-						FieldName:   "person.email",
-						DisplayName: testhelpers.StringPtr("Email"),
-						Source:      models.SourcePrimary,
-						PolicyClass: engine.ClassAllowlist,
+						FieldName:         "person.email",
+						DisplayName:       testhelpers.StringPtr("Email"),
+						Source:            models.SourcePrimary,
+						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
 				},
 			},
@@ -208,9 +206,9 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				SchemaID: "schema-123",
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
-						FieldName:   "person.fullName",
-						Source:      models.SourceFallback,
-						PolicyClass: engine.ClassAllowlist,
+						FieldName:         "person.fullName",
+						Source:            models.SourceFallback,
+						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
 				},
 			},
@@ -231,7 +229,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset database for each test
 			db := setupTestDB(t)
-			handler := NewHandler(db, testhelpers.Engine(t))
+			handler := NewHandler(db)
 
 			// Create initial record for update test
 			if tt.name == "Update existing policy metadata" {
@@ -239,10 +237,10 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 					SchemaID: "schema-123",
 					Records: []models.PolicyMetadataCreateRequestRecord{
 						{
-							FieldName:   "person.fullName",
-							DisplayName: testhelpers.StringPtr("Full Name"),
-							Source:      models.SourcePrimary,
-							PolicyClass: engine.ClassAllowlist,
+							FieldName:         "person.fullName",
+							DisplayName:       testhelpers.StringPtr("Full Name"),
+							Source:            models.SourcePrimary,
+							RequiresAllowlist: new(true), RequiresConsent: new(false),
 						},
 					},
 				}
@@ -270,22 +268,22 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 
 func TestHandler_ListPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				DisplayName: testhelpers.StringPtr("Name"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				DisplayName: testhelpers.StringPtr("Email"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -296,9 +294,9 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "other-schema",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "other.field",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "other.field",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -342,22 +340,22 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 
 func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				DisplayName: testhelpers.StringPtr("Name"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				DisplayName: testhelpers.StringPtr("Email"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -400,29 +398,30 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 }
 
-func TestHandler_PatchPolicyMetadata_PolicyClass(t *testing.T) {
+func TestHandler_PatchPolicyMetadata_Flags(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
 	id := createResp.Records[0].ID
 
 	tests := []struct {
-		name       string
-		body       string
-		wantStatus int
-		wantClass  string
+		name        string
+		body        string
+		wantStatus  int
+		wantConsent bool
 	}{
-		{"null class", `{"policyClass":null}`, http.StatusBadRequest, ""},
-		{"unknown class", `{"policyClass":"no_such_class"}`, http.StatusBadRequest, ""},
-		{"known class", `{"policyClass":"allowlist_consent"}`, http.StatusOK, engine.ClassAllowlistConsent},
-		{"removed accessControlType", `{"accessControlType":"restricted"}`, http.StatusBadRequest, ""},
+		{"null flag", `{"requiresConsent":null}`, http.StatusBadRequest, false},
+		{"flag of the wrong type", `{"requiresConsent":"yes"}`, http.StatusBadRequest, false},
+		{"set a flag", `{"requiresConsent":true}`, http.StatusOK, true},
+		{"removed policyClass", `{"policyClass":"allowlist_consent"}`, http.StatusBadRequest, false},
+		{"removed accessControlType", `{"accessControlType":"restricted"}`, http.StatusBadRequest, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -433,10 +432,11 @@ func TestHandler_PatchPolicyMetadata_PolicyClass(t *testing.T) {
 			handler.PatchPolicyMetadata(w, req)
 
 			require.Equal(t, tt.wantStatus, w.Code, w.Body.String())
-			if tt.wantClass != "" {
+			if tt.wantStatus == http.StatusOK {
 				var resp models.PolicyMetadataResponse
 				require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
-				assert.Equal(t, tt.wantClass, resp.PolicyClass)
+				assert.True(t, resp.RequiresAllowlist, "an omitted flag is unchanged")
+				assert.Equal(t, tt.wantConsent, resp.RequiresConsent)
 			}
 		})
 	}
@@ -444,20 +444,20 @@ func TestHandler_PatchPolicyMetadata_PolicyClass(t *testing.T) {
 
 func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	createResp, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -497,12 +497,12 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 
 func TestHandler_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -537,13 +537,13 @@ func TestHandler_RevokeAccessGrant(t *testing.T) {
 
 func TestHandler_ConsentBypassGrants(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.nic", Source: models.SourcePrimary, PolicyClass: engine.ClassConsent},
-			{FieldName: "person.name", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.nic", Source: models.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(true)},
+			{FieldName: "person.name", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -602,12 +602,12 @@ func TestHandler_ConsentBypassGrants(t *testing.T) {
 
 func TestHandler_ListAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	_, err := handler.policyService.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -641,17 +641,17 @@ func TestHandler_ListAccessGrants(t *testing.T) {
 
 func TestHandler_CreateAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	// Create initial policy metadata
 	createReq := models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.fullName",
-				DisplayName: testhelpers.StringPtr("Full Name"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.fullName",
+				DisplayName:       testhelpers.StringPtr("Full Name"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	}
@@ -758,24 +758,24 @@ func TestHandler_CreateAccessGrants(t *testing.T) {
 
 func TestHandler_GetPolicyDecision(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(db, testhelpers.Engine(t))
+	handler := NewHandler(db)
 
 	// Create policy metadata with allow list
 	createReq := models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.fullName",
-				DisplayName: testhelpers.StringPtr("Full Name"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.fullName",
+				DisplayName:       testhelpers.StringPtr("Full Name"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.nic",
-				DisplayName: testhelpers.StringPtr("NIC"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlistConsent,
-				Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
+				FieldName:         "person.nic",
+				DisplayName:       testhelpers.StringPtr("NIC"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(true),
+				Owner: testhelpers.OwnerPtr(models.OwnerCitizen),
 			},
 		},
 	}

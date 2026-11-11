@@ -1,11 +1,11 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -20,27 +20,27 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestNewPolicyMetadataService(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
 }
 
 func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -50,9 +50,9 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 		SchemaID: "other-schema",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "other.field",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "other.field",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -80,23 +80,23 @@ func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
 
 func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				DisplayName: testhelpers.StringPtr("Name"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				DisplayName:       testhelpers.StringPtr("Name"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				DisplayName: testhelpers.StringPtr("Email"),
-				Description: testhelpers.StringPtr("Old description"),
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				DisplayName:       testhelpers.StringPtr("Email"),
+				Description:       testhelpers.StringPtr("Old description"),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -114,8 +114,6 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 
 	id := createResp.Records[1].ID
 
-	consentClass := engine.ClassAllowlistConsent
-	params := models.PolicyParams{"purpose": "tax"}
 	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
 		DisplayName: models.OptionalPatchField[string]{
 			Set:   true,
@@ -125,21 +123,17 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 			Set:   true,
 			Value: nil,
 		},
-		PolicyClass: models.OptionalPatchField[string]{
+		RequiresConsent: models.OptionalPatchField[bool]{
 			Set:   true,
-			Value: &consentClass,
-		},
-		PolicyParams: models.OptionalPatchField[models.PolicyParams]{
-			Set:   true,
-			Value: &params,
+			Value: new(true),
 		},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp.DisplayName)
 	assert.Equal(t, "Primary Email", *resp.DisplayName)
 	assert.Nil(t, resp.Description)
-	assert.Equal(t, engine.ClassAllowlistConsent, resp.PolicyClass)
-	assert.Equal(t, params, resp.PolicyParams)
+	assert.True(t, resp.RequiresAllowlist, "an omitted flag is unchanged")
+	assert.True(t, resp.RequiresConsent)
 
 	// Patching a field keeps its grants.
 	grants, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-123"})
@@ -162,13 +156,13 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NotNil(t, nameRecord.DisplayName)
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 
-	// Reject any SQL statement that updates policy_class. A display-only
+	// Reject any SQL statement that updates the policy flags. A display-only
 	// patch must still succeed because it should update only the supplied field.
 	require.NoError(t, db.Exec(`
-		CREATE TRIGGER reject_policy_class_update
-		BEFORE UPDATE OF policy_class ON policy_metadata
+		CREATE TRIGGER reject_policy_flags_update
+		BEFORE UPDATE OF requires_allowlist, requires_consent ON policy_metadata
 		BEGIN
-			SELECT RAISE(FAIL, 'policy_class was unexpectedly updated');
+			SELECT RAISE(FAIL, 'policy flags were unexpectedly updated');
 		END;
 	`).Error)
 
@@ -181,67 +175,68 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, displayOnlyResp.DisplayName)
 	assert.Equal(t, "Contact Email", *displayOnlyResp.DisplayName)
-	assert.Equal(t, engine.ClassAllowlistConsent, displayOnlyResp.PolicyClass)
-	assert.Equal(t, params, displayOnlyResp.PolicyParams)
+	assert.True(t, displayOnlyResp.RequiresAllowlist)
+	assert.True(t, displayOnlyResp.RequiresConsent)
 
 	_, err = service.PatchPolicyMetadata("not-a-uuid", &models.PolicyMetadataPatchRequest{})
 	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
 }
 
-func TestPolicyMetadataService_PatchPolicyMetadata_PolicyClass(t *testing.T) {
+func TestPolicyMetadataService_PatchPolicyMetadata_Flags(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:    "person.email",
-				Source:       models.SourcePrimary,
-				PolicyClass:  engine.ClassAllowlist,
-				PolicyParams: models.PolicyParams{"purpose": "tax"},
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true),
+				RequiresConsent:   new(true),
 			},
 		},
 	})
 	require.NoError(t, err)
 	id := createResp.Records[0].ID
 
-	unknown := "no_such_class"
+	// A flag can be changed but not cleared.
 	_, err = service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		PolicyClass: models.OptionalPatchField[string]{Set: true, Value: &unknown},
+		RequiresAllowlist: models.OptionalPatchField[bool]{Set: true},
 	})
-	assert.ErrorIs(t, err, ErrUnknownPolicyClass)
+	assert.ErrorIs(t, err, ErrInvalidPolicy)
 
-	_, err = service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		PolicyClass: models.OptionalPatchField[string]{Set: true},
-	})
-	assert.ErrorIs(t, err, ErrUnknownPolicyClass)
-
-	// null clears the parameters
+	// Setting both flags to false makes the field public.
 	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		PolicyParams: models.OptionalPatchField[models.PolicyParams]{Set: true},
+		RequiresAllowlist: models.OptionalPatchField[bool]{Set: true, Value: new(false)},
+		RequiresConsent:   models.OptionalPatchField[bool]{Set: true, Value: new(false)},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, engine.ClassAllowlist, resp.PolicyClass)
-	assert.Equal(t, models.PolicyParams{}, resp.PolicyParams)
+	assert.False(t, resp.RequiresAllowlist)
+	assert.False(t, resp.RequiresConsent)
+
+	var stored models.PolicyMetadata
+	require.NoError(t, db.First(&stored, "field_name = ?", "person.email").Error)
+	assert.False(t, stored.RequiresAllowlist, "false is written, not skipped")
+	assert.False(t, stored.RequiresConsent, "false is written, not skipped")
 }
 
 func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "person.name",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.name",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
-				FieldName:   "person.email",
-				Source:      models.SourcePrimary,
-				PolicyClass: engine.ClassAllowlist,
+				FieldName:         "person.email",
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 		},
 	})
@@ -281,13 +276,13 @@ func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
 // grants of fields it removes.
 func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Email"), Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
-			{FieldName: "person.phone", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
+			{FieldName: "person.phone", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -305,7 +300,7 @@ func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Primary Email"), Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Primary Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -319,12 +314,12 @@ func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 
 func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+			{FieldName: "person.email", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -383,13 +378,13 @@ func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
 
 func TestPolicyMetadataService_ListAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+	service := NewPolicyMetadataService(db)
 
 	for _, schemaID := range []string{"schema-1", "schema-2"} {
 		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 			SchemaID: schemaID,
 			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
+				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		})
 		require.NoError(t, err)
@@ -450,7 +445,7 @@ func insertGrant(t *testing.T, db *gorm.DB, schemaID, fieldName, applicationID s
 func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 	t.Run("CreatePolicyMetadata_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
@@ -465,21 +460,21 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_DeleteObsoleteRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create initial records
 		initialReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "field2",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field2",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -491,9 +486,9 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -508,27 +503,27 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_TransactionRollback", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
-		// One unknown class rejects the whole request before anything is written
+		// One record without a flag rejects the whole request before anything is written
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "field2",
-					Source:      models.SourcePrimary,
-					PolicyClass: "no_such_class",
+					FieldName:       "field2",
+					Source:          models.SourcePrimary,
+					RequiresConsent: new(false),
 				},
 			},
 		}
 
 		_, err := service.CreatePolicyMetadata(req)
-		assert.ErrorIs(t, err, ErrUnknownPolicyClass)
+		assert.ErrorIs(t, err, ErrInvalidPolicy)
 		assert.ErrorContains(t, err, "field2")
 
 		var count int64
@@ -536,50 +531,44 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 		assert.Equal(t, int64(0), count)
 	})
 
-	t.Run("CreatePolicyMetadata_StoresPolicyParams", func(t *testing.T) {
+	t.Run("CreatePolicyMetadata_StoresFlags", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
-		resp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:    "field1",
-					Source:       models.SourcePrimary,
-					PolicyClass:  engine.ClassAllowlistConsent,
-					PolicyParams: models.PolicyParams{"purpose": "tax"},
-				},
-				{
-					FieldName:   "field2",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
-				},
-			},
-		})
+		flags := []struct{ allowlist, consent bool }{{true, true}, {true, false}, {false, true}, {false, false}}
+		records := make([]models.PolicyMetadataCreateRequestRecord, 0, len(flags))
+		for i, f := range flags {
+			records = append(records, models.PolicyMetadataCreateRequestRecord{
+				FieldName:         fmt.Sprintf("field%d", i),
+				Source:            models.SourcePrimary,
+				RequiresAllowlist: new(f.allowlist),
+				RequiresConsent:   new(f.consent),
+			})
+		}
+		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{SchemaID: "schema-123", Records: records})
 		require.NoError(t, err)
-		require.Len(t, resp.Records, 2)
 
-		var records []models.PolicyMetadata
-		require.NoError(t, db.Order("field_name").Find(&records).Error)
-		require.Len(t, records, 2)
-		assert.Equal(t, engine.ClassAllowlistConsent, records[0].PolicyClass)
-		assert.Equal(t, models.PolicyParams{"purpose": "tax"}, records[0].PolicyParams)
-		assert.Equal(t, engine.ClassAllowlist, records[1].PolicyClass)
-		assert.Equal(t, models.PolicyParams{}, records[1].PolicyParams)
+		var stored []models.PolicyMetadata
+		require.NoError(t, db.Order("field_name").Find(&stored).Error)
+		require.Len(t, stored, len(flags))
+		for i, f := range flags {
+			assert.Equal(t, f.allowlist, stored[i].RequiresAllowlist, stored[i].FieldName)
+			assert.Equal(t, f.consent, stored[i].RequiresConsent, stored[i].FieldName)
+		}
 	})
 
 	t.Run("CreatePolicyMetadata_MixedNewAndUpdated", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create initial record
 		initialReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -591,16 +580,16 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					DisplayName: testhelpers.StringPtr("Updated Field 1"),
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					DisplayName:       testhelpers.StringPtr("Updated Field 1"),
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "field2",
-					DisplayName: testhelpers.StringPtr("New Field 2"),
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field2",
+					DisplayName:       testhelpers.StringPtr("New Field 2"),
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -616,16 +605,16 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 
 	t.Run("CreatePolicyMetadata_WithOwner", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
-					PolicyClass: engine.ClassAllowlistConsent,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+					RequiresAllowlist: new(true), RequiresConsent: new(true),
 				},
 			},
 		}
@@ -640,7 +629,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 	t.Run("CreateAccessGrants_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
@@ -656,16 +645,16 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_InvalidGrantDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -690,7 +679,7 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
@@ -709,16 +698,16 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_OneYearDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -749,7 +738,7 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_InvalidRequest", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		_, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
 			ApplicationID: " ",
@@ -767,16 +756,16 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_RenewsActiveGrant", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create policy metadata first
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -829,21 +818,21 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_MultipleFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create policy metadata for multiple fields
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "field2",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field2",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -875,16 +864,16 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 	t.Run("GetPolicyDecision_ExpiredAccess", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create policy metadata
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -913,7 +902,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID: "app-123",
@@ -932,16 +921,16 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_PublicFieldNoConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create public field
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -982,16 +971,16 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MultipleSchemas", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create metadata for multiple schemas
 		createReq1 := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-1",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -1002,9 +991,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 			SchemaID: "schema-2",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field2",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "field2",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
@@ -1040,13 +1029,13 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_ConsentFieldWithoutAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		owner := models.OwnerCitizen
 		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, PolicyClass: engine.ClassConsent, Owner: &owner},
+				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(true), Owner: &owner},
 			},
 		})
 		require.NoError(t, err)
@@ -1069,12 +1058,12 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_OpenFieldWithoutAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, PolicyClass: engine.ClassOpen},
+				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(false)},
 			},
 		})
 		require.NoError(t, err)
@@ -1097,16 +1086,16 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_AllowlistConsentFieldRequiresConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "field1",
-					Source:      models.SourcePrimary,
-					Owner:       testhelpers.OwnerPtr(models.OwnerCitizen),
-					PolicyClass: engine.ClassAllowlistConsent,
+					FieldName:         "field1",
+					Source:            models.SourcePrimary,
+					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+					RequiresAllowlist: new(true), RequiresConsent: new(true),
 				},
 			},
 		}
@@ -1150,7 +1139,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_EmptyRequiredFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID:  "app-123",
@@ -1169,26 +1158,26 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MixedAuthorizedUnauthorizedExpired", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db, testhelpers.Engine(t))
+		service := NewPolicyMetadataService(db)
 
 		// Create multiple fields with different states
 		createReq := &models.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
-					FieldName:   "authorized",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "authorized",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "expired",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "expired",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
-					FieldName:   "unauthorized",
-					Source:      models.SourcePrimary,
-					PolicyClass: engine.ClassAllowlist,
+					FieldName:         "unauthorized",
+					Source:            models.SourcePrimary,
+					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,17 +21,17 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 	owner := OwnerCitizen
 
 	pm := PolicyMetadata{
-		ID:           uuid.New(),
-		SchemaID:     "schema-123",
-		FieldName:    "person.fullName",
-		DisplayName:  &displayName,
-		Description:  &description,
-		Source:       SourcePrimary,
-		PolicyClass:  "allowlist_consent",
-		PolicyParams: PolicyParams{"purpose": "tax"},
-		Owner:        &owner,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:                uuid.New(),
+		SchemaID:          "schema-123",
+		FieldName:         "person.fullName",
+		DisplayName:       &displayName,
+		Description:       &description,
+		Source:            SourcePrimary,
+		RequiresAllowlist: true,
+		RequiresConsent:   true,
+		Owner:             &owner,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	response := pm.ToResponse()
@@ -41,8 +42,8 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 	assert.Equal(t, pm.DisplayName, response.DisplayName)
 	assert.Equal(t, pm.Description, response.Description)
 	assert.Equal(t, pm.Source, response.Source)
-	assert.Equal(t, pm.PolicyClass, response.PolicyClass)
-	assert.Equal(t, pm.PolicyParams, response.PolicyParams)
+	assert.True(t, response.RequiresAllowlist)
+	assert.True(t, response.RequiresConsent)
 	assert.Equal(t, pm.Owner, response.Owner)
 	assert.Equal(t, pm.CreatedAt.Format(time.RFC3339), response.CreatedAt)
 	assert.Equal(t, pm.UpdatedAt.Format(time.RFC3339), response.UpdatedAt)
@@ -88,8 +89,23 @@ func TestAccessGrant_ToResponse_ConsentBypass(t *testing.T) {
 	assert.Equal(t, &legalBasis, response.LegalBasis)
 }
 
-func TestPolicyMetadata_ToResponse_NilPolicyParams(t *testing.T) {
-	pm := PolicyMetadata{ID: uuid.New(), PolicyClass: "allowlist"}
+func TestPolicyMetadata_Policy(t *testing.T) {
+	pm := PolicyMetadata{RequiresConsent: true}
 
-	assert.Equal(t, PolicyParams{}, pm.ToResponse().PolicyParams)
+	assert.Equal(t, decision.Field{RequiresConsent: true}, pm.Policy())
+}
+
+func TestPolicyMetadataPatchRequest_NullFlag(t *testing.T) {
+	var req PolicyMetadataPatchRequest
+	assert.Empty(t, req.NullFlag())
+
+	req.RequiresConsent = OptionalPatchField[bool]{Set: true}
+	assert.Equal(t, "requiresConsent", req.NullFlag())
+
+	req.RequiresAllowlist = OptionalPatchField[bool]{Set: true}
+	assert.Equal(t, "requiresAllowlist", req.NullFlag())
+
+	set := false
+	req = PolicyMetadataPatchRequest{RequiresAllowlist: OptionalPatchField[bool]{Set: true, Value: &set}}
+	assert.Empty(t, req.NullFlag())
 }

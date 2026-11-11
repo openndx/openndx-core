@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/services"
 	"github.com/openndx/openndx-core/internal/utils"
@@ -21,8 +20,8 @@ type Handler struct {
 }
 
 // NewHandler creates a new API handler
-func NewHandler(db *gorm.DB, policyEngine *engine.Engine) *Handler {
-	policyService := services.NewPolicyMetadataService(db, policyEngine)
+func NewHandler(db *gorm.DB) *Handler {
+	policyService := services.NewPolicyMetadataService(db)
 	return &Handler{
 		policyService: policyService,
 	}
@@ -44,7 +43,7 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.policyService.CreatePolicyMetadata(&req)
-	if errors.Is(err, services.ErrUnknownPolicyClass) {
+	if errors.Is(err, services.ErrInvalidPolicy) {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -87,8 +86,8 @@ func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.PolicyClass.Set && req.PolicyClass.Value == nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "policyClass cannot be null")
+	if flag := req.NullFlag(); flag != "" {
+		utils.RespondWithError(w, http.StatusBadRequest, flag+" cannot be null")
 		return
 	}
 
@@ -214,7 +213,7 @@ func respondWithPolicyServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, services.ErrAccessGrantNotFound):
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 
-	case errors.Is(err, services.ErrUnknownPolicyClass),
+	case errors.Is(err, services.ErrInvalidPolicy),
 		errors.Is(err, services.ErrInvalidGrantRequest):
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 

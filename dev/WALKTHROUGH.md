@@ -117,14 +117,14 @@ routing in OE are separate: OE still calls DRP and RGD independently.
   --endpoint http://host.docker.internal:9091 \
   --member-id "$DRP_MEMBER_ID" \
   --field person.fullName:allowlist:primary \
-  --field person.profession:allowlist_consent:primary
+  --field person.profession:allowlist+consent:primary
 
 ./ondx schemas create --profile local \
   --schema-id rgd-person-v1 --name "RGD Birth Registry" \
   --endpoint http://host.docker.internal:8080/graphql \
   --member-id "$DRP_MEMBER_ID" \
-  --field getPersonInfo.birthPlace:allowlist_consent:primary \
-  --field getPersonInfo.district:allowlist_consent:primary
+  --field getPersonInfo.birthPlace:allowlist+consent:primary \
+  --field getPersonInfo.district:allowlist+consent:primary
 ```
 
 Keep the exact schema IDs and field names: they match `@sourceInfo` in
@@ -133,9 +133,9 @@ the policy metadata in PDP through Portal Backend. It does not change OE's
 checked-in provider configuration. The endpoints above are reachable from OE's
 Docker container; native OE uses the localhost endpoints in `config.example.yaml`.
 
-The middle part of each `--field` is the field's PDP policy class. `allowlist`
-fields require an application grant. `allowlist_consent` fields also require
-the citizen's consent. Here `person.fullName` needs only the grant; the
+The middle part of each `--field` is what the PDP requires before an
+application reads the field. `allowlist` fields require an application grant.
+`allowlist+consent` fields also require the citizen's consent. Here `person.fullName` needs only the grant; the
 profession and birth fields exercise consent.
 
 ## 5. Create the consumer application

@@ -37,13 +37,13 @@ func TestSDLParser_getDirectiveValue(t *testing.T) {
 	// Create a directive list with test data
 	directives := ast.DirectiveList{
 		{
-			Name: "accessControl",
+			Name: "displayName",
 			Arguments: ast.ArgumentList{
 				{
-					Name: "policy",
+					Name: "value",
 					Value: &ast.Value{
 						Kind: ast.StringValue,
-						Raw:  `"allowlist"`,
+						Raw:  `"Full name"`,
 					},
 				},
 			},
@@ -63,9 +63,9 @@ func TestSDLParser_getDirectiveValue(t *testing.T) {
 	}
 
 	t.Run("GetExistingDirective", func(t *testing.T) {
-		result := parser.getDirectiveValue(directives, "accessControl", "policy")
+		result := parser.getDirectiveValue(directives, "displayName", "value")
 		// The value should have quotes stripped
-		assert.Contains(t, result, "allowlist")
+		assert.Contains(t, result, "Full name")
 	})
 
 	t.Run("GetNonExistentDirective", func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestSDLParser_getDirectiveValue(t *testing.T) {
 	})
 
 	t.Run("GetNonExistentArgument", func(t *testing.T) {
-		result := parser.getDirectiveValue(directives, "accessControl", "nonExistent")
+		result := parser.getDirectiveValue(directives, "displayName", "nonExistent")
 		assert.Empty(t, result)
 	})
 }
@@ -178,17 +178,17 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithNestedFields(t *testing.T) {
 	parser := newSDLParser()
 
 	sdl := `
-	directive @accessControl(policy: String) on FIELD_DEFINITION
+	directive @accessControl(allowlist: Boolean!, consent: Boolean!) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 
 	type BirthInfo {
-	  birthCertificateID: ID! @accessControl(policy: "allowlist") @source(value: "fallback")
-	  birthPlace: String! @accessControl(policy: "allowlist") @source(value: "fallback")
+	  birthCertificateID: ID! @accessControl(allowlist: true, consent: false) @source(value: "fallback")
+	  birthPlace: String! @accessControl(allowlist: true, consent: false) @source(value: "fallback")
 	}
 
 	type User {
-	  id: ID! @accessControl(policy: "allowlist") @source(value: "fallback")
-	  birthInfo: BirthInfo @accessControl(policy: "allowlist") @source(value: "fallback")
+	  id: ID! @accessControl(allowlist: true, consent: false) @source(value: "fallback")
+	  birthInfo: BirthInfo @accessControl(allowlist: true, consent: false) @source(value: "fallback")
 	}
 
 	type Query {
@@ -220,14 +220,14 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithDirectives(t *testing.T) {
 	parser := newSDLParser()
 
 	sdl := `
-	directive @accessControl(policy: String) on FIELD_DEFINITION
+	directive @accessControl(allowlist: Boolean!, consent: Boolean!) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 	directive @displayName(value: String) on FIELD_DEFINITION
 	directive @description(value: String) on FIELD_DEFINITION
 	directive @owner(value: String) on FIELD_DEFINITION
 
 	type User {
-	  id: ID! @accessControl(policy: "allowlist_consent") @source(value: "drc") @displayName(value: "User ID") @description(value: "Unique identifier") @owner(value: "member")
+	  id: ID! @accessControl(allowlist: true, consent: true) @source(value: "drc") @displayName(value: "User ID") @description(value: "Unique identifier") @owner(value: "member")
 	}
 
 	type Query {
@@ -249,7 +249,7 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithDirectives(t *testing.T) {
 	}
 
 	assert.NotNil(t, userIDRecord)
-	assert.Equal(t, PolicyClassAllowlistConsent, userIDRecord.PolicyClass)
+	assertFlags(t, *userIDRecord, true, true)
 	assert.Equal(t, Source("drc"), userIDRecord.Source)
 	assert.NotNil(t, userIDRecord.DisplayName)
 	assert.Equal(t, "User ID", *userIDRecord.DisplayName)
@@ -271,51 +271,51 @@ func TestSDLParser_ParseSDLToPolicyRequest_DefaultsToAllowlist(t *testing.T) {
 	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
 	assert.NoError(t, err)
 	assert.Len(t, request.Records, 1)
-	assert.Equal(t, PolicyClassAllowlist, request.Records[0].PolicyClass)
+	assertFlags(t, request.Records[0], true, false)
 	assert.Nil(t, request.Records[0].Owner)
 }
 
-func TestSDLParser_ParseSDLToPolicyRequest_ConsentPolicy(t *testing.T) {
+func assertFlags(t *testing.T, record PolicyMetadataCreateRequestRecord, allowlist, consent bool) {
+	t.Helper()
+	require.NotNil(t, record.RequiresAllowlist, record.FieldName)
+	require.NotNil(t, record.RequiresConsent, record.FieldName)
+	assert.Equal(t, allowlist, *record.RequiresAllowlist, "%s requiresAllowlist", record.FieldName)
+	assert.Equal(t, consent, *record.RequiresConsent, "%s requiresConsent", record.FieldName)
+}
+
+func TestSDLParser_ParseSDLToPolicyRequest_AccessControlFlags(t *testing.T) {
 	sdl := `
-	directive @accessControl(policy: String) on FIELD_DEFINITION
+	directive @accessControl(allowlist: Boolean!, consent: Boolean!) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 	directive @owner(value: String) on FIELD_DEFINITION
 
 	type Person {
-	  birthDate: String @accessControl(policy: "consent") @source(value: "primary") @owner(value: "citizen")
+	  nic: String @accessControl(allowlist: true, consent: true) @source(value: "primary") @owner(value: "citizen")
+	  address: String @accessControl(allowlist: true, consent: false) @source(value: "primary")
+	  birthDate: String @accessControl(allowlist: false, consent: true) @source(value: "primary") @owner(value: "citizen")
+	  fullName: String @accessControl(consent: false, allowlist: false) @source(value: "primary")
 	}
 	`
 
 	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
 	require.NoError(t, err)
-	require.Len(t, request.Records, 1)
-	assert.Equal(t, "person.birthDate", request.Records[0].FieldName)
-	assert.Equal(t, PolicyClassConsent, request.Records[0].PolicyClass)
-	require.NotNil(t, request.Records[0].Owner)
-	assert.Equal(t, OwnerCitizen, *request.Records[0].Owner)
-}
-
-func TestSDLParser_ParseSDLToPolicyRequest_OpenPolicy(t *testing.T) {
-	sdl := `
-	directive @accessControl(policy: String) on FIELD_DEFINITION
-	directive @source(value: String) on FIELD_DEFINITION
-
-	type Person {
-	  fullName: String @accessControl(policy: "open") @source(value: "primary")
+	records := make(map[string]PolicyMetadataCreateRequestRecord, len(request.Records))
+	for _, record := range request.Records {
+		records[record.FieldName] = record
 	}
-	`
-
-	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
-	require.NoError(t, err)
-	require.Len(t, request.Records, 1)
-	assert.Equal(t, "person.fullName", request.Records[0].FieldName)
-	assert.Equal(t, PolicyClassOpen, request.Records[0].PolicyClass)
-	assert.Nil(t, request.Records[0].Owner)
+	require.Len(t, records, 4)
+	assertFlags(t, records["person.nic"], true, true)
+	assertFlags(t, records["person.address"], true, false)
+	assertFlags(t, records["person.birthDate"], false, true)
+	assertFlags(t, records["person.fullName"], false, false)
+	require.NotNil(t, records["person.birthDate"].Owner)
+	assert.Equal(t, OwnerCitizen, *records["person.birthDate"].Owner)
+	assert.Nil(t, records["person.fullName"].Owner)
 }
 
-func TestSDLParser_ParseSDLToPolicyRequest_RejectsRemovedDirectives(t *testing.T) {
+func TestSDLParser_ParseSDLToPolicyRequest_RejectsInvalidAccessControl(t *testing.T) {
 	const directives = `
-	directive @accessControl(type: String, policy: String) on FIELD_DEFINITION
+	directive @accessControl(type: String, policy: String, allowlist: Boolean, consent: Boolean) on FIELD_DEFINITION
 	directive @source(value: String) on FIELD_DEFINITION
 	directive @isOwner(value: Boolean) on FIELD_DEFINITION
 	`
@@ -331,14 +331,29 @@ func TestSDLParser_ParseSDLToPolicyRequest_RejectsRemovedDirectives(t *testing.T
 			wantErr: "field person.nic: @accessControl(type: ...) was removed",
 		},
 		{
+			name:    "accessControl policy",
+			field:   `nic: String @accessControl(policy: "allowlist_consent") @source(value: "primary")`,
+			wantErr: "field person.nic: @accessControl(policy: ...) was removed",
+		},
+		{
 			name:    "isOwner",
-			field:   `nic: String @accessControl(policy: "allowlist") @isOwner(value: true)`,
+			field:   `nic: String @accessControl(allowlist: true, consent: false) @isOwner(value: true)`,
 			wantErr: "field person.nic: @isOwner was removed",
 		},
 		{
-			name:    "accessControl without policy",
+			name:    "accessControl without flags",
 			field:   `nic: String @accessControl @source(value: "primary")`,
-			wantErr: "field person.nic: @accessControl needs a policy",
+			wantErr: "field person.nic: @accessControl needs both allowlist and consent",
+		},
+		{
+			name:    "accessControl missing consent",
+			field:   `nic: String @accessControl(allowlist: false) @source(value: "primary")`,
+			wantErr: "field person.nic: @accessControl needs both allowlist and consent",
+		},
+		{
+			name:    "flag that is not a boolean",
+			field:   `nic: String @accessControl(allowlist: "yes", consent: false) @source(value: "primary")`,
+			wantErr: `field person.nic: @accessControl(allowlist: ...) must be true or false, not "yes"`,
 		},
 		{
 			name:    "removed directive on a nested field",

@@ -45,7 +45,7 @@ func TestSchemaService_CreateSchema_WithFields(t *testing.T) {
 			Endpoint:   "http://example.com/graphql",
 			MemberID:   "member-123",
 			Fields: []policy.PolicyMetadataCreateRequestRecord{
-				{FieldName: "email", Source: policy.SourcePrimary, PolicyClass: policy.PolicyClassAllowlist},
+				{FieldName: "email", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		}
 
@@ -89,7 +89,7 @@ func TestSchemaService_CreateSchema_WithFields(t *testing.T) {
 			Endpoint:   "http://example.com/graphql",
 			MemberID:   "member-123",
 			Fields: []policy.PolicyMetadataCreateRequestRecord{
-				{FieldName: "email", Source: policy.SourcePrimary, PolicyClass: policy.PolicyClassAllowlist},
+				{FieldName: "email", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		}
 
@@ -598,7 +598,7 @@ func TestSchemaService_CreateSchema_EdgeCases(t *testing.T) {
 			SchemaName: "Test Schema",
 			SDL:        "type Query { test: String }",
 			Fields: []policy.PolicyMetadataCreateRequestRecord{
-				{FieldName: "email", PolicyClass: policy.PolicyClassAllowlist, Source: policy.SourcePrimary},
+				{FieldName: "email", RequiresAllowlist: new(true), RequiresConsent: new(false), Source: policy.SourcePrimary},
 			},
 		}
 

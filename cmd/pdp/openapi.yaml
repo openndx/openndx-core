@@ -133,7 +133,7 @@ paths:
 
         With consentBypass true and a legalBasis, the grants are consent bypass
         grants: the application reads the fields without asking for the
-        owner's consent. Every field's class must ask for consent. Plain and
+        owner's consent. Every field must require consent. Plain and
         bypass grants are renewed separately. The PDP doesn't authenticate
         callers; Portal Backend decides who may grant a bypass.
       tags:
@@ -155,8 +155,8 @@ paths:
           description: |
             Invalid body, missing applicationId, record without schemaId or
             fieldName, or unknown grantDuration. For consent bypass: missing
-            legalBasis, or a field whose class asks for no consent (open or
-            allowlist). A legalBasis without consentBypass is also rejected.
+            legalBasis, or a field that doesn't require consent. A legalBasis
+            without consentBypass is also rejected.
             Nothing is written.
           content:
             application/json:
@@ -283,7 +283,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolicyMetadataCreateResponse'
         '400':
-          description: Bad request - invalid input data
+          description: Invalid input, such as a record without requiresAllowlist or requiresConsent. Nothing is written.
           content:
             application/json:
               schema:
@@ -321,7 +321,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PolicyMetadataResponse'
         '400':
-          description: Invalid request body or access-control type
+          description: Invalid request body, unknown property, or requiresAllowlist or requiresConsent set to null
           content:
             application/json:
               schema:
@@ -464,16 +464,17 @@ components:
           example: "person.fullName"
         outcome:
           type: string
-          description: The field's decision. The set is fixed; a policy class that returns anything else denies the field.
+          description: The field's decision.
           enum: [allow, deny, expired, consent_required]
           example: deny
         reason:
           type: string
-          description: Why the policy class chose the outcome. Omitted when the class gives none.
+          description: Why the PDP chose the outcome. Omitted when there is none.
+          enum: [no_application, not_allowlisted, grant_expired, consent_bypassed]
           example: not_allowlisted
         obligations:
           type: array
-          description: Extra actions the policy asks the Orchestration Engine to take, which it records in the audit trail. Omitted when there are none.
+          description: Extra actions the Orchestration Engine must take, which it records in the audit trail. Omitted when there are none.
           items:
             type: string
           example: ["audit.consent_bypassed"]
@@ -517,16 +518,6 @@ components:
           type: string
           description: Service uptime
           example: "2h 15m 30s"
-        policies_loaded:
-          type: integer
-          description: Number of policies loaded
-          example: 5
-        policy_files:
-          type: array
-          description: List of loaded policy files
-          items:
-            type: string
-          example: [ "main.rego", "field_access.rego" ]
         configuration:
           type: object
           description: Service configuration
@@ -586,7 +577,8 @@ components:
       required:
         - fieldName
         - source
-        - policyClass
+        - requiresAllowlist
+        - requiresConsent
       properties:
         fieldName:
           type: string
@@ -605,10 +597,10 @@ components:
           description: Source system for this field
           enum: [ "primary", "fallback" ]
           example: "primary"
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          $ref: '#/components/schemas/PolicyParams'
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
         owner:
           type: string
           description: Whose consent is asked for the field
@@ -616,21 +608,20 @@ components:
           nullable: true
           example: "citizen"
 
-    PolicyClass:
-      type: string
+    RequiresAllowlist:
+      type: boolean
       description: >
-        Policy class that decides access to the field. The built-in classes are
-        allowlist (allow-listed applications, no consent), allowlist_consent
-        (allow-listed applications with owner consent), consent (any
-        application, with owner consent) and open (any application, no
-        consent). A class the PDP has not loaded is rejected with 400.
-      example: "allowlist_consent"
+        The application needs an unexpired access grant for the field. With
+        requiresConsent, false for both makes the field public to any
+        authenticated application.
+      example: true
 
-    PolicyParams:
-      type: object
-      description: Parameters for the policy class, passed to it as field.params
-      additionalProperties: true
-      example: {}
+    RequiresConsent:
+      type: boolean
+      description: >
+        The data owner must consent before the application reads the field,
+        unless the application holds an unexpired consent bypass grant.
+      example: true
 
     PolicyMetadataPatchRequest:
       type: object
@@ -647,13 +638,10 @@ components:
           nullable: true
           description: Updated description, or null to clear it
           example: "Citizen's preferred contact email"
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          type: object
-          nullable: true
-          additionalProperties: true
-          description: Replacement parameters for the policy class, or null to clear them
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
 
     PolicyMetadataResponse:
       type: object
@@ -662,8 +650,8 @@ components:
         - schemaId
         - fieldName
         - source
-        - policyClass
-        - policyParams
+        - requiresAllowlist
+        - requiresConsent
         - createdAt
         - updatedAt
       properties:
@@ -688,10 +676,10 @@ components:
           type: string
           enum: [ "primary", "fallback" ]
           example: "primary"
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          $ref: '#/components/schemas/PolicyParams'
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
         owner:
           type: string
           enum: [ "citizen" ]

@@ -29,69 +29,6 @@ func TestGrantStatus_IsValid(t *testing.T) {
 	assert.False(t, GrantStatus("").IsValid())
 }
 
-func TestPolicyParams_Scan(t *testing.T) {
-	tests := []struct {
-		name    string
-		value   interface{}
-		want    PolicyParams
-		wantErr bool
-	}{
-		{
-			name:  "nil value",
-			value: nil,
-			want:  PolicyParams{},
-		},
-		{
-			name:  "empty bytes",
-			value: []byte{},
-			want:  PolicyParams{},
-		},
-		{
-			name:  "bytes",
-			value: []byte(`{"purpose":"tax"}`),
-			want:  PolicyParams{"purpose": "tax"},
-		},
-		{
-			name:  "string",
-			value: `{"maxAgeDays":30}`,
-			want:  PolicyParams{"maxAgeDays": float64(30)},
-		},
-		{
-			name:    "invalid JSON",
-			value:   []byte(`{`),
-			wantErr: true,
-		},
-		{
-			name:    "invalid type",
-			value:   123,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var pp PolicyParams
-			err := pp.Scan(tt.value)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.want, pp)
-			}
-		})
-	}
-}
-
-func TestPolicyParams_Value(t *testing.T) {
-	value, err := PolicyParams(nil).Value()
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("{}"), value)
-
-	value, err = PolicyParams{"purpose": "tax"}.Value()
-	assert.NoError(t, err)
-	assert.JSONEq(t, `{"purpose":"tax"}`, string(value.([]byte)))
-}
-
 func TestSource_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
