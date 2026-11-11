@@ -14,7 +14,9 @@ All components are configured from [`values.yaml`](./values.yaml):
 | **Consent Portal** | `consentPortal.enabled` | `true` | Citizen-facing React UI for approving/rejecting consents |
 | **Portal Backend** | `portalBackend.enabled` | `true` | Management API for members, schemas, applications, and submissions (`internal/pb`) |
 
-> **External Infrastructure:** PostgreSQL, the Identity Provider (e.g. ThunderID), and the optional Audit Service (Argus) are outside the scope of this chart and should be deployed via their own Helm charts or managed cloud services. Each service's `config` points at them.
+> **Embedded identity provider:** OpenNDX requires ThunderID as its embedded IdP. It signs the tokens every service validates, and Portal Backend provisions application clients through its management API, so a generic OIDC provider is not a substitute. Install it from ThunderID's published chart before this one (see [Embedded identity provider (ThunderID)](#embedded-identity-provider-thunderid)).
+>
+> **External infrastructure:** PostgreSQL and the optional Audit Service (Argus) are outside the scope of this chart and should be deployed via their own Helm charts or managed cloud services. Each service's `config` points at them.
 
 ### Service configuration
 
@@ -29,8 +31,54 @@ The default in-cluster URLs (`http://openndx-pdp:8082`, `http://openndx-ce:8081/
 - Kubernetes 1.26+
 - Helm 3.12+
 - PostgreSQL 15+ with each enabled service's schema applied (`cmd/pdp/schema.sql`, `cmd/ce/schema.sql`, `cmd/pb/schema.sql`)
-- OIDC / OAuth2 Identity Provider (e.g. ThunderID)
+- ThunderID, the embedded identity provider, installed from `oci://ghcr.io/thunder-id/helm-charts/thunderid` (see [below](#embedded-identity-provider-thunderid))
 - The Secrets your services' `env` points at, created before install (see below)
+
+### Embedded identity provider (ThunderID)
+
+ThunderID publishes its chart at `oci://ghcr.io/thunder-id/helm-charts/thunderid`. Install it in the same namespace as a release named `thunderid`: the chart then names its Service `thunderid-service`, and the default `idp` URLs in [`values.yaml`](./values.yaml) (`http://thunderid-service:8090`) work unchanged. With another release name the Service is `<release>-thunderid-service`; update every service's `config.idp.jwksURL` and Portal Backend's `config.idp.management.baseURL` to match.
+
+OpenNDX needs ThunderID seeded with its resource server and clients (`CONSENT_PORTAL`, `PORTAL_BACKEND`, `NDX_CLI`) and its CORS origins. These are the bootstrap files in [`thunderid/bootstrap/`](../../../thunderid/bootstrap/), which Compose also uses. Load them into a ConfigMap and pass the values they template (`{{ .CONSENT_PORTAL_URL }}`, `{{ .PORTAL_BACKEND_CLIENT_SECRET }}`, ...) to the chart's setup job. Edit the files first for a shared deployment: `application.yaml` and `users.yaml` also seed a local-dev `DATA_CONSUMER` client and sample citizen user, and `cors.yaml` lists the local origins.
+
+```bash
+kubectl create configmap openndx-thunderid-bootstrap \
+  --namespace openndx \
+  --from-file=02-users.yaml=thunderid/bootstrap/users.yaml \
+  --from-file=03-resource.yaml=thunderid/bootstrap/resource.yaml \
+  --from-file=04-application.yaml=thunderid/bootstrap/application.yaml \
+  --from-file=05-cors.yaml=thunderid/bootstrap/cors.yaml
+
+helm upgrade --install thunderid oci://ghcr.io/thunder-id/helm-charts/thunderid \
+  --version 1.0.1 \
+  --namespace openndx \
+  -f thunderid-values.yaml
+```
+
+```yaml
+# thunderid-values.yaml
+configuration:
+  server:
+    # The URL browsers use to reach ThunderID. It is also the token issuer, so
+    # every OpenNDX service's config.idp.issuer must equal it.
+    publicUrl: https://idp.example.org
+    # Serve plain HTTP inside the cluster (TLS ends at the ingress), so the
+    # in-cluster http:// URLs in the OpenNDX values work.
+    httpOnly: true
+bootstrap:
+  configMap:
+    name: openndx-thunderid-bootstrap
+    # Listing the files adds them beside ThunderID's own defaults.
+    files: [02-users.yaml, 03-resource.yaml, 04-application.yaml, 05-cors.yaml]
+setup:
+  env:
+    - {name: CONSENT_PORTAL_URL, value: https://consent.example.org}
+  secretEnv:
+    # The same secret Portal Backend authenticates with (see Secrets below).
+    - {name: PORTAL_BACKEND_CLIENT_SECRET, secretName: openndx-secrets, secretKey: pbClientSecret}
+    - {name: DATA_CONSUMER_CLIENT_SECRET, secretName: openndx-secrets, secretKey: dataConsumerClientSecret}
+```
+
+ThunderID's database, ingress, admin credentials and other settings are configured through its own chart values: run `helm show values oci://ghcr.io/thunder-id/helm-charts/thunderid --version 1.0.1` for the full list.
 
 ### Secrets
 
@@ -42,7 +90,8 @@ The defaults read from one Secret named `openndx-secrets`. An override file merg
 |---|---|---|---|
 | `DB_USER` | `dbUser` | PDP, Consent Engine, Portal Backend | PostgreSQL user |
 | `DB_PASSWORD` | `dbPassword` | PDP, Consent Engine, Portal Backend | PostgreSQL password |
-| `PORTAL_BACKEND_CLIENT_SECRET` | `pbClientSecret` | Portal Backend | Client secret of `config.idp.management.clientID` |
+| `PORTAL_BACKEND_CLIENT_SECRET` | `pbClientSecret` | Portal Backend, ThunderID setup job | Client secret of `config.idp.management.clientID`; ThunderID seeds the client with it |
+| `DATA_CONSUMER_CLIENT_SECRET` | `dataConsumerClientSecret` | ThunderID setup job | Secret of the local-dev `DATA_CONSUMER` client; drop it with that client from `application.yaml` |
 
 ```bash
 kubectl create namespace openndx
