@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/models"
-	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
+	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -15,7 +15,7 @@ import (
 
 // setupTestDB creates an in-memory SQLite database for unit testing.
 func setupTestDB(t *testing.T) *gorm.DB {
-	return testhelpers.SetupTestDB(t)
+	return pdptest.SetupTestDB(t)
 }
 
 func TestNewPolicyMetadataService(t *testing.T) {
@@ -87,14 +87,14 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
 				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
+				DisplayName:       new("Name"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
 				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
-				Description:       testhelpers.StringPtr("Old description"),
+				DisplayName:       new("Email"),
+				Description:       new("Old description"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
@@ -117,7 +117,7 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
 		DisplayName: models.OptionalPatchField[string]{
 			Set:   true,
-			Value: testhelpers.StringPtr("Primary Email"),
+			Value: new("Primary Email"),
 		},
 		Description: models.OptionalPatchField[string]{
 			Set:   true,
@@ -169,7 +169,7 @@ func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
 	displayOnlyResp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
 		DisplayName: models.OptionalPatchField[string]{
 			Set:   true,
-			Value: testhelpers.StringPtr("Contact Email"),
+			Value: new("Contact Email"),
 		},
 	})
 	require.NoError(t, err)
@@ -281,7 +281,7 @@ func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
+			{FieldName: "person.email", DisplayName: new("Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			{FieldName: "person.phone", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
@@ -300,7 +300,7 @@ func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
 	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: testhelpers.StringPtr("Primary Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
+			{FieldName: "person.email", DisplayName: new("Primary Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -581,13 +581,13 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 			Records: []models.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					DisplayName:       testhelpers.StringPtr("Updated Field 1"),
+					DisplayName:       new("Updated Field 1"),
 					Source:            models.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
 					FieldName:         "field2",
-					DisplayName:       testhelpers.StringPtr("New Field 2"),
+					DisplayName:       new("New Field 2"),
 					Source:            models.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
@@ -613,7 +613,7 @@ func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
 				{
 					FieldName:         "field1",
 					Source:            models.SourcePrimary,
-					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+					Owner:             pdptest.OwnerPtr(models.OwnerCitizen),
 					RequiresAllowlist: new(true), RequiresConsent: new(true),
 				},
 			},
@@ -1094,7 +1094,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				{
 					FieldName:         "field1",
 					Source:            models.SourcePrimary,
-					Owner:             testhelpers.OwnerPtr(models.OwnerCitizen),
+					Owner:             pdptest.OwnerPtr(models.OwnerCitizen),
 					RequiresAllowlist: new(true), RequiresConsent: new(true),
 				},
 			},

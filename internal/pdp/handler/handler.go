@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -205,20 +204,15 @@ func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
+// policyServiceErrorStatuses maps the policy service's sentinel errors to HTTP
+// statuses. Any other error is a 500.
+var policyServiceErrorStatuses = []utils.ErrorStatus{
+	{Err: services.ErrPolicyMetadataNotFound, Status: http.StatusNotFound},
+	{Err: services.ErrAccessGrantNotFound, Status: http.StatusNotFound},
+	{Err: services.ErrInvalidPolicy, Status: http.StatusBadRequest},
+	{Err: services.ErrInvalidGrantRequest, Status: http.StatusBadRequest},
+}
+
 func respondWithPolicyServiceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, services.ErrPolicyMetadataNotFound):
-		utils.RespondWithError(w, http.StatusNotFound, err.Error())
-
-	case errors.Is(err, services.ErrAccessGrantNotFound):
-		utils.RespondWithError(w, http.StatusNotFound, err.Error())
-
-	case errors.Is(err, services.ErrInvalidPolicy),
-		errors.Is(err, services.ErrInvalidGrantRequest):
-		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
-
-	default:
-		slog.Error("Policy service request failed", "error", err)
-		utils.RespondWithError(w, http.StatusInternalServerError, "internal server error")
-	}
+	utils.RespondWithServiceError(w, err, policyServiceErrorStatuses...)
 }

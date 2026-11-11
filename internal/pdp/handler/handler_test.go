@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/openndx/openndx-core/internal/pdp/models"
-	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
+	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -17,7 +17,7 @@ import (
 
 // setupTestDB creates an in-memory SQLite database for unit testing.
 func setupTestDB(t *testing.T) *gorm.DB {
-	return testhelpers.SetupTestDB(t)
+	return pdptest.SetupTestDB(t)
 }
 
 // TestRespondWithPolicyServiceError_HidesInternalDetails verifies that
@@ -96,8 +96,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name"),
-						Description:       testhelpers.StringPtr("Complete name"),
+						DisplayName:       pdptest.StringPtr("Full Name"),
+						Description:       pdptest.StringPtr("Complete name"),
 						Source:            models.SourcePrimary,
 						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
@@ -124,8 +124,8 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name Updated"),
-						Description:       testhelpers.StringPtr("Updated description"),
+						DisplayName:       pdptest.StringPtr("Full Name Updated"),
+						Description:       pdptest.StringPtr("Updated description"),
 						Source:            models.SourcePrimary,
 						RequiresAllowlist: new(true), RequiresConsent: new(true),
 					},
@@ -177,13 +177,13 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 				Records: []models.PolicyMetadataCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
-						DisplayName:       testhelpers.StringPtr("Full Name"),
+						DisplayName:       pdptest.StringPtr("Full Name"),
 						Source:            models.SourcePrimary,
 						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
 					{
 						FieldName:         "person.email",
-						DisplayName:       testhelpers.StringPtr("Email"),
+						DisplayName:       pdptest.StringPtr("Email"),
 						Source:            models.SourcePrimary,
 						RequiresAllowlist: new(true), RequiresConsent: new(false),
 					},
@@ -238,7 +238,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 					Records: []models.PolicyMetadataCreateRequestRecord{
 						{
 							FieldName:         "person.fullName",
-							DisplayName:       testhelpers.StringPtr("Full Name"),
+							DisplayName:       pdptest.StringPtr("Full Name"),
 							Source:            models.SourcePrimary,
 							RequiresAllowlist: new(true), RequiresConsent: new(false),
 						},
@@ -275,13 +275,13 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
 				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
+				DisplayName:       pdptest.StringPtr("Name"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
 				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
+				DisplayName:       pdptest.StringPtr("Email"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
@@ -347,13 +347,13 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
 				FieldName:         "person.name",
-				DisplayName:       testhelpers.StringPtr("Name"),
+				DisplayName:       pdptest.StringPtr("Name"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
 				FieldName:         "person.email",
-				DisplayName:       testhelpers.StringPtr("Email"),
+				DisplayName:       pdptest.StringPtr("Email"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
@@ -649,7 +649,7 @@ func TestHandler_CreateAccessGrants(t *testing.T) {
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
-				DisplayName:       testhelpers.StringPtr("Full Name"),
+				DisplayName:       pdptest.StringPtr("Full Name"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
@@ -766,16 +766,16 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		Records: []models.PolicyMetadataCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
-				DisplayName:       testhelpers.StringPtr("Full Name"),
+				DisplayName:       pdptest.StringPtr("Full Name"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(false),
 			},
 			{
 				FieldName:         "person.nic",
-				DisplayName:       testhelpers.StringPtr("NIC"),
+				DisplayName:       pdptest.StringPtr("NIC"),
 				Source:            models.SourcePrimary,
 				RequiresAllowlist: new(true), RequiresConsent: new(true),
-				Owner: testhelpers.OwnerPtr(models.OwnerCitizen),
+				Owner: pdptest.OwnerPtr(models.OwnerCitizen),
 			},
 		},
 	}
