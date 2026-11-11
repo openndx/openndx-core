@@ -155,14 +155,14 @@ paths:
   /health:
     get:
       summary: Health check endpoint
-      description: Returns the health status of the Portal Backend
+      description: Reports that the Portal Backend is up. It does not check the database; use /debug/db for that.
       operationId: getHealth
       tags:
         - Health
       security: []
       responses:
         '200':
-          description: Service is healthy
+          description: Service is up
           content:
             application/json:
               schema:
@@ -173,10 +173,7 @@ paths:
                     example: healthy
                   service:
                     type: string
-                    example: portal-backend-v1
-                  timestamp:
-                    type: string
-                    format: date-time
+                    example: portal-backend
 
   /debug:
     get:

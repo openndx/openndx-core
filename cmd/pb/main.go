@@ -157,7 +157,7 @@ func main() {
 	// requests, which no apiMux route matches.
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", healthHandler(gormDB, dbName))
+	mux.Handle("GET /health", utils.HealthHandler("portal-backend"))
 	mux.HandleFunc("GET /debug", debugHandler)
 	mux.HandleFunc("GET /debug/db", debugDBHandler(gormDB, dbName))
 
