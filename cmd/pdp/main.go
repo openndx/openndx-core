@@ -13,7 +13,6 @@ import (
 
 	"github.com/openndx/openndx-core/internal/database"
 	"github.com/openndx/openndx-core/internal/logging"
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/handler"
 	"github.com/openndx/openndx-core/internal/utils"
 )
@@ -62,13 +61,8 @@ func run() error {
 		}
 	}()
 
-	policyEngine, err := engine.New(context.Background())
-	if err != nil {
-		return fmt.Errorf("initialize policy engine: %w", err)
-	}
-
 	// Initialize V1 handlers
-	v1Handler := handler.NewHandler(gormDB, policyEngine)
+	v1Handler := handler.NewHandler(gormDB)
 
 	// Setup routes
 	mux := http.NewServeMux()

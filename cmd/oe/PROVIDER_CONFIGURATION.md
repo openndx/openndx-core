@@ -17,10 +17,10 @@ ondx schemas create --profile local \
   --schema-id drp-person-v1 --name "DRP Person Registry" \
   --endpoint http://localhost:9091 --member-id "$MEMBER_ID" \
   --field person.fullName:allowlist:primary \
-  --field person.profession:allowlist_consent:primary
+  --field person.profession:allowlist+consent:primary
 ```
 
-The `--schema-id` becomes the `schemaId`, and each `--field` name becomes the PDP `fieldName`. See [the walkthrough](../../dev/WALKTHROUGH.md#4-register-members-and-both-provider-schemas) for the full sequence.
+The `--schema-id` becomes the `schemaId`, and each `--field` name becomes the PDP `fieldName`. The middle part says what the PDP requires before an application reads the field: `allowlist`, `consent`, `allowlist+consent` or `none`. See [the walkthrough](../../dev/WALKTHROUGH.md#4-register-members-and-both-provider-schemas) for the full sequence.
 
 ## 2. Add the provider to `config.yaml`
 

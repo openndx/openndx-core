@@ -67,24 +67,32 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 
 	// Extract directives
 	accessControl := field.Directives.ForName("accessControl")
-	policyClass := h.getDirectiveValue(field.Directives, "accessControl", "policy")
 	sourceValue := h.getDirectiveValue(field.Directives, "source", "value")
 	displayName := h.getDirectiveValue(field.Directives, "displayName", "value")
 	description := h.getDirectiveValue(field.Directives, "description", "value")
 	ownerValue := h.getDirectiveValue(field.Directives, "owner", "value")
-
-	if accessControl != nil && policyClass == "" {
-		return nil, fmt.Errorf("field %s: @accessControl needs a policy, e.g. @accessControl(policy: %q)",
-			fieldPath, PolicyClassAllowlistConsent)
-	}
 
 	// Skip if no relevant directives found
 	if accessControl == nil && sourceValue == "" {
 		return nil, nil
 	}
 
+	// A field with @source but no @accessControl needs the allow-list and no consent.
+	requiresAllowlist, requiresConsent := true, false
+	if accessControl != nil {
+		var err error
+		if requiresAllowlist, err = h.boolArgument(fieldPath, accessControl, "allowlist"); err != nil {
+			return nil, err
+		}
+		if requiresConsent, err = h.boolArgument(fieldPath, accessControl, "consent"); err != nil {
+			return nil, err
+		}
+	}
+
 	record := PolicyMetadataCreateRequestRecord{
-		FieldName: fieldPath,
+		FieldName:         fieldPath,
+		RequiresAllowlist: &requiresAllowlist,
+		RequiresConsent:   &requiresConsent,
 	}
 
 	// Set display name (can be null)
@@ -104,13 +112,6 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 		record.Source = SourceFallback // default
 	}
 
-	// Set policy class (default to "allowlist" if not specified)
-	if policyClass != "" {
-		record.PolicyClass = policyClass
-	} else {
-		record.PolicyClass = PolicyClassAllowlist // default
-	}
-
 	// Set owner if specified (can be null)
 	if ownerValue != "" {
 		owner := Owner(ownerValue)
@@ -120,17 +121,40 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 	return &record, nil
 }
 
-// rejectRemovedDirectives fails on the access-control directives replaced by
-// policy classes. Ignoring them would quietly drop a consent requirement.
+// accessControlUsage shows the @accessControl form a removed one is replaced by.
+const accessControlUsage = "@accessControl(allowlist: true, consent: true)"
+
+// rejectRemovedDirectives fails on access-control directives and arguments
+// that were removed. Ignoring them would quietly drop a consent requirement.
 func (h *sdlParser) rejectRemovedDirectives(fieldPath string, directives ast.DirectiveList) error {
 	if directives.ForName("isOwner") != nil {
-		return fmt.Errorf("field %s: @isOwner was removed; drop it and set the field's policy with @accessControl(policy: ...)", fieldPath)
+		return fmt.Errorf("field %s: @isOwner was removed; drop it and set the field's policy with %s", fieldPath, accessControlUsage)
 	}
-	if accessControl := directives.ForName("accessControl"); accessControl != nil && accessControl.Arguments.ForName("type") != nil {
-		return fmt.Errorf("field %s: @accessControl(type: ...) was removed; use @accessControl(policy: %q) or @accessControl(policy: %q)",
-			fieldPath, PolicyClassAllowlist, PolicyClassAllowlistConsent)
+	accessControl := directives.ForName("accessControl")
+	if accessControl == nil {
+		return nil
+	}
+	for _, removed := range []string{"type", "policy"} {
+		if accessControl.Arguments.ForName(removed) != nil {
+			return fmt.Errorf("field %s: @accessControl(%s: ...) was removed; use %s with each flag true or false",
+				fieldPath, removed, accessControlUsage)
+		}
 	}
 	return nil
+}
+
+// boolArgument reads a required Boolean argument of a directive.
+func (h *sdlParser) boolArgument(fieldPath string, directive *ast.Directive, name string) (bool, error) {
+	arg := directive.Arguments.ForName(name)
+	if arg == nil {
+		return false, fmt.Errorf("field %s: @%s needs both allowlist and consent, e.g. %s",
+			fieldPath, directive.Name, accessControlUsage)
+	}
+	if arg.Value.Kind != ast.BooleanValue {
+		return false, fmt.Errorf("field %s: @%s(%s: ...) must be true or false, not %s",
+			fieldPath, directive.Name, name, arg.Value.String())
+	}
+	return arg.Value.Raw == "true", nil
 }
 
 // processNestedFields recursively processes nested object fields

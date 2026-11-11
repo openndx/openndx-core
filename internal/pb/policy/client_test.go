@@ -27,15 +27,16 @@ func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
 	schemaID := "test-schema-123"
 	expectedRecords := []PolicyMetadataResponse{
 		{
-			ID:          "record-1",
-			SchemaID:    schemaID,
-			FieldName:   "personInfo.name",
-			DisplayName: stringPtr("Name"),
-			Source:      SourcePrimary,
-			PolicyClass: PolicyClassAllowlistConsent,
-			AllowList:   AllowList{},
-			CreatedAt:   "2024-01-01T00:00:00Z",
-			UpdatedAt:   "2024-01-01T00:00:00Z",
+			ID:                "record-1",
+			SchemaID:          schemaID,
+			FieldName:         "personInfo.name",
+			DisplayName:       stringPtr("Name"),
+			Source:            SourcePrimary,
+			RequiresAllowlist: true,
+			RequiresConsent:   true,
+			AllowList:         AllowList{},
+			CreatedAt:         "2024-01-01T00:00:00Z",
+			UpdatedAt:         "2024-01-01T00:00:00Z",
 		},
 	}
 
@@ -86,10 +87,10 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 	schemaID := "test-schema-123"
 	records := []PolicyMetadataCreateRequestRecord{
 		{
-			FieldName:    "email",
-			Source:       SourcePrimary,
-			PolicyClass:  PolicyClassAllowlist,
-			PolicyParams: PolicyParams{"purpose": "tax"},
+			FieldName:         "email",
+			Source:            SourcePrimary,
+			RequiresAllowlist: new(false),
+			RequiresConsent:   new(true),
 		},
 	}
 
@@ -126,8 +127,8 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 	if assert.Len(t, capturedReq.Records, 1) {
 		assert.Equal(t, "email", capturedReq.Records[0].FieldName)
 		assert.Equal(t, SourcePrimary, capturedReq.Records[0].Source)
-		assert.Equal(t, PolicyClassAllowlist, capturedReq.Records[0].PolicyClass)
-		assert.Equal(t, PolicyParams{"purpose": "tax"}, capturedReq.Records[0].PolicyParams)
+		assert.Equal(t, new(false), capturedReq.Records[0].RequiresAllowlist)
+		assert.Equal(t, new(true), capturedReq.Records[0].RequiresConsent)
 	}
 }
 
@@ -140,7 +141,7 @@ func TestClient_CreatePolicyMetadataFromRecords_Non200Status(t *testing.T) {
 
 	service := NewClient(server.URL)
 	response, err := service.CreatePolicyMetadataFromRecords("schema-1", []PolicyMetadataCreateRequestRecord{
-		{FieldName: "email", Source: SourcePrimary, PolicyClass: PolicyClassAllowlist},
+		{FieldName: "email", Source: SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 	})
 
 	assert.Error(t, err)
@@ -391,7 +392,7 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"records":[{"id":"pm-1","schemaId":"sch_1&x","fieldName":"person.name","source":"primary","policyClass":"allowlist_consent","policyParams":{},"allowList":{}}]}`))
+		_, _ = w.Write([]byte(`{"records":[{"id":"pm-1","schemaId":"sch_1&x","fieldName":"person.name","source":"primary","requiresAllowlist":false,"requiresConsent":true,"allowList":{}}]}`))
 	}))
 	defer server.Close()
 
@@ -401,7 +402,8 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, response.Records, 1)
 	assert.Equal(t, "pm-1", response.Records[0].ID)
-	assert.Equal(t, PolicyClassAllowlistConsent, response.Records[0].PolicyClass)
+	assert.False(t, response.Records[0].RequiresAllowlist)
+	assert.True(t, response.Records[0].RequiresConsent)
 }
 
 func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
@@ -416,7 +418,7 @@ func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"pm-1","schemaId":"sch_1","fieldName":"person.name","displayName":"Name","policyClass":"allowlist"}`))
+		_, _ = w.Write([]byte(`{"id":"pm-1","schemaId":"sch_1","fieldName":"person.name","displayName":"Name","requiresAllowlist":true,"requiresConsent":false}`))
 	}))
 	defer server.Close()
 

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -20,7 +19,7 @@ import (
 //
 // With req.ConsentBypass set, the grants are consent bypass grants. They need
 // a legal basis, which a renewal replaces, and every field must ask for the
-// owner's consent: open and allowlist fields are rejected.
+// owner's consent: fields that don't require consent are rejected.
 func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreateRequest) (*models.AccessGrantListResponse, error) {
 	if strings.TrimSpace(req.ApplicationID) == "" {
 		return nil, fmt.Errorf("%w: applicationId is required", ErrInvalidGrantRequest)
@@ -68,19 +67,19 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 			return fmt.Errorf("failed to fetch policy metadata records: %w", err)
 		}
 
-		classes := make(map[string]string, len(metadata))
+		requiresConsent := make(map[string]bool, len(metadata))
 		for _, pm := range metadata {
-			classes[pm.SchemaID+":"+pm.FieldName] = pm.PolicyClass
+			requiresConsent[pm.SchemaID+":"+pm.FieldName] = pm.RequiresConsent
 		}
 		for _, record := range req.Records {
-			class, ok := classes[record.SchemaID+":"+record.FieldName]
+			consent, ok := requiresConsent[record.SchemaID+":"+record.FieldName]
 			if !ok {
 				return fmt.Errorf("%w for schema_id %s and field_name %s",
 					ErrPolicyMetadataNotFound, record.SchemaID, record.FieldName)
 			}
-			if req.ConsentBypass && (class == engine.ClassOpen || class == engine.ClassAllowlist) {
-				return fmt.Errorf("%w: field %s of schema %s has policy class %s, which asks for no consent to bypass",
-					ErrInvalidGrantRequest, record.FieldName, record.SchemaID, class)
+			if req.ConsentBypass && !consent {
+				return fmt.Errorf("%w: field %s of schema %s does not require consent, so there is no consent to bypass",
+					ErrInvalidGrantRequest, record.FieldName, record.SchemaID)
 			}
 		}
 

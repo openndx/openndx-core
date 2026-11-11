@@ -45,7 +45,7 @@ func postSchema(t *testing.T, h *Handler, schemaID, memberID string) *httptest.R
 		Endpoint:   "http://drp.example/graphql",
 		MemberID:   memberID,
 		Fields: []policy.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.fullName", Source: policy.SourcePrimary, PolicyClass: policy.PolicyClassAllowlist},
+			{FieldName: "person.fullName", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)

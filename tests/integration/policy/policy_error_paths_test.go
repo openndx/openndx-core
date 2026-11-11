@@ -18,19 +18,20 @@ import (
 func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 	schemaID := generateTestID("test-schema-rollback")
 
-	// The second record names an unknown policy class, so the whole request fails
+	// The second record leaves out requiresConsent, so the whole request fails
 	req := PolicyMetadataCreateRequest{
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "field1",
-				Source:      "primary",
-				PolicyClass: "allowlist",
+				FieldName:         "field1",
+				Source:            "primary",
+				RequiresAllowlist: flag(true),
+				RequiresConsent:   flag(false),
 			},
 			{
-				FieldName:   "field2",
-				Source:      "primary",
-				PolicyClass: "no_such_class",
+				FieldName:         "field2",
+				Source:            "primary",
+				RequiresAllowlist: flag(false),
 			},
 		},
 	}
@@ -78,9 +79,9 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   fieldName,
-				Source:      "primary",
-				PolicyClass: "allowlist",
+				FieldName:         fieldName,
+				Source:            "primary",
+				RequiresAllowlist: flag(true), RequiresConsent: flag(false),
 			},
 		},
 	}
@@ -105,10 +106,10 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   fieldName,
-				DisplayName: &displayName,
-				Source:      "primary",
-				PolicyClass: "allowlist_consent", // Changed
+				FieldName:         fieldName,
+				DisplayName:       &displayName,
+				Source:            "primary",
+				RequiresAllowlist: flag(true), RequiresConsent: flag(true), // Changed
 			},
 		},
 	}
@@ -129,7 +130,7 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	// Verify it's the same record (same ID) but with updated values
 	assert.Equal(t, originalID, createResponse2.Records[0].ID, "Should update existing record, not create duplicate")
 	assert.Equal(t, "Updated Name", *createResponse2.Records[0].DisplayName)
-	assert.Equal(t, "allowlist_consent", createResponse2.Records[0].PolicyClass)
+	assert.True(t, createResponse2.Records[0].RequiresConsent)
 
 	// Verify only one record exists (no duplicates) by checking database directly
 	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
@@ -211,9 +212,9 @@ func TestPolicy_CreateAccessGrants_InvalidGrantDuration(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   "field1",
-				Source:      "primary",
-				PolicyClass: "allowlist",
+				FieldName:         "field1",
+				Source:            "primary",
+				RequiresAllowlist: flag(true), RequiresConsent: flag(false),
 			},
 		},
 	}
@@ -266,9 +267,9 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 		SchemaID: schemaID,
 		Records: []PolicyMetadataCreateRequestRecord{
 			{
-				FieldName:   fieldName,
-				Source:      "primary",
-				PolicyClass: "allowlist",
+				FieldName:         fieldName,
+				Source:            "primary",
+				RequiresAllowlist: flag(true), RequiresConsent: flag(false),
 			},
 		},
 	}

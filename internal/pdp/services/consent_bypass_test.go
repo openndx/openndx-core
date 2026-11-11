@@ -4,25 +4,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openndx/openndx-core/internal/pdp/engine"
 	"github.com/openndx/openndx-core/internal/pdp/models"
-	"github.com/openndx/openndx-core/internal/pdp/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// newBypassService returns a service with one field of each built-in class in
-// schema s1: consent, allowlist_consent, allowlist and open.
+// newBypassService returns a service with one field for each combination of
+// the policy flags in schema s1, named after the flags it sets.
 func newBypassService(t *testing.T) *PolicyMetadataService {
 	t.Helper()
-	service := NewPolicyMetadataService(setupTestDB(t), testhelpers.Engine(t))
+	service := NewPolicyMetadataService(setupTestDB(t))
+	field := func(name string, allowlist, consent bool) models.PolicyMetadataCreateRequestRecord {
+		return models.PolicyMetadataCreateRequestRecord{
+			FieldName: name, Source: models.SourcePrimary,
+			RequiresAllowlist: new(allowlist), RequiresConsent: new(consent),
+		}
+	}
 	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
 		SchemaID: "s1",
 		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "consent", Source: models.SourcePrimary, PolicyClass: engine.ClassConsent},
-			{FieldName: "allowlist_consent", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlistConsent},
-			{FieldName: "allowlist", Source: models.SourcePrimary, PolicyClass: engine.ClassAllowlist},
-			{FieldName: "open", Source: models.SourcePrimary, PolicyClass: engine.ClassOpen},
+			field("consent", false, true),
+			field("allowlist_consent", true, true),
+			field("allowlist", true, false),
+			field("open", false, false),
 		},
 	})
 	require.NoError(t, err)
@@ -95,7 +99,7 @@ func TestConsentBypass_GrantSkipsConsent(t *testing.T) {
 		assert.WithinDuration(t, time.Now().AddDate(0, 1, 0), expiresAt, 5*time.Second)
 	}
 
-	// Both consent classes are bypassed for the granted application only.
+	// Both fields that require consent are bypassed for the granted application only.
 	assert.Equal(t, withField(bypassed, "consent"), decideField(t, service, "police", "consent"))
 	assert.Equal(t, withField(bypassed, "allowlist_consent"), decideField(t, service, "police", "allowlist_consent"))
 	assert.Equal(t, "consent_required", decideField(t, service, "other-app", "consent").Outcome)

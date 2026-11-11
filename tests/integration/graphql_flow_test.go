@@ -315,23 +315,25 @@ func parseGraphQLResponse(t *testing.T, resp *http.Response) map[string]interfac
 	return result
 }
 
-// createPolicyMetadata creates allowlist_consent policy metadata in the PDP for the given schema and field.
+// createPolicyMetadata creates policy metadata in the PDP for the given schema and field
+// that requires both the allow-list and owner consent.
 func createPolicyMetadata(t *testing.T, schemaID, fieldName string) {
-	createPolicyMetadataWithClass(t, schemaID, fieldName, "allowlist_consent")
+	createPolicyMetadataWithFlags(t, schemaID, fieldName, true, true)
 }
 
-// createPolicyMetadataWithClass creates policy metadata in the PDP for the given schema and
-// field, governed by policyClass. The request syncs the whole schema, so it replaces any
+// createPolicyMetadataWithFlags creates policy metadata in the PDP for the given schema and
+// field with the given policy flags. The request syncs the whole schema, so it replaces any
 // other fields' metadata in schemaID.
-func createPolicyMetadataWithClass(t *testing.T, schemaID, fieldName, policyClass string) {
+func createPolicyMetadataWithFlags(t *testing.T, schemaID, fieldName string, requiresAllowlist, requiresConsent bool) {
 	reqBody := map[string]interface{}{
 		"schemaId": schemaID,
 		"records": []map[string]interface{}{
 			{
-				"fieldName":   fieldName,
-				"source":      "primary",
-				"owner":       "citizen",
-				"policyClass": policyClass,
+				"fieldName":         fieldName,
+				"source":            "primary",
+				"owner":             "citizen",
+				"requiresAllowlist": requiresAllowlist,
+				"requiresConsent":   requiresConsent,
 			},
 		},
 	}
@@ -788,14 +790,14 @@ func errorCode(result map[string]interface{}) string {
 	return code
 }
 
-// TestGraphQLFlow_ConsentClassWithoutAllowList covers a field with the consent policy
-// class queried by an application that is not on the field's allow-list: the PDP asks
-// for consent, the Orchestration Engine starts the consent flow, and once the citizen
-// approves, the data is returned.
-func TestGraphQLFlow_ConsentClassWithoutAllowList(t *testing.T) {
+// TestGraphQLFlow_ConsentOnlyFieldWithoutAllowList covers a field that requires consent
+// but not the allow-list, queried by an application that is not on the field's allow-list:
+// the PDP asks for consent, the Orchestration Engine starts the consent flow, and once the
+// citizen approves, the data is returned.
+func TestGraphQLFlow_ConsentOnlyFieldWithoutAllowList(t *testing.T) {
 	schemaID := "test-schema-123"
 	fieldName := "person.address"
-	appID := fmt.Sprintf("test-consent-class-app-%d", time.Now().UnixNano())
+	appID := fmt.Sprintf("test-consent-only-app-%d", time.Now().UnixNano())
 
 	cleanup := &testCleanupRegistry{
 		schemaIDs: []string{schemaID},
@@ -804,7 +806,7 @@ func TestGraphQLFlow_ConsentClassWithoutAllowList(t *testing.T) {
 	defer cleanup.cleanup(t)
 
 	// The app is deliberately never added to the allow-list.
-	createPolicyMetadataWithClass(t, schemaID, fieldName, "consent")
+	createPolicyMetadataWithFlags(t, schemaID, fieldName, false, true)
 
 	token, err := createTestJWT(appID)
 	require.NoError(t, err)
@@ -847,13 +849,13 @@ func TestGraphQLFlow_ConsentClassWithoutAllowList(t *testing.T) {
 	})
 }
 
-// TestGraphQLFlow_OpenClassWithoutAllowList covers a field with the open policy class
-// queried by an application that is not on the field's allow-list and has no consent:
-// the data is returned straight away.
-func TestGraphQLFlow_OpenClassWithoutAllowList(t *testing.T) {
+// TestGraphQLFlow_PublicFieldWithoutAllowList covers a field that requires neither the
+// allow-list nor consent, queried by an application that is not on the field's allow-list
+// and has no consent: the data is returned straight away.
+func TestGraphQLFlow_PublicFieldWithoutAllowList(t *testing.T) {
 	schemaID := "test-schema-123"
 	fieldName := "person.fullName"
-	appID := fmt.Sprintf("test-open-class-app-%d", time.Now().UnixNano())
+	appID := fmt.Sprintf("test-public-field-app-%d", time.Now().UnixNano())
 
 	cleanup := &testCleanupRegistry{
 		schemaIDs: []string{schemaID},
@@ -862,7 +864,7 @@ func TestGraphQLFlow_OpenClassWithoutAllowList(t *testing.T) {
 	defer cleanup.cleanup(t)
 
 	// The app is deliberately never added to the allow-list, and no consent is created.
-	createPolicyMetadataWithClass(t, schemaID, fieldName, "open")
+	createPolicyMetadataWithFlags(t, schemaID, fieldName, false, false)
 
 	token, err := createTestJWT(appID)
 	require.NoError(t, err)

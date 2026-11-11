@@ -417,7 +417,7 @@ paths:
     patch:
       summary: Update a field's policy metadata
       description: |
-        Updates the displayName, description, policyClass or policyParams of one
+        Updates the displayName, description, requiresAllowlist or requiresConsent of one
         field without resending the schema's other fields. Requires the
         schema:update permission, and members can only update their own
         schemas.
@@ -809,8 +809,8 @@ paths:
         Lets the application read the fields without the owner's consent, for
         the requested duration. The grants are active at once. A field the
         application already holds a bypass grant for has that grant renewed
-        with the new duration and legal basis. Each field's policy class must
-        ask for consent (consent or allowlist_consent). The audit event
+        with the new duration and legal basis. Each field must require
+        consent (requiresConsent true). The audit event
         records the caller as the one who granted it. Requires
         consent-bypass:write.
       operationId: grantConsentBypass
@@ -837,7 +837,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConsentBypassGrantCollection'
         '400':
-          description: Missing fields, legalBasis or grantDuration, or a field whose class asks for no consent; nothing is granted
+          description: Missing fields, legalBasis or grantDuration, or a field that doesn't require consent; nothing is granted
           content:
             application/json:
               schema:
@@ -1299,7 +1299,8 @@ components:
       required:
         - fieldName
         - source
-        - policyClass
+        - requiresAllowlist
+        - requiresConsent
       properties:
         fieldName:
           type: string
@@ -1315,30 +1316,29 @@ components:
         source:
           type: string
           enum: [primary, fallback]
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          $ref: '#/components/schemas/PolicyParams'
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
         owner:
           type: string
           enum: [citizen]
           nullable: true
 
-    PolicyClass:
-      type: string
+    RequiresAllowlist:
+      type: boolean
       description: |
-        PDP policy class that decides access to the field. The built-in
-        classes are allowlist (allow-listed applications, no consent),
-        allowlist_consent (allow-listed applications with owner consent),
-        consent (any application, with owner consent) and open (any
-        application, no consent).
-        The PDP rejects a class it has not loaded.
-      example: allowlist_consent
+        The application needs an unexpired access grant for the field. With
+        requiresConsent, false for both makes the field public to any
+        authenticated application.
+      example: true
 
-    PolicyParams:
-      type: object
-      description: Parameters for the policy class
-      additionalProperties: true
+    RequiresConsent:
+      type: boolean
+      description: |
+        The data owner must consent before the application reads the field,
+        unless the application holds an unexpired consent bypass grant.
+      example: true
 
     PolicyMetadata:
       type: object
@@ -1361,10 +1361,10 @@ components:
         source:
           type: string
           enum: [primary, fallback]
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          $ref: '#/components/schemas/PolicyParams'
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
         allowList:
           type: object
           description: |
@@ -1410,8 +1410,8 @@ components:
       type: object
       description: |
         At least one property is required. Omitted properties are left
-        unchanged. displayName/description can be cleared with null, and
-        policyParams set to null resets to {}.
+        unchanged. displayName/description can be cleared with null;
+        requiresAllowlist/requiresConsent can be changed but not set to null.
       additionalProperties: false
       minProperties: 1
       properties:
@@ -1421,12 +1421,10 @@ components:
         description:
           type: string
           nullable: true
-        policyClass:
-          $ref: '#/components/schemas/PolicyClass'
-        policyParams:
-          type: object
-          nullable: true
-          additionalProperties: true
+        requiresAllowlist:
+          $ref: '#/components/schemas/RequiresAllowlist'
+        requiresConsent:
+          $ref: '#/components/schemas/RequiresConsent'
 
     CreateSchemaRequest:
       type: object
@@ -1454,12 +1452,13 @@ components:
         sdl:
           type: string
           description: |
-            A GraphQL SDL string annotated with @accessControl(policy: ...)
-            and @source (and optionally @displayName/@description/@owner)
-            directives, parsed into policy metadata records. A field with
-            @source but no @accessControl gets the allowlist class. The
-            removed @accessControl(type: ...) and @isOwner directives are
-            rejected with 400. Mutually exclusive with fields - exactly one
+            A GraphQL SDL string annotated with
+            @accessControl(allowlist: Boolean!, consent: Boolean!) and @source
+            (and optionally @displayName/@description/@owner) directives,
+            parsed into policy metadata records. @accessControl needs both
+            arguments. A field with @source but no @accessControl requires the
+            allow-list and no consent. The removed @accessControl(policy: ...),
+            @accessControl(type: ...) and @isOwner forms are rejected with 400. Mutually exclusive with fields - exactly one
             of sdl or fields must be provided.
         fields:
           type: array

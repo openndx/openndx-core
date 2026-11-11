@@ -41,7 +41,7 @@ func TestCreateSchema_Success(t *testing.T) {
 		Endpoint:   "http://example.com/graphql",
 		MemberID:   "member-1",
 		Fields: []policy.PolicyMetadataCreateRequestRecord{
-			{FieldName: "email", PolicyClass: policy.PolicyClassAllowlist, Source: policy.SourcePrimary},
+			{FieldName: "email", RequiresAllowlist: new(true), RequiresConsent: new(false), Source: policy.SourcePrimary},
 		},
 	}
 
@@ -369,8 +369,8 @@ func TestListSchemaPolicyMetadata_Success(t *testing.T) {
 		capturedMethod = r.Method
 		resp := map[string]any{
 			"items": []policy.PolicyMetadataResponse{
-				{ID: "pm_1", SchemaID: "drp-person-v1", FieldName: "person.fullName", PolicyClass: policy.PolicyClassAllowlist},
-				{ID: "pm_2", SchemaID: "drp-person-v1", FieldName: "person.nic", PolicyClass: policy.PolicyClassAllowlistConsent},
+				{ID: "pm_1", SchemaID: "drp-person-v1", FieldName: "person.fullName", RequiresAllowlist: true},
+				{ID: "pm_2", SchemaID: "drp-person-v1", FieldName: "person.nic", RequiresAllowlist: true, RequiresConsent: true},
 			},
 			"count": 2,
 		}
@@ -388,7 +388,7 @@ func TestListSchemaPolicyMetadata_Success(t *testing.T) {
 	assert.Equal(t, 2, fields.Count)
 	if assert.Len(t, fields.Items, 2) {
 		assert.Equal(t, "person.fullName", fields.Items[0].FieldName)
-		assert.Equal(t, policy.PolicyClassAllowlistConsent, fields.Items[1].PolicyClass)
+		assert.True(t, fields.Items[1].RequiresConsent)
 	}
 }
 

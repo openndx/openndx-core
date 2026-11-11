@@ -131,11 +131,12 @@ func newPolicyMetadataTestEnv(t *testing.T) *policyMetadataTestEnv {
 		schemaID: schemaID,
 		records: []policy.PolicyMetadataResponse{
 			{
-				ID:          "pm-1",
-				SchemaID:    schemaID,
-				FieldName:   "person.name",
-				Source:      policy.SourcePrimary,
-				PolicyClass: policy.PolicyClassAllowlistConsent,
+				ID:                "pm-1",
+				SchemaID:          schemaID,
+				FieldName:         "person.name",
+				Source:            policy.SourcePrimary,
+				RequiresAllowlist: true,
+				RequiresConsent:   true,
 			},
 		},
 		grants: []policy.AccessGrant{
@@ -331,12 +332,12 @@ func TestSchemaPolicyMetadataEndpoints_Patch(t *testing.T) {
 	t.Run("PDP validation error is passed through", func(t *testing.T) {
 		env := newPolicyMetadataTestEnv(t)
 		env.pdp.writeStatus = http.StatusBadRequest
-		env.pdp.writeBody = `{"error":"unknown policy class \"secret\": must be one of allowlist, allowlist_consent"}`
+		env.pdp.writeBody = `{"error":"requiresConsent cannot be null"}`
 
-		w := env.serve(callertest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"policyClass":"secret"}`)))
+		w := env.serve(callertest.NewAdminRequest(http.MethodPatch, env.url("/pm-1"), strings.NewReader(`{"requiresConsent":null}`)))
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), `unknown policy class \"secret\"`)
+		assert.Contains(t, w.Body.String(), "requiresConsent cannot be null")
 	})
 
 	t.Run("PDP failure is reported as bad gateway", func(t *testing.T) {

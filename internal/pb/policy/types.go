@@ -21,18 +21,6 @@ const (
 	GrantDurationTypeOneYear  GrantDurationType = "365d"
 )
 
-// Built-in policy classes. The PDP decides which classes exist and rejects
-// any other name.
-const (
-	PolicyClassAllowlist        = "allowlist"
-	PolicyClassAllowlistConsent = "allowlist_consent"
-	PolicyClassConsent          = "consent"
-	PolicyClassOpen             = "open"
-)
-
-// PolicyParams holds a policy class's parameters for one field.
-type PolicyParams map[string]any
-
 // Source represents the source enum
 type Source string
 

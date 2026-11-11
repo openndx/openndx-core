@@ -32,7 +32,7 @@ type CreateSchemaRequest struct {
 	SchemaID          string  `json:"schemaId,omitempty"`
 	SchemaName        string  `json:"schemaName" validate:"required"`
 	SchemaDescription *string `json:"schemaDescription,omitempty"`
-	// SDL is a GraphQL SDL string annotated with @accessControl(policy: ...)
+	// SDL is a GraphQL SDL string annotated with @accessControl(allowlist: ..., consent: ...)
 	// and @source (and optionally @displayName/@description/@owner) directives,
 	// parsed into policy metadata records. Mutually exclusive with Fields.
 	SDL string `json:"sdl,omitempty"`

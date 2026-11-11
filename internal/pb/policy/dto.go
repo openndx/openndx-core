@@ -11,13 +11,15 @@ import (
 
 // PolicyMetadataCreateRequestRecord represents the request to create policy metadata
 type PolicyMetadataCreateRequestRecord struct {
-	FieldName    string       `json:"fieldName" validate:"required"`
-	DisplayName  *string      `json:"displayName,omitempty"`
-	Description  *string      `json:"description,omitempty"`
-	Source       Source       `json:"source" validate:"required,source_enum"`
-	PolicyClass  string       `json:"policyClass" validate:"required"`
-	PolicyParams PolicyParams `json:"policyParams,omitempty"`
-	Owner        *Owner       `json:"owner,omitempty" validate:"omitempty,owner_enum"`
+	FieldName   string  `json:"fieldName" validate:"required"`
+	DisplayName *string `json:"displayName,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Source      Source  `json:"source" validate:"required,source_enum"`
+	// The flags are pointers so that a missing flag reaches the PDP as null,
+	// which it rejects, rather than as false, which would open the field.
+	RequiresAllowlist *bool  `json:"requiresAllowlist" validate:"required"`
+	RequiresConsent   *bool  `json:"requiresConsent" validate:"required"`
+	Owner             *Owner `json:"owner,omitempty" validate:"omitempty,owner_enum"`
 }
 
 // PolicyMetadataCreateRequest represents the request to create policy metadata
@@ -28,18 +30,18 @@ type PolicyMetadataCreateRequest struct {
 
 // PolicyMetadataResponse represents the response from policy metadata operations
 type PolicyMetadataResponse struct {
-	ID           string       `json:"id"`
-	SchemaID     string       `json:"schemaId"`
-	FieldName    string       `json:"fieldName"`
-	DisplayName  *string      `json:"displayName,omitempty"`
-	Description  *string      `json:"description,omitempty"`
-	Source       Source       `json:"source"`
-	PolicyClass  string       `json:"policyClass"`
-	PolicyParams PolicyParams `json:"policyParams"`
-	AllowList    AllowList    `json:"allowList"`
-	Owner        *Owner       `json:"owner,omitempty"`
-	CreatedAt    string       `json:"createdAt"`
-	UpdatedAt    string       `json:"updatedAt"`
+	ID                string    `json:"id"`
+	SchemaID          string    `json:"schemaId"`
+	FieldName         string    `json:"fieldName"`
+	DisplayName       *string   `json:"displayName,omitempty"`
+	Description       *string   `json:"description,omitempty"`
+	Source            Source    `json:"source"`
+	RequiresAllowlist bool      `json:"requiresAllowlist"`
+	RequiresConsent   bool      `json:"requiresConsent"`
+	AllowList         AllowList `json:"allowList"`
+	Owner             *Owner    `json:"owner,omitempty"`
+	CreatedAt         string    `json:"createdAt"`
+	UpdatedAt         string    `json:"updatedAt"`
 }
 
 // PolicyMetadataCreateResponse represents the response from policy metadata creation
@@ -95,18 +97,18 @@ func (o OptionalPatchField[T]) MarshalJSON() ([]byte, error) {
 // PolicyMetadataPatchRequest contains the fields that can be changed
 // independently on one policy metadata record.
 type PolicyMetadataPatchRequest struct {
-	DisplayName  OptionalPatchField[string]       `json:"displayName,omitzero"`
-	Description  OptionalPatchField[string]       `json:"description,omitzero"`
-	PolicyClass  OptionalPatchField[string]       `json:"policyClass,omitzero"`
-	PolicyParams OptionalPatchField[PolicyParams] `json:"policyParams,omitzero"`
+	DisplayName       OptionalPatchField[string] `json:"displayName,omitzero"`
+	Description       OptionalPatchField[string] `json:"description,omitzero"`
+	RequiresAllowlist OptionalPatchField[bool]   `json:"requiresAllowlist,omitzero"`
+	RequiresConsent   OptionalPatchField[bool]   `json:"requiresConsent,omitzero"`
 }
 
 // IsEmpty reports whether the PATCH request contains no editable properties.
 func (r PolicyMetadataPatchRequest) IsEmpty() bool {
 	return !r.DisplayName.Set &&
 		!r.Description.Set &&
-		!r.PolicyClass.Set &&
-		!r.PolicyParams.Set
+		!r.RequiresAllowlist.Set &&
+		!r.RequiresConsent.Set
 }
 
 // AccessGrantCreateRequest grants one application access to fields for a

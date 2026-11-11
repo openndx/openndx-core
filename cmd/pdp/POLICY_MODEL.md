@@ -12,26 +12,24 @@ One record describes one field of one schema. `(schemaId, fieldName)` is unique.
 | `fieldName`                  | string                 | The field path, for example `person.fullName`. The Orchestration Engine sends its `@sourceInfo` `providerField` here.                    |
 | `displayName`, `description` | optional text          | Shown to the data owner on the consent screen.                                                                                           |
 | `source`                     | `primary`, `fallback`  | Whether the provider is the primary or a fallback source for the field.                                                                  |
-| `policyClass`                | class name             | The [policy class](#policy-classes) that decides access to the field. Required. An unknown class is rejected with HTTP 400.              |
-| `policyParams`               | object                 | Parameters for the policy class, passed to it as `field.params`. Optional, defaults to `{}`. The built-in classes ignore it.             |
+| `requiresAllowlist`          | boolean                | The application needs an unexpired [access grant](#access-grants) for the field. Required.                                               |
+| `requiresConsent`            | boolean                | The owner must consent, unless the application holds a [consent bypass](#consent-bypass) grant. Required.                                |
 | `owner`                      | `citizen`, optional    | Whose consent is asked for the field. Shown on the consent screen.                                                                       |
 
-`POST /api/v1/policy/metadata` is a sync for one schema. It upserts the records you send and deletes the schema's records that you omit, together with their [access grants](#access-grants). Records it updates keep their grants. If any record names an unknown policy class, nothing is written.
+`POST /api/v1/policy/metadata` is a sync for one schema. It upserts the records you send and deletes the schema's records that you omit, together with their [access grants](#access-grants). Records it updates keep their grants. If any record leaves out `requiresAllowlist` or `requiresConsent`, nothing is written and the request fails with HTTP 400. A missing flag is never read as `false`, which would open the field.
 
-## Policy classes
+## Field policy
 
-| Class               | App must be on the allow-list? | Owner consent? |
-|---------------------|--------------------------------|----------------|
-| `allowlist`         | Yes                            | No             |
-| `allowlist_consent` | Yes                            | Yes            |
-| `consent`           | No                             | Yes            |
-| `open`              | No                             | No             |
+Two flags describe who may read a field:
 
-`consent` lets any authenticated application ask the owner, for data the owner alone should control. An admin doesn't have to put the application on the allow-list first, and an expired allow-list entry makes no difference.
+|                               | **`requiresConsent: true`**           | **`requiresConsent: false`**   |
+|-------------------------------|---------------------------------------|--------------------------------|
+| **`requiresAllowlist: true`** | Allow-listed applications, with owner consent | Allow-listed applications, no consent |
+| **`requiresAllowlist: false`**| Any authenticated application, with owner consent | Any authenticated application (public) |
 
-`open` is for public data. Any authenticated application reads the field without an allow-list entry or owner consent. The request still needs an application ID, so every access is attributed to an application in the audit trail.
+A field that requires consent but not the allow-list lets any authenticated application ask the owner, for data the owner alone should control. An admin doesn't have to put the application on the allow-list first, and an expired allow-list entry makes no difference.
 
-Each class is a Rego package `openndx.classes.<name>` under [`internal/pdp/engine/policies/classes`](../../internal/pdp/engine/policies/classes). The PDP accepts exactly the classes it has loaded.
+A field that requires neither is public. Any authenticated application reads it without an allow-list entry or owner consent. The request still needs an application ID, so every access is attributed to an application in the audit trail.
 
 ## Access grants
 
@@ -59,9 +57,9 @@ Deleting a field's policy metadata deletes its grants. An expired grant stays `a
 
 ### Consent bypass
 
-A consent bypass grant lets one application, such as a legally authorized police system, read a field that normally asks for the owner's consent (`consent` or `allowlist_consent`) without asking.
+A consent bypass grant lets one application, such as a legally authorized police system, read a field that requires the owner's consent without asking. It also counts as the application's allow-list entry for the field.
 
-- **Grant.** `POST /api/v1/policy/grants` with `consentBypass: true` and a non-empty `legalBasis` creates an active bypass grant per field, or renews the application's existing one with the new expiry and legal basis. A field that asks for no consent (`open` or `allowlist`) fails the request with HTTP 400, and nothing is written. A `legalBasis` without `consentBypass` is rejected too.
+- **Grant.** `POST /api/v1/policy/grants` with `consentBypass: true` and a non-empty `legalBasis` creates an active bypass grant per field, or renews the application's existing one with the new expiry and legal basis. A field that doesn't require consent fails the request with HTTP 400, and nothing is written. A `legalBasis` without `consentBypass` is rejected too.
 - **Kinds stay apart.** Plain and bypass grants are renewed separately, so re-granting an application's plain access never creates or extends a bypass.
 - **Revoke.** `POST /api/v1/policy/grants/{id}/revoke` takes effect immediately.
 
@@ -69,22 +67,20 @@ The PDP doesn't authenticate callers or decide who may grant a bypass. That is a
 
 ## Decision rules
 
-`POST /api/v1/policy/decide` evaluates each requested field independently. The rules are Rego policies in [`internal/pdp/engine/policies`](../../internal/pdp/engine/policies), embedded in the PDP at build time, compiled at startup and evaluated with the embedded OPA library. The PDP does not start if they fail to compile.
+`POST /api/v1/policy/decide` evaluates each requested field independently, from the field's two flags and the application's active grant for it, if any. When the application holds both kinds of grant, the bypass grant is used while it is unexpired, otherwise the plain one. The rules are in [`internal/pdp/decision`](../../internal/pdp/decision) and apply in order:
 
-For each field the PDP loads the application's active grant, if any, and passes it to the field's `policyClass` as `input.grant`, with its expiry and `consentBypass`. When the application holds both kinds, the bypass grant is passed while it is unexpired, otherwise the plain one. `allowlist` and `allowlist_consent` deny an application without a grant, report an expired grant, and otherwise allow the field (`allowlist`) or require owner consent (`allowlist_consent`). `consent` skips the allow-list and requires owner consent. `open` skips both and allows the field. An unknown class or a failed evaluation denies the field, which then appears in `unauthorizedFields`.
+| # | Check                                                              | Outcome            | Reason             |
+|---|--------------------------------------------------------------------|--------------------|--------------------|
+| 1 | No application ID                                                  | `deny`             | `no_application`   |
+| 2 | `requiresAllowlist` and no active grant                            | `deny`             | `not_allowlisted`  |
+| 3 | `requiresAllowlist` and the grant is past its `expiresAt`          | `expired`          | `grant_expired`    |
+| 4 | `requiresConsent` and an unexpired consent bypass grant            | `allow`, with the `audit.consent_bypassed` obligation | `consent_bypassed` |
+| 5 | `requiresConsent`                                                  | `consent_required` |                    |
+| 6 | Otherwise                                                          | `allow`            |                    |
 
-`consent` and `allowlist_consent` allow the field without consent, with reason `consent_bypassed` and the obligation `audit.consent_bypassed`, when the grant is an unexpired bypass grant. The check is the shared helper `lib.consent_bypassed`, which a custom class that asks for consent should use too.
+A grant is valid up to and including its `expiresAt`. A field that doesn't require the allow-list ignores the grant's expiry: an expired grant neither denies it nor marks it `expired`.
 
-| Check                                                | Result                                                                                                      |
-|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| No metadata record                                   | The whole request fails with HTTP 500 and `policy metadata not found for schema_id ... and field_name ...`. |
-| `policyClass` is `open`                              | Field is allowed, whatever the allow-list says.                                                             |
-| `policyClass` is `consent` or `allowlist_consent`, unexpired bypass grant | Field is allowed without consent, with the `audit.consent_bypassed` obligation.            |
-| `policyClass` is `consent`                           | Field added to `consentRequiredFields`, whatever the allow-list says.                                       |
-| Application has no active grant for the field        | Field added to `unauthorizedFields`.                                                                        |
-| Active grant past its `expiresAt`                    | Field added to `expiredFields`.                                                                             |
-| Authorized, `policyClass` is `allowlist_consent`     | Field added to `consentRequiredFields`.                                                                     |
-| Authorized, `policyClass` is `allowlist`             | Field is allowed without consent.                                                                           |
+A requested field without a metadata record fails the whole request with HTTP 500 and `policy metadata not found for schema_id ... and field_name ...`.
 
 ### Field outcomes
 
@@ -96,11 +92,11 @@ For each field the PDP loads the application's active grant, if any, and passes 
 
 | Property      | Notes                                                                                                                         |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `outcome`     | One of `allow`, `deny`, `expired`, `consent_required`. The set is fixed: a class that returns anything else denies the field. |
-| `reason`      | Optional. Why the class chose the outcome, for example `not_allowlisted`, `grant_expired` or `unknown_policy_class`.          |
-| `obligations` | Optional. Extra actions the class asks the Orchestration Engine to take, for example `audit.consent_bypassed`.                |
+| `outcome`     | One of `allow`, `deny`, `expired`, `consent_required`.                                                                        |
+| `reason`      | Optional. Why the PDP chose the outcome: one of the reasons in [Decision rules](#decision-rules).                             |
+| `obligations` | Optional. Extra actions the Orchestration Engine must take. The only one is `audit.consent_bypassed`.                         |
 
-A class adds obligations by returning them, as a list or a set of strings, next to the outcome. A malformed `obligations` value denies the field, since the Orchestration Engine could not act on it. The Orchestration Engine records every field's outcome, reason and obligations in its `POLICY_CHECK` audit event, under `responseMetadata.fields`. Among the built-in classes, only `consent` and `allowlist_consent` return an obligation, `audit.consent_bypassed`, when a bypass grant lets the application skip consent.
+The Orchestration Engine records every field's outcome, reason and obligations in its `POLICY_CHECK` audit event, under `responseMetadata.fields`. The `audit.consent_bypassed` obligation is set when a bypass grant lets the application skip consent.
 
 The lists group the fields by outcome: `deny` goes to `unauthorizedFields`, `expired` to `expiredFields` and `consent_required` to `consentRequiredFields`, each with the field's display metadata. Response flags are derived from those lists:
 
@@ -108,7 +104,7 @@ The lists group the fields by outcome: `deny` goes to `unauthorizedFields`, `exp
 - `appAccessExpired` is `true` when `expiredFields` is not empty.
 - `appRequiresOwnerConsent` is `true` when `consentRequiredFields` is not empty.
 
-Only `open` lets every authenticated application read a field without an allow-list entry or consent. `allowlist` only removes the consent requirement for applications already on the allow-list, and `consent` opens a field to every application only once its owner consents.
+Only a field with both flags `false` lets every authenticated application read it without an allow-list entry or consent. Dropping `requiresConsent` alone only removes consent for applications already on the allow-list, and dropping `requiresAllowlist` alone opens a field to every application only once its owner consents.
 
 ## Tables
 
@@ -121,8 +117,8 @@ Only `open` lets every authenticated application read a field without an allow-l
 | `field_name`                  | text          | Part of the unique index.                     |
 | `display_name`, `description` | text          | Optional.                                     |
 | `source`                      | `source_enum` | Default `fallback`.                           |
-| `policy_class`                | text          | Required. Checked against the loaded classes. |
-| `policy_params`               | jsonb         | Default `{}`.                                 |
+| `requires_allowlist`          | boolean       | Required, no default.                         |
+| `requires_consent`            | boolean       | Required, no default.                         |
 | `owner`                       | `owner_enum`  | `citizen`, or null.                           |
 | `created_at`, `updated_at`    | timestamp     |                                               |
 
@@ -141,5 +137,9 @@ Only `open` lets every authenticated application read a field without an allow-l
 
 A partial unique index on `(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'` keeps one active grant of each kind per application and field.
 
-Applying `schema.sql` to a v0.5 database converts `access_control_type` and `is_owner` to `policy_class` and drops them: `restricted` fields with `is_owner` false become `allowlist_consent`, and every other field becomes `allowlist`.
+Applying `schema.sql` to an older database keeps each field's current decision:
+
+- A database with policy classes gets `requires_allowlist` and `requires_consent` in place of `policy_class` and `policy_params`. `allowlist_consent` becomes both `true`, `allowlist` becomes allow-list only, `consent` becomes consent only, and `open` becomes both `false`. Any other class becomes both `true`.
+- A v0.5 database first converts `access_control_type` and `is_owner`: `restricted` fields with `is_owner` false require the allow-list and consent, and every other field requires the allow-list only.
+
 Source: [`internal/pdp/models`](../../internal/pdp/models).

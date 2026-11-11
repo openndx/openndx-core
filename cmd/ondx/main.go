@@ -873,9 +873,48 @@ func runSchemasGet(ctx context.Context, args []string) error {
 		fmt.Println("  (none)")
 	}
 	for _, f := range fields.Items {
-		fmt.Printf("  - %s:%s (%s)\n", s.SchemaID, f.FieldName, f.PolicyClass)
+		fmt.Printf("  - %s:%s (%s)\n", s.SchemaID, f.FieldName, formatRequirements(f.RequiresAllowlist, f.RequiresConsent))
 	}
 	return nil
+}
+
+// Field requirements as --field writes them: "allowlist", "consent",
+// "allowlist+consent", or "none" for a public field.
+const (
+	requirementAllowlist = "allowlist"
+	requirementConsent   = "consent"
+	requirementNone      = "none"
+)
+
+// parseRequirements reads the requirements part of a --field value.
+func parseRequirements(s string) (requiresAllowlist, requiresConsent bool, err error) {
+	if s == requirementNone {
+		return false, false, nil
+	}
+	for r := range strings.SplitSeq(s, "+") {
+		switch {
+		case r == requirementAllowlist && !requiresAllowlist:
+			requiresAllowlist = true
+		case r == requirementConsent && !requiresConsent:
+			requiresConsent = true
+		default:
+			return false, false, fmt.Errorf("invalid requirements %q: use allowlist, consent, allowlist+consent or none", s)
+		}
+	}
+	return requiresAllowlist, requiresConsent, nil
+}
+
+// formatRequirements is the inverse of parseRequirements.
+func formatRequirements(requiresAllowlist, requiresConsent bool) string {
+	switch {
+	case requiresAllowlist && requiresConsent:
+		return requirementAllowlist + "+" + requirementConsent
+	case requiresAllowlist:
+		return requirementAllowlist
+	case requiresConsent:
+		return requirementConsent
+	}
+	return requirementNone
 }
 
 func runSchemasCreate(ctx context.Context, args []string) error {
@@ -895,15 +934,16 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
 	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
 	var fields stringSlice
-	fs.Var(&fields, "field", "Grantable field, as fieldName:policyClass:source (repeatable, required). policyClass is a PDP policy class: 'allowlist', 'allowlist_consent', 'consent' or 'open'; source is 'primary' or 'fallback'.")
+	fs.Var(&fields, "field", "Grantable field, as fieldName:requirements:source (repeatable, required). requirements is 'allowlist', 'consent', 'allowlist+consent' or 'none' (public); source is 'primary' or 'fallback'.")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage of schemas create:")
 		fs.PrintDefaults()
 		fmt.Fprint(fs.Output(), "\nEach -field declares one policy-metadata record directly, skipping GraphQL\n"+
 			"SDL parsing entirely - the fieldName is used as-is (no typename. prefix).\n"+
-			"Example: -field email:allowlist_consent:primary\n"+
-			"The owner is set to \"citizen\", the only owner value this system\n"+
-			"currently supports. The PDP rejects a policy class it doesn't know.\n")
+			"Example: -field email:allowlist+consent:primary\n"+
+			"'allowlist' means the application needs an access grant for the field;\n"+
+			"'consent' means the data owner must consent. The owner is set to\n"+
+			"\"citizen\", the only owner value this system currently supports.\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -919,7 +959,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 		return fmt.Errorf("--member-id is required")
 	}
 	if len(fields) == 0 {
-		return fmt.Errorf("at least one --field fieldName:policyClass:source is required")
+		return fmt.Errorf("at least one --field fieldName:requirements:source is required")
 	}
 	if *pbURL == "" {
 		return fmt.Errorf("--pb-url is required (or set NDX_PB_URL, or configure it in a profile)")
@@ -929,15 +969,20 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	for _, f := range fields {
 		parts := strings.Split(f, ":")
 		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-			return fmt.Errorf("invalid --field %q: expected fieldName:policyClass:source", f)
+			return fmt.Errorf("invalid --field %q: expected fieldName:requirements:source", f)
+		}
+		requiresAllowlist, requiresConsent, err := parseRequirements(parts[1])
+		if err != nil {
+			return fmt.Errorf("invalid --field %q: %w", f, err)
 		}
 
 		owner := policy.OwnerCitizen
 		records = append(records, policy.PolicyMetadataCreateRequestRecord{
-			FieldName:   parts[0],
-			PolicyClass: parts[1],
-			Source:      policy.Source(parts[2]),
-			Owner:       &owner,
+			FieldName:         parts[0],
+			RequiresAllowlist: &requiresAllowlist,
+			RequiresConsent:   &requiresConsent,
+			Source:            policy.Source(parts[2]),
+			Owner:             &owner,
 		})
 	}
 
@@ -974,7 +1019,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	fmt.Printf("Created schema %s (%s)\n", created.SchemaID, created.SchemaName)
 	fmt.Println("Fields:")
 	for _, r := range records {
-		fmt.Printf("  - %s:%s (%s)\n", created.SchemaID, r.FieldName, r.PolicyClass)
+		fmt.Printf("  - %s:%s (%s)\n", created.SchemaID, r.FieldName, formatRequirements(*r.RequiresAllowlist, *r.RequiresConsent))
 	}
 	return nil
 }

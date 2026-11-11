@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openndx/openndx-core/internal/pdp/engine"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 )
@@ -18,38 +16,27 @@ var (
 	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
 	ErrAccessGrantNotFound    = errors.New("access grant not found")
 	ErrInvalidGrantRequest    = errors.New("invalid access grant request")
-	ErrUnknownPolicyClass     = errors.New("unknown policy class")
+	ErrInvalidPolicy          = errors.New("invalid field policy")
 )
 
 // PolicyMetadataService provides business logic for policy metadata operations
 type PolicyMetadataService struct {
-	db     *gorm.DB
-	engine *engine.Engine
+	db *gorm.DB
 }
 
 // NewPolicyMetadataService creates a new policy metadata service
-func NewPolicyMetadataService(db *gorm.DB, policyEngine *engine.Engine) *PolicyMetadataService {
-	return &PolicyMetadataService{
-		db:     db,
-		engine: policyEngine,
-	}
-}
-
-// checkPolicyClass rejects a policy class the engine has not loaded, so a field
-// is never stored with a class that would deny every request.
-func (s *PolicyMetadataService) checkPolicyClass(class string) error {
-	if !s.engine.HasClass(class) {
-		return fmt.Errorf("%w %q: must be one of %s",
-			ErrUnknownPolicyClass, class, strings.Join(s.engine.Classes(), ", "))
-	}
-	return nil
+func NewPolicyMetadataService(db *gorm.DB) *PolicyMetadataService {
+	return &PolicyMetadataService{db: db}
 }
 
 // CreatePolicyMetadata creates new policy metadata records with validation
 func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataCreateRequest) (*models.PolicyMetadataCreateResponse, error) {
+	// A missing flag is rejected rather than stored as false, which would open
+	// the field.
 	for _, record := range req.Records {
-		if err := s.checkPolicyClass(record.PolicyClass); err != nil {
-			return nil, fmt.Errorf("field %s: %w", record.FieldName, err)
+		if record.RequiresAllowlist == nil || record.RequiresConsent == nil {
+			return nil, fmt.Errorf("%w: field %s needs requiresAllowlist and requiresConsent",
+				ErrInvalidPolicy, record.FieldName)
 		}
 	}
 
@@ -87,18 +74,13 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 	for _, record := range req.Records {
 		processedFields[record.FieldName] = struct{}{}
 
-		policyParams := record.PolicyParams
-		if policyParams == nil {
-			policyParams = make(models.PolicyParams)
-		}
-
 		if existing, exists := existingMap[record.FieldName]; exists {
 			// Update existing record in memory
 			existing.DisplayName = record.DisplayName
 			existing.Description = record.Description
 			existing.Source = record.Source
-			existing.PolicyClass = record.PolicyClass
-			existing.PolicyParams = policyParams
+			existing.RequiresAllowlist = *record.RequiresAllowlist
+			existing.RequiresConsent = *record.RequiresConsent
 			existing.Owner = record.Owner
 			existing.UpdatedAt = now
 
@@ -106,17 +88,17 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 		} else {
 			// Prepare new record
 			policyMetadata := models.PolicyMetadata{
-				ID:           uuid.New(),
-				SchemaID:     req.SchemaID,
-				FieldName:    record.FieldName,
-				DisplayName:  record.DisplayName,
-				Description:  record.Description,
-				Source:       record.Source,
-				PolicyClass:  record.PolicyClass,
-				PolicyParams: policyParams,
-				Owner:        record.Owner,
-				CreatedAt:    now,
-				UpdatedAt:    now,
+				ID:                uuid.New(),
+				SchemaID:          req.SchemaID,
+				FieldName:         record.FieldName,
+				DisplayName:       record.DisplayName,
+				Description:       record.Description,
+				Source:            record.Source,
+				RequiresAllowlist: *record.RequiresAllowlist,
+				RequiresConsent:   *record.RequiresConsent,
+				Owner:             record.Owner,
+				CreatedAt:         now,
+				UpdatedAt:         now,
 			}
 			newRecords = append(newRecords, policyMetadata)
 		}
@@ -153,8 +135,8 @@ func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataC
 				"display_name",
 				"description",
 				"source",
-				"policy_class",
-				"policy_params",
+				"requires_allowlist",
+				"requires_consent",
 				"owner",
 				"updated_at",
 			).
@@ -202,7 +184,8 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 
 	// Fetch all PolicyMetadata records for those schemas in one query
 	var allMetadata []models.PolicyMetadata
-	if err := s.db.Where("schema_id IN ?", schemaIDs).Find(&allMetadata).Error; err != nil {
+	db := s.db.WithContext(ctx)
+	if err := db.Where("schema_id IN ?", schemaIDs).Find(&allMetadata).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch policy metadata records: %w", err)
 	}
 
@@ -215,9 +198,9 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 	}
 
 	// Load the application's active grants for those schemas. An expired grant
-	// is still passed to the policy, which decides the field is expired.
+	// is still passed to the decision, which reports the field as expired.
 	var grants []models.AccessGrant
-	if err := s.db.
+	if err := db.
 		Where("application_id = ? AND status = ? AND schema_id IN ?",
 			req.ApplicationID, models.GrantStatusActive, schemaIDs).
 		Find(&grants).Error; err != nil {
@@ -242,33 +225,18 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 			return nil, fmt.Errorf("policy metadata not found for schema_id %s and field_name %s", record.SchemaID, record.FieldName)
 		}
 
-		input := engine.Input{
-			App: engine.App{ID: req.ApplicationID},
-			Field: engine.Field{
-				SchemaID:    pm.SchemaID,
-				FieldName:   pm.FieldName,
-				PolicyClass: pm.PolicyClass,
-				Params:      pm.PolicyParams,
-			},
-			Now: now,
+		var grant *decision.Grant
+		if g, ok := grantMap[key]; ok {
+			grant = &decision.Grant{ExpiresAt: g.ExpiresAt, ConsentBypass: g.ConsentBypass}
 		}
-		if grant, ok := grantMap[key]; ok {
-			input.Grant = &engine.Grant{ExpiresAt: grant.ExpiresAt, ConsentBypass: grant.ConsentBypass}
-		}
-
-		// Decide denies the field when evaluation fails, so the error is only logged.
-		decision, err := s.engine.Decide(ctx, input)
-		if err != nil {
-			slog.ErrorContext(ctx, "Policy evaluation failed, denying field",
-				"schemaId", pm.SchemaID, "fieldName", pm.FieldName, "error", err)
-		}
+		result := decision.Decide(pm.Policy(), req.ApplicationID, grant, now)
 
 		fields = append(fields, models.PolicyDecisionFieldOutcome{
 			SchemaID:    pm.SchemaID,
 			FieldName:   pm.FieldName,
-			Outcome:     string(decision.Outcome),
-			Reason:      decision.Reason,
-			Obligations: decision.Obligations,
+			Outcome:     string(result.Outcome),
+			Reason:      result.Reason,
+			Obligations: result.Obligations,
 		})
 
 		fieldRecord := models.PolicyDecisionResponseFieldRecord{
@@ -278,11 +246,11 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 			Description: pm.Description,
 			Owner:       pm.Owner,
 		}
-		switch decision.Outcome {
-		case engine.OutcomeAllow:
-		case engine.OutcomeConsentRequired:
+		switch result.Outcome {
+		case decision.OutcomeAllow:
+		case decision.OutcomeConsentRequired:
 			consentRequiredFields = append(consentRequiredFields, fieldRecord)
-		case engine.OutcomeExpired:
+		case decision.OutcomeExpired:
 			expiredFields = append(expiredFields, fieldRecord)
 		default:
 			unauthorizedFields = append(unauthorizedFields, fieldRecord)
@@ -372,27 +340,18 @@ func (s *PolicyMetadataService) PatchPolicyMetadata(
 		updates["description"] = req.Description.Value
 	}
 
-	if req.PolicyClass.Set {
-		if req.PolicyClass.Value == nil {
-			return nil, fmt.Errorf("%w: policyClass cannot be null", ErrUnknownPolicyClass)
-		}
-		if err := s.checkPolicyClass(*req.PolicyClass.Value); err != nil {
-			return nil, err
-		}
-
-		policyMetadata.PolicyClass = *req.PolicyClass.Value
-		updates["policy_class"] = policyMetadata.PolicyClass
+	if flag := req.NullFlag(); flag != "" {
+		return nil, fmt.Errorf("%w: %s cannot be null", ErrInvalidPolicy, flag)
 	}
 
-	if req.PolicyParams.Set {
-		// null clears the parameters
-		policyParams := make(models.PolicyParams)
-		if req.PolicyParams.Value != nil && *req.PolicyParams.Value != nil {
-			policyParams = *req.PolicyParams.Value
-		}
+	if req.RequiresAllowlist.Set {
+		policyMetadata.RequiresAllowlist = *req.RequiresAllowlist.Value
+		updates["requires_allowlist"] = policyMetadata.RequiresAllowlist
+	}
 
-		policyMetadata.PolicyParams = policyParams
-		updates["policy_params"] = policyParams
+	if req.RequiresConsent.Set {
+		policyMetadata.RequiresConsent = *req.RequiresConsent.Value
+		updates["requires_consent"] = policyMetadata.RequiresConsent
 	}
 
 	policyMetadata.UpdatedAt = time.Now()
