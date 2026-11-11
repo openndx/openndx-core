@@ -93,13 +93,20 @@ The defaults read from one Secret named `openndx-secrets`. An override file merg
 | `PORTAL_BACKEND_CLIENT_SECRET` | `pbClientSecret` | Portal Backend, ThunderID setup job | Client secret of `config.idp.management.clientID`; ThunderID seeds the client with it |
 | `DATA_CONSUMER_CLIENT_SECRET` | `dataConsumerClientSecret` | ThunderID setup job | Secret of the local-dev `DATA_CONSUMER` client; drop it with that client from `application.yaml` |
 
+Read the credentials from files rather than passing them on the command line, where they end up in shell history. Each file's bytes become the value exactly, so write it without a trailing newline (`read -rs` prompts without echoing; `printf '%s'` adds no newline), and delete the files once the Secret exists:
+
 ```bash
+read -rs DB_PASSWORD && printf '%s' "$DB_PASSWORD" > db-password
+read -rs PB_CLIENT_SECRET && printf '%s' "$PB_CLIENT_SECRET" > pb-client-secret
+
 kubectl create namespace openndx
 kubectl create secret generic openndx-secrets \
   --namespace openndx \
   --from-literal=dbUser=postgres \
-  --from-literal=dbPassword='<db-password>' \
-  --from-literal=pbClientSecret='<pb-client-secret>'
+  --from-file=dbPassword=db-password \
+  --from-file=pbClientSecret=pb-client-secret
+
+rm db-password pb-client-secret
 ```
 
 To turn auditing on for the Orchestration Engine or Portal Backend, set its `config.audit.url` and `config.audit.apiKey: "{{env:ARGUS_API_KEY}}"`, and add `ARGUS_API_KEY` to its `env`:
