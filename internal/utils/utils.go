@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,6 +30,29 @@ func RespondWithJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 // RespondWithError sends a JSON error response
 func RespondWithError(w http.ResponseWriter, statusCode int, message string) {
 	RespondWithJSON(w, statusCode, ErrorResponse{Error: message})
+}
+
+// ErrorStatus maps a sentinel error to the HTTP status a handler responds with
+// when a service returns it.
+type ErrorStatus struct {
+	Err    error
+	Status int
+}
+
+// RespondWithServiceError writes err as a JSON error response. The first entry
+// in statuses whose Err matches err (by errors.Is) sets the status, and the
+// error message is returned to the caller. An unmatched error is logged and
+// answered with 500 and a generic message, so internal details don't leak.
+func RespondWithServiceError(w http.ResponseWriter, err error, statuses ...ErrorStatus) {
+	for _, s := range statuses {
+		if errors.Is(err, s.Err) {
+			RespondWithError(w, s.Status, err.Error())
+			return
+		}
+	}
+
+	slog.Error("Service request failed", "error", err)
+	RespondWithError(w, http.StatusInternalServerError, "internal server error")
 }
 
 // RespondWithSuccess sends a JSON success response
