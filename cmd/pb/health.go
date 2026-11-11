@@ -10,58 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// healthHandler reports whether PB can reach its database; it answers 503
-// when it cannot.
-func healthHandler(gormDB *gorm.DB, dbName string) http.HandlerFunc {
-	type DBHealth struct {
-		Status   string `json:"status"`
-		Error    string `json:"error,omitempty"`
-		Database string `json:"database,omitempty"`
-	}
-	type HealthStatus struct {
-		Status    string              `json:"status"`
-		Service   string              `json:"service"`
-		Databases map[string]DBHealth `json:"databases"`
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		status := HealthStatus{
-			Status:  "healthy",
-			Service: "portal-backend",
-			Databases: map[string]DBHealth{
-				"v1": {Status: "unknown"},
-			},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		// Test V1 GORM database connection
-		if gormDB == nil {
-			status.Databases["v1"] = DBHealth{Status: "unhealthy", Error: "GORM connection is nil"}
-			status.Status = "unhealthy"
-		} else {
-			sqlDB, err := gormDB.DB()
-			if err != nil {
-				status.Databases["v1"] = DBHealth{Status: "unhealthy", Error: fmt.Sprintf("failed to get sql.DB: %v", err)}
-				status.Status = "unhealthy"
-			} else if err := sqlDB.PingContext(ctx); err != nil {
-				status.Databases["v1"] = DBHealth{Status: "unhealthy", Error: err.Error()}
-				status.Status = "unhealthy"
-			} else {
-				status.Databases["v1"] = DBHealth{Status: "healthy", Database: dbName}
-			}
-		}
-
-		statusCode := http.StatusOK
-		if status.Status != "healthy" {
-			statusCode = http.StatusServiceUnavailable
-		}
-
-		utils.RespondWithJSON(w, statusCode, status)
-	}
-}
-
 // debugHandler reports the build PB is running.
 func debugHandler(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{
