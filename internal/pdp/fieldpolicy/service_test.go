@@ -141,7 +141,8 @@ func TestService_FieldsByKeys(t *testing.T) {
 	assert.True(t, email.RequiresConsent)
 	require.NotNil(t, email.Owner)
 	assert.Equal(t, OwnerCitizen, *email.Owner)
-	other := byKey[FieldKey{SchemaID: "other-schema", FieldName: "person.name"}]
+	other, found := byKey[FieldKey{SchemaID: "other-schema", FieldName: "person.name"}]
+	require.True(t, found, "other-schema/person.name must be returned")
 	assert.False(t, other.RequiresAllowlist, "a field is matched on schema and name together")
 
 	none, err := service.FieldsByKeys(ctx, nil)
