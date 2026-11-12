@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/services"
 	"github.com/openndx/openndx-core/internal/utils"
@@ -18,97 +18,13 @@ type Handler struct {
 	policyService *services.PolicyMetadataService
 }
 
-// NewHandler creates a new API handler
-func NewHandler(db *gorm.DB) *Handler {
-	policyService := services.NewPolicyMetadataService(db)
+// NewHandler creates a new API handler. fields reads the field policies that
+// decisions are made on.
+func NewHandler(db *gorm.DB, fields services.FieldReader) *Handler {
+	policyService := services.NewPolicyMetadataService(db, fields)
 	return &Handler{
 		policyService: policyService,
 	}
-}
-
-// CreatePolicyMetadata handles creating policy metadata
-func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
-	var req models.PolicyMetadataCreateRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Validate required fields
-	if strings.TrimSpace(req.SchemaID) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "schemaId is required and cannot be empty")
-		return
-	}
-
-	resp, err := h.policyService.CreatePolicyMetadata(&req)
-	if errors.Is(err, services.ErrInvalidPolicy) {
-		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.RespondWithSuccess(w, http.StatusCreated, resp)
-}
-
-// ListPolicyMetadata handles listing policy metadata with an optional schema filter.
-func (h *Handler) ListPolicyMetadata(w http.ResponseWriter, r *http.Request) {
-	schemaID := strings.TrimSpace(r.URL.Query().Get("schemaId"))
-
-	resp, err := h.policyService.ListPolicyMetadata(schemaID)
-	if err != nil {
-		respondWithPolicyServiceError(w, err)
-		return
-	}
-
-	utils.RespondWithSuccess(w, http.StatusOK, resp)
-}
-
-// PatchPolicyMetadata handles partially updating one policy metadata record.
-func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	var req models.PolicyMetadataPatchRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&req); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if req.IsEmpty() {
-		utils.RespondWithError(w, http.StatusBadRequest, "at least one editable field is required")
-		return
-	}
-
-	if flag := req.NullFlag(); flag != "" {
-		utils.RespondWithError(w, http.StatusBadRequest, flag+" cannot be null")
-		return
-	}
-
-	resp, err := h.policyService.PatchPolicyMetadata(id, &req)
-	if err != nil {
-		respondWithPolicyServiceError(w, err)
-		return
-	}
-
-	utils.RespondWithSuccess(w, http.StatusOK, resp)
-}
-
-// DeletePolicyMetadata handles deleting one policy metadata record.
-func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	if err := h.policyService.DeletePolicyMetadata(id); err != nil {
-		respondWithPolicyServiceError(w, err)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // CreateAccessGrants handles granting an application access to fields.
@@ -207,9 +123,8 @@ func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
 // policyServiceErrorStatuses maps the policy service's sentinel errors to HTTP
 // statuses. Any other error is a 500.
 var policyServiceErrorStatuses = []utils.ErrorStatus{
-	{Err: services.ErrPolicyMetadataNotFound, Status: http.StatusNotFound},
+	{Err: fieldpolicy.ErrPolicyMetadataNotFound, Status: http.StatusNotFound},
 	{Err: services.ErrAccessGrantNotFound, Status: http.StatusNotFound},
-	{Err: services.ErrInvalidPolicy, Status: http.StatusBadRequest},
 	{Err: services.ErrInvalidGrantRequest, Status: http.StatusBadRequest},
 }
 

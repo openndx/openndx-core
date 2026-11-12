@@ -13,6 +13,7 @@ import (
 
 	"github.com/openndx/openndx-core/internal/database"
 	"github.com/openndx/openndx-core/internal/logging"
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/handler"
 	"github.com/openndx/openndx-core/internal/utils"
 )
@@ -61,17 +62,19 @@ func run() error {
 		}
 	}()
 
-	// Initialize V1 handlers
-	v1Handler := handler.NewHandler(gormDB)
+	// Initialize services and handlers
+	fieldPolicyService := fieldpolicy.NewService(gormDB)
+	fieldPolicyHandler := fieldpolicy.NewHandler(fieldPolicyService)
+	v1Handler := handler.NewHandler(gormDB, fieldPolicyService)
 
 	// Setup routes
 	mux := http.NewServeMux()
 
 	// Policy endpoints
-	mux.HandleFunc("GET /api/v1/policy/metadata", v1Handler.ListPolicyMetadata)
-	mux.HandleFunc("POST /api/v1/policy/metadata", v1Handler.CreatePolicyMetadata)
-	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", v1Handler.PatchPolicyMetadata)
-	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", v1Handler.DeletePolicyMetadata)
+	mux.HandleFunc("GET /api/v1/policy/metadata", fieldPolicyHandler.ListPolicyMetadata)
+	mux.HandleFunc("POST /api/v1/policy/metadata", fieldPolicyHandler.CreatePolicyMetadata)
+	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", fieldPolicyHandler.PatchPolicyMetadata)
+	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", fieldPolicyHandler.DeletePolicyMetadata)
 	mux.HandleFunc("GET /api/v1/policy/grants", v1Handler.ListAccessGrants)
 	mux.HandleFunc("POST /api/v1/policy/grants", v1Handler.CreateAccessGrants)
 	mux.HandleFunc("GET /api/v1/policy/grants/{id}", v1Handler.GetAccessGrant)

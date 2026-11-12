@@ -18,7 +18,7 @@ make setup-all                          # git hooks, Go modules, portal deps
 make validate-test <service>            # go test -race with coverage
 make quality-check <service>            # gofumpt/goimports, vet, lint, gosec
 make run <service>                      # run natively (needs cmd/<svc>/config.yaml)
-go test ./internal/pdp/services -run TestPolicyMetadataService_PatchPolicyMetadata -count=1
+go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicyMetadata -count=1
 golangci-lint run --new-from-rev=HEAD ./internal/... ./cmd/...   # only issues you introduced
 docker compose up --build               # full local stack
 ```

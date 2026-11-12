@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,16 +14,18 @@ import (
 // the policy flags in schema s1, named after the flags it sets.
 func newBypassService(t *testing.T) *PolicyMetadataService {
 	t.Helper()
-	service := NewPolicyMetadataService(setupTestDB(t))
-	field := func(name string, allowlist, consent bool) models.PolicyMetadataCreateRequestRecord {
-		return models.PolicyMetadataCreateRequestRecord{
-			FieldName: name, Source: models.SourcePrimary,
+	db := setupTestDB(t)
+	fields := fieldpolicy.NewService(db)
+	service := NewPolicyMetadataService(db, fields)
+	field := func(name string, allowlist, consent bool) fieldpolicy.PolicyMetadataCreateRequestRecord {
+		return fieldpolicy.PolicyMetadataCreateRequestRecord{
+			FieldName: name, Source: fieldpolicy.SourcePrimary,
 			RequiresAllowlist: new(allowlist), RequiresConsent: new(consent),
 		}
 	}
-	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+	_, err := fields.CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
 		SchemaID: "s1",
-		Records: []models.PolicyMetadataCreateRequestRecord{
+		Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 			field("consent", false, true),
 			field("allowlist_consent", true, true),
 			field("allowlist", true, false),
@@ -123,7 +126,7 @@ func TestConsentBypass_Validation(t *testing.T) {
 		"legal basis for plain": {func(r *models.AccessGrantCreateRequest) { r.ConsentBypass = false }, ErrInvalidGrantRequest},
 		"no application":        {func(r *models.AccessGrantCreateRequest) { r.ApplicationID = "" }, ErrInvalidGrantRequest},
 		"bad duration":          {func(r *models.AccessGrantCreateRequest) { r.GrantDuration = "7d" }, ErrInvalidGrantRequest},
-		"unknown field":         {func(r *models.AccessGrantCreateRequest) { r.Records[0].FieldName = "nope" }, ErrPolicyMetadataNotFound},
+		"unknown field":         {func(r *models.AccessGrantCreateRequest) { r.Records[0].FieldName = "nope" }, fieldpolicy.ErrPolicyMetadataNotFound},
 		"allowlist field":       {func(r *models.AccessGrantCreateRequest) { r.Records[0].FieldName = "allowlist" }, ErrInvalidGrantRequest},
 		"open field":            {func(r *models.AccessGrantCreateRequest) { r.Records[0].FieldName = "open" }, ErrInvalidGrantRequest},
 	}

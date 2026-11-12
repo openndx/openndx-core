@@ -1,10 +1,11 @@
-package models
+package fieldpolicy
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openndx/openndx-core/internal/pdp/decision"
 )
 
 // PolicyMetadata represents the policy_metadata table
@@ -21,11 +22,6 @@ type PolicyMetadata struct {
 	Owner             *Owner    `gorm:"column:owner;type:owner_enum;" json:"owner"`
 	CreatedAt         time.Time `gorm:"column:created_at;type:timestamp;default:CURRENT_TIMESTAMP;not null" json:"createdAt"`
 	UpdatedAt         time.Time `gorm:"column:updated_at;type:timestamp;default:CURRENT_TIMESTAMP" json:"updatedAt"`
-}
-
-// Policy returns the field's access policy for a decision.
-func (pm *PolicyMetadata) Policy() decision.Field {
-	return decision.Field{RequiresAllowlist: pm.RequiresAllowlist, RequiresConsent: pm.RequiresConsent}
 }
 
 // TableName specifies the table name for GORM
@@ -48,4 +44,55 @@ func (pm *PolicyMetadata) ToResponse() PolicyMetadataResponse {
 		CreatedAt:         pm.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:         pm.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+// Source represents the source enum
+type Source string
+
+const (
+	SourcePrimary  Source = "primary"
+	SourceFallback Source = "fallback"
+)
+
+// Scan implements the sql.Scanner interface for Source
+func (s *Source) Scan(value interface{}) error {
+	if value == nil {
+		*s = SourceFallback
+		return nil
+	}
+	if str, ok := value.(string); ok {
+		*s = Source(str)
+		return nil
+	}
+	return fmt.Errorf("cannot scan %T into Source", value)
+}
+
+// Value implements the driver.Valuer interface for Source
+func (s Source) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+// Owner represents the owner enum
+type Owner string
+
+const (
+	OwnerCitizen Owner = "citizen"
+)
+
+// Scan implements the sql.Scanner interface for Owner
+func (o *Owner) Scan(value interface{}) error {
+	if value == nil {
+		*o = OwnerCitizen
+		return nil
+	}
+	if str, ok := value.(string); ok {
+		*o = Owner(str)
+		return nil
+	}
+	return fmt.Errorf("cannot scan %T into Owner", value)
+}
+
+// Value implements the driver.Valuer interface for Owner
+func (o Owner) Value() (driver.Value, error) {
+	return string(o), nil
 }

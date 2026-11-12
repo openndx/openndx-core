@@ -1,11 +1,11 @@
 package services
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
@@ -20,306 +20,20 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestNewPolicyMetadataService(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
-}
-
-func TestPolicyMetadataService_ListPolicyMetadata(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
-
-	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:         "person.name",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "other-schema",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:         "other.field",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	resp, err := service.ListPolicyMetadata("schema-123")
-	require.NoError(t, err)
-	require.Len(t, resp.Records, 2)
-	assert.Equal(t, "person.email", resp.Records[0].FieldName)
-	assert.Equal(t, "person.name", resp.Records[1].FieldName)
-	assert.Equal(t, "schema-123", resp.Records[0].SchemaID)
-	assert.Equal(t, "schema-123", resp.Records[1].SchemaID)
-
-	allResp, err := service.ListPolicyMetadata("")
-	require.NoError(t, err)
-	require.Len(t, allResp.Records, 3)
-	assert.Equal(t, "other-schema", allResp.Records[0].SchemaID)
-	assert.Equal(t, "schema-123", allResp.Records[1].SchemaID)
-	assert.Equal(t, "schema-123", allResp.Records[2].SchemaID)
-
-	emptyResp, err := service.ListPolicyMetadata("missing-schema")
-	require.NoError(t, err)
-	assert.Empty(t, emptyResp.Records)
-}
-
-func TestPolicyMetadataService_PatchPolicyMetadata(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
-
-	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:         "person.name",
-				DisplayName:       new("Name"),
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-			{
-				FieldName:         "person.email",
-				DisplayName:       new("Email"),
-				Description:       new("Old description"),
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-		},
-	})
-	require.NoError(t, err)
-	require.Len(t, createResp.Records, 2)
-
-	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
-		ApplicationID: "app-123",
-		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AccessGrantCreateRequestRecord{
-			{FieldName: "person.email", SchemaID: "schema-123"},
-		},
-	})
-	require.NoError(t, err)
-
-	id := createResp.Records[1].ID
-
-	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		DisplayName: models.OptionalPatchField[string]{
-			Set:   true,
-			Value: new("Primary Email"),
-		},
-		Description: models.OptionalPatchField[string]{
-			Set:   true,
-			Value: nil,
-		},
-		RequiresConsent: models.OptionalPatchField[bool]{
-			Set:   true,
-			Value: new(true),
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, resp.DisplayName)
-	assert.Equal(t, "Primary Email", *resp.DisplayName)
-	assert.Nil(t, resp.Description)
-	assert.True(t, resp.RequiresAllowlist, "an omitted flag is unchanged")
-	assert.True(t, resp.RequiresConsent)
-
-	// Patching a field keeps its grants.
-	grants, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-123"})
-	require.NoError(t, err)
-	require.Len(t, grants.Records, 1)
-	assert.Equal(t, "person.email", grants.Records[0].FieldName)
-
-	var count int64
-	require.NoError(t, db.Model(&models.PolicyMetadata{}).
-		Where("schema_id = ?", "schema-123").
-		Count(&count).Error)
-	assert.Equal(t, int64(2), count)
-
-	var nameRecord models.PolicyMetadata
-	require.NoError(t, db.Where(
-		"schema_id = ? AND field_name = ?",
-		"schema-123",
-		"person.name",
-	).First(&nameRecord).Error)
-	require.NotNil(t, nameRecord.DisplayName)
-	assert.Equal(t, "Name", *nameRecord.DisplayName)
-
-	// Reject any SQL statement that updates the policy flags. A display-only
-	// patch must still succeed because it should update only the supplied field.
-	require.NoError(t, db.Exec(`
-		CREATE TRIGGER reject_policy_flags_update
-		BEFORE UPDATE OF requires_allowlist, requires_consent ON policy_metadata
-		BEGIN
-			SELECT RAISE(FAIL, 'policy flags were unexpectedly updated');
-		END;
-	`).Error)
-
-	displayOnlyResp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		DisplayName: models.OptionalPatchField[string]{
-			Set:   true,
-			Value: new("Contact Email"),
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, displayOnlyResp.DisplayName)
-	assert.Equal(t, "Contact Email", *displayOnlyResp.DisplayName)
-	assert.True(t, displayOnlyResp.RequiresAllowlist)
-	assert.True(t, displayOnlyResp.RequiresConsent)
-
-	_, err = service.PatchPolicyMetadata("not-a-uuid", &models.PolicyMetadataPatchRequest{})
-	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
-}
-
-func TestPolicyMetadataService_PatchPolicyMetadata_Flags(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
-
-	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true),
-				RequiresConsent:   new(true),
-			},
-		},
-	})
-	require.NoError(t, err)
-	id := createResp.Records[0].ID
-
-	// A flag can be changed but not cleared.
-	_, err = service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		RequiresAllowlist: models.OptionalPatchField[bool]{Set: true},
-	})
-	assert.ErrorIs(t, err, ErrInvalidPolicy)
-
-	// Setting both flags to false makes the field public.
-	resp, err := service.PatchPolicyMetadata(id, &models.PolicyMetadataPatchRequest{
-		RequiresAllowlist: models.OptionalPatchField[bool]{Set: true, Value: new(false)},
-		RequiresConsent:   models.OptionalPatchField[bool]{Set: true, Value: new(false)},
-	})
-	require.NoError(t, err)
-	assert.False(t, resp.RequiresAllowlist)
-	assert.False(t, resp.RequiresConsent)
-
-	var stored models.PolicyMetadata
-	require.NoError(t, db.First(&stored, "field_name = ?", "person.email").Error)
-	assert.False(t, stored.RequiresAllowlist, "false is written, not skipped")
-	assert.False(t, stored.RequiresConsent, "false is written, not skipped")
-}
-
-func TestPolicyMetadataService_DeletePolicyMetadata(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
-
-	createResp, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{
-				FieldName:         "person.name",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-			{
-				FieldName:         "person.email",
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(true), RequiresConsent: new(false),
-			},
-		},
-	})
-	require.NoError(t, err)
-	require.Len(t, createResp.Records, 2)
-
-	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
-		ApplicationID: "app-123",
-		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AccessGrantCreateRequestRecord{
-			{FieldName: "person.name", SchemaID: "schema-123"},
-			{FieldName: "person.email", SchemaID: "schema-123"},
-		},
-	})
-	require.NoError(t, err)
-
-	id := createResp.Records[1].ID
-	require.NoError(t, service.DeletePolicyMetadata(id))
-
-	var records []models.PolicyMetadata
-	require.NoError(t, db.Where("schema_id = ?", "schema-123").Find(&records).Error)
-	require.Len(t, records, 1)
-	assert.Equal(t, "person.name", records[0].FieldName)
-
-	// Deleting a field deletes its grants.
-	var grants []models.AccessGrant
-	require.NoError(t, db.Find(&grants).Error)
-	require.Len(t, grants, 1)
-	assert.Equal(t, "person.name", grants[0].FieldName)
-
-	err = service.DeletePolicyMetadata(id)
-	assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
-}
-
-// TestCreatePolicyMetadata_KeepsAndDropsGrants verifies that schema
-// synchronization keeps the grants of fields it updates and deletes the
-// grants of fields it removes.
-func TestCreatePolicyMetadata_KeepsAndDropsGrants(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
-
-	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: new("Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
-			{FieldName: "person.phone", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = service.CreateAccessGrants(&models.AccessGrantCreateRequest{
-		ApplicationID: "app-A",
-		GrantDuration: models.GrantDurationTypeOneMonth,
-		Records: []models.AccessGrantCreateRequestRecord{
-			{FieldName: "person.email", SchemaID: "schema-123"},
-			{FieldName: "person.phone", SchemaID: "schema-123"},
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
-		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", DisplayName: new("Primary Email"), Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
-		},
-	})
-	require.NoError(t, err)
-
-	grants, err := service.ListAccessGrants(models.AccessGrantFilter{ApplicationID: "app-A"})
-	require.NoError(t, err)
-	require.Len(t, grants.Records, 1)
-	assert.Equal(t, "person.email", grants.Records[0].FieldName)
-	assert.Equal(t, models.GrantStatusActive, grants.Records[0].Status)
+	assert.NotNil(t, service.fields)
 }
 
 func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
-	_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+	_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
 		SchemaID: "schema-123",
-		Records: []models.PolicyMetadataCreateRequestRecord{
-			{FieldName: "person.email", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
+		Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			{FieldName: "person.email", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
 	require.NoError(t, err)
@@ -378,13 +92,13 @@ func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
 
 func TestPolicyMetadataService_ListAccessGrants(t *testing.T) {
 	db := setupTestDB(t)
-	service := NewPolicyMetadataService(db)
+	service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 	for _, schemaID := range []string{"schema-1", "schema-2"} {
-		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: schemaID,
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+				{FieldName: "field1", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		})
 		require.NoError(t, err)
@@ -442,194 +156,10 @@ func insertGrant(t *testing.T, db *gorm.DB, schemaID, fieldName, applicationID s
 	}).Error)
 }
 
-func TestPolicyMetadataService_CreatePolicyMetadata_EdgeCases(t *testing.T) {
-	t.Run("CreatePolicyMetadata_EmptyRecords", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		req := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records:  []models.PolicyMetadataCreateRequestRecord{},
-		}
-
-		resp, err := service.CreatePolicyMetadata(req)
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Equal(t, 0, len(resp.Records))
-	})
-
-	t.Run("CreatePolicyMetadata_DeleteObsoleteRecords", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		// Create initial records
-		initialReq := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-				{
-					FieldName:         "field2",
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-			},
-		}
-		_, err := service.CreatePolicyMetadata(initialReq)
-		assert.NoError(t, err)
-
-		// Update with only one field (field2 should be deleted)
-		updateReq := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-			},
-		}
-		_, err = service.CreatePolicyMetadata(updateReq)
-		assert.NoError(t, err)
-
-		// Verify field2 was deleted
-		var count int64
-		db.Model(&models.PolicyMetadata{}).Where("field_name = ?", "field2").Count(&count)
-		assert.Equal(t, int64(0), count)
-	})
-
-	t.Run("CreatePolicyMetadata_TransactionRollback", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		// One record without a flag rejects the whole request before anything is written
-		req := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-				{
-					FieldName:       "field2",
-					Source:          models.SourcePrimary,
-					RequiresConsent: new(false),
-				},
-			},
-		}
-
-		_, err := service.CreatePolicyMetadata(req)
-		assert.ErrorIs(t, err, ErrInvalidPolicy)
-		assert.ErrorContains(t, err, "field2")
-
-		var count int64
-		db.Model(&models.PolicyMetadata{}).Count(&count)
-		assert.Equal(t, int64(0), count)
-	})
-
-	t.Run("CreatePolicyMetadata_StoresFlags", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		flags := []struct{ allowlist, consent bool }{{true, true}, {true, false}, {false, true}, {false, false}}
-		records := make([]models.PolicyMetadataCreateRequestRecord, 0, len(flags))
-		for i, f := range flags {
-			records = append(records, models.PolicyMetadataCreateRequestRecord{
-				FieldName:         fmt.Sprintf("field%d", i),
-				Source:            models.SourcePrimary,
-				RequiresAllowlist: new(f.allowlist),
-				RequiresConsent:   new(f.consent),
-			})
-		}
-		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{SchemaID: "schema-123", Records: records})
-		require.NoError(t, err)
-
-		var stored []models.PolicyMetadata
-		require.NoError(t, db.Order("field_name").Find(&stored).Error)
-		require.Len(t, stored, len(flags))
-		for i, f := range flags {
-			assert.Equal(t, f.allowlist, stored[i].RequiresAllowlist, stored[i].FieldName)
-			assert.Equal(t, f.consent, stored[i].RequiresConsent, stored[i].FieldName)
-		}
-	})
-
-	t.Run("CreatePolicyMetadata_MixedNewAndUpdated", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		// Create initial record
-		initialReq := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-			},
-		}
-		_, err := service.CreatePolicyMetadata(initialReq)
-		assert.NoError(t, err)
-
-		// Update existing and add new
-		updateReq := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					DisplayName:       new("Updated Field 1"),
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-				{
-					FieldName:         "field2",
-					DisplayName:       new("New Field 2"),
-					Source:            models.SourcePrimary,
-					RequiresAllowlist: new(true), RequiresConsent: new(false),
-				},
-			},
-		}
-		resp, err := service.CreatePolicyMetadata(updateReq)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(resp.Records))
-
-		// Verify both records exist
-		var count int64
-		db.Model(&models.PolicyMetadata{}).Where("schema_id = ?", "schema-123").Count(&count)
-		assert.Equal(t, int64(2), count)
-	})
-
-	t.Run("CreatePolicyMetadata_WithOwner", func(t *testing.T) {
-		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
-
-		req := &models.PolicyMetadataCreateRequest{
-			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{
-					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					Owner:             pdptest.OwnerPtr(models.OwnerCitizen),
-					RequiresAllowlist: new(true), RequiresConsent: new(true),
-				},
-			},
-		}
-
-		resp, err := service.CreatePolicyMetadata(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp.Records))
-		assert.Equal(t, models.OwnerCitizen, *resp.Records[0].Owner)
-	})
-}
-
 func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 	t.Run("CreateAccessGrants_EmptyRecords", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
@@ -645,20 +175,20 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_InvalidGrantDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create policy metadata first
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		req := &models.AccessGrantCreateRequest{
@@ -679,7 +209,7 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		req := &models.AccessGrantCreateRequest{
 			ApplicationID: "app-123",
@@ -693,25 +223,25 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 		}
 
 		_, err := service.CreateAccessGrants(req)
-		assert.ErrorIs(t, err, ErrPolicyMetadataNotFound)
+		assert.ErrorIs(t, err, fieldpolicy.ErrPolicyMetadataNotFound)
 	})
 
 	t.Run("CreateAccessGrants_OneYearDuration", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create policy metadata first
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		req := &models.AccessGrantCreateRequest{
@@ -738,7 +268,7 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_InvalidRequest", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		_, err := service.CreateAccessGrants(&models.AccessGrantCreateRequest{
 			ApplicationID: " ",
@@ -756,20 +286,20 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_RenewsActiveGrant", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create policy metadata first
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		// First update
@@ -818,25 +348,25 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 
 	t.Run("CreateAccessGrants_MultipleFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create policy metadata for multiple fields
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
 					FieldName:         "field2",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		req := &models.AccessGrantCreateRequest{
@@ -864,20 +394,20 @@ func TestPolicyMetadataService_CreateAccessGrants_EdgeCases(t *testing.T) {
 func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 	t.Run("GetPolicyDecision_ExpiredAccess", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create policy metadata
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		// A grant that expired yesterday
@@ -902,7 +432,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_FieldNotFound", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID: "app-123",
@@ -921,20 +451,20 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_PublicFieldNoConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create public field
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		// Add to allow list
@@ -971,33 +501,33 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MultipleSchemas", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create metadata for multiple schemas
-		createReq1 := &models.PolicyMetadataCreateRequest{
+		createReq1 := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-1",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq1)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq1)
 		assert.NoError(t, err)
 
-		createReq2 := &models.PolicyMetadataCreateRequest{
+		createReq2 := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-2",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field2",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err = service.CreatePolicyMetadata(createReq2)
+		_, err = fieldpolicy.NewService(db).CreatePolicyMetadata(createReq2)
 		assert.NoError(t, err)
 
 		// Add both to allow list
@@ -1029,13 +559,13 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_ConsentFieldWithoutAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
-		owner := models.OwnerCitizen
-		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		owner := fieldpolicy.OwnerCitizen
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(true), Owner: &owner},
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+				{FieldName: "field1", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(true), Owner: &owner},
 			},
 		})
 		require.NoError(t, err)
@@ -1058,12 +588,12 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_OpenFieldWithoutAllowList", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
-		_, err := service.CreatePolicyMetadata(&models.PolicyMetadataCreateRequest{
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
-				{FieldName: "field1", Source: models.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(false)},
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+				{FieldName: "field1", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(false)},
 			},
 		})
 		require.NoError(t, err)
@@ -1086,20 +616,20 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_AllowlistConsentFieldRequiresConsent", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "field1",
-					Source:            models.SourcePrimary,
-					Owner:             pdptest.OwnerPtr(models.OwnerCitizen),
+					Source:            fieldpolicy.SourcePrimary,
+					Owner:             new(fieldpolicy.OwnerCitizen),
 					RequiresAllowlist: new(true), RequiresConsent: new(true),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		// Add to allow list
@@ -1139,7 +669,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_EmptyRequiredFields", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		req := &models.PolicyDecisionRequest{
 			ApplicationID:  "app-123",
@@ -1158,30 +688,30 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 	t.Run("GetPolicyDecision_MixedAuthorizedUnauthorizedExpired", func(t *testing.T) {
 		db := setupTestDB(t)
-		service := NewPolicyMetadataService(db)
+		service := NewPolicyMetadataService(db, fieldpolicy.NewService(db))
 
 		// Create multiple fields with different states
-		createReq := &models.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
 			SchemaID: "schema-123",
-			Records: []models.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
 				{
 					FieldName:         "authorized",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
 					FieldName:         "expired",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 				{
 					FieldName:         "unauthorized",
-					Source:            models.SourcePrimary,
+					Source:            fieldpolicy.SourcePrimary,
 					RequiresAllowlist: new(true), RequiresConsent: new(false),
 				},
 			},
 		}
-		_, err := service.CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
 		assert.NoError(t, err)
 
 		// Add authorized field to allow list

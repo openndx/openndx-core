@@ -6,174 +6,40 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pdp/decision"
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 )
 
 var (
-	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
-	ErrAccessGrantNotFound    = errors.New("access grant not found")
-	ErrInvalidGrantRequest    = errors.New("invalid access grant request")
-	ErrInvalidPolicy          = errors.New("invalid field policy")
+	ErrAccessGrantNotFound = errors.New("access grant not found")
+	ErrInvalidGrantRequest = errors.New("invalid access grant request")
 )
 
-// PolicyMetadataService provides business logic for policy metadata operations
+// FieldReader reads the policy metadata of the fields a decision is asked about.
+type FieldReader interface {
+	FieldsByKeys(ctx context.Context, keys []fieldpolicy.FieldKey) ([]fieldpolicy.PolicyMetadata, error)
+}
+
+// PolicyMetadataService provides business logic for access grants and policy decisions
 type PolicyMetadataService struct {
-	db *gorm.DB
+	db     *gorm.DB
+	fields FieldReader
 }
 
 // NewPolicyMetadataService creates a new policy metadata service
-func NewPolicyMetadataService(db *gorm.DB) *PolicyMetadataService {
-	return &PolicyMetadataService{db: db}
-}
-
-// CreatePolicyMetadata creates new policy metadata records with validation
-func (s *PolicyMetadataService) CreatePolicyMetadata(req *models.PolicyMetadataCreateRequest) (*models.PolicyMetadataCreateResponse, error) {
-	// A missing flag is rejected rather than stored as false, which would open
-	// the field.
-	for _, record := range req.Records {
-		if record.RequiresAllowlist == nil || record.RequiresConsent == nil {
-			return nil, fmt.Errorf("%w: field %s needs requiresAllowlist and requiresConsent",
-				ErrInvalidPolicy, record.FieldName)
-		}
-	}
-
-	// Start transaction
-	tx := s.db.Begin()
-	if tx.Error != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", tx.Error)
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Check if there are already records for the given schema ID
-	var existingMetadata []models.PolicyMetadata
-	if err := tx.Where("schema_id = ?", req.SchemaID).Find(&existingMetadata).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to check existing policy metadata: %w", err)
-	}
-
-	// Create a map for faster lookups of existing records by field name
-	existingMap := make(map[string]*models.PolicyMetadata)
-	for i := range existingMetadata {
-		metadata := &existingMetadata[i]
-		existingMap[metadata.FieldName] = metadata
-	}
-
-	now := time.Now()
-	var newRecords []models.PolicyMetadata
-	var updatedRecords []*models.PolicyMetadata
-	processedFields := make(map[string]struct{})
-
-	// Process incoming records (update in memory only)
-	for _, record := range req.Records {
-		processedFields[record.FieldName] = struct{}{}
-
-		if existing, exists := existingMap[record.FieldName]; exists {
-			// Update existing record in memory
-			existing.DisplayName = record.DisplayName
-			existing.Description = record.Description
-			existing.Source = record.Source
-			existing.RequiresAllowlist = *record.RequiresAllowlist
-			existing.RequiresConsent = *record.RequiresConsent
-			existing.Owner = record.Owner
-			existing.UpdatedAt = now
-
-			updatedRecords = append(updatedRecords, existing)
-		} else {
-			// Prepare new record
-			policyMetadata := models.PolicyMetadata{
-				ID:                uuid.New(),
-				SchemaID:          req.SchemaID,
-				FieldName:         record.FieldName,
-				DisplayName:       record.DisplayName,
-				Description:       record.Description,
-				Source:            record.Source,
-				RequiresAllowlist: *record.RequiresAllowlist,
-				RequiresConsent:   *record.RequiresConsent,
-				Owner:             record.Owner,
-				CreatedAt:         now,
-				UpdatedAt:         now,
-			}
-			newRecords = append(newRecords, policyMetadata)
-		}
-	}
-
-	// Delete records that weren't in the request (obsolete records)
-	var idsToDelete []uuid.UUID
-	for fieldName, existing := range existingMap {
-		if _, processed := processedFields[fieldName]; !processed {
-			idsToDelete = append(idsToDelete, existing.ID)
-		}
-	}
-
-	if len(idsToDelete) > 0 {
-		if err := tx.Where("id IN ?", idsToDelete).Delete(&models.PolicyMetadata{}).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to delete obsolete policy metadata records: %w", err)
-		}
-	}
-
-	// Bulk create new records
-	if len(newRecords) > 0 {
-		if err := tx.Create(&newRecords).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to create policy metadata records: %w", err)
-		}
-	}
-
-	// Update only the metadata columns. Deleting obsolete records above also
-	// deletes their access grants; grants of updated records are kept.
-	for _, pm := range updatedRecords {
-		if err := tx.Model(pm).
-			Select(
-				"display_name",
-				"description",
-				"source",
-				"requires_allowlist",
-				"requires_consent",
-				"owner",
-				"updated_at",
-			).
-			Updates(pm).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to update existing policy metadata: %w", err)
-		}
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Prepare response including both new and updated records
-	var responseRecords []models.PolicyMetadataResponse
-
-	// Add new records to response
-	for _, pm := range newRecords {
-		responseRecords = append(responseRecords, pm.ToResponse())
-	}
-
-	// Add updated records to response
-	for _, pm := range updatedRecords {
-		responseRecords = append(responseRecords, pm.ToResponse())
-	}
-
-	return &models.PolicyMetadataCreateResponse{
-		Records: responseRecords,
-	}, nil
+func NewPolicyMetadataService(db *gorm.DB, fields FieldReader) *PolicyMetadataService {
+	return &PolicyMetadataService{db: db, fields: fields}
 }
 
 // GetPolicyDecision evaluates the policy for each requested field
 func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *models.PolicyDecisionRequest) (*models.PolicyDecisionResponse, error) {
-	// Collect all unique schema IDs from the request
+	// Collect the requested fields and their unique schema IDs
+	keys := make([]fieldpolicy.FieldKey, 0, len(req.RequiredFields))
 	schemaIDSet := make(map[string]struct{})
 	for _, record := range req.RequiredFields {
+		keys = append(keys, fieldpolicy.FieldKey{SchemaID: record.SchemaID, FieldName: record.FieldName})
 		schemaIDSet[record.SchemaID] = struct{}{}
 	}
 
@@ -182,15 +48,13 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		schemaIDs = append(schemaIDs, schemaID)
 	}
 
-	// Fetch all PolicyMetadata records for those schemas in one query
-	var allMetadata []models.PolicyMetadata
-	db := s.db.WithContext(ctx)
-	if err := db.Where("schema_id IN ?", schemaIDs).Find(&allMetadata).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch policy metadata records: %w", err)
+	allMetadata, err := s.fields.FieldsByKeys(ctx, keys)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create map for fast lookup: (schema_id + field_name) -> &PolicyMetadata
-	metadataMap := make(map[string]*models.PolicyMetadata)
+	metadataMap := make(map[string]*fieldpolicy.PolicyMetadata)
 	for i := range allMetadata {
 		pm := &allMetadata[i]
 		key := pm.SchemaID + ":" + pm.FieldName
@@ -200,7 +64,7 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 	// Load the application's active grants for those schemas. An expired grant
 	// is still passed to the decision, which reports the field as expired.
 	var grants []models.AccessGrant
-	if err := db.
+	if err := s.db.WithContext(ctx).
 		Where("application_id = ? AND status = ? AND schema_id IN ?",
 			req.ApplicationID, models.GrantStatusActive, schemaIDs).
 		Find(&grants).Error; err != nil {
@@ -229,7 +93,8 @@ func (s *PolicyMetadataService) GetPolicyDecision(ctx context.Context, req *mode
 		if g, ok := grantMap[key]; ok {
 			grant = &decision.Grant{ExpiresAt: g.ExpiresAt, ConsentBypass: g.ConsentBypass}
 		}
-		result := decision.Decide(pm.Policy(), req.ApplicationID, grant, now)
+		policy := decision.Field{RequiresAllowlist: pm.RequiresAllowlist, RequiresConsent: pm.RequiresConsent}
+		result := decision.Decide(policy, req.ApplicationID, grant, now)
 
 		fields = append(fields, models.PolicyDecisionFieldOutcome{
 			SchemaID:    pm.SchemaID,
@@ -285,96 +150,4 @@ func preferredGrant(current, candidate *models.AccessGrant, now time.Time) *mode
 		return bypass
 	}
 	return plain
-}
-
-// ListPolicyMetadata returns policy metadata records, optionally filtered by schema.
-func (s *PolicyMetadataService) ListPolicyMetadata(
-	schemaID string,
-) (*models.PolicyMetadataListResponse, error) {
-	var records []models.PolicyMetadata
-	query := s.db.Model(&models.PolicyMetadata{})
-
-	if schemaID != "" {
-		query = query.Where("schema_id = ?", schemaID)
-	}
-
-	if err := query.
-		Order("schema_id ASC, field_name ASC").
-		Find(&records).Error; err != nil {
-		return nil, fmt.Errorf("failed to list policy metadata: %w", err)
-	}
-
-	responseRecords := make([]models.PolicyMetadataResponse, 0, len(records))
-	for i := range records {
-		responseRecords = append(responseRecords, records[i].ToResponse())
-	}
-
-	return &models.PolicyMetadataListResponse{
-		Records: responseRecords,
-	}, nil
-}
-
-// PatchPolicyMetadata updates selected properties of one policy metadata record.
-func (s *PolicyMetadataService) PatchPolicyMetadata(
-	id string,
-	req *models.PolicyMetadataPatchRequest,
-) (*models.PolicyMetadataResponse, error) {
-	var policyMetadata models.PolicyMetadata
-	updates := make(map[string]interface{})
-
-	if err := s.db.First(&policyMetadata, "CAST(id AS TEXT) = ?", id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
-		}
-
-		return nil, fmt.Errorf("failed to fetch policy metadata: %w", err)
-	}
-
-	if req.DisplayName.Set {
-		policyMetadata.DisplayName = req.DisplayName.Value
-		updates["display_name"] = req.DisplayName.Value
-	}
-
-	if req.Description.Set {
-		policyMetadata.Description = req.Description.Value
-		updates["description"] = req.Description.Value
-	}
-
-	if flag := req.NullFlag(); flag != "" {
-		return nil, fmt.Errorf("%w: %s cannot be null", ErrInvalidPolicy, flag)
-	}
-
-	if req.RequiresAllowlist.Set {
-		policyMetadata.RequiresAllowlist = *req.RequiresAllowlist.Value
-		updates["requires_allowlist"] = policyMetadata.RequiresAllowlist
-	}
-
-	if req.RequiresConsent.Set {
-		policyMetadata.RequiresConsent = *req.RequiresConsent.Value
-		updates["requires_consent"] = policyMetadata.RequiresConsent
-	}
-
-	policyMetadata.UpdatedAt = time.Now()
-	updates["updated_at"] = policyMetadata.UpdatedAt
-
-	if err := s.db.Model(&policyMetadata).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to update policy metadata: %w", err)
-	}
-
-	response := policyMetadata.ToResponse()
-	return &response, nil
-}
-
-// DeletePolicyMetadata deletes one policy metadata record by ID.
-func (s *PolicyMetadataService) DeletePolicyMetadata(id string) error {
-	result := s.db.Where("CAST(id AS TEXT) = ?", id).Delete(&models.PolicyMetadata{})
-	if result.Error != nil {
-		return fmt.Errorf("failed to delete policy metadata: %w", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
-	}
-
-	return nil
 }
