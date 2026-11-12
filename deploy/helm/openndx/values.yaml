@@ -19,10 +19,13 @@
 #
 # Each Go service's `config` block IS its config.yaml, with the same schema as
 # cmd/<svc>/config.example.yaml (keys are listed in cmd/<svc>/README.md). The
-# chart renders it as-is into a ConfigMap mounted at /app/config/config.yaml;
-# nothing is filled in or merged. Keep it non-secret: a secret goes in as a
-# "{{env:NAME}}" placeholder the service resolves at startup, with NAME set
-# through the service's env (usually a valueFrom secretKeyRef).
+# chart renders it as-is into a ConfigMap mounted at /app/config/config.yaml.
+# The one exception is the deployment's public URLs: left empty, they are
+# filled in from global.idpPublicURL and the ingress hosts, and the install
+# fails if they can't be (see README.md#required-values). Keep config
+# non-secret: a secret goes in as a "{{env:NAME}}" placeholder the service
+# resolves at startup, with NAME set through the service's env (usually a
+# valueFrom secretKeyRef).
 #
 # The in-cluster URLs below (http://openndx-pdp:8082, ...) assume the release
 # is named "openndx". For any other release name, or when a service is
@@ -36,6 +39,10 @@ fullnameOverride: ""
 # ---------------------------------------------------------------------------
 global:
   imagePullSecrets: []
+  # Required. ThunderID's public URL (its configuration.server.publicUrl): where
+  # browsers sign in, and the issuer of every token. Fills in each service's
+  # config.idp.issuer and the Consent Portal's idpBaseURL when they are empty.
+  idpPublicURL: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -130,7 +137,10 @@ orchestrationEngine:
     foundationalIdArgName: nic
     idp:
       jwksURL: http://thunderid-service:8090/oauth2/jwks
-      issuer: http://localhost:8090
+      # Empty: global.idpPublicURL.
+      issuer: ""
+      # OE's resource-server identifier (thunderid/bootstrap/resource.yaml),
+      # not a URL to reach.
       audience: http://api.openndx.local
       insecureSkipTLSVerify: false
     # The OE skips authorization and consent when pdp.url is empty; set both
@@ -146,69 +156,27 @@ orchestrationEngine:
       apiKey: ""
       actorType: SERVICE
       actorId: orchestration-engine
-    # Data providers federated by the Orchestration Engine
-    providers:
-      - id: drp-person-v1
-        url: http://drp-provider:9091
-        auth:
-          type: apiKey
-          apiKey:
-            key: Test-Key
-            value: eyJraWQiOiJn
-      - id: rgd-person-v1
-        url: http://rgd-provider:8080/graphql
-        auth:
-          type: oauth2
-          oauth2:
-            tokenURL: http://rgd-provider:8080/oauth/token
-            clientID: test_client
-            clientSecret: test_secret
-    # Argument mappings from consumer schema arguments to provider arguments
-    argMappings:
-      - schemaId: drp-person-v1
-        targetArgName: nic
-        sourceArgPath: personInfo-nic
-        targetArgPath: person
-        targetArgType: "ID!"
-      - schemaId: rgd-person-v1
-        targetArgName: nic
-        sourceArgPath: personInfo-nic
-        targetArgPath: getPersonInfo
-        targetArgType: "ID!"
+    # Data providers federated by the Orchestration Engine. The chart deploys
+    # none: list yours, one per schema ID the consumer schema's @sourceInfo
+    # uses (cmd/oe/PROVIDER_CONFIGURATION.md). For example:
+    #   - id: drp-person-v1
+    #     url: https://drp.example.org/graphql
+    #     auth:
+    #       type: apiKey
+    #       apiKey:
+    #         key: X-API-Key
+    #         value: "{{env:DRP_API_KEY}}"
+    providers: []
+    # Argument mappings from consumer schema arguments to provider arguments,
+    # e.g. {schemaId: drp-person-v1, targetArgName: nic,
+    # sourceArgPath: personInfo-nic, targetArgPath: person, targetArgType: "ID!"}
+    argMappings: []
 
   # Extra files mounted next to config.yaml in /app/config, keyed by file name.
-  configFiles:
-    # The consumer GraphQL schema named by config.schemaPath
-    schema.graphql: |
-      directive @deprecated(
-          reason: String = "No longer supported"
-      ) on FIELD_DEFINITION | ENUM_VALUE
-
-      directive @sourceInfo(
-          schemaId: String!
-          providerField: String!
-      ) on FIELD_DEFINITION
-
-      type Query {
-          personInfo(nic: String!): PersonInfo
-      }
-
-      type PersonInfo {
-          fullName: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.fullName")
-          name: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.name")
-          otherNames: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.otherNames")
-          address: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.permanentAddress")
-          profession: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.profession")
-          dateOfBirth: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.birthDate")
-          sex: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.sex")
-          birthInfo: BirthInfo
-      }
-
-      type BirthInfo {
-          birthRegistrationNumber: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.brNo")
-          birthPlace: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.birthPlace")
-          district: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.district")
-      }
+  # Required: the consumer GraphQL schema named by config.schemaPath, e.g.
+  #   --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql'
+  # cmd/oe/schema.graphql is the sample schema for the mock providers in dev/.
+  configFiles: {}
 
 # ---------------------------------------------------------------------------
 # 2. Policy Decision Point (Optional)
@@ -354,12 +322,15 @@ consentEngine:
     logging:
       level: info
       format: json
-    consentPortalURL: http://localhost:5173
+    # Consent links are <consentPortalURL>?consentId=<uuid>. Empty: the
+    # Consent Portal's ingress URL.
+    consentPortalURL: ""
     cors:
       allowedOrigins: []
     idp:
       jwksURL: http://thunderid-service:8090/oauth2/jwks
-      issuer: http://localhost:8090
+      # Empty: global.idpPublicURL.
+      issuer: ""
       audience: CONSENT_PORTAL
       subjectClaim: nic
       insecureSkipTLSVerify: false
@@ -424,14 +395,17 @@ consentPortal:
 
   # Browser-reachable URLs. The image's entrypoint writes them into config.js
   # from environment variables at container start, so they are passed as env
-  # rather than mounted.
+  # rather than mounted. Each URL left empty is filled in as noted.
   config:
-    consentEngineURL: "http://localhost:8081/api/v1"
+    # Empty: the Consent Engine's ingress URL + /api/v1.
+    consentEngineURL: ""
     idpClientId: "CONSENT_PORTAL"
-    idpBaseURL: "http://localhost:8090"
+    # Empty: global.idpPublicURL.
+    idpBaseURL: ""
     idpScope: "openid profile email"
-    idpSignInRedirectURL: "http://localhost:5173"
-    idpSignOutRedirectURL: "http://localhost:5173"
+    # Empty: this portal's ingress URL.
+    idpSignInRedirectURL: ""
+    idpSignOutRedirectURL: ""
 
 # ---------------------------------------------------------------------------
 # 5. Portal Backend (Optional)
@@ -510,11 +484,14 @@ portalBackend:
       level: info
       format: json
     cors:
-      allowedOrigins:
-        - http://localhost:5173
+      # Required: the browser origins allowed to call Portal Backend. It
+      # refuses to start without one, even if only the ondx CLI calls it.
+      allowedOrigins: []
     idp:
       jwksURL: http://thunderid-service:8090/oauth2/jwks
-      issuer: http://localhost:8090
+      # Empty: global.idpPublicURL.
+      issuer: ""
+      # PB's resource-server identifier, not a URL to reach.
       audience: http://pb.openndx.local
       insecureSkipTLSVerify: false
       management:
@@ -523,6 +500,9 @@ portalBackend:
         clientSecret: "{{env:PORTAL_BACKEND_CLIENT_SECRET}}"
         scopes:
           - system
+        # The identifier of ThunderID's built-in System resource server, which
+        # owns the `system` scope. ThunderID fixes it at this value whatever
+        # its public URL; it is not a URL to reach.
         resource: https://localhost:8090/mcp
         dataConsumerRoleID: "01900000-0000-7000-8000-000000000092"
     pdp:

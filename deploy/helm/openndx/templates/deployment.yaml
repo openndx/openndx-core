@@ -23,7 +23,7 @@ spec:
       {{- if or $c.configMap $v.podAnnotations }}
       annotations:
         {{- if $c.configMap }}
-        checksum/config: {{ dict "config" $v.config "files" $v.configFiles | toYaml | sha256sum }}
+        checksum/config: {{ dict "config" (include "openndx.config" (dict "root" $ "values" $c.values)) "files" $v.configFiles | toYaml | sha256sum }}
         {{- end }}
         {{- with $v.podAnnotations }}
         {{- toYaml . | nindent 8 }}

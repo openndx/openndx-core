@@ -20,7 +20,7 @@ All components are configured from [`values.yaml`](./values.yaml):
 
 ### Service configuration
 
-Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`; nothing is merged or filled in. Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
+Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`. The only exception is the deployment's public URLs: when left empty, the chart fills them in (see [Required values](#required-values)). Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
 
 Keep `config` non-secret. A secret goes in as a `"{{env:NAME}}"` placeholder, which the service resolves at startup from its environment (see [Secrets](#secrets)).
 
@@ -59,7 +59,7 @@ helm upgrade --install thunderid oci://ghcr.io/thunder-id/helm-charts/thunderid 
 configuration:
   server:
     # The URL browsers use to reach ThunderID. It is also the token issuer, so
-    # every OpenNDX service's config.idp.issuer must equal it.
+    # the OpenNDX chart's global.idpPublicURL must equal it.
     publicUrl: https://idp.example.org
     # Serve plain HTTP inside the cluster (TLS ends at the ingress), so the
     # in-cluster http:// URLs in the OpenNDX values work.
@@ -119,6 +119,67 @@ portalBackend:
         secretKeyRef: {name: openndx-secrets, key: argusApiKey}
 ```
 
+## Required values
+
+The chart ships no URLs for the deployment's public addresses or for anything it doesn't deploy, so the defaults alone don't install. Until the values below are set, `helm install` (and `helm template`) fails and lists every one that is missing. Only the enabled services' values are checked.
+
+| Value | What it is |
+|---|---|
+| `global.idpPublicURL` | ThunderID's public URL (its `configuration.server.publicUrl`). Fills in every service's `config.idp.issuer` and the Consent Portal's `idpBaseURL`. |
+| `orchestrationEngine.configFiles."schema.graphql"` | The consumer GraphQL schema. Pass it with `--set-file`. |
+| `portalBackend.config.cors.allowedOrigins` | The browser origins allowed to call Portal Backend, which refuses to start without one. |
+| `consentEngine.config.consentPortalURL` | The Consent Portal's URL, used in consent links. Derived from the Consent Portal's ingress. |
+| `consentPortal.config.consentEngineURL` | The Consent Engine's public API (`.../api/v1`), called from the browser. Derived from the Consent Engine's ingress. |
+| `consentPortal.config.idpSignInRedirectURL`, `idpSignOutRedirectURL` | Where ThunderID returns after sign-in and sign-out. Derived from the Consent Portal's ingress. |
+
+A derived URL is the first host of that service's ingress, with `https` when the host is listed under the ingress's `tls`, and `http` otherwise. It is only derived when that service is enabled and its ingress is turned on; otherwise, set the value itself. A value you set always wins.
+
+The chart deploys no data providers. List yours under `orchestrationEngine.config.providers`, one per schema ID the consumer schema's `@sourceInfo` uses ([PROVIDER_CONFIGURATION.md](../../../cmd/oe/PROVIDER_CONFIGURATION.md)), with any `argMappings` they need. With none listed, the Orchestration Engine starts, but every provider field comes back `null` with a `PROVIDER_ERROR`.
+
+```yaml
+# my-values.yaml
+global:
+  idpPublicURL: https://idp.example.org
+
+orchestrationEngine:
+  ingress:
+    enabled: true
+    hosts: [{host: api.example.org, paths: [{path: /, pathType: Prefix}]}]
+    tls: [{hosts: [api.example.org], secretName: api-tls}]
+  config:
+    providers:
+      - id: drp-person-v1
+        url: https://drp.example.org/graphql
+        auth:
+          type: apiKey
+          apiKey:
+            key: X-API-Key
+            value: "{{env:DRP_API_KEY}}"
+  env:
+    DRP_API_KEY:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: drpApiKey}
+
+consentEngine:
+  ingress:
+    enabled: true
+    hosts: [{host: consent-api.example.org, paths: [{path: /, pathType: Prefix}]}]
+    tls: [{hosts: [consent-api.example.org], secretName: consent-api-tls}]
+
+consentPortal:
+  ingress:
+    enabled: true
+    hosts: [{host: consent.example.org, paths: [{path: /, pathType: Prefix}]}]
+    tls: [{hosts: [consent.example.org], secretName: consent-tls}]
+
+portalBackend:
+  config:
+    cors:
+      allowedOrigins: [https://admin.example.org]
+```
+
+`cmd/oe/schema.graphql` and the providers in `cmd/oe/config.example.yaml` are samples for the mock providers in [`dev/`](../../../dev/README.md), which this chart doesn't deploy.
+
 ## Usage
 
 ### Deploy the full OpenNDX stack
@@ -126,16 +187,20 @@ portalBackend:
 ```bash
 helm upgrade --install openndx ./deploy/helm/openndx \
   --namespace openndx --create-namespace \
-  -f my-values.yaml
+  -f my-values.yaml \
+  --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql'
 ```
 
 ### Deploy only Orchestration Engine (minimal / stateless mode)
 
-With the PDP and Consent Engine disabled, set the Orchestration Engine's `pdp.url` and `consentEngine.url` to `""` so it skips policy and consent checks:
+With the PDP and Consent Engine disabled, set the Orchestration Engine's `pdp.url` and `consentEngine.url` to `""` so it skips policy and consent checks. It still needs the IdP URL, the consumer schema and, to return any data, its providers:
 
 ```bash
 helm upgrade --install openndx ./deploy/helm/openndx \
   --namespace openndx --create-namespace \
+  -f my-providers.yaml \
+  --set global.idpPublicURL=https://idp.example.org \
+  --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql' \
   --set policyDecisionPoint.enabled=false \
   --set consentEngine.enabled=false \
   --set consentPortal.enabled=false \
@@ -146,7 +211,11 @@ helm upgrade --install openndx ./deploy/helm/openndx \
 
 ### Validate templates locally
 
+Pass the same values as the install, since the defaults alone fail on the required values:
+
 ```bash
-helm lint ./deploy/helm/openndx
-helm template openndx ./deploy/helm/openndx
+helm lint ./deploy/helm/openndx -f my-values.yaml \
+  --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql'
+helm template openndx ./deploy/helm/openndx -f my-values.yaml \
+  --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql'
 ```
