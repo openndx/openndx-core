@@ -91,7 +91,7 @@ func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest
 
 	// Check status code. The PDP's CreatePolicyMetadata handler responds 201
 	// Created (it's a creation endpoint), not 200 - see
-	// internal/pdp/handler/handler.go.
+	// internal/pdp/fieldpolicy/handler.go.
 	if resp.StatusCode != http.StatusCreated {
 		slog.Error("PDP returned error", "status", resp.StatusCode, "body", string(respBody))
 		return nil, fmt.Errorf("PDP returned status %d: %s", resp.StatusCode, string(respBody))

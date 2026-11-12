@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -18,11 +17,6 @@ import (
 // StringPtr returns a pointer to the given string value.
 func StringPtr(s string) *string {
 	return &s
-}
-
-// OwnerPtr returns a pointer to the given Owner value.
-func OwnerPtr(o models.Owner) *models.Owner {
-	return &o
 }
 
 // SetupTestDB creates an in-memory SQLite database for unit testing.

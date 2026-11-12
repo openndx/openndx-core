@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -58,7 +59,7 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// Lock the fields' policy metadata so concurrent grants for the same
 		// field are serialized and cannot both create an active grant.
-		var metadata []models.PolicyMetadata
+		var metadata []fieldpolicy.PolicyMetadata
 		if err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("(schema_id, field_name) IN ?", fields).
@@ -75,7 +76,7 @@ func (s *PolicyMetadataService) CreateAccessGrants(req *models.AccessGrantCreate
 			consent, ok := requiresConsent[record.SchemaID+":"+record.FieldName]
 			if !ok {
 				return fmt.Errorf("%w for schema_id %s and field_name %s",
-					ErrPolicyMetadataNotFound, record.SchemaID, record.FieldName)
+					fieldpolicy.ErrPolicyMetadataNotFound, record.SchemaID, record.FieldName)
 			}
 			if req.ConsentBypass && !consent {
 				return fmt.Errorf("%w: field %s of schema %s does not require consent, so there is no consent to bypass",

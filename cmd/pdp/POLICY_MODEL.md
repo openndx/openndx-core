@@ -137,4 +137,4 @@ Only a field with both flags `false` lets every authenticated application read i
 
 A partial unique index on `(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'` keeps one active grant of each kind per application and field.
 
-Source: [`internal/pdp/models`](../../internal/pdp/models).
+Source: [`internal/pdp/fieldpolicy`](../../internal/pdp/fieldpolicy) for `policy_metadata`, [`internal/pdp/models`](../../internal/pdp/models) for `access_grants`.
