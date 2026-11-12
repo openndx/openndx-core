@@ -1,0 +1,63 @@
+{{- /*
+One NetworkPolicy per enabled service, limiting inbound traffic to its
+container port. Egress is left open: PostgreSQL, ThunderID, the providers and
+Argus are all outside the chart.
+  PDP             the OE and Portal Backend only
+  Consent Engine  the OE, plus networkPolicy.ingressFrom while its ingress is on
+  others          networkPolicy.ingressFrom when it is set, else anyone
+The PDP's API and the Consent Engine's /internal API have no authentication
+and rely on this. openndx.validate requires ingressFrom while any ingress is
+enabled.
+*/ -}}
+{{- if .Values.networkPolicy.enabled }}
+{{- $fullname := include "openndx.fullname" . }}
+{{- $components := include "openndx.components" . | fromYaml }}
+{{- $ingressFrom := .Values.networkPolicy.ingressFrom | default list }}
+{{- /* The chart's own services each one is called by. */ -}}
+{{- $callers := dict "pdp" (list "oe" "pb") "ce" (list "oe") }}
+{{- range $name, $c := $components }}
+{{- if $c.enabled }}
+{{- $v := index $.Values $c.values }}
+{{- $peers := list }}
+{{- range get $callers $name | default list }}
+{{- $peer := get $components . }}
+{{- if $peer.enabled }}
+{{- $peers = append $peers (dict "podSelector" (dict "matchLabels" (merge (include "openndx.selectorLabels" $ | fromYaml) (dict "app.kubernetes.io/component" $peer.component)))) }}
+{{- end }}
+{{- end }}
+{{- $restricted := hasKey $callers $name }}
+{{- if eq $name "ce" }}
+{{- if dig "ingress" "enabled" false $v }}
+{{- $peers = concat $peers $ingressFrom }}
+{{- end }}
+{{- else if not $restricted }}
+{{- $peers = $ingressFrom }}
+{{- $restricted = not (empty $ingressFrom) }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-{{ $name }}
+  labels:
+    {{- include "openndx.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $c.component }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openndx.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $c.component }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: {{ $c.containerPort }}
+          protocol: TCP
+      {{- if $restricted }}
+      {{- /* Never empty here: the OE, which calls the PDP and Consent Engine, is always deployed. An empty from would allow everyone. */}}
+      from:
+        {{- toYaml $peers | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

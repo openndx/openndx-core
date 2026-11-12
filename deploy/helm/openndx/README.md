@@ -131,6 +131,7 @@ The chart ships no URLs for the deployment's public addresses or for anything it
 | `consentEngine.config.consentPortalURL` | The Consent Portal's URL, used in consent links. Derived from the Consent Portal's ingress. |
 | `consentPortal.config.consentEngineURL` | The Consent Engine's public API (`.../api/v1`), called from the browser. Derived from the Consent Engine's ingress. |
 | `consentPortal.config.idpSignInRedirectURL`, `idpSignOutRedirectURL` | Where ThunderID returns after sign-in and sign-out. Derived from the Consent Portal's ingress. |
+| `networkPolicy.ingressFrom` | Where the ingress controller's pods run. Required while any ingress is enabled (see [Network policies](#network-policies)). |
 
 A derived URL is the first host of that service's ingress, with `https` when the host is listed under the ingress's `tls`, and `http` otherwise. It is only derived when that service is enabled and its ingress is turned on; otherwise, set the value itself. A value you set always wins.
 
@@ -140,6 +141,12 @@ The chart deploys no data providers. List yours under `orchestrationEngine.confi
 # my-values.yaml
 global:
   idpPublicURL: https://idp.example.org
+
+networkPolicy:
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
 
 orchestrationEngine:
   ingress:
@@ -179,6 +186,22 @@ portalBackend:
 ```
 
 `cmd/oe/schema.graphql` and the providers in `cmd/oe/config.example.yaml` are samples for the mock providers in [`dev/`](../../../dev/README.md), which this chart doesn't deploy.
+
+## Network policies
+
+The PDP's API (including `POST /api/v1/policy/grants`) and the Consent Engine's `/internal/api/v1` have no authentication. They rely on the network, so the chart ships a NetworkPolicy for each service, on by default (`networkPolicy.enabled`). Each one limits inbound traffic to the service's port:
+
+| Service | Accepts traffic from |
+|---|---|
+| Policy Decision Point | The Orchestration Engine and Portal Backend |
+| Consent Engine | The Orchestration Engine, plus `networkPolicy.ingressFrom` while its ingress is enabled |
+| Orchestration Engine, Portal Backend, Consent Portal | `networkPolicy.ingressFrom` when it is set; anyone when it is empty |
+
+`networkPolicy.ingressFrom` is a list of NetworkPolicy `from` peers for the ingress controller, typically a `namespaceSelector` for its namespace. It is required while any ingress is enabled: without it, the Consent Engine couldn't be reached through its ingress. Anything else that calls these services, such as a monitoring scraper or a `LoadBalancer` Service, has to be added to it too.
+
+The policies only limit inbound traffic. Egress stays open, since PostgreSQL, ThunderID, the providers and Argus are all outside the chart. NetworkPolicies take effect only when the cluster's network plugin enforces them (Calico, Cilium and most managed Kubernetes do); otherwise they are ignored. Set `networkPolicy.enabled=false` when the cluster manages network policy another way.
+
+A NetworkPolicy works per port, not per URL path. Anything allowed to reach the Consent Engine, the ingress controller included, can reach its `/internal` API, so keep `ingressFrom` as narrow as the ingress controller.
 
 ## Usage
 

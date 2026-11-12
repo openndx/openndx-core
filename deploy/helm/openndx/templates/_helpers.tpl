@@ -143,6 +143,18 @@ config can't be completed (see openndx.config). Renders nothing otherwise.
 {{- $_ := include "openndx.config" (dict "root" $ "values" . "errs" $errs) }}
 {{- end }}
 {{- end }}
+{{- if and .Values.networkPolicy.enabled (not .Values.networkPolicy.ingressFrom) }}
+{{- $exposed := list }}
+{{- range list "orchestrationEngine" "consentEngine" "consentPortal" "portalBackend" }}
+{{- $v := index $.Values . }}
+{{- if and (dig "enabled" true $v) (dig "ingress" "enabled" false $v) }}
+{{- $exposed = append $exposed (printf "%s.ingress" .) }}
+{{- end }}
+{{- end }}
+{{- with $exposed }}
+{{- $_ := set $errs "list" (append $errs.list (printf "networkPolicy.ingressFrom: the ingress controller's pods as NetworkPolicy peers, needed while an ingress is enabled (%s); or set networkPolicy.enabled=false" (join ", " .))) }}
+{{- end }}
+{{- end }}
 {{- with $errs.list | uniq }}
 {{- fail (printf "missing required values (see the chart README, \"Required values\"):\n  - %s" (join "\n  - " .)) }}
 {{- end }}
