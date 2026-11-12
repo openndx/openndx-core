@@ -51,7 +51,7 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 func TestSource_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
-		value   interface{}
+		value   any
 		want    Source
 		wantErr bool
 	}{
@@ -105,7 +105,7 @@ func TestSource_Value(t *testing.T) {
 func TestOwner_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
-		value   interface{}
+		value   any
 		want    Owner
 		wantErr bool
 	}{

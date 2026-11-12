@@ -55,7 +55,7 @@ const (
 )
 
 // Scan implements the sql.Scanner interface for Source
-func (s *Source) Scan(value interface{}) error {
+func (s *Source) Scan(value any) error {
 	if value == nil {
 		*s = SourceFallback
 		return nil
@@ -80,7 +80,7 @@ const (
 )
 
 // Scan implements the sql.Scanner interface for Owner
-func (o *Owner) Scan(value interface{}) error {
+func (o *Owner) Scan(value any) error {
 	if value == nil {
 		*o = OwnerCitizen
 		return nil

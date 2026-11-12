@@ -229,7 +229,7 @@ func (s *Service) PatchPolicyMetadata(
 	req *PolicyMetadataPatchRequest,
 ) (*PolicyMetadataResponse, error) {
 	var policyMetadata PolicyMetadata
-	updates := make(map[string]interface{})
+	updates := make(map[string]any)
 
 	if err := s.db.First(&policyMetadata, "CAST(id AS TEXT) = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
