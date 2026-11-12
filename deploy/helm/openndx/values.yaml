@@ -44,6 +44,22 @@ global:
   # config.idp.issuer and the Consent Portal's idpBaseURL when they are empty.
   idpPublicURL: ""
 
+# NetworkPolicies limiting inbound traffic to each service's port. The PDP's API
+# and the Consent Engine's /internal API have no authentication and rely on
+# them: the PDP accepts only the OE and Portal Backend, the Consent Engine only
+# the OE and, while its ingress is on, ingressFrom. They take effect only where
+# the cluster's network plugin enforces NetworkPolicy. Egress is not limited.
+networkPolicy:
+  enabled: true
+  # Where the ingress controller's pods run, as NetworkPolicy `from` peers.
+  # Required while any service's ingress is enabled. When set, the OE, Portal
+  # Backend and Consent Portal accept only these peers; when empty, anyone.
+  # For example:
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: ingress-nginx
+  ingressFrom: []
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
