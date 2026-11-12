@@ -14,6 +14,7 @@ import (
 	"github.com/openndx/openndx-core/internal/database"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
+	"github.com/openndx/openndx-core/internal/pdp/grant"
 	"github.com/openndx/openndx-core/internal/pdp/handler"
 	"github.com/openndx/openndx-core/internal/utils"
 )
@@ -65,7 +66,9 @@ func run() error {
 	// Initialize services and handlers
 	fieldPolicyService := fieldpolicy.NewService(gormDB)
 	fieldPolicyHandler := fieldpolicy.NewHandler(fieldPolicyService)
-	v1Handler := handler.NewHandler(gormDB, fieldPolicyService)
+	grantService := grant.NewService(gormDB)
+	grantHandler := grant.NewHandler(grantService)
+	v1Handler := handler.NewHandler(fieldPolicyService, grantService)
 
 	// Setup routes
 	mux := http.NewServeMux()
@@ -75,10 +78,10 @@ func run() error {
 	mux.HandleFunc("POST /api/v1/policy/metadata", fieldPolicyHandler.CreatePolicyMetadata)
 	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", fieldPolicyHandler.PatchPolicyMetadata)
 	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", fieldPolicyHandler.DeletePolicyMetadata)
-	mux.HandleFunc("GET /api/v1/policy/grants", v1Handler.ListAccessGrants)
-	mux.HandleFunc("POST /api/v1/policy/grants", v1Handler.CreateAccessGrants)
-	mux.HandleFunc("GET /api/v1/policy/grants/{id}", v1Handler.GetAccessGrant)
-	mux.HandleFunc("POST /api/v1/policy/grants/{id}/revoke", v1Handler.RevokeAccessGrant)
+	mux.HandleFunc("GET /api/v1/policy/grants", grantHandler.ListAccessGrants)
+	mux.HandleFunc("POST /api/v1/policy/grants", grantHandler.CreateAccessGrants)
+	mux.HandleFunc("GET /api/v1/policy/grants/{id}", grantHandler.GetAccessGrant)
+	mux.HandleFunc("POST /api/v1/policy/grants/{id}/revoke", grantHandler.RevokeAccessGrant)
 	mux.HandleFunc("POST /api/v1/policy/decide", v1Handler.GetPolicyDecision)
 
 	// Health check endpoint

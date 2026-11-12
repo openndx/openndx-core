@@ -1,4 +1,4 @@
-package models
+package grant
 
 import (
 	"time"
@@ -24,6 +24,26 @@ func (s GrantStatus) IsValid() bool {
 		return true
 	}
 	return false
+}
+
+// GrantDurationType represents the grant type enum
+type GrantDurationType string
+
+const (
+	GrantDurationTypeOneMonth GrantDurationType = "30d"
+	GrantDurationTypeOneYear  GrantDurationType = "365d"
+)
+
+// ExpiresAt returns when a grant of this duration starting at from expires,
+// or false for an unknown duration.
+func (d GrantDurationType) ExpiresAt(from time.Time) (time.Time, bool) {
+	switch d {
+	case GrantDurationTypeOneMonth:
+		return from.AddDate(0, 1, 0), true
+	case GrantDurationTypeOneYear:
+		return from.AddDate(1, 0, 0), true
+	}
+	return time.Time{}, false
 }
 
 // AccessGrant represents the access_grants table: one application's access to
@@ -65,4 +85,25 @@ func (g *AccessGrant) ToResponse() AccessGrantResponse {
 		CreatedAt:     g.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     g.UpdatedAt.UTC().Format(time.RFC3339),
 	}
+}
+
+// field is the part of a policy_metadata row that granting reads: the field
+// must exist, and a consent bypass grant needs a field that asks for consent.
+// The field policy context owns the table; this model keeps grant independent
+// of it.
+type field struct {
+	SchemaID        string `gorm:"column:schema_id"`
+	FieldName       string `gorm:"column:field_name"`
+	RequiresConsent bool   `gorm:"column:requires_consent"`
+}
+
+// TableName specifies the table name for GORM
+func (field) TableName() string {
+	return "policy_metadata"
+}
+
+// FieldKey names one field of one schema.
+type FieldKey struct {
+	SchemaID  string
+	FieldName string
 }
