@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 )
 
-// PolicyMetadataCreateRequestRecord represents the request to create policy metadata
-type PolicyMetadataCreateRequestRecord struct {
+// PolicyCreateRequestRecord is one field's policy in a PolicyCreateRequest.
+type PolicyCreateRequestRecord struct {
 	FieldName   string  `json:"fieldName" validate:"required"`
 	DisplayName *string `json:"displayName,omitempty"`
 	Description *string `json:"description,omitempty"`
@@ -18,14 +18,14 @@ type PolicyMetadataCreateRequestRecord struct {
 	Owner             *Owner `json:"owner,omitempty" validate:"omitempty,owner_enum"`
 }
 
-// PolicyMetadataCreateRequest represents the request to create policy metadata
-type PolicyMetadataCreateRequest struct {
-	SchemaID string                              `json:"schemaId" validate:"required"`
-	Records  []PolicyMetadataCreateRequestRecord `json:"records" validate:"required,dive"`
+// PolicyCreateRequest replaces the field policies of one schema.
+type PolicyCreateRequest struct {
+	SchemaID string                      `json:"schemaId" validate:"required"`
+	Records  []PolicyCreateRequestRecord `json:"records" validate:"required,dive"`
 }
 
-// PolicyMetadataResponse represents the response from policy metadata operations
-type PolicyMetadataResponse struct {
+// PolicyResponse is one field policy as the API returns it.
+type PolicyResponse struct {
 	ID                string  `json:"id"`
 	SchemaID          string  `json:"schemaId"`
 	FieldName         string  `json:"fieldName"`
@@ -39,13 +39,13 @@ type PolicyMetadataResponse struct {
 	UpdatedAt         string  `json:"updatedAt"`
 }
 
-// PolicyMetadataCreateResponse represents the response from policy metadata creation
-type PolicyMetadataCreateResponse struct {
-	Records []PolicyMetadataResponse `json:"records"`
+// PolicyCreateResponse lists the field policies a PolicyCreateRequest stored.
+type PolicyCreateResponse struct {
+	Records []PolicyResponse `json:"records"`
 }
 
-type PolicyMetadataListResponse struct {
-	Records []PolicyMetadataResponse `json:"records"`
+type PolicyListResponse struct {
+	Records []PolicyResponse `json:"records"`
 }
 
 // OptionalPatchField distinguishes between an omitted JSON property and a
@@ -78,9 +78,9 @@ func (o *OptionalPatchField[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// PolicyMetadataPatchRequest contains the fields that can be changed
-// independently on one policy metadata record.
-type PolicyMetadataPatchRequest struct {
+// PolicyPatchRequest contains the fields that can be changed
+// independently on one field policy.
+type PolicyPatchRequest struct {
 	DisplayName       OptionalPatchField[string] `json:"displayName"`
 	Description       OptionalPatchField[string] `json:"description"`
 	RequiresAllowlist OptionalPatchField[bool]   `json:"requiresAllowlist"`
@@ -88,7 +88,7 @@ type PolicyMetadataPatchRequest struct {
 }
 
 // IsEmpty reports whether the PATCH request contains no editable properties.
-func (r PolicyMetadataPatchRequest) IsEmpty() bool {
+func (r PolicyPatchRequest) IsEmpty() bool {
 	return !r.DisplayName.Set &&
 		!r.Description.Set &&
 		!r.RequiresAllowlist.Set &&
@@ -97,7 +97,7 @@ func (r PolicyMetadataPatchRequest) IsEmpty() bool {
 
 // NullFlag returns the name of a policy flag the request sets to null, or "".
 // The flags can be changed but not cleared.
-func (r PolicyMetadataPatchRequest) NullFlag() string {
+func (r PolicyPatchRequest) NullFlag() string {
 	switch {
 	case r.RequiresAllowlist.Set && r.RequiresAllowlist.Value == nil:
 		return "requiresAllowlist"

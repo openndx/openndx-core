@@ -26,7 +26,7 @@ func TestRespondWithServiceError_HidesInternalDetails(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), internalErr.Error())
 }
 
-func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
+func TestHandler_CreatePolicies_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
@@ -35,7 +35,7 @@ func TestHandler_CreatePolicyMetadata_InvalidJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	handler.CreatePolicyMetadata(w, req)
+	handler.CreatePolicies(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -47,18 +47,18 @@ func TestHandler_NewHandler(t *testing.T) {
 	assert.NotNil(t, handler.service)
 }
 
-func TestHandler_CreatePolicyMetadata(t *testing.T) {
+func TestHandler_CreatePolicies(t *testing.T) {
 	tests := []struct {
 		name           string
-		requestBody    PolicyMetadataCreateRequest
+		requestBody    PolicyCreateRequest
 		expectedStatus int
 		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
 	}{
 		{
-			name: "Create new policy metadata successfully",
-			requestBody: PolicyMetadataCreateRequest{
+			name: "Create new field policies successfully",
+			requestBody: PolicyCreateRequest{
 				SchemaID: "schema-123",
-				Records: []PolicyMetadataCreateRequestRecord{
+				Records: []PolicyCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
 						DisplayName:       pdptest.StringPtr("Full Name"),
@@ -70,7 +70,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp PolicyMetadataCreateResponse
+				var resp PolicyCreateResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -83,10 +83,10 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			},
 		},
 		{
-			name: "Update existing policy metadata",
-			requestBody: PolicyMetadataCreateRequest{
+			name: "Update existing field policies",
+			requestBody: PolicyCreateRequest{
 				SchemaID: "schema-123",
-				Records: []PolicyMetadataCreateRequestRecord{
+				Records: []PolicyCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
 						DisplayName:       pdptest.StringPtr("Full Name Updated"),
@@ -98,7 +98,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp PolicyMetadataCreateResponse
+				var resp PolicyCreateResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -111,17 +111,17 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 		},
 		{
 			name: "Empty request body",
-			requestBody: PolicyMetadataCreateRequest{
+			requestBody: PolicyCreateRequest{
 				SchemaID: "",
-				Records:  []PolicyMetadataCreateRequestRecord{},
+				Records:  []PolicyCreateRequestRecord{},
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name: "Missing policy flag",
-			requestBody: PolicyMetadataCreateRequest{
+			requestBody: PolicyCreateRequest{
 				SchemaID: "schema-123",
-				Records: []PolicyMetadataCreateRequestRecord{
+				Records: []PolicyCreateRequestRecord{
 					{
 						FieldName:         "person.invalid",
 						Source:            SourcePrimary,
@@ -137,9 +137,9 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 		},
 		{
 			name: "Create with multiple records",
-			requestBody: PolicyMetadataCreateRequest{
+			requestBody: PolicyCreateRequest{
 				SchemaID: "schema-123",
-				Records: []PolicyMetadataCreateRequestRecord{
+				Records: []PolicyCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
 						DisplayName:       pdptest.StringPtr("Full Name"),
@@ -156,7 +156,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp PolicyMetadataCreateResponse
+				var resp PolicyCreateResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -167,9 +167,9 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 		},
 		{
 			name: "Create with fallback source",
-			requestBody: PolicyMetadataCreateRequest{
+			requestBody: PolicyCreateRequest{
 				SchemaID: "schema-123",
-				Records: []PolicyMetadataCreateRequestRecord{
+				Records: []PolicyCreateRequestRecord{
 					{
 						FieldName:         "person.fullName",
 						Source:            SourceFallback,
@@ -179,7 +179,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp PolicyMetadataCreateResponse
+				var resp PolicyCreateResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -197,10 +197,10 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			handler := NewHandler(NewService(db))
 
 			// Create initial record for update test
-			if tt.name == "Update existing policy metadata" {
-				initialReq := PolicyMetadataCreateRequest{
+			if tt.name == "Update existing field policies" {
+				initialReq := PolicyCreateRequest{
 					SchemaID: "schema-123",
-					Records: []PolicyMetadataCreateRequestRecord{
+					Records: []PolicyCreateRequestRecord{
 						{
 							FieldName:         "person.fullName",
 							DisplayName:       pdptest.StringPtr("Full Name"),
@@ -209,7 +209,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 						},
 					},
 				}
-				_, err := handler.service.CreatePolicyMetadata(&initialReq)
+				_, err := handler.service.CreatePolicies(&initialReq)
 				require.NoError(t, err)
 			}
 
@@ -218,7 +218,7 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
-			handler.CreatePolicyMetadata(w, req)
+			handler.CreatePolicies(w, req)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
@@ -231,13 +231,13 @@ func TestHandler_CreatePolicyMetadata(t *testing.T) {
 	}
 }
 
-func TestHandler_ListPolicyMetadata(t *testing.T) {
+func TestHandler_ListPolicies(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
 
-	createResp, err := handler.service.CreatePolicyMetadata(&PolicyMetadataCreateRequest{
+	createResp, err := handler.service.CreatePolicies(&PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []PolicyCreateRequestRecord{
 			{
 				FieldName:         "person.name",
 				DisplayName:       pdptest.StringPtr("Name"),
@@ -255,9 +255,9 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, createResp.Records, 2)
 
-	_, err = handler.service.CreatePolicyMetadata(&PolicyMetadataCreateRequest{
+	_, err = handler.service.CreatePolicies(&PolicyCreateRequest{
 		SchemaID: "other-schema",
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []PolicyCreateRequestRecord{
 			{
 				FieldName:         "other.field",
 				Source:            SourcePrimary,
@@ -274,11 +274,11 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	)
 	allRecorder := httptest.NewRecorder()
 
-	handler.ListPolicyMetadata(allRecorder, allReq)
+	handler.ListPolicies(allRecorder, allReq)
 
 	require.Equal(t, http.StatusOK, allRecorder.Code)
 
-	var allResp PolicyMetadataListResponse
+	var allResp PolicyListResponse
 	require.NoError(t, json.NewDecoder(allRecorder.Body).Decode(&allResp))
 	require.Len(t, allResp.Records, 3)
 	assert.Equal(t, "other-schema", allResp.Records[0].SchemaID)
@@ -292,24 +292,24 @@ func TestHandler_ListPolicyMetadata(t *testing.T) {
 	)
 	filteredRecorder := httptest.NewRecorder()
 
-	handler.ListPolicyMetadata(filteredRecorder, filteredReq)
+	handler.ListPolicies(filteredRecorder, filteredReq)
 
 	require.Equal(t, http.StatusOK, filteredRecorder.Code)
 
-	var filteredResp PolicyMetadataListResponse
+	var filteredResp PolicyListResponse
 	require.NoError(t, json.NewDecoder(filteredRecorder.Body).Decode(&filteredResp))
 	require.Len(t, filteredResp.Records, 2)
 	assert.Equal(t, "person.email", filteredResp.Records[0].FieldName)
 	assert.Equal(t, "person.name", filteredResp.Records[1].FieldName)
 }
 
-func TestHandler_PatchPolicyMetadata(t *testing.T) {
+func TestHandler_PatchPolicy(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
 
-	createResp, err := handler.service.CreatePolicyMetadata(&PolicyMetadataCreateRequest{
+	createResp, err := handler.service.CreatePolicies(&PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []PolicyCreateRequestRecord{
 			{
 				FieldName:         "person.name",
 				DisplayName:       pdptest.StringPtr("Name"),
@@ -338,22 +338,22 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	req.SetPathValue("id", emailID)
 	w := httptest.NewRecorder()
 
-	handler.PatchPolicyMetadata(w, req)
+	handler.PatchPolicy(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-	var resp PolicyMetadataResponse
+	var resp PolicyResponse
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
 	require.NotNil(t, resp.DisplayName)
 	assert.Equal(t, "Primary Email", *resp.DisplayName)
 
 	var count int64
-	require.NoError(t, db.Model(&PolicyMetadata{}).
+	require.NoError(t, db.Model(&Policy{}).
 		Where("schema_id = ?", "schema-123").
 		Count(&count).Error)
 	assert.Equal(t, int64(2), count)
 
-	var nameRecord PolicyMetadata
+	var nameRecord Policy
 	require.NoError(t, db.Where(
 		"schema_id = ? AND field_name = ?",
 		"schema-123",
@@ -363,13 +363,13 @@ func TestHandler_PatchPolicyMetadata(t *testing.T) {
 	assert.Equal(t, "Name", *nameRecord.DisplayName)
 }
 
-func TestHandler_PatchPolicyMetadata_Flags(t *testing.T) {
+func TestHandler_PatchPolicy_Flags(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
 
-	createResp, err := handler.service.CreatePolicyMetadata(&PolicyMetadataCreateRequest{
+	createResp, err := handler.service.CreatePolicies(&PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []PolicyCreateRequestRecord{
 			{FieldName: "person.email", Source: SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
@@ -394,11 +394,11 @@ func TestHandler_PatchPolicyMetadata_Flags(t *testing.T) {
 			req.SetPathValue("id", id)
 			w := httptest.NewRecorder()
 
-			handler.PatchPolicyMetadata(w, req)
+			handler.PatchPolicy(w, req)
 
 			require.Equal(t, tt.wantStatus, w.Code, w.Body.String())
 			if tt.wantStatus == http.StatusOK {
-				var resp PolicyMetadataResponse
+				var resp PolicyResponse
 				require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
 				assert.True(t, resp.RequiresAllowlist, "an omitted flag is unchanged")
 				assert.Equal(t, tt.wantConsent, resp.RequiresConsent)
@@ -407,13 +407,13 @@ func TestHandler_PatchPolicyMetadata_Flags(t *testing.T) {
 	}
 }
 
-func TestHandler_DeletePolicyMetadata(t *testing.T) {
+func TestHandler_DeletePolicy(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
 
-	createResp, err := handler.service.CreatePolicyMetadata(&PolicyMetadataCreateRequest{
+	createResp, err := handler.service.CreatePolicies(&PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []PolicyCreateRequestRecord{
 			{
 				FieldName:         "person.name",
 				Source:            SourcePrimary,
@@ -437,12 +437,12 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	req.SetPathValue("id", createResp.Records[1].ID)
 	w := httptest.NewRecorder()
 
-	handler.DeletePolicyMetadata(w, req)
+	handler.DeletePolicy(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, w.Body.String())
 
-	var records []PolicyMetadata
+	var records []Policy
 	require.NoError(t, db.Where("schema_id = ?", "schema-123").Find(&records).Error)
 	require.Len(t, records, 1)
 	assert.Equal(t, "person.name", records[0].FieldName)
@@ -455,7 +455,7 @@ func TestHandler_DeletePolicyMetadata(t *testing.T) {
 	unknownReq.SetPathValue("id", "not-a-uuid")
 	unknownRecorder := httptest.NewRecorder()
 
-	handler.DeletePolicyMetadata(unknownRecorder, unknownReq)
+	handler.DeletePolicy(unknownRecorder, unknownReq)
 
 	assert.Equal(t, http.StatusNotFound, unknownRecorder.Code)
 }

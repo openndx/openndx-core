@@ -51,10 +51,10 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 	grants := grant.NewService(db)
 	handler := newHandler(fieldpolicy.NewService(db), grants)
 
-	// Create policy metadata with allow list
-	createReq := fieldpolicy.PolicyMetadataCreateRequest{
+	// Create field policies with allow list
+	createReq := fieldpolicy.PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+		Records: []fieldpolicy.PolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				DisplayName:       pdptest.StringPtr("Full Name"),
@@ -70,9 +70,9 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 			},
 		},
 	}
-	_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&createReq)
+	_, err := fieldpolicy.NewService(db).CreatePolicies(&createReq)
 	if err != nil {
-		t.Fatalf("Failed to create policy metadata: %v", err)
+		t.Fatalf("Failed to create field policies: %v", err)
 	}
 
 	// Update allow list for authorized field

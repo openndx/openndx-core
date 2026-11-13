@@ -19,9 +19,9 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// CreatePolicyMetadata handles POST /api/v1/policy/metadata
-func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
-	var req PolicyMetadataCreateRequest
+// CreatePolicies handles POST /api/v1/policy/metadata
+func (h *Handler) CreatePolicies(w http.ResponseWriter, r *http.Request) {
+	var req PolicyCreateRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
@@ -34,7 +34,7 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.CreatePolicyMetadata(&req)
+	resp, err := h.service.CreatePolicies(&req)
 	if errors.Is(err, ErrInvalidPolicy) {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
@@ -47,12 +47,12 @@ func (h *Handler) CreatePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusCreated, resp)
 }
 
-// ListPolicyMetadata handles GET /api/v1/policy/metadata, with an optional
+// ListPolicies handles GET /api/v1/policy/metadata, with an optional
 // schemaId filter.
-func (h *Handler) ListPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ListPolicies(w http.ResponseWriter, r *http.Request) {
 	schemaID := strings.TrimSpace(r.URL.Query().Get("schemaId"))
 
-	resp, err := h.service.ListPolicyMetadata(schemaID)
+	resp, err := h.service.ListPolicies(schemaID)
 	if err != nil {
 		respondWithServiceError(w, err)
 		return
@@ -61,11 +61,11 @@ func (h *Handler) ListPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
-// PatchPolicyMetadata handles PATCH /api/v1/policy/metadata/{id}
-func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+// PatchPolicy handles PATCH /api/v1/policy/metadata/{id}
+func (h *Handler) PatchPolicy(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	var req PolicyMetadataPatchRequest
+	var req PolicyPatchRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 
@@ -84,7 +84,7 @@ func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.PatchPolicyMetadata(id, &req)
+	resp, err := h.service.PatchPolicy(id, &req)
 	if err != nil {
 		respondWithServiceError(w, err)
 		return
@@ -93,11 +93,11 @@ func (h *Handler) PatchPolicyMetadata(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
-// DeletePolicyMetadata handles DELETE /api/v1/policy/metadata/{id}
-func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, r *http.Request) {
+// DeletePolicy handles DELETE /api/v1/policy/metadata/{id}
+func (h *Handler) DeletePolicy(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if err := h.service.DeletePolicyMetadata(id); err != nil {
+	if err := h.service.DeletePolicy(id); err != nil {
 		respondWithServiceError(w, err)
 		return
 	}
@@ -108,7 +108,7 @@ func (h *Handler) DeletePolicyMetadata(w http.ResponseWriter, r *http.Request) {
 // serviceErrorStatuses maps the field policy service's sentinel errors to HTTP
 // statuses. Any other error is a 500.
 var serviceErrorStatuses = []utils.ErrorStatus{
-	{Err: ErrPolicyMetadataNotFound, Status: http.StatusNotFound},
+	{Err: ErrPolicyNotFound, Status: http.StatusNotFound},
 	{Err: ErrInvalidPolicy, Status: http.StatusBadRequest},
 }
 
