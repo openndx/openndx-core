@@ -1,0 +1,18 @@
+apiVersion: v2
+name: openndx
+description: A Helm chart for deploying the OpenNDX Data Exchange platform on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "0.6.1"
+home: https://github.com/openndx/openndx-core
+sources:
+  - https://github.com/openndx/openndx-core
+keywords:
+  - openndx
+  - data-exchange
+  - dpi
+  - graphql
+  - federation
+maintainers:
+  - name: OpenNDX Maintainers
+    url: https://github.com/openndx

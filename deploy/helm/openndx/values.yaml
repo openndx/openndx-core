@@ -1,0 +1,540 @@
+# Default values for openndx.
+# This is a YAML-formatted file.
+#
+# This chart deploys OpenNDX's maintained services from a single values file:
+#   - orchestrationEngine (Core - always deployed)
+#   - policyDecisionPoint (Optional - enabled by default)
+#   - consentEngine       (Optional - enabled by default)
+#   - consentPortal       (Optional - enabled by default)
+#   - portalBackend       (Optional - enabled by default)
+#
+# The embedded identity provider, ThunderID, is required and is installed from
+# its published chart (oci://ghcr.io/thunder-id/helm-charts/thunderid) as a
+# release named `thunderid`, which serves at http://thunderid-service:8090.
+# The idp URLs below assume that; see README.md#embedded-identity-provider-thunderid.
+#
+# Other infrastructure (PostgreSQL, the Argus Audit Service) is provisioned
+# separately via its own Helm chart or a managed cloud service; each service's
+# `config` points at it.
+#
+# Each Go service's `config` block IS its config.yaml, with the same schema as
+# cmd/<svc>/config.example.yaml (keys are listed in cmd/<svc>/README.md). The
+# chart renders it as-is into a ConfigMap mounted at /app/config/config.yaml.
+# The one exception is the deployment's public URLs: left empty, they are
+# filled in from global.idpPublicURL and the ingress hosts, and the install
+# fails if they can't be (see README.md#required-values). Keep config
+# non-secret: a secret goes in as a "{{env:NAME}}" placeholder the service
+# resolves at startup, with NAME set through the service's env (usually a
+# valueFrom secretKeyRef).
+#
+# The in-cluster URLs below (http://openndx-pdp:8082, ...) assume the release
+# is named "openndx". For any other release name, or when a service is
+# disabled, update the URLs that point at it.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ---------------------------------------------------------------------------
+# Global & Shared Settings
+# ---------------------------------------------------------------------------
+global:
+  imagePullSecrets: []
+  # Required. ThunderID's public URL (its configuration.server.publicUrl): where
+  # browsers sign in, and the issuer of every token. Fills in each service's
+  # config.idp.issuer and the Consent Portal's idpBaseURL when they are empty.
+  idpPublicURL: ""
+
+# NetworkPolicies limiting inbound traffic to each service's port. The PDP's API
+# and the Consent Engine's /internal API have no authentication and rely on
+# them: the PDP accepts only the OE and Portal Backend, the Consent Engine only
+# the OE and, while its ingress is on, ingressFrom. They take effect only where
+# the cluster's network plugin enforces NetworkPolicy. Egress is not limited.
+networkPolicy:
+  enabled: true
+  # Where the ingress controller's pods run, as NetworkPolicy `from` peers.
+  # Required while any service's ingress is enabled. When set, the OE, Portal
+  # Backend and Consent Portal accept only these peers; when empty, anyone.
+  # For example:
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: ingress-nginx
+  ingressFrom: []
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Mount a Kubernetes API token into the pods? No OpenNDX service calls the
+  # Kubernetes API, so this stays off unless something added to the pods needs it.
+  automount: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# ---------------------------------------------------------------------------
+# 1. Orchestration Engine (Core - Always Deployed)
+# ---------------------------------------------------------------------------
+orchestrationEngine:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/openndx/orchestration-engine
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  service:
+    type: ClusterIP
+    port: 4000
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: api.openndx.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Environment variables, as a map of name to a plain value or a map such as
+  # {valueFrom: {secretKeyRef: {name, key}}}: the secrets config references as
+  # "{{env:NAME}}". None by default; to turn auditing on, add e.g.
+  #   ARGUS_API_KEY:
+  #     valueFrom:
+  #       secretKeyRef: {name: openndx-secrets, key: argusApiKey}
+  env: {}
+  # Load environment from existing ConfigMaps or Secrets
+  envFrom: []
+
+  # config.yaml. See cmd/oe/config.example.yaml.
+  config:
+    server:
+      port: 4000
+      timeout: 30s
+    environment: local
+    logging:
+      level: info
+      format: json
+    # Resolved against /app/config; the file comes from configFiles below.
+    schemaPath: schema.graphql
+    foundationalIdArgName: nic
+    idp:
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
+      # Empty: global.idpPublicURL.
+      issuer: ""
+      # OE's resource-server identifier (thunderid/bootstrap/resource.yaml),
+      # not a URL to reach.
+      audience: http://api.openndx.local
+      insecureSkipTLSVerify: false
+    # The OE skips authorization and consent when pdp.url is empty; set both
+    # URLs to "" when the PDP and Consent Engine are disabled.
+    pdp:
+      url: http://openndx-pdp:8082
+    consentEngine:
+      url: http://openndx-ce:8081/internal/api/v1
+    # Auditing is off while url is empty. To turn it on, set url and
+    # apiKey: "{{env:ARGUS_API_KEY}}".
+    audit:
+      url: ""
+      apiKey: ""
+      actorType: SERVICE
+      actorId: orchestration-engine
+    # Data providers federated by the Orchestration Engine. The chart deploys
+    # none: list yours, one per schema ID the consumer schema's @sourceInfo
+    # uses (cmd/oe/PROVIDER_CONFIGURATION.md). For example:
+    #   - id: drp-person-v1
+    #     url: https://drp.example.org/graphql
+    #     auth:
+    #       type: apiKey
+    #       apiKey:
+    #         key: X-API-Key
+    #         value: "{{env:DRP_API_KEY}}"
+    providers: []
+    # Argument mappings from consumer schema arguments to provider arguments,
+    # e.g. {schemaId: drp-person-v1, targetArgName: nic,
+    # sourceArgPath: personInfo-nic, targetArgPath: person, targetArgType: "ID!"}
+    argMappings: []
+
+  # Extra files mounted next to config.yaml in /app/config, keyed by file name.
+  # Required: the consumer GraphQL schema named by config.schemaPath, e.g.
+  #   --set-file 'orchestrationEngine.configFiles.schema\.graphql=schema.graphql'
+  # cmd/oe/schema.graphql is the sample schema for the mock providers in dev/.
+  configFiles: {}
+
+# ---------------------------------------------------------------------------
+# 2. Policy Decision Point (Optional)
+# ---------------------------------------------------------------------------
+policyDecisionPoint:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/openndx/policy-decision-point
+    pullPolicy: IfNotPresent
+    tag: ""
+
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    fsGroup: 10001
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  service:
+    type: ClusterIP
+    port: 8082
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Environment variables: a plain value or a valueFrom map per name. Supplies
+  # the secrets config references as "{{env:NAME}}"; point them at your own
+  # Secret.
+  env:
+    DB_USER:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbUser}
+    DB_PASSWORD:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbPassword}
+  # Load environment from existing ConfigMaps or Secrets
+  envFrom: []
+
+  # config.yaml. See cmd/pdp/config.example.yaml.
+  config:
+    server:
+      port: 8082
+      timeout: 10s
+    environment: local
+    logging:
+      level: info
+      format: json
+    database:
+      driver: postgres
+      postgres:
+        host: postgresql
+        port: 5432
+        user: "{{env:DB_USER}}"
+        password: "{{env:DB_PASSWORD}}"
+        name: pdp
+        sslMode: require
+      idleTimeout: 30m
+
+# ---------------------------------------------------------------------------
+# 3. Consent Engine (Optional)
+# ---------------------------------------------------------------------------
+consentEngine:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/openndx/consent-engine
+    pullPolicy: IfNotPresent
+    tag: ""
+
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    fsGroup: 10001
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  service:
+    type: ClusterIP
+    port: 8081
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: consent-api.openndx.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Environment variables: a plain value or a valueFrom map per name. Supplies
+  # the secrets config references as "{{env:NAME}}"; point them at your own
+  # Secret.
+  env:
+    DB_USER:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbUser}
+    DB_PASSWORD:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbPassword}
+  # Load environment from existing ConfigMaps or Secrets
+  envFrom: []
+
+  # config.yaml. See cmd/ce/config.example.yaml.
+  config:
+    server:
+      port: 8081
+      timeout: 10s
+    environment: local
+    logging:
+      level: info
+      format: json
+    # Consent links are <consentPortalURL>?consentId=<uuid>. Empty: the
+    # Consent Portal's ingress URL.
+    consentPortalURL: ""
+    cors:
+      allowedOrigins: []
+    idp:
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
+      # Empty: global.idpPublicURL.
+      issuer: ""
+      audience: CONSENT_PORTAL
+      subjectClaim: nic
+      insecureSkipTLSVerify: false
+    database:
+      driver: postgres
+      postgres:
+        host: postgresql
+        port: 5432
+        user: "{{env:DB_USER}}"
+        password: "{{env:DB_PASSWORD}}"
+        name: consent_engine
+        sslMode: require
+      idleTimeout: 30m
+
+# ---------------------------------------------------------------------------
+# 4. Consent Portal UI (Optional)
+# ---------------------------------------------------------------------------
+consentPortal:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/openndx/consent-portal
+    pullPolicy: IfNotPresent
+    tag: ""
+
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: consent.openndx.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Environment variables: a plain value or a valueFrom map per name.
+  env: {}
+  # Load environment from existing ConfigMaps or Secrets
+  envFrom: []
+
+  # Browser-reachable URLs. The image's entrypoint writes them into config.js
+  # from environment variables at container start, so they are passed as env
+  # rather than mounted. Each URL left empty is filled in as noted.
+  config:
+    # Empty: the Consent Engine's ingress URL + /api/v1.
+    consentEngineURL: ""
+    idpClientId: "CONSENT_PORTAL"
+    # Empty: global.idpPublicURL.
+    idpBaseURL: ""
+    idpScope: "openid profile email"
+    # Empty: this portal's ingress URL.
+    idpSignInRedirectURL: ""
+    idpSignOutRedirectURL: ""
+
+# ---------------------------------------------------------------------------
+# 5. Portal Backend (Optional)
+# ---------------------------------------------------------------------------
+portalBackend:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/openndx/portal-backend
+    pullPolicy: IfNotPresent
+    tag: ""
+
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    fsGroup: 10001
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  service:
+    type: ClusterIP
+    port: 8083
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: pb.openndx.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Environment variables: a plain value or a valueFrom map per name. Supplies
+  # the secrets config references as "{{env:NAME}}"; point them at your own
+  # Secret. To turn auditing on, also add ARGUS_API_KEY.
+  env:
+    DB_USER:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbUser}
+    DB_PASSWORD:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: dbPassword}
+    PORTAL_BACKEND_CLIENT_SECRET:
+      valueFrom:
+        secretKeyRef: {name: openndx-secrets, key: pbClientSecret}
+  # Load environment from existing ConfigMaps or Secrets
+  envFrom: []
+
+  # config.yaml. See cmd/pb/config.example.yaml. The Portal Backend requires
+  # the PDP: pdp.url must point at a running one.
+  config:
+    server:
+      port: 8083
+      timeout: 15s
+    environment: local
+    logging:
+      level: info
+      format: json
+    cors:
+      # Required: the browser origins allowed to call Portal Backend. It
+      # refuses to start without one, even if only the ondx CLI calls it.
+      allowedOrigins: []
+    idp:
+      jwksURL: http://thunderid-service:8090/oauth2/jwks
+      # Empty: global.idpPublicURL.
+      issuer: ""
+      # PB's resource-server identifier, not a URL to reach.
+      audience: http://pb.openndx.local
+      insecureSkipTLSVerify: false
+      management:
+        baseURL: http://thunderid-service:8090
+        clientID: PORTAL_BACKEND
+        clientSecret: "{{env:PORTAL_BACKEND_CLIENT_SECRET}}"
+        scopes:
+          - system
+        # The identifier of ThunderID's built-in System resource server, which
+        # owns the `system` scope. ThunderID fixes it at this value whatever
+        # its public URL; it is not a URL to reach.
+        resource: https://localhost:8090/mcp
+        dataConsumerRoleID: "01900000-0000-7000-8000-000000000092"
+    pdp:
+      url: http://openndx-pdp:8082
+    # Auditing is off while url is empty. To turn it on, set url and
+    # apiKey: "{{env:ARGUS_API_KEY}}".
+    audit:
+      url: ""
+      apiKey: ""
+    database:
+      driver: postgres
+      postgres:
+        host: postgresql
+        port: 5432
+        user: "{{env:DB_USER}}"
+        password: "{{env:DB_PASSWORD}}"
+        name: portal_backend
+        sslMode: require
+      idleTimeout: 30m

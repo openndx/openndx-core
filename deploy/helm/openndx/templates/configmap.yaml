@@ -1,0 +1,28 @@
+{{- /*
+One ConfigMap per enabled service that reads a config file: <service>.config
+rendered into config.yaml (as-is, apart from the empty public URLs
+openndx.config fills in), plus <service>.configFiles. Mounted at /app/config
+by deployment.yaml. "{{env:NAME}}" placeholders pass through untouched; the
+service resolves them at startup.
+*/ -}}
+{{- $fullname := include "openndx.fullname" . }}
+{{- range $name, $c := include "openndx.components" . | fromYaml }}
+{{- if and $c.enabled $c.configMap }}
+{{- $v := index $.Values $c.values }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-{{ $name }}-config
+  labels:
+    {{- include "openndx.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $c.component }}
+data:
+  config.yaml: |
+    {{- include "openndx.config" (dict "root" $ "values" $c.values) | nindent 4 }}
+  {{- range $file, $content := $v.configFiles }}
+  {{ $file }}: |
+    {{- $content | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

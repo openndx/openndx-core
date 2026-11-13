@@ -1,0 +1,27 @@
+OpenNDX ({{ .Chart.Name }}-{{ .Chart.Version }}) has been deployed!
+
+Deployed Components:
+  - Orchestration Engine (Core): http://{{ include "openndx.fullname" . }}-oe:{{ .Values.orchestrationEngine.service.port }}
+{{- if .Values.policyDecisionPoint.enabled }}
+  - Policy Decision Point:       http://{{ include "openndx.fullname" . }}-pdp:{{ .Values.policyDecisionPoint.service.port }}
+{{- else }}
+  - Policy Decision Point:       disabled
+{{- end }}
+{{- if .Values.consentEngine.enabled }}
+  - Consent Engine:              http://{{ include "openndx.fullname" . }}-ce:{{ .Values.consentEngine.service.port }}
+{{- else }}
+  - Consent Engine:              disabled
+{{- end }}
+{{- if .Values.consentPortal.enabled }}
+  - Consent Portal:              http://{{ include "openndx.fullname" . }}-consent-portal:{{ .Values.consentPortal.service.port }}
+{{- else }}
+  - Consent Portal:              disabled
+{{- end }}
+{{- if .Values.portalBackend.enabled }}
+  - Portal Backend:              http://{{ include "openndx.fullname" . }}-pb:{{ .Values.portalBackend.service.port }}
+{{- else }}
+  - Portal Backend:              disabled
+{{- end }}
+
+Quick port-forward to the Orchestration Engine:
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "openndx.fullname" . }}-oe {{ .Values.orchestrationEngine.service.port }}:{{ .Values.orchestrationEngine.service.port }}
