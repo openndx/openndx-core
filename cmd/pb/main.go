@@ -158,8 +158,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /health", utils.HealthHandler("portal-backend"))
-	mux.HandleFunc("GET /debug", debugHandler)
-	mux.HandleFunc("GET /debug/db", debugDBHandler(gormDB, dbName))
 
 	mux.Handle("/api/v1/", cors.CORS(&cfg.CORS)(authnManager.RequireAuthMiddleware()(caller.Middleware(memberService.MemberIDByOuID)(apiMux))))
 

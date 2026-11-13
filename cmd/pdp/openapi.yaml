@@ -358,26 +358,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /debug:
-    get:
-      summary: Debug Information
-      description: Get debug information about the policy decision point service
-      operationId: getDebugInfo
-      tags:
-        - Debug
-      responses:
-        '200':
-          description: Debug information retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DebugResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -502,35 +482,6 @@ components:
           type: string
           description: Owner type of the data field (e.g., citizen, organization)
           example: "citizen"
-
-    DebugResponse:
-      type: object
-      properties:
-        service:
-          type: string
-          description: Name of the service
-          example: policy-decision-point
-        version:
-          type: string
-          description: Service version
-          example: "1.0.0"
-        uptime:
-          type: string
-          description: Service uptime
-          example: "2h 15m 30s"
-        configuration:
-          type: object
-          description: Service configuration
-          properties:
-            environment:
-              type: string
-              example: local
-            log_level:
-              type: string
-              example: debug
-            port:
-              type: integer
-              example: 8082
 
     ErrorResponse:
       type: object
@@ -819,8 +770,6 @@ tags:
     description: Health check endpoints
   - name: Policy Decision
     description: Policy decision and authorization operations
-  - name: Debug
-    description: Debug and diagnostic operations
   - name: Policy Metadata Management
     description: Policy metadata management operations
   - name: Access Grants

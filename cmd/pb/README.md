@@ -71,7 +71,7 @@ All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full sc
 | Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
 | Consent bypass grants | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke` | `consent-bypass:read`<br>`consent-bypass:write` |
 
-Outside `/api/v1`, with no authentication: `GET /health` (liveness only, it does not check the database), `GET /debug` and `GET /debug/db` (database connectivity). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
+Outside `/api/v1`, with no authentication: `GET /health` (liveness only, it does not check the database). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
 
 ## How it works
 
@@ -99,7 +99,7 @@ sequenceDiagram
 
 ## Security and deployment
 
-> **Deployment security: network isolation.** `/health`, `/debug` and `/debug/db` are not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
+> **Deployment security: network isolation.** `/health` is not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
 
 - CORS defaults to `http://localhost:5173`. Compose sets `*`; set explicit origins for any shared deployment.
 - PB serves no `/metrics` endpoint and no `/openapi.yaml`; the spec is the file in this directory.
@@ -121,7 +121,7 @@ Code is in [`internal/pb`](../../internal/pb): `member`, `schema` and `applicati
 When PB becomes Management Server, these identifiers embed the current name:
 
 - Compose service, container and image: `portal-backend`, `pb-${ENVIRONMENT}`, `ghcr.io/openndx/portal-backend`; Makefile service name and CI workflows (`portal-backend-validate`, `portal-backend-publish`)
-- Go packages `internal/pb` and `internal/cli/pbclient`; the `"portal-backend"` string in `/health` and `/debug`
+- Go packages `internal/pb` and `internal/cli/pbclient`; the `"portal-backend"` string in `/health`
 - Environment variables `PB_PORT`, `DB_NAME_PB`, `PB_AUDIENCE`, and the `ondx` flag and variable `--pb-url` / `NDX_PB_URL`
 - The token audience `http://pb.openndx.local`, which clients request as `resource=`
 - ThunderID seed data in `thunderid/bootstrap`: the `PORTAL_BACKEND` client, the `PortalBackendSystem` role and the "Portal Backend Resource Server"

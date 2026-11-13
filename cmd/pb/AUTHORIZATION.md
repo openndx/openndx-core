@@ -90,4 +90,4 @@ Create, update and delete requests are sent to the Argus audit service (when con
 
 ## Unauthenticated routes
 
-`GET /health`, `GET /debug` and `GET /debug/db` skip authentication and scope checks. Protect them at the network level.
+`GET /health` skips authentication and scope checks. Protect it at the network level.

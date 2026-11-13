@@ -81,7 +81,6 @@ Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies 
 | `GET /api/v1/policy/grants/{id}`                                | Read one grant                                                     |
 | `POST /api/v1/policy/grants/{id}/revoke`                        | Revoke one grant; it is kept with status `revoked`                 |
 | `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
-| `GET /debug`, `GET /debug/db`                                   | Version info; database status and record count                     |
 
 A decision request and response:
 
