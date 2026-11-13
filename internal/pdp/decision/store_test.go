@@ -1,48 +1,45 @@
-package services
+package decision_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/grant"
-	"github.com/openndx/openndx-core/internal/pdp/models"
-	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-// setupTestDB creates an in-memory SQLite database for unit testing.
-func setupTestDB(t *testing.T) *gorm.DB {
-	return pdptest.SetupTestDB(t)
-}
+// These tests decide on field policies and grants stored in the database
+// through the fieldpolicy and grant services.
 
 // testService decides on the fields and grants in db, and grants access to
 // set up the decisions.
 type testService struct {
-	*PolicyMetadataService
-	*grant.Service
+	*decision.Service
+	grants *grant.Service
 }
 
 func newTestService(db *gorm.DB) testService {
 	grants := grant.NewService(db)
 	return testService{
-		PolicyMetadataService: NewPolicyMetadataService(fieldpolicy.NewService(db), grants),
-		Service:               grants,
+		Service: decision.NewService(fieldpolicy.NewService(db), grants),
+		grants:  grants,
 	}
 }
 
-func TestNewPolicyMetadataService(t *testing.T) {
-	db := setupTestDB(t)
-	service := NewPolicyMetadataService(fieldpolicy.NewService(db), grant.NewService(db))
-	assert.NotNil(t, service)
-	assert.NotNil(t, service.fields)
-	assert.NotNil(t, service.grants)
+func (s testService) CreateAccessGrants(req *grant.AccessGrantCreateRequest) (*grant.AccessGrantListResponse, error) {
+	return s.grants.CreateAccessGrants(req)
 }
 
-func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
+func (s testService) RevokeAccessGrant(id string) (*grant.AccessGrantResponse, error) {
+	return s.grants.RevokeAccessGrant(id)
+}
+
+func TestService_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
 	service := newTestService(db)
 
@@ -71,10 +68,10 @@ func TestPolicyMetadataService_RevokeAccessGrant(t *testing.T) {
 	_, err = service.RevokeAccessGrant(grantIDs["app-123"])
 	require.NoError(t, err)
 
-	decide := func(applicationID string) []models.PolicyDecisionFieldOutcome {
-		resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+	decide := func(applicationID string) []decision.PolicyDecisionFieldOutcome {
+		resp, err := service.GetPolicyDecision(t.Context(), &decision.PolicyDecisionRequest{
 			ApplicationID:  applicationID,
-			RequiredFields: []models.PolicyDecisionRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
+			RequiredFields: []decision.PolicyDecisionRequestRecord{{FieldName: "person.email", SchemaID: "schema-123"}},
 		})
 		require.NoError(t, err)
 		return resp.Fields
@@ -109,7 +106,7 @@ func insertGrant(t *testing.T, db *gorm.DB, schemaID, fieldName, applicationID s
 	}).Error)
 }
 
-func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
+func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 	t.Run("GetPolicyDecision_ExpiredAccess", func(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
@@ -131,9 +128,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		// A grant that expired yesterday
 		insertGrant(t, db, "schema-123", "field1", "app-123", time.Now().AddDate(0, 0, -1))
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -152,9 +149,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{
 					FieldName: "nonexistent",
 					SchemaID:  "schema-123",
@@ -199,9 +196,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -260,9 +257,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{FieldName: "field1", SchemaID: "schema-1"},
 				{FieldName: "field2", SchemaID: "schema-2"},
 			},
@@ -289,17 +286,17 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		// The app was never added to the allow-list.
-		resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+		resp, err := service.GetPolicyDecision(t.Context(), &decision.PolicyDecisionRequest{
 			ApplicationID:  "app-not-allowlisted",
-			RequiredFields: []models.PolicyDecisionRequestRecord{{FieldName: "field1", SchemaID: "schema-123"}},
+			RequiredFields: []decision.PolicyDecisionRequestRecord{{FieldName: "field1", SchemaID: "schema-123"}},
 		})
 		require.NoError(t, err)
 		assert.True(t, resp.AppAuthorized)
 		assert.True(t, resp.AppRequiresOwnerConsent)
 		assert.Empty(t, resp.UnauthorizedFields)
 		require.Len(t, resp.ConsentRequiredFields, 1)
-		assert.Equal(t, &owner, resp.ConsentRequiredFields[0].Owner)
-		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+		assert.Equal(t, new(string(owner)), resp.ConsentRequiredFields[0].Owner)
+		assert.Equal(t, []decision.PolicyDecisionFieldOutcome{
 			{SchemaID: "schema-123", FieldName: "field1", Outcome: "consent_required"},
 		}, resp.Fields)
 	})
@@ -317,9 +314,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		// The app was never added to the allow-list.
-		resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+		resp, err := service.GetPolicyDecision(t.Context(), &decision.PolicyDecisionRequest{
 			ApplicationID:  "app-not-allowlisted",
-			RequiredFields: []models.PolicyDecisionRequestRecord{{FieldName: "field1", SchemaID: "schema-123"}},
+			RequiredFields: []decision.PolicyDecisionRequestRecord{{FieldName: "field1", SchemaID: "schema-123"}},
 		})
 		require.NoError(t, err)
 		assert.True(t, resp.AppAuthorized)
@@ -327,7 +324,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.False(t, resp.AppAccessExpired)
 		assert.Empty(t, resp.UnauthorizedFields)
 		assert.Empty(t, resp.ConsentRequiredFields)
-		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+		assert.Equal(t, []decision.PolicyDecisionFieldOutcome{
 			{SchemaID: "schema-123", FieldName: "field1", Outcome: "allow"},
 		}, resp.Fields)
 	})
@@ -364,9 +361,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		_, err = service.CreateAccessGrants(updateReq)
 		assert.NoError(t, err)
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{
 					FieldName: "field1",
 					SchemaID:  "schema-123",
@@ -380,7 +377,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.True(t, resp.AppAuthorized)
 		assert.True(t, resp.AppRequiresOwnerConsent)
 		assert.Equal(t, 1, len(resp.ConsentRequiredFields))
-		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+		assert.Equal(t, []decision.PolicyDecisionFieldOutcome{
 			{SchemaID: "schema-123", FieldName: "field1", Outcome: "consent_required"},
 		}, resp.Fields)
 	})
@@ -389,9 +386,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID:  "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{},
+			RequiredFields: []decision.PolicyDecisionRequestRecord{},
 		}
 
 		resp, err := service.GetPolicyDecision(t.Context(), req)
@@ -446,9 +443,9 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		// A grant that expired yesterday
 		insertGrant(t, db, "schema-123", "expired", "app-123", time.Now().AddDate(0, 0, -1))
 
-		req := &models.PolicyDecisionRequest{
+		req := &decision.PolicyDecisionRequest{
 			ApplicationID: "app-123",
-			RequiredFields: []models.PolicyDecisionRequestRecord{
+			RequiredFields: []decision.PolicyDecisionRequestRecord{
 				{FieldName: "authorized", SchemaID: "schema-123"},
 				{FieldName: "expired", SchemaID: "schema-123"},
 				{FieldName: "unauthorized", SchemaID: "schema-123"},
@@ -462,7 +459,7 @@ func TestPolicyMetadataService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		assert.True(t, resp.AppAccessExpired)
 		assert.Equal(t, 1, len(resp.UnauthorizedFields))
 		assert.Equal(t, 1, len(resp.ExpiredFields))
-		assert.Equal(t, []models.PolicyDecisionFieldOutcome{
+		assert.Equal(t, []decision.PolicyDecisionFieldOutcome{
 			{SchemaID: "schema-123", FieldName: "authorized", Outcome: "allow"},
 			{SchemaID: "schema-123", FieldName: "expired", Outcome: "expired", Reason: "grant_expired"},
 			{SchemaID: "schema-123", FieldName: "unauthorized", Outcome: "deny", Reason: "not_allowlisted"},

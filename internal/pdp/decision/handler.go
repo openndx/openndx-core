@@ -1,36 +1,30 @@
-package handler
+package decision
 
 import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/openndx/openndx-core/internal/pdp/models"
-	"github.com/openndx/openndx-core/internal/pdp/services"
 	"github.com/openndx/openndx-core/internal/utils"
 )
 
-// Handler handles policy decision requests
+// Handler handles the policy decision HTTP API.
 type Handler struct {
-	policyService *services.PolicyMetadataService
+	service *Service
 }
 
-// NewHandler creates a new API handler. fields reads the field policies and
-// grants the access grants that decisions are made on.
-func NewHandler(fields services.FieldReader, grants services.GrantReader) *Handler {
-	return &Handler{
-		policyService: services.NewPolicyMetadataService(fields, grants),
-	}
+// NewHandler creates a decision Handler.
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
-// GetPolicyDecision handles getting a policy decision
+// GetPolicyDecision handles POST /api/v1/policy/decide.
 func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
-	var req models.PolicyDecisionRequest
+	var req PolicyDecisionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// Validate required fields
 	if req.ApplicationID == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "applicationId is required")
 		return
@@ -40,7 +34,8 @@ func (h *Handler) GetPolicyDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.policyService.GetPolicyDecision(r.Context(), &req)
+	// A field with no policy is reported as a 500, as it always has been.
+	resp, err := h.service.GetPolicyDecision(r.Context(), &req)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return

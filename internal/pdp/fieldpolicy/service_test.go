@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,7 +104,7 @@ func TestService_ListPolicyMetadata(t *testing.T) {
 	assert.Empty(t, emptyResp.Records)
 }
 
-func TestService_FieldsByKeys(t *testing.T) {
+func TestService_FieldPolicies(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewService(db)
 	ctx := context.Background()
@@ -124,7 +125,7 @@ func TestService_FieldsByKeys(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	fields, err := service.FieldsByKeys(ctx, []FieldKey{
+	fields, err := service.FieldPolicies(ctx, []decision.FieldKey{
 		{SchemaID: "schema-123", FieldName: "person.email"},
 		{SchemaID: "other-schema", FieldName: "person.name"},
 		{SchemaID: "schema-123", FieldName: "person.missing"},
@@ -132,20 +133,22 @@ func TestService_FieldsByKeys(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, fields, 2, "only the named fields that exist are returned")
 
-	byKey := make(map[FieldKey]PolicyMetadata, len(fields))
+	byKey := make(map[decision.FieldKey]decision.FieldPolicy, len(fields))
 	for _, f := range fields {
-		byKey[FieldKey{SchemaID: f.SchemaID, FieldName: f.FieldName}] = f
+		byKey[f.FieldKey] = f
 	}
-	email := byKey[FieldKey{SchemaID: "schema-123", FieldName: "person.email"}]
-	assert.False(t, email.RequiresAllowlist)
-	assert.True(t, email.RequiresConsent)
+	email := byKey[decision.FieldKey{SchemaID: "schema-123", FieldName: "person.email"}]
+	assert.Equal(t, decision.Field{RequiresAllowlist: false, RequiresConsent: true}, email.Policy)
 	require.NotNil(t, email.Owner)
-	assert.Equal(t, OwnerCitizen, *email.Owner)
-	other, found := byKey[FieldKey{SchemaID: "other-schema", FieldName: "person.name"}]
+	assert.Equal(t, "citizen", *email.Owner)
+	other, found := byKey[decision.FieldKey{SchemaID: "other-schema", FieldName: "person.name"}]
 	require.True(t, found, "other-schema/person.name must be returned")
-	assert.False(t, other.RequiresAllowlist, "a field is matched on schema and name together")
+	assert.False(t, other.Policy.RequiresAllowlist, "a field is matched on schema and name together")
 
-	none, err := service.FieldsByKeys(ctx, nil)
+	name := byKey[decision.FieldKey{SchemaID: "schema-123", FieldName: "person.name"}]
+	assert.Empty(t, name.FieldName, "person.name of schema-123 was not asked for")
+
+	none, err := service.FieldPolicies(ctx, nil)
 	require.NoError(t, err)
 	assert.Empty(t, none)
 }
