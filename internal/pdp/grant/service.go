@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -205,11 +206,25 @@ func (s *Service) ListAccessGrants(filter AccessGrantFilter) (*AccessGrantListRe
 	return &AccessGrantListResponse{Records: records}, nil
 }
 
-// GrantsFor returns the application's active grants for the named fields, in
-// no particular order. An active grant that has expired is included: the
-// decision reports the field as expired. A field can have both a plain and a
-// consent bypass grant.
-func (s *Service) GrantsFor(ctx context.Context, applicationID string, keys []FieldKey) ([]AccessGrant, error) {
+// ActiveGrants returns the application's active grants for the named fields,
+// in no particular order, for policy decisions. An active grant that has
+// expired is included: the decision reports the field as expired. A field can
+// have both a plain and a consent bypass grant.
+func (s *Service) ActiveGrants(ctx context.Context, applicationID string, keys []decision.FieldKey) ([]decision.FieldGrant, error) {
+	grants, err := s.grantsFor(ctx, applicationID, keys)
+	if err != nil {
+		return nil, err
+	}
+	fieldGrants := make([]decision.FieldGrant, 0, len(grants))
+	for i := range grants {
+		fieldGrants = append(fieldGrants, grants[i].toFieldGrant())
+	}
+	return fieldGrants, nil
+}
+
+// grantsFor returns the application's active grants for the named fields, in
+// no particular order.
+func (s *Service) grantsFor(ctx context.Context, applicationID string, keys []decision.FieldKey) ([]AccessGrant, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}

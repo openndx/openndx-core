@@ -1,12 +1,12 @@
-package services
+package decision_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/grant"
-	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -65,22 +65,22 @@ func grantPlain(t *testing.T, service testService, app string, duration grant.Gr
 	return resp.Records[0]
 }
 
-func decideField(t *testing.T, service testService, app, field string) models.PolicyDecisionFieldOutcome {
+func decideField(t *testing.T, service testService, app, field string) decision.PolicyDecisionFieldOutcome {
 	t.Helper()
-	resp, err := service.GetPolicyDecision(t.Context(), &models.PolicyDecisionRequest{
+	resp, err := service.GetPolicyDecision(t.Context(), &decision.PolicyDecisionRequest{
 		ApplicationID:  app,
-		RequiredFields: []models.PolicyDecisionRequestRecord{{SchemaID: "s1", FieldName: field}},
+		RequiredFields: []decision.PolicyDecisionRequestRecord{{SchemaID: "s1", FieldName: field}},
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.Fields, 1)
 	return resp.Fields[0]
 }
 
-var bypassed = models.PolicyDecisionFieldOutcome{
+var bypassed = decision.PolicyDecisionFieldOutcome{
 	Outcome: "allow", Reason: "consent_bypassed", Obligations: []string{"audit.consent_bypassed"},
 }
 
-func withField(outcome models.PolicyDecisionFieldOutcome, field string) models.PolicyDecisionFieldOutcome {
+func withField(outcome decision.PolicyDecisionFieldOutcome, field string) decision.PolicyDecisionFieldOutcome {
 	outcome.SchemaID, outcome.FieldName = "s1", field
 	return outcome
 }
@@ -133,18 +133,4 @@ func TestConsentBypass_BypassGrantWinsOverPlainGrant(t *testing.T) {
 
 	// The bypass grant still wins while it is unexpired.
 	assert.Equal(t, withField(bypassed, "allowlist_consent"), decideField(t, service, "police", "allowlist_consent"))
-}
-
-func TestPreferredGrant(t *testing.T) {
-	now := time.Now()
-	plain := &grant.AccessGrant{ExpiresAt: now.Add(time.Hour)}
-	bypass := &grant.AccessGrant{ConsentBypass: true, ExpiresAt: now.Add(time.Hour)}
-	expiredBypass := &grant.AccessGrant{ConsentBypass: true, ExpiresAt: now.Add(-time.Hour)}
-
-	assert.Same(t, plain, preferredGrant(nil, plain, now))
-	assert.Same(t, bypass, preferredGrant(plain, bypass, now))
-	assert.Same(t, bypass, preferredGrant(bypass, plain, now))
-	assert.Same(t, plain, preferredGrant(expiredBypass, plain, now))
-	assert.Same(t, plain, preferredGrant(plain, expiredBypass, now))
-	assert.Same(t, expiredBypass, preferredGrant(nil, expiredBypass, now))
 }

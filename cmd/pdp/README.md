@@ -124,7 +124,7 @@ go test ./cmd/pdp/... ./internal/pdp/... -count=1
 make quality-check policy-decision-point    # format, vet, lint, security
 ```
 
-Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp): `handler` (HTTP), `services` (decision, metadata and grant logic), `models`.
+Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp), one package per concern, each with its service and handler: `fieldpolicy` (policy metadata), `grant` (access grants) and `decision` (decisions, reading fields and grants through interfaces it declares); `pdptest` holds test helpers.
 
 ## More docs
 

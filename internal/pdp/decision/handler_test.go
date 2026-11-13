@@ -1,4 +1,4 @@
-package handler
+package decision_test
 
 import (
 	"bytes"
@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/grant"
-	"github.com/openndx/openndx-core/internal/pdp/models"
 	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -20,10 +20,16 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return pdptest.SetupTestDB(t)
 }
 
+// newHandler creates a decision handler that decides on the given field
+// policies and grants.
+func newHandler(fields *fieldpolicy.Service, grants *grant.Service) *decision.Handler {
+	return decision.NewHandler(decision.NewService(fields, grants))
+}
+
 func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 	// This test doesn't need a database - it only tests JSON parsing
 	db := setupTestDB(t)
-	handler := NewHandler(fieldpolicy.NewService(db), grant.NewService(db))
+	handler := newHandler(fieldpolicy.NewService(db), grant.NewService(db))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/decide", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -36,15 +42,14 @@ func TestHandler_GetPolicyDecision_InvalidJSON(t *testing.T) {
 
 func TestHandler_NewHandler(t *testing.T) {
 	db := setupTestDB(t)
-	handler := NewHandler(fieldpolicy.NewService(db), grant.NewService(db))
+	handler := newHandler(fieldpolicy.NewService(db), grant.NewService(db))
 	assert.NotNil(t, handler)
-	assert.NotNil(t, handler.policyService)
 }
 
 func TestHandler_GetPolicyDecision(t *testing.T) {
 	db := setupTestDB(t)
 	grants := grant.NewService(db)
-	handler := NewHandler(fieldpolicy.NewService(db), grants)
+	handler := newHandler(fieldpolicy.NewService(db), grants)
 
 	// Create policy metadata with allow list
 	createReq := fieldpolicy.PolicyMetadataCreateRequest{
@@ -88,15 +93,15 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    models.PolicyDecisionRequest
+		requestBody    decision.PolicyDecisionRequest
 		expectedStatus int
 		validateFunc   func(t *testing.T, response *httptest.ResponseRecorder)
 	}{
 		{
 			name: "Authorized request",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-123",
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.fullName",
 						SchemaID:  "schema-123",
@@ -105,7 +110,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp models.PolicyDecisionResponse
+				var resp decision.PolicyDecisionResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -119,9 +124,9 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		},
 		{
 			name: "Unauthorized request - not in allow list",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-456", // Different app, not in allow list
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.fullName",
 						SchemaID:  "schema-123",
@@ -130,7 +135,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp models.PolicyDecisionResponse
+				var resp decision.PolicyDecisionResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -144,9 +149,9 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		},
 		{
 			name: "Unauthorized request - restricted field not in allow list",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-123",
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.nic",
 						SchemaID:  "schema-123",
@@ -155,7 +160,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp models.PolicyDecisionResponse
+				var resp decision.PolicyDecisionResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -169,9 +174,9 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		},
 		{
 			name: "Consent required - restricted field in allow list",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-123",
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.nic",
 						SchemaID:  "schema-123",
@@ -180,7 +185,7 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var resp models.PolicyDecisionResponse
+				var resp decision.PolicyDecisionResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("Failed to decode response: %v", err)
 				}
@@ -200,9 +205,9 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		},
 		{
 			name: "Field not found",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-123",
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.nonexistent",
 						SchemaID:  "schema-123",
@@ -213,17 +218,17 @@ func TestHandler_GetPolicyDecision(t *testing.T) {
 		},
 		{
 			name: "Empty request body",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID:  "",
-				RequiredFields: []models.PolicyDecisionRequestRecord{},
+				RequiredFields: []decision.PolicyDecisionRequestRecord{},
 			},
 			expectedStatus: http.StatusBadRequest, // Handler validates required fields
 		},
 		{
 			name: "Service error - schema not found",
-			requestBody: models.PolicyDecisionRequest{
+			requestBody: decision.PolicyDecisionRequest{
 				ApplicationID: "app-123",
-				RequiredFields: []models.PolicyDecisionRequestRecord{
+				RequiredFields: []decision.PolicyDecisionRequestRecord{
 					{
 						FieldName: "person.fullName",
 						SchemaID:  "nonexistent-schema",

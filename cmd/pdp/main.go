@@ -13,9 +13,9 @@ import (
 
 	"github.com/openndx/openndx-core/internal/database"
 	"github.com/openndx/openndx-core/internal/logging"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
 	"github.com/openndx/openndx-core/internal/pdp/grant"
-	"github.com/openndx/openndx-core/internal/pdp/handler"
 	"github.com/openndx/openndx-core/internal/utils"
 )
 
@@ -68,7 +68,7 @@ func run() error {
 	fieldPolicyHandler := fieldpolicy.NewHandler(fieldPolicyService)
 	grantService := grant.NewService(gormDB)
 	grantHandler := grant.NewHandler(grantService)
-	v1Handler := handler.NewHandler(fieldPolicyService, grantService)
+	decisionHandler := decision.NewHandler(decision.NewService(fieldPolicyService, grantService))
 
 	// Setup routes
 	mux := http.NewServeMux()
@@ -82,7 +82,7 @@ func run() error {
 	mux.HandleFunc("POST /api/v1/policy/grants", grantHandler.CreateAccessGrants)
 	mux.HandleFunc("GET /api/v1/policy/grants/{id}", grantHandler.GetAccessGrant)
 	mux.HandleFunc("POST /api/v1/policy/grants/{id}/revoke", grantHandler.RevokeAccessGrant)
-	mux.HandleFunc("POST /api/v1/policy/decide", v1Handler.GetPolicyDecision)
+	mux.HandleFunc("POST /api/v1/policy/decide", decisionHandler.GetPolicyDecision)
 
 	// Health check endpoint
 	mux.Handle("GET /health", utils.HealthHandler("policy-decision-point"))

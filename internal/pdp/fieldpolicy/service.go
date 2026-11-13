@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"gorm.io/gorm"
 )
 
@@ -168,16 +169,24 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 	}, nil
 }
 
-// FieldKey names one field of one schema.
-type FieldKey struct {
-	SchemaID  string
-	FieldName string
+// FieldPolicies returns the policies of the named fields, in no particular
+// order, for policy decisions. A key with no policy metadata is left out of the
+// result; the caller decides whether that is an error.
+func (s *Service) FieldPolicies(ctx context.Context, keys []decision.FieldKey) ([]decision.FieldPolicy, error) {
+	fields, err := s.fieldsByKeys(ctx, keys)
+	if err != nil {
+		return nil, err
+	}
+	policies := make([]decision.FieldPolicy, 0, len(fields))
+	for i := range fields {
+		policies = append(policies, fields[i].toFieldPolicy())
+	}
+	return policies, nil
 }
 
-// FieldsByKeys returns the policy metadata of the named fields, in no
-// particular order. A key with no policy metadata is left out of the result;
-// the caller decides whether that is an error.
-func (s *Service) FieldsByKeys(ctx context.Context, keys []FieldKey) ([]PolicyMetadata, error) {
+// fieldsByKeys returns the policy metadata of the named fields, in no
+// particular order.
+func (s *Service) fieldsByKeys(ctx context.Context, keys []decision.FieldKey) ([]PolicyMetadata, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}

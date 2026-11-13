@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 	"github.com/openndx/openndx-core/internal/pdp/pdptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -154,7 +155,7 @@ func TestService_ListAccessGrants(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidGrantRequest)
 }
 
-func TestService_GrantsFor(t *testing.T) {
+func TestService_ActiveGrants(t *testing.T) {
 	db := setupTestDB(t)
 	service := NewService(db)
 	for _, schemaID := range []string{"schema-1", "schema-2"} {
@@ -181,7 +182,7 @@ func TestService_GrantsFor(t *testing.T) {
 	insertGrant(t, db, "schema-2", "field1", "app-A", time.Now().AddDate(0, 1, 0))
 	insertGrant(t, db, "schema-1", "field1", "app-B", time.Now().AddDate(0, 1, 0))
 
-	grants, err := service.GrantsFor(t.Context(), "app-A", []FieldKey{
+	grants, err := service.ActiveGrants(t.Context(), "app-A", []decision.FieldKey{
 		{SchemaID: "schema-1", FieldName: "field1"},
 		{SchemaID: "schema-1", FieldName: "field2"},
 	})
@@ -192,19 +193,18 @@ func TestService_GrantsFor(t *testing.T) {
 	require.Len(t, grants, 2)
 	var bypass, plain int
 	for _, g := range grants {
-		assert.Equal(t, FieldKey{SchemaID: "schema-1", FieldName: "field1"}, FieldKey{SchemaID: g.SchemaID, FieldName: g.FieldName})
-		assert.Equal(t, "app-A", g.ApplicationID)
-		if g.ConsentBypass {
+		assert.Equal(t, decision.FieldKey{SchemaID: "schema-1", FieldName: "field1"}, g.FieldKey)
+		if g.Grant.ConsentBypass {
 			bypass++
 		} else {
 			plain++
-			assert.WithinDuration(t, expired, g.ExpiresAt, time.Second)
+			assert.WithinDuration(t, expired, g.Grant.ExpiresAt, time.Second)
 		}
 	}
 	assert.Equal(t, 1, bypass)
 	assert.Equal(t, 1, plain)
 
-	none, err := service.GrantsFor(t.Context(), "app-A", nil)
+	none, err := service.ActiveGrants(t.Context(), "app-A", nil)
 	require.NoError(t, err)
 	assert.Empty(t, none)
 }

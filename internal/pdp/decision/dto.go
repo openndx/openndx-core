@@ -1,28 +1,26 @@
-package models
+package decision
 
-import "github.com/openndx/openndx-core/internal/pdp/fieldpolicy"
-
-// Request and Response DTOs
-
-// PolicyDecisionRequestRecord represents a policy decision request record
+// PolicyDecisionRequestRecord names one field the application asks to read.
 type PolicyDecisionRequestRecord struct {
 	FieldName string `json:"fieldName"`
 	SchemaID  string `json:"schemaId"`
 }
 
-// PolicyDecisionRequest represents a policy decision request
+// PolicyDecisionRequest asks for the decision on each field an application
+// wants to read.
 type PolicyDecisionRequest struct {
 	ApplicationID  string                        `json:"applicationId" validate:"required"`
 	RequiredFields []PolicyDecisionRequestRecord `json:"requiredFields" validate:"required,dive"`
 }
 
-// PolicyDecisionResponseFieldRecord represents a policy decision response record
+// PolicyDecisionResponseFieldRecord describes a field in the legacy outcome
+// lists of a PolicyDecisionResponse.
 type PolicyDecisionResponseFieldRecord struct {
-	FieldName   string             `json:"fieldName"`
-	SchemaID    string             `json:"schemaId"`
-	DisplayName *string            `json:"displayName,omitempty"`
-	Description *string            `json:"description,omitempty"`
-	Owner       *fieldpolicy.Owner `json:"owner,omitempty"`
+	FieldName   string  `json:"fieldName"`
+	SchemaID    string  `json:"schemaId"`
+	DisplayName *string `json:"displayName,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Owner       *string `json:"owner,omitempty"`
 }
 
 // PolicyDecisionFieldOutcome is the decision for one requested field.

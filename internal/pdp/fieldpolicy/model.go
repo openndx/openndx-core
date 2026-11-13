@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 )
 
 // PolicyMetadata represents the policy_metadata table
@@ -43,6 +44,20 @@ func (pm *PolicyMetadata) ToResponse() PolicyMetadataResponse {
 		Owner:             pm.Owner,
 		CreatedAt:         pm.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:         pm.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+// toFieldPolicy converts PolicyMetadata to the policy a decision reads.
+func (pm *PolicyMetadata) toFieldPolicy() decision.FieldPolicy {
+	return decision.FieldPolicy{
+		FieldKey: decision.FieldKey{SchemaID: pm.SchemaID, FieldName: pm.FieldName},
+		Policy: decision.Field{
+			RequiresAllowlist: pm.RequiresAllowlist,
+			RequiresConsent:   pm.RequiresConsent,
+		},
+		DisplayName: pm.DisplayName,
+		Description: pm.Description,
+		Owner:       (*string)(pm.Owner),
 	}
 }
 

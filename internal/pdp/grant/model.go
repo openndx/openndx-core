@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/pdp/decision"
 )
 
 // GrantStatus is the lifecycle state of an access grant.
@@ -69,6 +70,14 @@ type AccessGrant struct {
 // TableName specifies the table name for GORM
 func (AccessGrant) TableName() string {
 	return "access_grants"
+}
+
+// toFieldGrant converts AccessGrant to the grant a decision reads.
+func (g *AccessGrant) toFieldGrant() decision.FieldGrant {
+	return decision.FieldGrant{
+		FieldKey: decision.FieldKey{SchemaID: g.SchemaID, FieldName: g.FieldName},
+		Grant:    decision.Grant{ExpiresAt: g.ExpiresAt, ConsentBypass: g.ConsentBypass},
+	}
 }
 
 // ToResponse converts AccessGrant to AccessGrantResponse
