@@ -1,6 +1,3 @@
-// Package decision decides access to one field from two flags on the field,
-// requiresAllowlist and requiresConsent, and the requesting application's
-// grant for it.
 package decision
 
 import "time"
