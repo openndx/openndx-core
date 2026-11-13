@@ -43,9 +43,9 @@ func TestService_RevokeAccessGrant(t *testing.T) {
 	db := setupTestDB(t)
 	service := newTestService(db)
 
-	_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
+	_, err := fieldpolicy.NewService(db).CreatePolicies(&fieldpolicy.PolicyCreateRequest{
 		SchemaID: "schema-123",
-		Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+		Records: []fieldpolicy.PolicyCreateRequestRecord{
 			{FieldName: "person.email", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
@@ -111,10 +111,10 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		// Create policy metadata
-		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
+		// Create field policies
+		createReq := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "field1",
 					Source:            fieldpolicy.SourcePrimary,
@@ -122,7 +122,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicies(createReq)
 		assert.NoError(t, err)
 
 		// A grant that expired yesterday
@@ -169,9 +169,9 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		service := newTestService(db)
 
 		// Create public field
-		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "field1",
 					Source:            fieldpolicy.SourcePrimary,
@@ -179,7 +179,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicies(createReq)
 		assert.NoError(t, err)
 
 		// Add to allow list
@@ -218,10 +218,10 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		// Create metadata for multiple schemas
-		createReq1 := &fieldpolicy.PolicyMetadataCreateRequest{
+		// Create field policies for multiple schemas
+		createReq1 := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-1",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "field1",
 					Source:            fieldpolicy.SourcePrimary,
@@ -229,12 +229,12 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq1)
+		_, err := fieldpolicy.NewService(db).CreatePolicies(createReq1)
 		assert.NoError(t, err)
 
-		createReq2 := &fieldpolicy.PolicyMetadataCreateRequest{
+		createReq2 := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-2",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "field2",
 					Source:            fieldpolicy.SourcePrimary,
@@ -242,7 +242,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err = fieldpolicy.NewService(db).CreatePolicyMetadata(createReq2)
+		_, err = fieldpolicy.NewService(db).CreatePolicies(createReq2)
 		assert.NoError(t, err)
 
 		// Add both to allow list
@@ -277,9 +277,9 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		service := newTestService(db)
 
 		owner := fieldpolicy.OwnerCitizen
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
+		_, err := fieldpolicy.NewService(db).CreatePolicies(&fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{FieldName: "field1", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(true), Owner: &owner},
 			},
 		})
@@ -305,9 +305,9 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
+		_, err := fieldpolicy.NewService(db).CreatePolicies(&fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{FieldName: "field1", Source: fieldpolicy.SourcePrimary, RequiresAllowlist: new(false), RequiresConsent: new(false)},
 			},
 		})
@@ -333,9 +333,9 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		db := setupTestDB(t)
 		service := newTestService(db)
 
-		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "field1",
 					Source:            fieldpolicy.SourcePrimary,
@@ -344,7 +344,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicies(createReq)
 		assert.NoError(t, err)
 
 		// Add to allow list
@@ -406,9 +406,9 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		service := newTestService(db)
 
 		// Create multiple fields with different states
-		createReq := &fieldpolicy.PolicyMetadataCreateRequest{
+		createReq := &fieldpolicy.PolicyCreateRequest{
 			SchemaID: "schema-123",
-			Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+			Records: []fieldpolicy.PolicyCreateRequestRecord{
 				{
 					FieldName:         "authorized",
 					Source:            fieldpolicy.SourcePrimary,
@@ -426,7 +426,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(createReq)
+		_, err := fieldpolicy.NewService(db).CreatePolicies(createReq)
 		assert.NoError(t, err)
 
 		// Add authorized field to allow list

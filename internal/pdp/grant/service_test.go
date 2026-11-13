@@ -17,7 +17,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return pdptest.SetupTestDB(t)
 }
 
-// insertField stores a field's policy metadata, as the field policy context
+// insertField stores a field's policy, as the field policy context
 // would, so that grants can be made for it.
 func insertField(t *testing.T, db *gorm.DB, schemaID, fieldName string, requiresAllowlist, requiresConsent bool) {
 	t.Helper()

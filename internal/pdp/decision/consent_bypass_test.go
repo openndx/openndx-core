@@ -18,15 +18,15 @@ import (
 func newBypassService(t *testing.T) (testService, *gorm.DB) {
 	t.Helper()
 	db := setupTestDB(t)
-	field := func(name string, allowlist, consent bool) fieldpolicy.PolicyMetadataCreateRequestRecord {
-		return fieldpolicy.PolicyMetadataCreateRequestRecord{
+	field := func(name string, allowlist, consent bool) fieldpolicy.PolicyCreateRequestRecord {
+		return fieldpolicy.PolicyCreateRequestRecord{
 			FieldName: name, Source: fieldpolicy.SourcePrimary,
 			RequiresAllowlist: new(allowlist), RequiresConsent: new(consent),
 		}
 	}
-	_, err := fieldpolicy.NewService(db).CreatePolicyMetadata(&fieldpolicy.PolicyMetadataCreateRequest{
+	_, err := fieldpolicy.NewService(db).CreatePolicies(&fieldpolicy.PolicyCreateRequest{
 		SchemaID: "s1",
-		Records: []fieldpolicy.PolicyMetadataCreateRequestRecord{
+		Records: []fieldpolicy.PolicyCreateRequestRecord{
 			field("consent", false, true),
 			field("allowlist_consent", true, true),
 			field("allowlist", true, false),

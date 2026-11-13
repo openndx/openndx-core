@@ -16,8 +16,8 @@ import (
 var (
 	ErrAccessGrantNotFound = errors.New("access grant not found")
 	ErrInvalidGrantRequest = errors.New("invalid access grant request")
-	// ErrFieldNotFound reports a grant for a field that has no policy
-	// metadata. Its text matches the field policy context's not found error,
+	// ErrFieldNotFound reports a grant for a field that has no field
+	// policy. Its text matches the field policy context's not found error,
 	// so API clients see the same message as before grants had their own
 	// package.
 	ErrFieldNotFound = errors.New("policy metadata not found")
@@ -37,7 +37,7 @@ func NewService(db *gorm.DB) *Service {
 // duration. A field the application already holds an active grant of the same
 // kind for has that grant's expiry renewed, so renewing plain grants never
 // touches a consent bypass grant and the other way round. Every field must
-// have policy metadata.
+// have a field policy.
 //
 // With req.ConsentBypass set, the grants are consent bypass grants. They need
 // a legal basis, which a renewal replaces, and every field must ask for the
@@ -78,7 +78,7 @@ func (s *Service) CreateAccessGrants(req *AccessGrantCreateRequest) (*AccessGran
 	}
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// Lock the fields' policy metadata so concurrent grants for the same
+		// Lock the fields' policies so concurrent grants for the same
 		// field are serialized and cannot both create an active grant.
 		var fields []field
 		if err := tx.
@@ -86,7 +86,7 @@ func (s *Service) CreateAccessGrants(req *AccessGrantCreateRequest) (*AccessGran
 			Where("(schema_id, field_name) IN ?", pairs).
 			Order("schema_id ASC, field_name ASC").
 			Find(&fields).Error; err != nil {
-			return fmt.Errorf("failed to fetch policy metadata records: %w", err)
+			return fmt.Errorf("failed to fetch field policies: %w", err)
 		}
 
 		requiresConsent := make(map[FieldKey]bool, len(fields))

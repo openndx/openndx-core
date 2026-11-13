@@ -74,10 +74,10 @@ func run() error {
 	mux := http.NewServeMux()
 
 	// Policy endpoints
-	mux.HandleFunc("GET /api/v1/policy/metadata", fieldPolicyHandler.ListPolicyMetadata)
-	mux.HandleFunc("POST /api/v1/policy/metadata", fieldPolicyHandler.CreatePolicyMetadata)
-	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", fieldPolicyHandler.PatchPolicyMetadata)
-	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", fieldPolicyHandler.DeletePolicyMetadata)
+	mux.HandleFunc("GET /api/v1/policy/metadata", fieldPolicyHandler.ListPolicies)
+	mux.HandleFunc("POST /api/v1/policy/metadata", fieldPolicyHandler.CreatePolicies)
+	mux.HandleFunc("PATCH /api/v1/policy/metadata/{id}", fieldPolicyHandler.PatchPolicy)
+	mux.HandleFunc("DELETE /api/v1/policy/metadata/{id}", fieldPolicyHandler.DeletePolicy)
 	mux.HandleFunc("GET /api/v1/policy/grants", grantHandler.ListAccessGrants)
 	mux.HandleFunc("POST /api/v1/policy/grants", grantHandler.CreateAccessGrants)
 	mux.HandleFunc("GET /api/v1/policy/grants/{id}", grantHandler.GetAccessGrant)

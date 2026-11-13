@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPolicyMetadata_TableName(t *testing.T) {
-	pm := PolicyMetadata{}
-	assert.Equal(t, "policy_metadata", pm.TableName())
+func TestPolicy_TableName(t *testing.T) {
+	p := Policy{}
+	assert.Equal(t, "policy_metadata", p.TableName())
 }
 
-func TestPolicyMetadata_ToResponse(t *testing.T) {
+func TestPolicy_ToResponse(t *testing.T) {
 	now := time.Now()
 	displayName := "Test Display Name"
 	description := "Test Description"
 	owner := OwnerCitizen
 
-	pm := PolicyMetadata{
+	p := Policy{
 		ID:                uuid.New(),
 		SchemaID:          "schema-123",
 		FieldName:         "person.fullName",
@@ -33,19 +33,19 @@ func TestPolicyMetadata_ToResponse(t *testing.T) {
 		UpdatedAt:         now,
 	}
 
-	response := pm.ToResponse()
+	response := p.ToResponse()
 
-	assert.Equal(t, pm.ID.String(), response.ID)
-	assert.Equal(t, pm.SchemaID, response.SchemaID)
-	assert.Equal(t, pm.FieldName, response.FieldName)
-	assert.Equal(t, pm.DisplayName, response.DisplayName)
-	assert.Equal(t, pm.Description, response.Description)
-	assert.Equal(t, pm.Source, response.Source)
+	assert.Equal(t, p.ID.String(), response.ID)
+	assert.Equal(t, p.SchemaID, response.SchemaID)
+	assert.Equal(t, p.FieldName, response.FieldName)
+	assert.Equal(t, p.DisplayName, response.DisplayName)
+	assert.Equal(t, p.Description, response.Description)
+	assert.Equal(t, p.Source, response.Source)
 	assert.True(t, response.RequiresAllowlist)
 	assert.True(t, response.RequiresConsent)
-	assert.Equal(t, pm.Owner, response.Owner)
-	assert.Equal(t, pm.CreatedAt.Format(time.RFC3339), response.CreatedAt)
-	assert.Equal(t, pm.UpdatedAt.Format(time.RFC3339), response.UpdatedAt)
+	assert.Equal(t, p.Owner, response.Owner)
+	assert.Equal(t, p.CreatedAt.Format(time.RFC3339), response.CreatedAt)
+	assert.Equal(t, p.UpdatedAt.Format(time.RFC3339), response.UpdatedAt)
 }
 
 func TestSource_Scan(t *testing.T) {

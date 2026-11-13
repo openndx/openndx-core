@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPolicyMetadataPatchRequest_NullFlag(t *testing.T) {
-	var req PolicyMetadataPatchRequest
+func TestPolicyPatchRequest_NullFlag(t *testing.T) {
+	var req PolicyPatchRequest
 	assert.Empty(t, req.NullFlag())
 
 	req.RequiresConsent = OptionalPatchField[bool]{Set: true}
@@ -17,6 +17,6 @@ func TestPolicyMetadataPatchRequest_NullFlag(t *testing.T) {
 	assert.Equal(t, "requiresAllowlist", req.NullFlag())
 
 	set := false
-	req = PolicyMetadataPatchRequest{RequiresAllowlist: OptionalPatchField[bool]{Set: true, Value: &set}}
+	req = PolicyPatchRequest{RequiresAllowlist: OptionalPatchField[bool]{Set: true, Value: &set}}
 	assert.Empty(t, req.NullFlag())
 }

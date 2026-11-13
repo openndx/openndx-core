@@ -12,12 +12,14 @@ import (
 )
 
 var (
-	ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
-	ErrInvalidPolicy          = errors.New("invalid field policy")
+	// ErrPolicyNotFound keeps the text clients of the field policy API match
+	// on until the API itself is renamed.
+	ErrPolicyNotFound = errors.New("policy metadata not found")
+	ErrInvalidPolicy  = errors.New("invalid field policy")
 )
 
-// Service manages the field policy catalogue: the policy metadata of every
-// field a schema exposes.
+// Service manages the field policy catalogue: the policy of every field a
+// schema exposes.
 type Service struct {
 	db *gorm.DB
 }
@@ -27,10 +29,10 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
-// CreatePolicyMetadata replaces a schema's policy metadata with the request's
+// CreatePolicies replaces a schema's field policies with the request's
 // records. Existing fields are updated in place and keep their access grants;
 // fields missing from the request are deleted along with their grants.
-func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*PolicyMetadataCreateResponse, error) {
+func (s *Service) CreatePolicies(req *PolicyCreateRequest) (*PolicyCreateResponse, error) {
 	// A missing flag is rejected rather than stored as false, which would open
 	// the field.
 	for _, record := range req.Records {
@@ -52,22 +54,22 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 	}()
 
 	// Check if there are already records for the given schema ID
-	var existingMetadata []PolicyMetadata
-	if err := tx.Where("schema_id = ?", req.SchemaID).Find(&existingMetadata).Error; err != nil {
+	var existingPolicies []Policy
+	if err := tx.Where("schema_id = ?", req.SchemaID).Find(&existingPolicies).Error; err != nil {
 		tx.Rollback()
-		return nil, fmt.Errorf("failed to check existing policy metadata: %w", err)
+		return nil, fmt.Errorf("failed to check existing field policies: %w", err)
 	}
 
 	// Create a map for faster lookups of existing records by field name
-	existingMap := make(map[string]*PolicyMetadata)
-	for i := range existingMetadata {
-		metadata := &existingMetadata[i]
-		existingMap[metadata.FieldName] = metadata
+	existingMap := make(map[string]*Policy)
+	for i := range existingPolicies {
+		policy := &existingPolicies[i]
+		existingMap[policy.FieldName] = policy
 	}
 
 	now := time.Now()
-	var newRecords []PolicyMetadata
-	var updatedRecords []*PolicyMetadata
+	var newRecords []Policy
+	var updatedRecords []*Policy
 	processedFields := make(map[string]struct{})
 
 	// Process incoming records (update in memory only)
@@ -87,7 +89,7 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 			updatedRecords = append(updatedRecords, existing)
 		} else {
 			// Prepare new record
-			policyMetadata := PolicyMetadata{
+			policy := Policy{
 				ID:                uuid.New(),
 				SchemaID:          req.SchemaID,
 				FieldName:         record.FieldName,
@@ -100,7 +102,7 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 				CreatedAt:         now,
 				UpdatedAt:         now,
 			}
-			newRecords = append(newRecords, policyMetadata)
+			newRecords = append(newRecords, policy)
 		}
 	}
 
@@ -113,9 +115,9 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 	}
 
 	if len(idsToDelete) > 0 {
-		if err := tx.Where("id IN ?", idsToDelete).Delete(&PolicyMetadata{}).Error; err != nil {
+		if err := tx.Where("id IN ?", idsToDelete).Delete(&Policy{}).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to delete obsolete policy metadata records: %w", err)
+			return nil, fmt.Errorf("failed to delete obsolete field policies: %w", err)
 		}
 	}
 
@@ -123,14 +125,14 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 	if len(newRecords) > 0 {
 		if err := tx.Create(&newRecords).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to create policy metadata records: %w", err)
+			return nil, fmt.Errorf("failed to create field policies: %w", err)
 		}
 	}
 
-	// Update only the metadata columns. Deleting obsolete records above also
+	// Update only the policy columns. Deleting obsolete records above also
 	// deletes their access grants; grants of updated records are kept.
-	for _, pm := range updatedRecords {
-		if err := tx.Model(pm).
+	for _, p := range updatedRecords {
+		if err := tx.Model(p).
 			Select(
 				"display_name",
 				"description",
@@ -140,9 +142,9 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 				"owner",
 				"updated_at",
 			).
-			Updates(pm).Error; err != nil {
+			Updates(p).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to update existing policy metadata: %w", err)
+			return nil, fmt.Errorf("failed to update existing field policies: %w", err)
 		}
 	}
 
@@ -152,25 +154,25 @@ func (s *Service) CreatePolicyMetadata(req *PolicyMetadataCreateRequest) (*Polic
 	}
 
 	// Prepare response including both new and updated records
-	var responseRecords []PolicyMetadataResponse
+	var responseRecords []PolicyResponse
 
 	// Add new records to response
-	for _, pm := range newRecords {
-		responseRecords = append(responseRecords, pm.ToResponse())
+	for _, p := range newRecords {
+		responseRecords = append(responseRecords, p.ToResponse())
 	}
 
 	// Add updated records to response
-	for _, pm := range updatedRecords {
-		responseRecords = append(responseRecords, pm.ToResponse())
+	for _, p := range updatedRecords {
+		responseRecords = append(responseRecords, p.ToResponse())
 	}
 
-	return &PolicyMetadataCreateResponse{
+	return &PolicyCreateResponse{
 		Records: responseRecords,
 	}, nil
 }
 
 // FieldPolicies returns the policies of the named fields, in no particular
-// order, for policy decisions. A key with no policy metadata is left out of the
+// order, for policy decisions. A key with no field policy is left out of the
 // result; the caller decides whether that is an error.
 func (s *Service) FieldPolicies(ctx context.Context, keys []decision.FieldKey) ([]decision.FieldPolicy, error) {
 	fields, err := s.fieldsByKeys(ctx, keys)
@@ -184,9 +186,9 @@ func (s *Service) FieldPolicies(ctx context.Context, keys []decision.FieldKey) (
 	return policies, nil
 }
 
-// fieldsByKeys returns the policy metadata of the named fields, in no
+// fieldsByKeys returns the policies of the named fields, in no
 // particular order.
-func (s *Service) fieldsByKeys(ctx context.Context, keys []decision.FieldKey) ([]PolicyMetadata, error) {
+func (s *Service) fieldsByKeys(ctx context.Context, keys []decision.FieldKey) ([]Policy, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -196,21 +198,21 @@ func (s *Service) fieldsByKeys(ctx context.Context, keys []decision.FieldKey) ([
 		pairs = append(pairs, []any{key.SchemaID, key.FieldName})
 	}
 
-	var fields []PolicyMetadata
+	var fields []Policy
 	if err := s.db.WithContext(ctx).
 		Where("(schema_id, field_name) IN ?", pairs).
 		Find(&fields).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch policy metadata records: %w", err)
+		return nil, fmt.Errorf("failed to fetch field policies: %w", err)
 	}
 	return fields, nil
 }
 
-// ListPolicyMetadata returns policy metadata records, optionally filtered by schema.
-func (s *Service) ListPolicyMetadata(
+// ListPolicies returns field policies, optionally filtered by schema.
+func (s *Service) ListPolicies(
 	schemaID string,
-) (*PolicyMetadataListResponse, error) {
-	var records []PolicyMetadata
-	query := s.db.Model(&PolicyMetadata{})
+) (*PolicyListResponse, error) {
+	var records []Policy
+	query := s.db.Model(&Policy{})
 
 	if schemaID != "" {
 		query = query.Where("schema_id = ?", schemaID)
@@ -219,42 +221,42 @@ func (s *Service) ListPolicyMetadata(
 	if err := query.
 		Order("schema_id ASC, field_name ASC").
 		Find(&records).Error; err != nil {
-		return nil, fmt.Errorf("failed to list policy metadata: %w", err)
+		return nil, fmt.Errorf("failed to list field policies: %w", err)
 	}
 
-	responseRecords := make([]PolicyMetadataResponse, 0, len(records))
+	responseRecords := make([]PolicyResponse, 0, len(records))
 	for i := range records {
 		responseRecords = append(responseRecords, records[i].ToResponse())
 	}
 
-	return &PolicyMetadataListResponse{
+	return &PolicyListResponse{
 		Records: responseRecords,
 	}, nil
 }
 
-// PatchPolicyMetadata updates selected properties of one policy metadata record.
-func (s *Service) PatchPolicyMetadata(
+// PatchPolicy updates selected properties of one field policy.
+func (s *Service) PatchPolicy(
 	id string,
-	req *PolicyMetadataPatchRequest,
-) (*PolicyMetadataResponse, error) {
-	var policyMetadata PolicyMetadata
+	req *PolicyPatchRequest,
+) (*PolicyResponse, error) {
+	var policy Policy
 	updates := make(map[string]any)
 
-	if err := s.db.First(&policyMetadata, "CAST(id AS TEXT) = ?", id).Error; err != nil {
+	if err := s.db.First(&policy, "CAST(id AS TEXT) = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+			return nil, fmt.Errorf("%w: %s", ErrPolicyNotFound, id)
 		}
 
-		return nil, fmt.Errorf("failed to fetch policy metadata: %w", err)
+		return nil, fmt.Errorf("failed to fetch field policy: %w", err)
 	}
 
 	if req.DisplayName.Set {
-		policyMetadata.DisplayName = req.DisplayName.Value
+		policy.DisplayName = req.DisplayName.Value
 		updates["display_name"] = req.DisplayName.Value
 	}
 
 	if req.Description.Set {
-		policyMetadata.Description = req.Description.Value
+		policy.Description = req.Description.Value
 		updates["description"] = req.Description.Value
 	}
 
@@ -263,35 +265,35 @@ func (s *Service) PatchPolicyMetadata(
 	}
 
 	if req.RequiresAllowlist.Set {
-		policyMetadata.RequiresAllowlist = *req.RequiresAllowlist.Value
-		updates["requires_allowlist"] = policyMetadata.RequiresAllowlist
+		policy.RequiresAllowlist = *req.RequiresAllowlist.Value
+		updates["requires_allowlist"] = policy.RequiresAllowlist
 	}
 
 	if req.RequiresConsent.Set {
-		policyMetadata.RequiresConsent = *req.RequiresConsent.Value
-		updates["requires_consent"] = policyMetadata.RequiresConsent
+		policy.RequiresConsent = *req.RequiresConsent.Value
+		updates["requires_consent"] = policy.RequiresConsent
 	}
 
-	policyMetadata.UpdatedAt = time.Now()
-	updates["updated_at"] = policyMetadata.UpdatedAt
+	policy.UpdatedAt = time.Now()
+	updates["updated_at"] = policy.UpdatedAt
 
-	if err := s.db.Model(&policyMetadata).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("failed to update policy metadata: %w", err)
+	if err := s.db.Model(&policy).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("failed to update field policy: %w", err)
 	}
 
-	response := policyMetadata.ToResponse()
+	response := policy.ToResponse()
 	return &response, nil
 }
 
-// DeletePolicyMetadata deletes one policy metadata record by ID.
-func (s *Service) DeletePolicyMetadata(id string) error {
-	result := s.db.Where("CAST(id AS TEXT) = ?", id).Delete(&PolicyMetadata{})
+// DeletePolicy deletes one field policy by ID.
+func (s *Service) DeletePolicy(id string) error {
+	result := s.db.Where("CAST(id AS TEXT) = ?", id).Delete(&Policy{})
 	if result.Error != nil {
-		return fmt.Errorf("failed to delete policy metadata: %w", result.Error)
+		return fmt.Errorf("failed to delete field policy: %w", result.Error)
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+		return fmt.Errorf("%w: %s", ErrPolicyNotFound, id)
 	}
 
 	return nil

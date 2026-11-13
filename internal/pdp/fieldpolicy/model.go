@@ -9,8 +9,8 @@ import (
 	"github.com/openndx/openndx-core/internal/pdp/decision"
 )
 
-// PolicyMetadata represents the policy_metadata table
-type PolicyMetadata struct {
+// Policy is one field's access policy, stored in the policy_metadata table.
+type Policy struct {
 	ID          uuid.UUID `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	SchemaID    string    `gorm:"column:schema_id;type:varchar(255);not null;uniqueIndex:idx_policy_metadata_schema_field;" json:"schemaId"`
 	FieldName   string    `gorm:"column:field_name;type:text;not null;uniqueIndex:idx_policy_metadata_schema_field" json:"fieldName"`
@@ -26,38 +26,38 @@ type PolicyMetadata struct {
 }
 
 // TableName specifies the table name for GORM
-func (PolicyMetadata) TableName() string {
+func (Policy) TableName() string {
 	return "policy_metadata"
 }
 
-// ToResponse converts PolicyMetadata to PolicyMetadataResponse
-func (pm *PolicyMetadata) ToResponse() PolicyMetadataResponse {
-	return PolicyMetadataResponse{
-		ID:                pm.ID.String(),
-		SchemaID:          pm.SchemaID,
-		FieldName:         pm.FieldName,
-		DisplayName:       pm.DisplayName,
-		Description:       pm.Description,
-		Source:            pm.Source,
-		RequiresAllowlist: pm.RequiresAllowlist,
-		RequiresConsent:   pm.RequiresConsent,
-		Owner:             pm.Owner,
-		CreatedAt:         pm.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:         pm.UpdatedAt.Format(time.RFC3339),
+// ToResponse converts Policy to PolicyResponse
+func (p *Policy) ToResponse() PolicyResponse {
+	return PolicyResponse{
+		ID:                p.ID.String(),
+		SchemaID:          p.SchemaID,
+		FieldName:         p.FieldName,
+		DisplayName:       p.DisplayName,
+		Description:       p.Description,
+		Source:            p.Source,
+		RequiresAllowlist: p.RequiresAllowlist,
+		RequiresConsent:   p.RequiresConsent,
+		Owner:             p.Owner,
+		CreatedAt:         p.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         p.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
-// toFieldPolicy converts PolicyMetadata to the policy a decision reads.
-func (pm *PolicyMetadata) toFieldPolicy() decision.FieldPolicy {
+// toFieldPolicy converts Policy to the policy a decision reads.
+func (p *Policy) toFieldPolicy() decision.FieldPolicy {
 	return decision.FieldPolicy{
-		FieldKey: decision.FieldKey{SchemaID: pm.SchemaID, FieldName: pm.FieldName},
+		FieldKey: decision.FieldKey{SchemaID: p.SchemaID, FieldName: p.FieldName},
 		Policy: decision.Field{
-			RequiresAllowlist: pm.RequiresAllowlist,
-			RequiresConsent:   pm.RequiresConsent,
+			RequiresAllowlist: p.RequiresAllowlist,
+			RequiresConsent:   p.RequiresConsent,
 		},
-		DisplayName: pm.DisplayName,
-		Description: pm.Description,
-		Owner:       (*string)(pm.Owner),
+		DisplayName: p.DisplayName,
+		Description: p.Description,
+		Owner:       (*string)(p.Owner),
 	}
 }
 
