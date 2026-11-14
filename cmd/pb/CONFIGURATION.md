@@ -85,7 +85,7 @@ ALTER TABLE members DROP COLUMN IF EXISTS idp_user_id;
 
 ## Build metadata
 
-The Dockerfile sets `main.Version`, `main.BuildTime` and `main.GitCommit` with linker flags from the `BUILD_VERSION`, `BUILD_TIME` and `GIT_COMMIT` build arguments. They appear in the startup log and in `GET /debug`.
+The Dockerfile sets `main.Version`, `main.BuildTime` and `main.GitCommit` with linker flags from the `BUILD_VERSION`, `BUILD_TIME` and `GIT_COMMIT` build arguments. They appear in the startup log.
 
 ## Startup failures
 

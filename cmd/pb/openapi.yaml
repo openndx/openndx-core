@@ -9,7 +9,7 @@ info:
     identity provider (ThunderID is the primary supported provider; other OIDC-compliant IdPs may also be
     configured), enforced by a CORS -> JWT authentication middleware chain and a scope check on each route.
 
-    /health, /debug, and /debug/db are exempt from authentication.
+    /health is exempt from authentication.
 
     ## Authorization  
     Each route requires exactly one OAuth2 scope from the token's `scope` claim, named `<resource>:<action>`:
@@ -155,7 +155,7 @@ paths:
   /health:
     get:
       summary: Health check endpoint
-      description: Reports that the Portal Backend is up. It does not check the database; use /debug/db for that.
+      description: Reports that the Portal Backend is up. It does not check the database.
       operationId: getHealth
       tags:
         - Health
@@ -174,73 +174,6 @@ paths:
                   service:
                     type: string
                     example: portal-backend
-
-  /debug:
-    get:
-      summary: Debug endpoint
-      description: Returns debug information about the Portal Backend
-      operationId: getDebug
-      tags:
-        - Debug
-      security: []
-      responses:
-        '200':
-          description: Debug information
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  debug:
-                    type: string
-                    example: enabled
-                  service:
-                    type: string
-                    example: portal-backend-v1
-                  timestamp:
-                    type: string
-                    format: date-time
-
-  /debug/db:
-    get:
-      summary: Database debug endpoint
-      description: Returns database connection information and pool statistics
-      operationId: getDebugDB
-      tags:
-        - Debug
-      security: []
-      responses:
-        '200':
-          description: Database debug information
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  database:
-                    type: object
-                    properties:
-                      status:
-                        type: string
-                        example: connected
-                      openConnections:
-                        type: integer
-                        example: 5
-                      maxOpenConnections:
-                        type: integer
-                        example: 25
-                      idleConnections:
-                        type: integer
-                        example: 3
-                      waitCount:
-                        type: integer
-                        example: 0
-                      waitDuration:
-                        type: string
-                        example: 0s
-                  timestamp:
-                    type: string
-                    format: date-time
 
   /api/v1/schemas:
     get:
@@ -1837,8 +1770,6 @@ security:
 tags:
   - name: Health
     description: Health check endpoints
-  - name: Debug
-    description: Debug information endpoints
   - name: Members
     description: Member management endpoints
   - name: Schemas
