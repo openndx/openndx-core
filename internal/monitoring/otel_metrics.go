@@ -53,6 +53,7 @@ var (
 	externalCallDuration  metric.Float64Histogram
 	businessEventsCounter metric.Int64Counter
 	metricsHandler        http.Handler
+	meterProvider         *sdkmetric.MeterProvider
 	initialized           int32     // Use atomic int32 for thread-safe reads/writes
 	otelInitOnce          sync.Once // Separate sync.Once for OpenTelemetry initialization
 )
@@ -117,6 +118,41 @@ func Initialize(config Config) error {
 	return initErr
 }
 
+// Shutdown flushes and stops the OpenTelemetry meter provider.
+// Safe to call when metrics were never initialized. Services should call this
+// during graceful shutdown so the final export window is not lost.
+func Shutdown(ctx context.Context) error {
+	if meterProvider == nil {
+		return nil
+	}
+	err := meterProvider.Shutdown(ctx)
+	meterProvider = nil
+	return err
+}
+
+// parseOTLPEndpointHost validates an OTLP endpoint URL and returns host:port for the exporter.
+func parseOTLPEndpointHost(raw string, tlsInsecure bool) (host string, useInsecure bool, err error) {
+	endpointURL, err := url.Parse(raw)
+	if err != nil {
+		return "", false, fmt.Errorf("invalid OTLP endpoint URL: %w", err)
+	}
+	if endpointURL.Scheme != "http" && endpointURL.Scheme != "https" {
+		return "", false, fmt.Errorf("OTLP endpoint must include an http:// or https:// scheme (got: %q)", raw)
+	}
+	if endpointURL.Host == "" {
+		return "", false, fmt.Errorf("OTLP endpoint must include a host (got: %q)", raw)
+	}
+	if endpointURL.Scheme != "https" {
+		if !tlsInsecure {
+			return "", false, fmt.Errorf("OTLP endpoint must use HTTPS (got: %s). Use https:// for secure connections, or set OTEL_EXPORTER_OTLP_INSECURE=true to allow insecure connections (not recommended for production)", endpointURL.Scheme)
+		}
+		slog.Warn("Using insecure HTTP connection for OTLP endpoint (OTEL_EXPORTER_OTLP_INSECURE=true)",
+			"endpoint", raw,
+			"warning", "This disables TLS verification and exposes metrics data in transit")
+	}
+	return endpointURL.Host, tlsInsecure && endpointURL.Scheme == "http", nil
+}
+
 // initializeInternal performs the actual initialization work
 func initializeInternal(ctx context.Context, config Config) error {
 	// Create resource with service name and version
@@ -132,7 +168,6 @@ func initializeInternal(ctx context.Context, config Config) error {
 
 	// Create meter provider based on exporter type
 	var reader sdkmetric.Reader
-	var handler http.Handler
 
 	switch config.ExporterType {
 	case "prometheus", "":
@@ -144,9 +179,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 			return fmt.Errorf("failed to create Prometheus exporter: %w", err)
 		}
 		reader = exporter
-		// Use promhttp.HandlerFor with the custom registry
-		handler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
-		metricsHandler = handler
+		metricsHandler = promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 		slog.Info("Initialized OpenTelemetry metrics with Prometheus exporter",
 			"service", config.ServiceName)
 
@@ -156,37 +189,18 @@ func initializeInternal(ctx context.Context, config Config) error {
 			return fmt.Errorf("OTLP endpoint is required when using OTLP exporter")
 		}
 
-		// Parse endpoint URL
-		endpointURL, err := url.Parse(config.OTLPEndpoint)
+		host, useInsecure, err := parseOTLPEndpointHost(config.OTLPEndpoint, config.OTLPTLSInsecure)
 		if err != nil {
-			return fmt.Errorf("invalid OTLP endpoint URL: %w", err)
+			return err
 		}
 
-		// Security: Require HTTPS by default for all endpoints
-		// Only allow insecure connections if explicitly enabled via OTEL_EXPORTER_OTLP_INSECURE
-		if endpointURL.Scheme != "https" {
-			if !config.OTLPTLSInsecure {
-				return fmt.Errorf("OTLP endpoint must use HTTPS (got: %s). Use https:// for secure connections, or set OTEL_EXPORTER_OTLP_INSECURE=true to allow insecure connections (not recommended for production)", endpointURL.Scheme)
-			}
-			// Insecure connection explicitly enabled via environment variable
-			slog.Warn("Using insecure HTTP connection for OTLP endpoint (OTEL_EXPORTER_OTLP_INSECURE=true)",
-				"endpoint", config.OTLPEndpoint,
-				"warning", "This disables TLS verification and exposes metrics data in transit")
-		}
-
-		// Extract host:port from URL (WithEndpoint expects host:port, not full URL)
-		// The scheme is controlled by WithInsecure() option
+		// WithEndpoint expects host:port; scheme is controlled by WithInsecure().
 		opts := []otlpmetrichttp.Option{
-			otlpmetrichttp.WithEndpoint(endpointURL.Host),
+			otlpmetrichttp.WithEndpoint(host),
 		}
-
-		// Only use WithInsecure() if explicitly enabled via environment variable
-		if config.OTLPTLSInsecure && endpointURL.Scheme == "http" {
+		if useInsecure {
 			opts = append(opts, otlpmetrichttp.WithInsecure())
 		}
-		// For HTTPS endpoints (default), TLS with proper certificate validation is used automatically
-
-		// Add headers if provided
 		if len(config.OTLPHeaders) > 0 {
 			opts = append(opts, otlpmetrichttp.WithHeaders(config.OTLPHeaders))
 		}
@@ -200,7 +214,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 			sdkmetric.WithInterval(15*time.Second))
 		metricsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("# Metrics exported via OTLP\n"))
+			_, _ = w.Write([]byte("# Metrics exported via OTLP\n"))
 		})
 		slog.Info("Initialized OpenTelemetry metrics with OTLP exporter",
 			"service", config.ServiceName,
@@ -212,7 +226,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 		reader = sdkmetric.NewManualReader()
 		metricsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("# Metrics disabled\n"))
+			_, _ = w.Write([]byte("# Metrics disabled\n"))
 		})
 		slog.Info("OpenTelemetry metrics disabled",
 			"service", config.ServiceName)
@@ -228,7 +242,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 	}
 
 	// Create meter provider with custom histogram buckets for all duration metrics
-	meterProvider := sdkmetric.NewMeterProvider(
+	meterProvider = sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(res),
 		sdkmetric.WithReader(reader),
 		sdkmetric.WithView(sdkmetric.NewView(
@@ -249,7 +263,6 @@ func initializeInternal(ctx context.Context, config Config) error {
 		)),
 	)
 
-	// Set global meter provider
 	otel.SetMeterProvider(meterProvider)
 
 	// Create meter
@@ -321,7 +334,7 @@ func otelHandler() http.Handler {
 		// Fallback if not initialized
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("# Metrics not initialized\n"))
+			_, _ = w.Write([]byte("# Metrics not initialized\n"))
 		})
 	}
 	return metricsHandler
