@@ -130,6 +130,23 @@ orchestrationEngine:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
 
+  # /health answers while the process serves. The OE has no database, so it
+  # is also its readiness check.
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -239,6 +256,23 @@ policyDecisionPoint:
       cpu: 500m
       memory: 512Mi
 
+  # /health answers while the process serves; it doesn't check the database
+  # yet, so readiness uses it too until a readiness endpoint exists (#652).
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -327,6 +361,23 @@ consentEngine:
     limits:
       cpu: 500m
       memory: 512Mi
+
+  # /health answers while the process serves; it doesn't check the database
+  # yet, so readiness uses it too until a readiness endpoint exists (#652).
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
 
   nodeSelector: {}
   tolerations: []
@@ -421,6 +472,22 @@ consentPortal:
       cpu: 200m
       memory: 256Mi
 
+  # nginx serves /health itself.
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 15
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -495,6 +562,23 @@ portalBackend:
     limits:
       cpu: 500m
       memory: 512Mi
+
+  # /health answers while the process serves; it doesn't check the database
+  # yet, so readiness uses it too until a readiness endpoint exists (#652).
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
 
   nodeSelector: {}
   tolerations: []

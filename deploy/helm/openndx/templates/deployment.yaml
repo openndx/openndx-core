@@ -1,7 +1,7 @@
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
-{{- if $c.enabled }}
 {{- $v := index $.Values $c.values }}
+{{- if dig "enabled" true $v }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,12 +51,26 @@ spec:
           imagePullPolicy: {{ $v.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ $c.containerPort }}
+              containerPort: {{ include "openndx.containerPort" (dict "root" $ "component" $c) }}
               protocol: TCP
           env:
             {{- range $c.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
+            {{- end }}
+            {{- /* The Consent Portal image reads its config from env vars (until #767). */}}
+            {{- if eq $name "consent-portal" }}
+            {{- $cfg := include "openndx.config" (dict "root" $ "values" $c.values) | fromYaml }}
+            {{- range list
+                  (list "CONSENT_ENGINE_URL" $cfg.consentEngineURL)
+                  (list "IDP_CLIENT_ID" $cfg.idpClientId)
+                  (list "IDP_BASE_URL" $cfg.idpBaseURL)
+                  (list "IDP_SCOPE" $cfg.idpScope)
+                  (list "IDP_SIGN_IN_REDIRECT_URL" $cfg.idpSignInRedirectURL)
+                  (list "IDP_SIGN_OUT_REDIRECT_URL" $cfg.idpSignOutRedirectURL) }}
+            - name: {{ index . 0 }}
+              value: {{ index . 1 | quote }}
+            {{- end }}
             {{- end }}
             {{- /* A plain value, or a map such as {valueFrom: {secretKeyRef: ...}}. */}}
             {{- range $key, $value := $v.env }}
@@ -76,18 +90,14 @@ spec:
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with $v.livenessProbe }}
           livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            {{- toYaml $c.liveness | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $v.readinessProbe }}
           readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml $v.resources | nindent 12 }}
           {{- if $c.configMap }}

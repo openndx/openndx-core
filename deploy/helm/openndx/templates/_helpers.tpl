@@ -63,78 +63,60 @@ Create the name of the service account to use
 
 {{/*
 The services this chart deploys, keyed by the suffix of their resource names
-(<fullname>-<key>). configmap.yaml, deployment.yaml, service.yaml, ingress.yaml
-and hpa.yaml range over this list; read it with:
+(<fullname>-<key>). Every template ranges over this list; read it with:
   include "openndx.components" . | fromYaml
-Every template reads it, so it also runs openndx.validate: a missing required
-value fails the install before anything renders.
+It holds only fixed facts about each service, never user values, so the
+fromYaml round trip can't be broken by a value. The templates read everything
+else, enabled included, from the service's values block.
 Each entry:
-  values         key of the service's block in values.yaml
-  component      app.kubernetes.io/component label and container name
-  enabled        whether the service is deployed
-  configMap      render <values>.config into config.yaml (configmap.yaml), mount
-                 it at /app/config and restart pods when it changes
-  containerPort  the port the container listens on: config.server.port for
-                 the Go services, falling back to service.port
-  env            environment variables the chart sets itself; secrets and
-                 anything else come from <values>.env and <values>.envFrom
-  liveness       liveness probe timings
+  values     key of the service's block in values.yaml
+  component  app.kubernetes.io/component label and container name
+  configMap  render <values>.config into config.yaml (configmap.yaml), mount
+             it at /app/config and restart pods when it changes
+  port       the port the image listens on, for an image that fixes it; the
+             Go services' ports come from their config (openndx.containerPort)
+  env        environment variables the chart always sets; secrets and
+             anything else come from <values>.env and <values>.envFrom
 */}}
 {{- define "openndx.components" -}}
-{{- include "openndx.validate" . }}
 oe:
   values: orchestrationEngine
   component: orchestration-engine
-  enabled: true
   configMap: true
-  containerPort: {{ dig "server" "port" .Values.orchestrationEngine.service.port .Values.orchestrationEngine.config }}
   env:
     - {name: SERVICE_NAME, value: orchestration-engine}
-  liveness: {initialDelaySeconds: 10, periodSeconds: 30, timeoutSeconds: 10}
 pdp:
   values: policyDecisionPoint
   component: policy-decision-point
-  enabled: {{ .Values.policyDecisionPoint.enabled }}
   configMap: true
-  containerPort: {{ dig "server" "port" .Values.policyDecisionPoint.service.port .Values.policyDecisionPoint.config }}
-  liveness: {initialDelaySeconds: 10, periodSeconds: 30, timeoutSeconds: 5}
 ce:
   values: consentEngine
   component: consent-engine
-  enabled: {{ .Values.consentEngine.enabled }}
   configMap: true
-  containerPort: {{ dig "server" "port" .Values.consentEngine.service.port .Values.consentEngine.config }}
-  liveness: {initialDelaySeconds: 10, periodSeconds: 30, timeoutSeconds: 5}
 consent-portal:
   values: consentPortal
   component: consent-portal
-  enabled: {{ .Values.consentPortal.enabled }}
   configMap: false
-  containerPort: 80
-  {{- if .Values.consentPortal.enabled }}
-  {{- with include "openndx.config" (dict "root" . "values" "consentPortal") | fromYaml }}
-  env:
-    - {name: CONSENT_ENGINE_URL, value: {{ .consentEngineURL | quote }}}
-    - {name: IDP_CLIENT_ID, value: {{ .idpClientId | quote }}}
-    - {name: IDP_BASE_URL, value: {{ .idpBaseURL | quote }}}
-    - {name: IDP_SCOPE, value: {{ .idpScope | quote }}}
-    - {name: IDP_SIGN_IN_REDIRECT_URL, value: {{ .idpSignInRedirectURL | quote }}}
-    - {name: IDP_SIGN_OUT_REDIRECT_URL, value: {{ .idpSignOutRedirectURL | quote }}}
-  {{- end }}
-  {{- end }}
-  liveness: {initialDelaySeconds: 5, periodSeconds: 15, timeoutSeconds: 5}
+  port: 80
 pb:
   values: portalBackend
   component: portal-backend
-  enabled: {{ .Values.portalBackend.enabled }}
   configMap: true
-  containerPort: {{ dig "server" "port" .Values.portalBackend.service.port .Values.portalBackend.config }}
-  liveness: {initialDelaySeconds: 10, periodSeconds: 30, timeoutSeconds: 5}
+{{- end }}
+
+{{/*
+The port a service's container listens on: the component's fixed port, else
+config.server.port, else service.port. Takes (dict "root" $ "component" $c).
+*/}}
+{{- define "openndx.containerPort" -}}
+{{- $v := index .root.Values .component.values }}
+{{- .component.port | default (dig "server" "port" $v.service.port ($v.config | default dict)) }}
 {{- end }}
 
 {{/*
 Fails, listing every missing required value at once, when an enabled service's
 config can't be completed (see openndx.config). Renders nothing otherwise.
+validate.yaml runs it, and openndx.config runs it before failing on its own.
 */}}
 {{- define "openndx.validate" -}}
 {{- $errs := dict "list" (list) }}
@@ -169,7 +151,7 @@ checked. configmap.yaml renders it,
 deployment.yaml hashes it, and the Consent Portal's env reads it:
   include "openndx.config" (dict "root" $ "values" "consentEngine") | fromYaml
 A value it can't fill in is added to "errs" ({list: [...]}) when one is passed;
-without one, it fails itself.
+without one, it fails through openndx.validate.
 */}}
 {{- define "openndx.config" -}}
 {{- $root := .root }}
@@ -227,6 +209,8 @@ without one, it fails itself.
 {{- $_ := set $cfg "pdp" (include "openndx.serviceURLInto" (dict "root" $root "block" $pdp "service" "policyDecisionPoint" "name" "pdp" "for" "portalBackend.config.pdp.url" "disabled" "the Portal Backend requires a PDP: enable policyDecisionPoint, or set it to an external PDP's URL" "errs" $errs) | fromYaml) }}
 {{- end }}
 {{- if and (not .errs) $errs.list }}
+{{- /* Report every missing value, not only this service's. */}}
+{{- include "openndx.validate" $root }}
 {{- fail (printf "missing required values:\n  - %s" (join "\n  - " ($errs.list | uniq))) }}
 {{- end }}
 {{- toYaml $cfg }}

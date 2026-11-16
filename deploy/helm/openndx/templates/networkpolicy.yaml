@@ -19,12 +19,12 @@ ingressFrom while any ingress is enabled.
 {{- /* The chart's own services each one is called by. */ -}}
 {{- $callers := dict "pdp" (list "oe" "pb") "ce" (list "oe") }}
 {{- range $name, $c := $components }}
-{{- if $c.enabled }}
 {{- $v := index $.Values $c.values }}
+{{- if dig "enabled" true $v }}
 {{- $peers := list }}
 {{- range get $callers $name | default list }}
 {{- $peer := get $components . }}
-{{- if $peer.enabled }}
+{{- if dig "enabled" true (index $.Values $peer.values) }}
 {{- $peers = append $peers (dict "podSelector" (dict "matchLabels" (merge (include "openndx.selectorLabels" $ | fromYaml) (dict "app.kubernetes.io/component" $peer.component)))) }}
 {{- end }}
 {{- end }}
@@ -54,7 +54,7 @@ spec:
     - Ingress
   ingress:
     - ports:
-        - port: {{ $c.containerPort }}
+        - port: {{ include "openndx.containerPort" (dict "root" $ "component" $c) }}
           protocol: TCP
       {{- if $restricted }}
       {{- /* Never empty here: the OE, which calls the PDP and Consent Engine, is always deployed. An empty from would allow everyone. */}}
