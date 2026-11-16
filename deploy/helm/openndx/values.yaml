@@ -458,10 +458,13 @@ portalBackend:
     enabled: false
     className: ""
     annotations: {}
+    # Routes only the API (/api/v1), which is all clients call. Avoid widening
+    # it (to / for example): that would also expose /health and any other
+    # route outside the API, such as /debug and /debug/db in v0.6.x.
     hosts:
       - host: pb.openndx.local
         paths:
-          - path: /
+          - path: /api/v1
             pathType: Prefix
     tls: []
 
