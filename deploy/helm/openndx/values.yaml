@@ -298,10 +298,13 @@ consentEngine:
     enabled: false
     className: ""
     annotations: {}
+    # Routes only the public API (/api/v1), which the Consent Portal calls
+    # from the browser. Avoid widening it (to / for example): that would also
+    # expose /internal/api/v1, which has no authentication, and /metrics.
     hosts:
       - host: consent-api.openndx.local
         paths:
-          - path: /
+          - path: /api/v1
             pathType: Prefix
     tls: []
 

@@ -6,8 +6,11 @@ Argus are all outside the chart.
   Consent Engine  the OE, plus networkPolicy.ingressFrom while its ingress is on
   others          networkPolicy.ingressFrom when it is set, else anyone
 The PDP's API and the Consent Engine's /internal API have no authentication
-and rely on this. openndx.validate requires ingressFrom while any ingress is
-enabled.
+and rely on this inside the cluster. A NetworkPolicy can't filter by path, so
+the ingress controller, once allowed in, reaches every Consent Engine route:
+from outside, /internal stays off only while the Consent Engine's ingress
+routes /api/v1 alone, as it does by default. openndx.validate requires
+ingressFrom while any ingress is enabled.
 */ -}}
 {{- if .Values.networkPolicy.enabled }}
 {{- $fullname := include "openndx.fullname" . }}

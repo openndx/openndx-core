@@ -170,7 +170,7 @@ orchestrationEngine:
 consentEngine:
   ingress:
     enabled: true
-    hosts: [{host: consent-api.example.org, paths: [{path: /, pathType: Prefix}]}]
+    hosts: [{host: consent-api.example.org, paths: [{path: /api/v1, pathType: Prefix}]}]
     tls: [{hosts: [consent-api.example.org], secretName: consent-api-tls}]
 
 consentPortal:
@@ -202,6 +202,8 @@ The PDP's API (including `POST /api/v1/policy/grants`) and the Consent Engine's 
 The policies only limit inbound traffic. Egress stays open, since PostgreSQL, ThunderID, the providers and Argus are all outside the chart. NetworkPolicies take effect only when the cluster's network plugin enforces them (Calico, Cilium and most managed Kubernetes do); otherwise they are ignored. Set `networkPolicy.enabled=false` when the cluster manages network policy another way.
 
 A NetworkPolicy works per port, not per URL path. Anything allowed to reach the Consent Engine, the ingress controller included, can reach its `/internal` API, so keep `ingressFrom` as narrow as the ingress controller.
+
+From outside the cluster, the `/internal` API is kept off by the ingress itself: by default, the Consent Engine's ingress routes only the public API, `/api/v1`, which is all the Consent Portal calls. Avoid widening its paths. A path of `/` would also route `/internal/api/v1`, which has no authentication, and `/metrics` to the internet.
 
 ## Usage
 
