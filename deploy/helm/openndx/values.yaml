@@ -92,6 +92,8 @@ orchestrationEngine:
     runAsUser: 1000
     runAsGroup: 1000
     fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -215,6 +217,8 @@ policyDecisionPoint:
     runAsNonRoot: true
     runAsUser: 10001
     fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -287,6 +291,8 @@ consentEngine:
     runAsNonRoot: true
     runAsUser: 10001
     fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -381,7 +387,12 @@ consentPortal:
 
   podAnnotations: {}
   podLabels: {}
-  podSecurityContext: {}
+  # RuntimeDefault seccomp only: the nginx image runs as root and its
+  # entrypoint writes config.js into the image, so the rest of the hardening
+  # the Go services get waits on an unprivileged image.
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
   securityContext: {}
 
   service:
@@ -447,6 +458,8 @@ portalBackend:
     runAsNonRoot: true
     runAsUser: 10001
     fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
