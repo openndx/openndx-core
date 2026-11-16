@@ -132,6 +132,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Readiness: the service is ready when its database answers.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - openndx-network
@@ -164,6 +171,13 @@ services:
         condition: service_healthy
       thunderid:
         condition: service_healthy
+    # Readiness: the service is ready when its database answers.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - openndx-network
@@ -240,7 +254,7 @@ services:
       # on the host (resolves host.docker.internal on Linux too).
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4000/health/readiness"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -278,6 +292,13 @@ services:
         condition: service_healthy
       thunderid:
         condition: service_healthy
+    # Readiness: the service is ready when its database answers.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8083/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - openndx-network

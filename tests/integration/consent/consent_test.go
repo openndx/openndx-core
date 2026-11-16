@@ -60,7 +60,7 @@ type UpdateConsentResponse struct {
 
 func TestMain(m *testing.M) {
 	// Wait for consent engine service availability
-	if err := testutils.WaitForService(consentBaseURL+"/health", 30); err != nil {
+	if err := testutils.WaitForService(consentBaseURL+"/health/readiness", 30); err != nil {
 		fmt.Printf("Consent Engine service not available: %v\n", err)
 		os.Exit(1)
 	}
@@ -326,6 +326,19 @@ func TestConsent_HealthCheck(t *testing.T) {
 
 	// Health check should return 200 OK
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Health check should return 200 OK")
+}
+
+// TestConsent_ReadinessCheck tests the readiness endpoint
+func TestConsent_ReadinessCheck(t *testing.T) {
+	resp, err := http.Get(consentBaseURL + "/health/readiness")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Readiness check should return 200 OK when the database answers")
+
+	var body map[string]string
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, "ok", body["status"])
 }
 
 // TestConsent_PortalRoutesRequireAuthentication checks that every consent

@@ -207,9 +207,9 @@ func TestMain(m *testing.M) {
 		name string
 		url  string
 	}{
-		{"Orchestration Engine", "http://127.0.0.1:4000/health"},
-		{"Policy Decision Point", "http://127.0.0.1:8082/health"},
-		{"Consent Engine", "http://127.0.0.1:8081/health"},
+		{"Orchestration Engine", "http://127.0.0.1:4000/health/readiness"},
+		{"Policy Decision Point", "http://127.0.0.1:8082/health/readiness"},
+		{"Consent Engine", "http://127.0.0.1:8081/health/readiness"},
 		{"Mock provider and token issuer", mockIdPURL + "/jwks"},
 	}
 
@@ -942,7 +942,7 @@ func TestGraphQLFlow_ServiceTimeout(t *testing.T) {
 		if err := unpauseCmd.Run(); err != nil {
 			t.Logf("Failed to unpause PDP container during cleanup: %v", err)
 		}
-		testutils.WaitForService(pdpURL+"/health", 10)
+		testutils.WaitForService(pdpURL+"/health/readiness", 10)
 	})
 
 	time.Sleep(servicePauseDelay)

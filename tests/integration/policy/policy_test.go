@@ -144,7 +144,7 @@ type PolicyDecisionResponse struct {
 
 func TestMain(m *testing.M) {
 	// Wait for PDP service availability
-	if err := testutils.WaitForService(pdpBaseURL+"/health", 30); err != nil {
+	if err := testutils.WaitForService(pdpBaseURL+"/health/readiness", 30); err != nil {
 		fmt.Printf("Policy Decision Point service not available: %v\n", err)
 		os.Exit(1)
 	}
