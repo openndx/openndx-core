@@ -71,6 +71,33 @@ func HealthHandler(serviceName string) http.HandlerFunc {
 	}
 }
 
+// ReadinessTimeout bounds a readiness check. A probe has to answer fast, even
+// when the dependency it checks hangs.
+const ReadinessTimeout = 2 * time.Second
+
+// ReadinessHandler creates a readiness check handler. The handler calls ping
+// with a short timeout to learn whether the service can serve requests. A nil
+// ping means the service has no dependency to check, so the handler always
+// reports ready.
+//
+// A failed ping is logged on the server side and answered with 503. The
+// response never carries the error, the host name or any other internal
+// detail.
+func ReadinessHandler(ping func(context.Context) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if ping != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), ReadinessTimeout)
+			defer cancel()
+			if err := ping(ctx); err != nil {
+				slog.ErrorContext(r.Context(), "Readiness check failed", "error", err)
+				RespondWithJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+				return
+			}
+		}
+		RespondWithJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	}
+}
+
 // PanicRecoveryMiddleware provides panic recovery for HTTP handlers
 func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -101,7 +101,11 @@ func run() error {
 	mux := http.NewServeMux()
 	// Consumer endpoint: requires a token the IdP issued for OE's audience.
 	mux.Handle("POST /public/graphql", authnManager.RequireAuthMiddleware()(federator.Handler(federationObject)))
+	// Health check endpoints. Liveness answers for the process alone. The
+	// Orchestration Engine owns no database, so it is ready as soon as it runs.
 	mux.Handle("GET /health", utils.HealthHandler("orchestration-engine"))
+	mux.Handle("GET /health/liveness", utils.HealthHandler("orchestration-engine"))
+	mux.Handle("GET /health/readiness", utils.ReadinessHandler(nil))
 
 	httpServer := utils.CreateServer(&utils.ServerConfig{
 		Port:         strconv.Itoa(config.Server.Port),

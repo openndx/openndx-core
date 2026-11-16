@@ -157,7 +157,11 @@ func main() {
 	// requests, which no apiMux route matches.
 	mux := http.NewServeMux()
 
+	// Health check endpoints. Liveness answers for the process alone, readiness
+	// for the service and its database.
 	mux.Handle("GET /health", utils.HealthHandler("portal-backend"))
+	mux.Handle("GET /health/liveness", utils.HealthHandler("portal-backend"))
+	mux.Handle("GET /health/readiness", utils.ReadinessHandler(sqlDB.PingContext))
 
 	mux.Handle("/api/v1/", cors.CORS(&cfg.CORS)(authnManager.RequireAuthMiddleware()(caller.Middleware(memberService.MemberIDByOuID)(apiMux))))
 
