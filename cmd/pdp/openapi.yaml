@@ -39,6 +39,42 @@ paths:
                   status:
                     type: string
                     example: healthy
+  /health/liveness:
+    get:
+      summary: Liveness Check
+      description: Reports that the process is running. It does not check the database.
+      operationId: livenessCheck
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /health/readiness:
+    get:
+      summary: Readiness Check
+      description: Reports that the service can serve requests. It pings the database with a two second timeout.
+      operationId: readinessCheck
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Service is not ready. The database did not answer in time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
   /api/v1/policy/decide:
     post:
       summary: Make Policy Decision
@@ -361,6 +397,24 @@ paths:
 
 components:
   schemas:
+    HealthResponse:
+      type: object
+      properties:
+        service:
+          type: string
+          example: "policy-decision-point"
+        status:
+          type: string
+          example: healthy
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - unavailable
+          example: ok
     PolicyDecisionRequest:
       type: object
       required:
