@@ -162,8 +162,10 @@ config can't be completed (see openndx.config). Renders nothing otherwise.
 
 {{/*
 A service's config as the chart renders it: <values>.config, with each public
-URL that is left empty filled in from global.idpPublicURL or an ingress, and
-the values that have no default checked. configmap.yaml renders it,
+URL that is left empty filled in from global.idpPublicURL or an ingress, each
+URL of another chart service that is left out filled in from the release's
+Service names (openndx.serviceURLInto), and the values that have no default
+checked. configmap.yaml renders it,
 deployment.yaml hashes it, and the Consent Portal's env reads it:
   include "openndx.config" (dict "root" $ "values" "consentEngine") | fromYaml
 A value it can't fill in is added to "errs" ({list: [...]}) when one is passed;
@@ -185,6 +187,13 @@ without one, it fails itself.
 {{- $schema := $cfg.schemaPath | default "schema.graphql" }}
 {{- if and (not (isAbs $schema)) (not (index ($root.Values.orchestrationEngine.configFiles | default dict) $schema)) }}
 {{- $_ := set $errs "list" (append $errs.list (printf "orchestrationEngine.configFiles.%s: the consumer GraphQL schema named by config.schemaPath, e.g. --set-file 'orchestrationEngine.configFiles.%s=schema.graphql'" $schema (replace "." "\\." $schema))) }}
+{{- end }}
+{{- /* pdp.url "" switches off authorization and consent, so the Consent Engine is only needed while it isn't. */}}
+{{- $pdp := $cfg.pdp | default dict }}
+{{- $authz := or (not (hasKey $pdp "url")) (not (empty $pdp.url)) }}
+{{- $_ := set $cfg "pdp" (include "openndx.serviceURLInto" (dict "root" $root "block" $pdp "service" "policyDecisionPoint" "name" "pdp" "for" "orchestrationEngine.config.pdp.url" "disabled" "set it to an external PDP, or to \"\" to switch off authorization and consent" "errs" $errs) | fromYaml) }}
+{{- if $authz }}
+{{- $_ := set $cfg "consentEngine" (include "openndx.serviceURLInto" (dict "root" $root "block" ($cfg.consentEngine | default dict) "service" "consentEngine" "name" "ce" "path" "/internal/api/v1" "for" "orchestrationEngine.config.consentEngine.url" "disabled" "set it to an external Consent Engine's /internal/api/v1, or set orchestrationEngine.config.pdp.url to \"\" to switch off authorization and consent" "errs" $errs) | fromYaml) }}
 {{- end }}
 {{- end }}
 {{- if eq $key "consentEngine" }}
@@ -211,6 +220,11 @@ without one, it fails itself.
 {{- if not (dig "cors" "allowedOrigins" (list) $cfg) }}
 {{- $_ := set $errs "list" (append $errs.list "portalBackend.config.cors.allowedOrigins: the browser origins allowed to call Portal Backend, which refuses to start without one") }}
 {{- end }}
+{{- $pdp := $cfg.pdp | default dict }}
+{{- if and (hasKey $pdp "url") (empty $pdp.url) }}
+{{- $_ := set $errs "list" (append $errs.list "portalBackend.config.pdp.url: must not be empty, since the Portal Backend requires a PDP; leave it out to use the chart's PDP, or set an external PDP's URL") }}
+{{- end }}
+{{- $_ := set $cfg "pdp" (include "openndx.serviceURLInto" (dict "root" $root "block" $pdp "service" "policyDecisionPoint" "name" "pdp" "for" "portalBackend.config.pdp.url" "disabled" "the Portal Backend requires a PDP: enable policyDecisionPoint, or set it to an external PDP's URL" "errs" $errs) | fromYaml) }}
 {{- end }}
 {{- if and (not .errs) $errs.list }}
 {{- fail (printf "missing required values:\n  - %s" (join "\n  - " ($errs.list | uniq))) }}
@@ -228,6 +242,26 @@ nothing and adds it to "errs".
 {{- else }}
 {{- $_ := set .errs "list" (append .errs.list "global.idpPublicURL: ThunderID's public URL (its configuration.server.publicUrl), which fills in every config.idp.issuer and the Consent Portal's idpBaseURL") }}
 {{- end }}
+{{- end }}
+
+{{/*
+A config block ("block", e.g. the OE's pdp) as YAML, with "url" set to the
+in-cluster URL of the chart's own Service for "service" (its values key; "name"
+is its component key, "path" an optional suffix) when "url" is left out. A url
+that is set, "" included, is kept. When "url" is left out and the service is
+disabled, adds "for" and the "disabled" hint to "errs".
+*/}}
+{{- define "openndx.serviceURLInto" -}}
+{{- $block := deepCopy .block }}
+{{- if not (hasKey $block "url") }}
+{{- $v := index .root.Values .service }}
+{{- if dig "enabled" true $v }}
+{{- $_ := set $block "url" (printf "http://%s-%s:%v%s" (include "openndx.fullname" .root) .name $v.service.port (.path | default "")) }}
+{{- else }}
+{{- $_ := set .errs "list" (append .errs.list (printf "%s: %s is disabled, so the chart can't fill it in; %s" .for .service .disabled)) }}
+{{- end }}
+{{- end }}
+{{- toYaml $block }}
 {{- end }}
 
 {{/*

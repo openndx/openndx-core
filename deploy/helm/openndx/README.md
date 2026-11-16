@@ -20,11 +20,9 @@ All components are configured from [`values.yaml`](./values.yaml):
 
 ### Service configuration
 
-Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`. The only exception is the deployment's public URLs: when left empty, the chart fills them in (see [Required values](#required-values)). Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
+Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`. The only exceptions are the deployment's public URLs, which the chart fills in when left empty, and the URLs one service uses to call another, which it fills in when left out (see [Required values](#required-values)). Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
 
 Keep `config` non-secret. A secret goes in as a `"{{env:NAME}}"` placeholder, which the service resolves at startup from its environment (see [Secrets](#secrets)).
-
-The default in-cluster URLs (`http://openndx-pdp:8082`, `http://openndx-ce:8081/internal/api/v1`) assume the release is named `openndx`. With another release name, or with a service disabled, update the URLs that point at it.
 
 ## Prerequisites
 
@@ -135,6 +133,16 @@ The chart ships no URLs for the deployment's public addresses or for anything it
 
 A derived URL is the first host of that service's ingress, with `https` when the host is listed under the ingress's `tls`, and `http` otherwise. It is only derived when that service is enabled and its ingress is turned on; otherwise, set the value itself. A value you set always wins.
 
+The URLs one service uses to call another are left out of `values.yaml`, and the chart fills each in with the release's own Service while that service is enabled, whatever the release is named:
+
+| Value | Filled in with | When its service is disabled |
+|---|---|---|
+| `orchestrationEngine.config.pdp.url` | `http://<fullname>-pdp:8082` | Set it to an external PDP, or to `""` to switch off authorization and consent. |
+| `orchestrationEngine.config.consentEngine.url` | `http://<fullname>-ce:8081/internal/api/v1` | Set it to an external Consent Engine. Not needed while the Orchestration Engine's `pdp.url` is `""`. |
+| `portalBackend.config.pdp.url` | `http://<fullname>-pdp:8082` | Set it to an external PDP. The Portal Backend requires one, so `""` fails too. |
+
+`<fullname>` is the prefix of every resource the chart creates: `fullnameOverride` when set, otherwise `<release>-openndx`, or just the release name when it already contains `openndx`. The port is the service's `service.port`. A value you set, `""` included, is used as-is. Left out with its service disabled, the install fails rather than calling a Service that doesn't exist, so switching off authorization is always an explicit `pdp.url: ""`.
+
 The chart deploys no data providers. List yours under `orchestrationEngine.config.providers`, one per schema ID the consumer schema's `@sourceInfo` uses ([PROVIDER_CONFIGURATION.md](../../../cmd/oe/PROVIDER_CONFIGURATION.md)), with any `argMappings` they need. With none listed, the Orchestration Engine starts, but every provider field comes back `null` with a `PROVIDER_ERROR`.
 
 ```yaml
@@ -218,7 +226,7 @@ helm upgrade --install openndx ./deploy/helm/openndx \
 
 ### Deploy only Orchestration Engine (minimal / stateless mode)
 
-With the PDP and Consent Engine disabled, set the Orchestration Engine's `pdp.url` and `consentEngine.url` to `""` so it skips policy and consent checks. It still needs the IdP URL, the consumer schema and, to return any data, its providers:
+With the PDP and Consent Engine disabled, set the Orchestration Engine's `pdp.url` to `""` so it skips policy and consent checks; the chart then needs no `consentEngine.url`. The Portal Backend requires a PDP, so it is disabled too. It still needs the IdP URL, the consumer schema and, to return any data, its providers:
 
 ```bash
 helm upgrade --install openndx ./deploy/helm/openndx \
@@ -230,8 +238,7 @@ helm upgrade --install openndx ./deploy/helm/openndx \
   --set consentEngine.enabled=false \
   --set consentPortal.enabled=false \
   --set portalBackend.enabled=false \
-  --set orchestrationEngine.config.pdp.url="" \
-  --set orchestrationEngine.config.consentEngine.url=""
+  --set orchestrationEngine.config.pdp.url=""
 ```
 
 ### Validate templates locally

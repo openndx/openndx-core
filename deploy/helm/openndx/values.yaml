@@ -27,9 +27,10 @@
 # resolves at startup, with NAME set through the service's env (usually a
 # valueFrom secretKeyRef).
 #
-# The in-cluster URLs below (http://openndx-pdp:8082, ...) assume the release
-# is named "openndx". For any other release name, or when a service is
-# disabled, update the URLs that point at it.
+# The URLs one service uses to call another (the OE's pdp.url and
+# consentEngine.url, the Portal Backend's pdp.url) are left out: the chart
+# fills each in from the release's Service name while that service is enabled.
+# Set one to call a service outside the chart.
 
 nameOverride: ""
 fullnameOverride: ""
@@ -159,12 +160,14 @@ orchestrationEngine:
       # not a URL to reach.
       audience: http://api.openndx.local
       insecureSkipTLSVerify: false
-    # The OE skips authorization and consent when pdp.url is empty; set both
-    # URLs to "" when the PDP and Consent Engine are disabled.
-    pdp:
-      url: http://openndx-pdp:8082
-    consentEngine:
-      url: http://openndx-ce:8081/internal/api/v1
+    # pdp.url and consentEngine.url are left out, so the chart fills them in
+    # with its own PDP and Consent Engine (http://<fullname>-pdp:8082,
+    # http://<fullname>-ce:8081/internal/api/v1). The install fails
+    # when one is left out and its service is disabled. Set a URL to use one
+    # outside the chart, or pdp.url: "" to switch off authorization and
+    # consent, which also makes consentEngine.url unnecessary:
+    # pdp:
+    #   url: ""
     # Auditing is off while url is empty. To turn it on, set url and
     # apiKey: "{{env:ARGUS_API_KEY}}".
     audit:
@@ -496,7 +499,9 @@ portalBackend:
   envFrom: []
 
   # config.yaml. See cmd/pb/config.example.yaml. The Portal Backend requires
-  # the PDP: pdp.url must point at a running one.
+  # a PDP: pdp.url is left out, so the chart fills it in with its own
+  # (http://<fullname>-pdp:8082). With policyDecisionPoint disabled,
+  # set pdp.url to an external PDP; otherwise the install fails.
   config:
     server:
       port: 8083
@@ -527,8 +532,6 @@ portalBackend:
         # its public URL; it is not a URL to reach.
         resource: https://localhost:8090/mcp
         dataConsumerRoleID: "01900000-0000-7000-8000-000000000092"
-    pdp:
-      url: http://openndx-pdp:8082
     # Auditing is off while url is empty. To turn it on, set url and
     # apiKey: "{{env:ARGUS_API_KEY}}".
     audit:
