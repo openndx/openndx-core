@@ -213,6 +213,12 @@ A NetworkPolicy works per port, not per URL path. Anything allowed to reach the 
 
 From outside the cluster, the `/internal` API is kept off by the ingress itself: by default, the Consent Engine's ingress routes only the public API, `/api/v1`, which is all the Consent Portal calls. Avoid widening its paths. A path of `/` would also route `/internal/api/v1`, which has no authentication, and `/metrics` to the internet.
 
+## Pod security
+
+The Orchestration Engine, PDP, Consent Engine and Portal Backend meet the Kubernetes Pod Security Standards "restricted" profile by default: they run as a non-root user, with privilege escalation off, every capability dropped, and the `RuntimeDefault` seccomp profile.
+
+The Consent Portal doesn't yet. Its image runs nginx as root on port 80 and writes `config.js` into its own filesystem at startup, so the chart sets only `seccompProfile: RuntimeDefault` for it. In a namespace that enforces "restricted", its pod is rejected; enforce `baseline` there instead (`pod-security.kubernetes.io/enforce: baseline`), which it meets. This lasts until the image runs unprivileged ([#767](https://github.com/openndx/openndx-core/issues/767)).
+
 ## Usage
 
 ### Deploy the full OpenNDX stack
