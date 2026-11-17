@@ -48,14 +48,17 @@ global:
 # NetworkPolicies limiting inbound traffic to each service's port. The PDP's API
 # and the Consent Engine's /internal API have no authentication and rely on
 # them: the PDP accepts only the OE and Portal Backend, the Consent Engine only
-# the OE and, while its ingress is on, ingressFrom. They take effect only where
-# the cluster's network plugin enforces NetworkPolicy. Egress is not limited.
+# the OE and, while its ingress is on, ingressFrom. Any other caller of a
+# service goes in that service's networkPolicy.extraFrom. They take effect only
+# where the cluster's network plugin enforces NetworkPolicy. Egress is not
+# limited.
 networkPolicy:
   enabled: true
   # Where the ingress controller's pods run, as NetworkPolicy `from` peers.
-  # Required while any service's ingress is enabled. When set, the OE, Portal
-  # Backend and Consent Portal accept only these peers; when empty, anyone.
-  # For example:
+  # Required while any service's ingress is enabled, and added only to the
+  # policies of services whose ingress is enabled. Don't list other callers
+  # here: they would reach every exposed service, the Consent Engine's
+  # /internal API included. For example:
   #   - namespaceSelector:
   #       matchLabels:
   #         kubernetes.io/metadata.name: ingress-nginx
@@ -115,6 +118,13 @@ orchestrationEngine:
           - path: /
             pathType: Prefix
     tls: []
+
+  # Callers allowed in by this service's NetworkPolicy besides the chart's own
+  # and, while the ingress is on, networkPolicy.ingressFrom: NetworkPolicy
+  # `from` peers, such as in-cluster clients or a monitoring scraper's
+  # namespace. With none of these, and the ingress off, anyone is allowed.
+  networkPolicy:
+    extraFrom: []
 
   resources:
     requests:
@@ -248,6 +258,13 @@ policyDecisionPoint:
     type: ClusterIP
     port: 8082
 
+  # Callers allowed in besides the OE and Portal Backend, as NetworkPolicy
+  # `from` peers, such as an external Portal Backend or a monitoring scraper.
+  # The PDP's API has no authentication: anything listed here can change
+  # access grants.
+  networkPolicy:
+    extraFrom: []
+
   resources:
     requests:
       cpu: 100m
@@ -353,6 +370,13 @@ consentEngine:
           - path: /api/v1
             pathType: Prefix
     tls: []
+
+  # Callers allowed in besides the OE and, while the ingress is on,
+  # networkPolicy.ingressFrom, as NetworkPolicy `from` peers, such as a
+  # monitoring scraper. The /internal API has no authentication: anything
+  # listed here can read and create consents.
+  networkPolicy:
+    extraFrom: []
 
   resources:
     requests:
@@ -464,6 +488,13 @@ consentPortal:
             pathType: Prefix
     tls: []
 
+  # Callers allowed in by this service's NetworkPolicy besides the chart's own
+  # and, while the ingress is on, networkPolicy.ingressFrom: NetworkPolicy
+  # `from` peers, such as in-cluster clients or a monitoring scraper's
+  # namespace. With none of these, and the ingress off, anyone is allowed.
+  networkPolicy:
+    extraFrom: []
+
   resources:
     requests:
       cpu: 50m
@@ -554,6 +585,13 @@ portalBackend:
           - path: /api/v1
             pathType: Prefix
     tls: []
+
+  # Callers allowed in by this service's NetworkPolicy besides the chart's own
+  # and, while the ingress is on, networkPolicy.ingressFrom: NetworkPolicy
+  # `from` peers, such as in-cluster clients or a monitoring scraper's
+  # namespace. With none of these, and the ingress off, anyone is allowed.
+  networkPolicy:
+    extraFrom: []
 
   resources:
     requests:

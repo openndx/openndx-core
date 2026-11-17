@@ -203,13 +203,28 @@ The PDP's API (including `POST /api/v1/policy/grants`) and the Consent Engine's 
 |---|---|
 | Policy Decision Point | The Orchestration Engine and Portal Backend |
 | Consent Engine | The Orchestration Engine, plus `networkPolicy.ingressFrom` while its ingress is enabled |
-| Orchestration Engine, Portal Backend, Consent Portal | `networkPolicy.ingressFrom` when it is set; anyone when it is empty |
+| Orchestration Engine, Portal Backend, Consent Portal | `networkPolicy.ingressFrom` while its ingress is enabled; anyone when it has no ingress and no `extraFrom` |
 
-`networkPolicy.ingressFrom` is a list of NetworkPolicy `from` peers for the ingress controller, typically a `namespaceSelector` for its namespace. It is required while any ingress is enabled: without it, the Consent Engine couldn't be reached through its ingress. Anything else that calls these services, such as a monitoring scraper or a `LoadBalancer` Service, has to be added to it too.
+Each service also accepts the peers in its own `<service>.networkPolicy.extraFrom`.
+
+`networkPolicy.ingressFrom` is a list of NetworkPolicy `from` peers for the ingress controller, typically a `namespaceSelector` for its namespace. It is required while any ingress is enabled, and added only to the policies of the services whose ingress is enabled. Keep it to the ingress controller: whatever it lists can reach every exposed service, the Consent Engine's unauthenticated `/internal` API included.
+
+Any other caller, such as a monitoring scraper, an in-cluster consumer of a service that also has an ingress, or a `LoadBalancer` Service, goes in that service's `networkPolicy.extraFrom`, which lets it into that service alone. For example, to let Prometheus scrape the Orchestration Engine:
+
+```yaml
+orchestrationEngine:
+  networkPolicy:
+    extraFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: monitoring
+```
+
+A service with an ingress accepts only the ingress controller and its `extraFrom`, so list its in-cluster clients there. The PDP's and Consent Engine's `extraFrom` open APIs that have no authentication; add to them only what must call those APIs.
 
 The policies only limit inbound traffic. Egress stays open, since PostgreSQL, ThunderID, the providers and Argus are all outside the chart. NetworkPolicies take effect only when the cluster's network plugin enforces them (Calico, Cilium and most managed Kubernetes do); otherwise they are ignored. Set `networkPolicy.enabled=false` when the cluster manages network policy another way.
 
-A NetworkPolicy works per port, not per URL path. Anything allowed to reach the Consent Engine, the ingress controller included, can reach its `/internal` API, so keep `ingressFrom` as narrow as the ingress controller.
+A NetworkPolicy works per port, not per URL path. Anything allowed to reach the Consent Engine, the ingress controller and its `extraFrom` included, can reach its `/internal` API, so keep both as narrow as they can be.
 
 From outside the cluster, the `/internal` API is kept off by the ingress itself: by default, the Consent Engine's ingress routes only the public API, `/api/v1`, which is all the Consent Portal calls. Avoid widening its paths. A path of `/` would also route `/internal/api/v1`, which has no authentication, and `/metrics` to the internet.
 

@@ -1,10 +1,12 @@
 {{- /*
 One NetworkPolicy per enabled service, limiting inbound traffic to its
 container port. Egress is left open: PostgreSQL, ThunderID, the providers and
-Argus are all outside the chart.
-  PDP             the OE and Portal Backend only
-  Consent Engine  the OE, plus networkPolicy.ingressFrom while its ingress is on
-  others          networkPolicy.ingressFrom when it is set, else anyone
+Argus are all outside the chart. Each service accepts:
+  the chart's own callers  PDP: the OE and Portal Backend; Consent Engine: the OE
+  the ingress controller   networkPolicy.ingressFrom, while its own ingress is on
+  other callers            <service>.networkPolicy.extraFrom, for it alone
+A service with none of these, which only the OE, Portal Backend and Consent
+Portal can be, accepts anyone.
 The PDP's API and the Consent Engine's /internal API have no authentication
 and rely on this inside the cluster. A NetworkPolicy can't filter by path, so
 the ingress controller, once allowed in, reaches every Consent Engine route:
@@ -28,15 +30,14 @@ ingressFrom while any ingress is enabled.
 {{- $peers = append $peers (dict "podSelector" (dict "matchLabels" (merge (include "openndx.selectorLabels" $ | fromYaml) (dict "app.kubernetes.io/component" $peer.component)))) }}
 {{- end }}
 {{- end }}
-{{- $restricted := hasKey $callers $name }}
-{{- if eq $name "ce" }}
+{{- /* The ingress controller, only while this service's own ingress is on. */}}
 {{- if dig "ingress" "enabled" false $v }}
 {{- $peers = concat $peers $ingressFrom }}
 {{- end }}
-{{- else if not $restricted }}
-{{- $peers = $ingressFrom }}
-{{- $restricted = not (empty $ingressFrom) }}
-{{- end }}
+{{- /* Other callers of this service only. */}}
+{{- $peers = concat $peers (dig "networkPolicy" "extraFrom" (list) $v) }}
+{{- /* The PDP and Consent Engine always list the OE, which is always deployed; another service with no peers stays open. */}}
+{{- $restricted := or (hasKey $callers $name) (not (empty $peers)) }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
