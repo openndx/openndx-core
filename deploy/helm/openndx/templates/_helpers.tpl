@@ -105,6 +105,16 @@ pb:
 {{- end }}
 
 {{/*
+"true" when a service is deployed, else empty. Takes (dict "root" $ "values"
+<values key>). The Orchestration Engine is the core component and always
+deployed: any orchestrationEngine.enabled is ignored. The NetworkPolicies rely
+on this, since the OE is an allowed caller of every restricted service.
+*/}}
+{{- define "openndx.enabled" -}}
+{{- if or (eq .values "orchestrationEngine") (dig "enabled" true (index .root.Values .values)) }}true{{ end }}
+{{- end }}
+
+{{/*
 The port a service's container listens on: the component's fixed port, else
 config.server.port, else service.port. Takes (dict "root" $ "component" $c).
 */}}
@@ -121,7 +131,7 @@ validate.yaml runs it, and openndx.config runs it before failing on its own.
 {{- define "openndx.validate" -}}
 {{- $errs := dict "list" (list) }}
 {{- range list "orchestrationEngine" "consentEngine" "consentPortal" "portalBackend" }}
-{{- if dig "enabled" true (index $.Values .) }}
+{{- if include "openndx.enabled" (dict "root" $ "values" .) }}
 {{- $_ := include "openndx.config" (dict "root" $ "values" . "errs" $errs) }}
 {{- end }}
 {{- end }}
@@ -129,7 +139,7 @@ validate.yaml runs it, and openndx.config runs it before failing on its own.
 {{- $exposed := list }}
 {{- range list "orchestrationEngine" "consentEngine" "consentPortal" "portalBackend" }}
 {{- $v := index $.Values . }}
-{{- if and (dig "enabled" true $v) (dig "ingress" "enabled" false $v) }}
+{{- if and (include "openndx.enabled" (dict "root" $ "values" .)) (dig "ingress" "enabled" false $v) }}
 {{- $exposed = append $exposed (printf "%s.ingress" .) }}
 {{- end }}
 {{- end }}

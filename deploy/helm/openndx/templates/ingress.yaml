@@ -1,7 +1,7 @@
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
 {{- $v := index $.Values $c.values }}
-{{- if and (dig "enabled" true $v) (dig "ingress" "enabled" false $v) }}
+{{- if and (include "openndx.enabled" (dict "root" $ "values" $c.values)) (dig "ingress" "enabled" false $v) }}
 {{- $ingress := $v.ingress }}
 ---
 apiVersion: networking.k8s.io/v1

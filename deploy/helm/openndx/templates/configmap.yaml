@@ -8,7 +8,7 @@ service resolves them at startup.
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
 {{- $v := index $.Values $c.values }}
-{{- if and (dig "enabled" true $v) $c.configMap }}
+{{- if and (include "openndx.enabled" (dict "root" $ "values" $c.values)) $c.configMap }}
 ---
 apiVersion: v1
 kind: ConfigMap

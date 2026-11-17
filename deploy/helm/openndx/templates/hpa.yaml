@@ -1,7 +1,7 @@
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
 {{- $v := index $.Values $c.values }}
-{{- if and (dig "enabled" true $v) (dig "autoscaling" "enabled" false $v) }}
+{{- if and (include "openndx.enabled" (dict "root" $ "values" $c.values)) (dig "autoscaling" "enabled" false $v) }}
 {{- $autoscaling := $v.autoscaling }}
 ---
 apiVersion: autoscaling/v2

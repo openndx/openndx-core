@@ -20,11 +20,11 @@ ingressFrom while any ingress is enabled.
 {{- $callers := dict "pdp" (list "oe" "pb") "ce" (list "oe") }}
 {{- range $name, $c := $components }}
 {{- $v := index $.Values $c.values }}
-{{- if dig "enabled" true $v }}
+{{- if include "openndx.enabled" (dict "root" $ "values" $c.values) }}
 {{- $peers := list }}
 {{- range get $callers $name | default list }}
 {{- $peer := get $components . }}
-{{- if dig "enabled" true (index $.Values $peer.values) }}
+{{- if include "openndx.enabled" (dict "root" $ "values" $peer.values) }}
 {{- $peers = append $peers (dict "podSelector" (dict "matchLabels" (merge (include "openndx.selectorLabels" $ | fromYaml) (dict "app.kubernetes.io/component" $peer.component)))) }}
 {{- end }}
 {{- end }}

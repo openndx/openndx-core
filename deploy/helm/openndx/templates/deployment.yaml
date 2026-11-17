@@ -1,7 +1,7 @@
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
 {{- $v := index $.Values $c.values }}
-{{- if dig "enabled" true $v }}
+{{- if include "openndx.enabled" (dict "root" $ "values" $c.values) }}
 ---
 apiVersion: apps/v1
 kind: Deployment
