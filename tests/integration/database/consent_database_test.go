@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"github.com/OpenNDX/openndx-core/tests/integration/testutils"
+	"github.com/openndx/openndx-core/tests/integration/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

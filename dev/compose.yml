@@ -1,7 +1,7 @@
 # Local dev/demo data providers for the Orchestration Engine.
 #
-# This brings up the mock member services published by the opendif-farajaland
-# reference implementation (https://github.com/LSFLK/opendif-farajaland) so
+# This brings up the mock member services published by the openndx-farajaland
+# reference implementation (https://github.com/openndx/openndx-farajaland) so
 # `oe` has real providers to federate against. It depends only on their
 # published images, not on that repo being checked out locally.
 #

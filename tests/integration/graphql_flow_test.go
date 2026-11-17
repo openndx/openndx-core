@@ -20,7 +20,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/OpenNDX/openndx-core/tests/integration/testutils"
+	"github.com/openndx/openndx-core/tests/integration/testutils"
 )
 
 func getConsentDB(t *testing.T) *gorm.DB {

@@ -10,7 +10,7 @@ schemas, granting application policy, citizen consent approval, and checking the
 returned DRP/RGD data.
 
 The services are the DRP and RGD mocks from the
-[opendif-farajaland](https://github.com/LSFLK/opendif-farajaland) reference
+[openndx-farajaland](https://github.com/openndx/openndx-farajaland) reference
 country implementation. We depend only on their **published Docker images**,
 not on that repo being checked out next to this one, so this works for anyone
 who clones just `openndx` — no sibling checkout, no path coupling.
@@ -150,7 +150,7 @@ docker compose -f dev/compose.yml down
 
 ## Pinning versions
 
-Image tags default to `v0.1.0` (matches `opendif-farajaland/members/run-member-services.sh`).
+Image tags default to `v0.1.0` (matches `openndx-farajaland/members/run-member-services.sh`).
 Override with env vars if needed:
 
 ```bash

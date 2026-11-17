@@ -420,23 +420,15 @@ Grafana queries Prometheus via PromQL to create dashboards:
 
 Services automatically initialize OpenTelemetry metrics when first used. No explicit initialization needed.
 
-1. **For Exchange Services** - Use shared monitoring package:
+1. **Use the shared monitoring package** in the service's `cmd/<svc>/main.go`, as `cmd/ce/main.go` does:
    ```go
-   import "github.com/OpenNDX/openndx-core/exchange/shared/monitoring"
+   import "github.com/openndx/openndx-core/internal/monitoring"
    
    mux.Handle("/metrics", monitoring.Handler())
    handler := monitoring.HTTPMetricsMiddleware(mux)
    ```
 
-2. **For Portal Backend** - Use middleware package:
-   ```go
-   import v1middleware "github.com/OpenNDX/openndx-core/portal-backend/v1/middleware"
-   
-   topLevelMux.Handle("/metrics", v1middleware.MetricsHandler())
-   topLevelMux.Handle("/api/v1/", v1middleware.MetricsMiddleware(handler))
-   ```
-
-3. **Add service to Prometheus configuration:**
+2. **Add service to Prometheus configuration:**
    Edit `prometheus/prometheus.yml`:
    ```yaml
    - job_name: your-service
@@ -449,7 +441,7 @@ Services automatically initialize OpenTelemetry metrics when first used. No expl
            port: 'PORT'
    ```
 
-4. **Ensure service is on `openndx-network`:**
+3. **Ensure service is on `openndx-network`:**
    In your service's `compose.yml`:
    ```yaml
    services:
