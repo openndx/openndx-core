@@ -1,0 +1,67 @@
+{{- /*
+One NetworkPolicy per enabled service, limiting inbound traffic to its
+container port. Egress is left open: PostgreSQL, ThunderID, the providers and
+Argus are all outside the chart. Each service accepts:
+  the chart's own callers  PDP: the OE and Portal Backend; Consent Engine: the OE
+  the ingress controller   networkPolicy.ingressFrom, while its own ingress is on
+  other callers            <service>.networkPolicy.extraFrom, for it alone
+A service with none of these, which only the OE, Portal Backend and Consent
+Portal can be, accepts anyone.
+The PDP's API and the Consent Engine's /internal API have no authentication
+and rely on this inside the cluster. A NetworkPolicy can't filter by path, so
+the ingress controller, once allowed in, reaches every Consent Engine route:
+from outside, /internal stays off only while the Consent Engine's ingress
+routes /api/v1 alone, as it does by default. openndx.validate requires
+ingressFrom while any ingress is enabled.
+*/ -}}
+{{- if .Values.networkPolicy.enabled }}
+{{- $fullname := include "openndx.fullname" . }}
+{{- $components := include "openndx.components" . | fromYaml }}
+{{- $ingressFrom := .Values.networkPolicy.ingressFrom | default list }}
+{{- /* The chart's own services each one is called by. */ -}}
+{{- $callers := dict "pdp" (list "oe" "pb") "ce" (list "oe") }}
+{{- range $name, $c := $components }}
+{{- $v := index $.Values $c.values }}
+{{- if include "openndx.enabled" (dict "root" $ "values" $c.values) }}
+{{- $peers := list }}
+{{- range get $callers $name | default list }}
+{{- $peer := get $components . }}
+{{- if include "openndx.enabled" (dict "root" $ "values" $peer.values) }}
+{{- $peers = append $peers (dict "podSelector" (dict "matchLabels" (merge (include "openndx.selectorLabels" $ | fromYaml) (dict "app.kubernetes.io/component" $peer.component)))) }}
+{{- end }}
+{{- end }}
+{{- /* The ingress controller, only while this service's own ingress is on. */}}
+{{- if dig "ingress" "enabled" false $v }}
+{{- $peers = concat $peers $ingressFrom }}
+{{- end }}
+{{- /* Other callers of this service only. */}}
+{{- $peers = concat $peers (dig "networkPolicy" "extraFrom" (list) $v) }}
+{{- /* The PDP and Consent Engine always list the OE, which is always deployed; another service with no peers stays open. */}}
+{{- $restricted := or (hasKey $callers $name) (not (empty $peers)) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-{{ $name }}
+  labels:
+    {{- include "openndx.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $c.component }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openndx.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $c.component }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: {{ include "openndx.containerPort" (dict "root" $ "component" $c) }}
+          protocol: TCP
+      {{- if $restricted }}
+      {{- /* Never empty here: the OE, which calls the PDP and Consent Engine, is always deployed. An empty from would allow everyone. */}}
+      from:
+        {{- toYaml $peers | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
