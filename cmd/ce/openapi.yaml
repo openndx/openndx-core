@@ -9,21 +9,28 @@ info:
     
     ### External APIs (Authorization Required)
     User-facing endpoints protected by Bearer Token authentication:
-    - Health check endpoint
     - List the authenticated owner's consents (self-service approval)
     - Get consent details (owner verification required)
     - Update consent status (owner verification required)
-    
+
     ### Internal APIs (No Authorization Required)
     Service-to-service endpoints for internal communication:
-    - Health check endpoint
-    - Query consents by owner email or owner ID
+    - Get the consent for an owner ID and application ID
     - Create consent records
-    
+
+    ### Operational endpoints (No Authorization Required)
+    - Health check
+    - Prometheus metrics
+
     ## Authorization
     External APIs require a Bearer token in the Authorization header. The system verifies that:
     - The token is valid
-    - The email from the decoded token matches the consent owner's email
+    - The value of the configured subject claim (`idp.subjectClaim`, default `sub`) matches the consent's `ownerId`
+
+    Requests with a method a path doesn't support get a plain-text `405` from the router, with one
+    exception: the router matches `HEAD` to the `GET` routes, so a `HEAD` request reaches the
+    handler (after authentication on `/api/v1/*`), which answers with a JSON `405` and code
+    `METHOD_NOT_ALLOWED`.
   version: 1.0.0
   contact:
     name: OpenNDX Team
@@ -68,6 +75,22 @@ paths:
                   service: consent-engine
                   status: healthy
 
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Exposes the service's metrics in the Prometheus text exposition format for scraping. Answers any method.
+      operationId: getMetrics
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Metrics in Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
   # External APIs (Authorization Required)
   /api/v1/consents:
     get:
@@ -83,7 +106,7 @@ paths:
 
         **Authorization:** Requires Bearer Token
 
-        **Ownership Scoping:** Only consents whose owner_id matches the subject (UID) from the decoded token are returned. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
+        **Ownership Scoping:** Only consents whose owner_id matches the subject (UID) from the decoded token are returned. The token claim that carries the UID is configurable (`idp.subjectClaim`, default `sub`).
 
         Pending and approved consents of the owner whose deadline has passed are marked `expired` before listing.
       operationId: listConsents
@@ -169,7 +192,7 @@ paths:
         
         **Authorization:** Requires Bearer Token
         
-        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
+        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`idp.subjectClaim`, default `sub`).
       operationId: getConsent
       tags:
         - External
@@ -223,6 +246,16 @@ paths:
                 error:
                   code: "CONSENT_NOT_FOUND"
                   message: "Consent not found"
+        '408':
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "INTERNAL_ERROR"
+                  message: "Request timeout or cancelled"
         '500':
           description: Internal server error
           content:
@@ -241,7 +274,7 @@ paths:
 
         **Authorization:** Requires Bearer Token
 
-        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`IDP_SUBJECT_CLAIM`, default `sub`).
+        **Ownership Verification:** The consent owner_id must match the subject (UID) from the decoded token. The token claim that carries the UID is configurable (`idp.subjectClaim`, default `sub`).
 
         **Valid Actions:**
         - `approve` - Approve the consent request
@@ -346,16 +379,6 @@ paths:
                 error:
                   code: "CONSENT_NOT_FOUND"
                   message: "Consent not found"
-        '405':
-          description: Method not allowed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error:
-                  code: "METHOD_NOT_ALLOWED"
-                  message: "Method not allowed"
         '409':
           description: Conflict - the consent is not in a state the action applies to
           content:
@@ -462,17 +485,7 @@ paths:
               example:
                 error:
                   code: "CONSENT_NOT_FOUND"
-                  message: "consent record not found"
-        '405':
-          description: Method not allowed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error:
-                  code: "METHOD_NOT_ALLOWED"
-                  message: "Method not allowed"
+                  message: "consent record not found: record not found"
         '408':
           description: Request timeout
           content:
@@ -498,10 +511,18 @@ paths:
       summary: Create Consent Record
       description: |
         Creates a consent record for a data owner based on the provided consent requirement.
-        
+
         **Request Body:** Contains application information and consent requirement for the owner.
-        
-        **Response:** Returns the created consent record in internal view format.
+
+        **Existing consents:** If the owner already has a `pending` or `approved` consent for the
+        application, and it covers exactly the requested fields, that consent is returned
+        unchanged, so the response can already be `approved`. If its fields differ, it is revoked
+        and a new consent is created in the same transaction.
+
+        **Response:** Returns the created or existing consent record in internal view format.
+
+        **Errors:** Database failures while looking up or saving the consent are currently
+        returned as `400 BAD_REQUEST`, not `500`.
       operationId: createConsent
       tags:
         - Internal
@@ -514,13 +535,13 @@ paths:
               $ref: '#/components/schemas/CreateConsentRequest'
       responses:
         '201':
-          description: Consent record created successfully
+          description: Consent record created, or an existing matching consent returned
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConsentResponseInternalView'
         '400':
-          description: Bad request - invalid request body or validation error
+          description: Bad request - invalid request body, validation error, or a database failure (see the operation description)
           content:
             application/json:
               schema:
@@ -537,17 +558,7 @@ paths:
                   value:
                     error:
                       code: "BAD_REQUEST"
-                      message: "failed to create consent record: validation failed"
-        '405':
-          description: Method not allowed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error:
-                  code: "METHOD_NOT_ALLOWED"
-                  message: "Method not allowed"
+                      message: "failed to create consent record: appId is required"
         '408':
           description: Request timeout
           content:
@@ -577,8 +588,8 @@ components:
       bearerFormat: JWT
       description: |
         Access token from the identity provider, signed with RS256, RS384 or RS512 by a key
-        in `IDP_JWKS_URL`, issued by `IDP_ISSUER` for `IDP_AUDIENCE`, unexpired, and carrying
-        `sub`, `client_id` and the claim named by `IDP_SUBJECT_CLAIM` (default `sub`), whose
+        in `idp.jwksURL`, issued by `idp.issuer` for `idp.audience`, unexpired, and carrying
+        `sub`, `client_id` and the claim named by `idp.subjectClaim` (default `sub`), whose
         value identifies the data owner.
 
         Example: `Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...`
@@ -649,13 +660,14 @@ components:
           example: "Your legal full name as it appears on official documents"
         owner:
           type: string
-          enum: [citizen]
-          description: The type of owner for this field
+          description: |
+            The type of owner for this field. The only type in use is `citizen`. CE stores the
+            value as sent and compares it when matching an existing consent, but doesn't check
+            it, so a response can carry any string, including an empty one.
           example: "citizen"
       required:
         - fieldName
         - schemaId
-        - owner
 
     ConsentRequirement:
       type: object
@@ -663,7 +675,7 @@ components:
       properties:
         owner:
           type: string
-          description: The owner type (e.g., "citizen")
+          description: The owner type (e.g., "citizen"). Not checked by CE.
           example: "citizen"
         ownerId:
           type: string
@@ -671,11 +683,11 @@ components:
           example: "user123"
         fields:
           type: array
+          minItems: 1
           description: List of fields requiring consent
           items:
             $ref: '#/components/schemas/ConsentField'
       required:
-        - owner
         - ownerId
         - fields
 
@@ -698,23 +710,20 @@ components:
         grantDuration:
           type: string
           nullable: true
+          enum: [PT1H, PT6H, PT12H, P1D, P7D, P30D, "", null]
           description: |
-            ISO 8601 duration format for how long the consent grant is valid.
-            If not provided, defaults to PT1H (1 hour).
-            
-            Examples:
-            - PT1H: 1 hour
-            - PT6H: 6 hours
-            - PT12H: 12 hours
-            - P1D: 1 day
-            - P7D: 7 days
-            - P30D: 30 days
+            How long the consent grant is valid once approved, as one of these ISO 8601
+            durations: 1 hour, 6 hours, 12 hours, 1 day, 7 days or 30 days. Any other value
+            gets `400`. If omitted or empty, defaults to `PT1H` (1 hour).
           example: "P30D"
         consentType:
           type: string
           enum: [realtime, offline]
           nullable: true
-          description: The type of consent mechanism. If not provided, defaults to "realtime"
+          description: |
+            The type of consent mechanism. If not provided, defaults to `realtime`. A `realtime`
+            consent stays pending for 1 hour and an `offline` one for 1 day. CE does not reject
+            other values yet: it stores them and gives them the 1-hour pending window.
           example: "realtime"
       required:
         - appId
@@ -955,6 +964,8 @@ components:
               description: Machine-readable error code
               enum:
                 - CONSENT_NOT_FOUND
+                - CONSENT_NOT_PENDING
+                - CONSENT_NOT_REVOCABLE
                 - INTERNAL_ERROR
                 - BAD_REQUEST
                 - UNAUTHORIZED

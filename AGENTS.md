@@ -51,4 +51,4 @@ A consumer sends one GraphQL query to the **Orchestration Engine**. For every re
 
 - Commit and PR titles are conventional commits with a scope, `!` for breaking changes, e.g. `refactor(pdp,pb)!: ...`. PR bodies use `.github/pull_request_template.md` with every section kept.
 - Branches are `<type>/<issue#>-<slug>`. Work happens on forks; PRs target `openndx/openndx-core` `main`.
-- Each service has an `openapi.yaml` and README in `cmd/<svc>`; update them with API changes.
+- Each service has an `openapi.yaml` and README in `cmd/<svc>`. Keep the `openapi.yaml` current: any change to a route, request or response body, query parameter, status code, error code, required scope or validation rule updates the spec in the same PR. The spec describes what the code does; where they disagree and the code is wrong, file an issue rather than documenting the intended behaviour as if it shipped.
