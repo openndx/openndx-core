@@ -22,7 +22,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 func insertField(t *testing.T, db *gorm.DB, schemaID, fieldName string, requiresAllowlist, requiresConsent bool) {
 	t.Helper()
 	require.NoError(t, db.Exec(
-		`INSERT INTO policy_metadata (id, schema_id, field_name, source, requires_allowlist, requires_consent)
+		`INSERT INTO field_policies (id, schema_id, field_name, source, requires_allowlist, requires_consent)
 			VALUES (?, ?, ?, 'primary', ?, ?)`,
 		uuid.NewString(), schemaID, fieldName, requiresAllowlist, requiresConsent,
 	).Error)

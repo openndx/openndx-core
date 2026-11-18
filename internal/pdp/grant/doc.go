@@ -4,6 +4,6 @@
 //
 // Handler serves /api/v1/policy/grants. Service.ActiveGrants implements
 // decision.GrantReader, the port policy decisions read grants through. To
-// check the fields it grants, the package reads policy_metadata through its
+// check the fields it grants, the package reads field_policies through its
 // own minimal model, so it does not depend on fieldpolicy.
 package grant

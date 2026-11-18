@@ -16,7 +16,27 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
-CREATE TABLE IF NOT EXISTS policy_metadata (
+-- Databases created before the rename hold field policies in policy_metadata.
+-- Rename the table, its primary key and its unique index in place, before the
+-- CREATE TABLE below, so an existing database keeps its rows and grants
+-- instead of getting a second, empty table. The access_grants foreign key
+-- follows the rename. Each step runs only when the old name exists and the
+-- new one doesn't, so re-running changes nothing.
+DO $$ BEGIN
+    IF to_regclass('policy_metadata') IS NOT NULL AND to_regclass('field_policies') IS NULL THEN
+        ALTER TABLE policy_metadata RENAME TO field_policies;
+    END IF;
+    IF to_regclass('policy_metadata_pkey') IS NOT NULL AND to_regclass('field_policies_pkey') IS NULL THEN
+        ALTER INDEX policy_metadata_pkey RENAME TO field_policies_pkey;
+    END IF;
+    IF to_regclass('idx_policy_metadata_schema_field') IS NOT NULL
+        AND to_regclass('idx_field_policies_schema_field') IS NULL THEN
+        ALTER INDEX idx_policy_metadata_schema_field RENAME TO idx_field_policies_schema_field;
+    END IF;
+END $$;
+
+-- The access policy of one field of a schema
+CREATE TABLE IF NOT EXISTS field_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schema_id VARCHAR(255) NOT NULL,
     field_name TEXT NOT NULL,
@@ -33,11 +53,11 @@ CREATE TABLE IF NOT EXISTS policy_metadata (
 );
 
 -- One policy record per field of a schema
-CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_metadata_schema_field
-    ON policy_metadata(schema_id, field_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_field_policies_schema_field
+    ON field_policies(schema_id, field_name);
 
 -- One application's access to one field. Revoked grants are kept as a record.
--- Deleting a field's policy metadata deletes its grants.
+-- Deleting a field's policy deletes its grants.
 --
 -- A consent bypass grant lets the application read a field that asks for the
 -- owner's consent without asking. It records the legal basis for it.
@@ -54,7 +74,7 @@ CREATE TABLE IF NOT EXISTS access_grants (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT access_grants_field_fkey FOREIGN KEY (schema_id, field_name)
-        REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE,
+        REFERENCES field_policies(schema_id, field_name) ON DELETE CASCADE,
     -- A bypass grant always records its legal basis
     CONSTRAINT access_grants_bypass_check CHECK (NOT consent_bypass OR legal_basis IS NOT NULL)
 );

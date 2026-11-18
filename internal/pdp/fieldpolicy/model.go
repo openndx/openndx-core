@@ -9,11 +9,11 @@ import (
 	"github.com/openndx/openndx-core/internal/pdp/decision"
 )
 
-// Policy is one field's access policy, stored in the policy_metadata table.
+// Policy is one field's access policy, stored in the field_policies table.
 type Policy struct {
 	ID          uuid.UUID `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	SchemaID    string    `gorm:"column:schema_id;type:varchar(255);not null;uniqueIndex:idx_policy_metadata_schema_field;" json:"schemaId"`
-	FieldName   string    `gorm:"column:field_name;type:text;not null;uniqueIndex:idx_policy_metadata_schema_field" json:"fieldName"`
+	SchemaID    string    `gorm:"column:schema_id;type:varchar(255);not null;uniqueIndex:idx_field_policies_schema_field;" json:"schemaId"`
+	FieldName   string    `gorm:"column:field_name;type:text;not null;uniqueIndex:idx_field_policies_schema_field" json:"fieldName"`
 	DisplayName *string   `gorm:"column:display_name;type:text" json:"displayName,omitempty"`
 	Description *string   `gorm:"column:description;type:text" json:"description,omitempty"`
 	Source      Source    `gorm:"column:source;type:source_enum;not null;default:'fallback'" json:"source"`
@@ -27,7 +27,7 @@ type Policy struct {
 
 // TableName specifies the table name for GORM
 func (Policy) TableName() string {
-	return "policy_metadata"
+	return "field_policies"
 }
 
 // ToResponse converts Policy to PolicyResponse

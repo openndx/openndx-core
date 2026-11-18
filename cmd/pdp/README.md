@@ -18,7 +18,7 @@ flowchart LR
 | Orchestration Engine | `POST /api/v1/policy/decide` before every federated query |
 | Portal Backend | metadata and access grant endpoints, when schemas and applications are approved or edited |
 
-Each field's `policy_metadata` record has two flags, `requiresAllowlist` and `requiresConsent`. The decision comes from those flags and the application's grant in `access_grants` (see [POLICY_MODEL.md](POLICY_MODEL.md)).
+Each field's `field_policies` record has two flags, `requiresAllowlist` and `requiresConsent`. The decision comes from those flags and the application's grant in `access_grants` (see [POLICY_MODEL.md](POLICY_MODEL.md)).
 
 ## Quick start
 

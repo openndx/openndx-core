@@ -57,7 +57,7 @@ func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 	db := testutils.SetupPDPDB(t)
 	if db != nil {
 		var count int64
-		db.Table("policy_metadata").Where("schema_id = ?", schemaID).Count(&count)
+		db.Table("field_policies").Where("schema_id = ?", schemaID).Count(&count)
 		assert.Equal(t, int64(0), count, "Transaction should have been rolled back, no records should exist")
 	}
 
@@ -143,7 +143,7 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	db := testutils.SetupPDPDB(t)
 	if db != nil {
 		var count int64
-		db.Table("policy_metadata").Where("schema_id = ? AND field_name = ?", schemaID, fieldName).Count(&count)
+		db.Table("field_policies").Where("schema_id = ? AND field_name = ?", schemaID, fieldName).Count(&count)
 		assert.Equal(t, int64(1), count, "Should have exactly one record, no duplicates")
 	}
 

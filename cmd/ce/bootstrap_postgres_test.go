@@ -120,7 +120,7 @@ func TestBootstrapConsentDatabase(t *testing.T) {
 	}
 
 	// The other services' databases get their schemas too.
-	for database, table := range map[string]string{"pdp": "policy_metadata", "portal_backend": "members"} {
+	for database, table := range map[string]string{"pdp": "field_policies", "portal_backend": "members"} {
 		targetCfg := adminCfg.Copy()
 		targetCfg.Database = database
 		target := stdlib.OpenDB(*targetCfg)
