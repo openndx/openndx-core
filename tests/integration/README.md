@@ -88,13 +88,13 @@ the root development stack.
 ### GraphQL Flow Tests
 
 **`TestGraphQLFlow_SuccessPath`** - Complete success path:
-- Creates policy metadata in PDP
+- Creates a field policy in PDP
 - Adds application to allowlist
 - Creates consent record
 - Executes GraphQL query
 - Verifies PDP and Consent Engine integration
 
-**`TestGraphQLFlow_MissingPolicyMetadata`** - Tests behavior when field lacks policy metadata (expects authorization error)
+**`TestGraphQLFlow_MissingFieldPolicy`** - Tests behavior when field lacks a field policy (expects authorization error)
 
 **`TestGraphQLFlow_UnauthorizedApp`** - Tests behavior when app has no consent (expects consent error)
 
@@ -160,7 +160,7 @@ docker compose -f docker-compose.test.yml down -v
 ### Run Specific Test
 ```bash
 go test -v -run TestGraphQLFlow_SuccessPath
-go test -v -run TestGraphQLFlow_MissingPolicyMetadata
+go test -v -run TestGraphQLFlow_MissingFieldPolicy
 ```
 
 ### Run with Verbose Output
@@ -230,7 +230,7 @@ lsof -i :5432  # PostgreSQL
 
 Tests cover:
 - ✅ Complete GraphQL request/response flow
-- ✅ Policy metadata and allowlist management
+- ✅ Field policy and allowlist management
 - ✅ Consent creation and validation
 - ✅ Authorization failures (missing metadata, unauthorized app)
 - ✅ Service resilience (timeout scenarios)

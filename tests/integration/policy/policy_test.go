@@ -25,8 +25,8 @@ func generateTestID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().Unix())
 }
 
-// cleanupPolicyMetadata removes policy metadata from the database
-func cleanupPolicyMetadata(t *testing.T, schemaID string) {
+// cleanupFieldPolicies removes field policies from the database
+func cleanupFieldPolicies(t *testing.T, schemaID string) {
 	cleanup := testutils.WithTestDBEnv(t, testutils.DBConfig{
 		Port:     "5433",
 		Database: "policy_db",
@@ -41,7 +41,7 @@ func cleanupPolicyMetadata(t *testing.T, schemaID string) {
 
 // Request/Response types matching PDP API
 
-type PolicyMetadataCreateRequestRecord struct {
+type FieldPolicyCreateRequestRecord struct {
 	FieldName         string  `json:"fieldName"`
 	DisplayName       *string `json:"displayName,omitempty"`
 	Description       *string `json:"description,omitempty"`
@@ -56,12 +56,12 @@ func flag(b bool) *bool {
 	return &b
 }
 
-type PolicyMetadataCreateRequest struct {
-	SchemaID string                              `json:"schemaId"`
-	Records  []PolicyMetadataCreateRequestRecord `json:"records"`
+type FieldPolicyCreateRequest struct {
+	SchemaID string                           `json:"schemaId"`
+	Records  []FieldPolicyCreateRequestRecord `json:"records"`
 }
 
-type PolicyMetadataResponse struct {
+type FieldPolicyResponse struct {
 	ID                string                 `json:"id"`
 	SchemaID          string                 `json:"schemaId"`
 	FieldName         string                 `json:"fieldName"`
@@ -76,8 +76,8 @@ type PolicyMetadataResponse struct {
 	UpdatedAt         string                 `json:"updatedAt"`
 }
 
-type PolicyMetadataCreateResponse struct {
-	Records []PolicyMetadataResponse `json:"records"`
+type FieldPolicyCreateResponse struct {
+	Records []FieldPolicyResponse `json:"records"`
 }
 
 type AccessGrantCreateRequestRecord struct {
@@ -153,15 +153,15 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// TestPolicy_CreateMetadata tests creating policy metadata via HTTP API
-func TestPolicy_CreateMetadata(t *testing.T) {
+// TestPolicy_CreateFieldPolicies tests creating field policies via HTTP API
+func TestPolicy_CreateFieldPolicies(t *testing.T) {
 	schemaID := generateTestID("test-schema")
 	displayName := "Full Name"
 	description := "The full name of the person"
 
-	req := PolicyMetadataCreateRequest{
+	req := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				DisplayName:       &displayName,
@@ -175,13 +175,13 @@ func TestPolicy_CreateMetadata(t *testing.T) {
 	reqBody, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	assert.Equal(t, http.StatusCreated, resp.StatusCode, "Expected 201 Created")
 
-	var createResponse PolicyMetadataCreateResponse
+	var createResponse FieldPolicyCreateResponse
 	err = json.NewDecoder(resp.Body).Decode(&createResponse)
 	require.NoError(t, err)
 
@@ -191,27 +191,27 @@ func TestPolicy_CreateMetadata(t *testing.T) {
 	assert.True(t, createResponse.Records[0].RequiresAllowlist)
 	assert.False(t, createResponse.Records[0].RequiresConsent)
 
-	// Cleanup: Remove created policy metadata
+	// Cleanup: Remove created field policies
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
-// TestPolicy_CreateMetadata_InvalidJSON tests invalid JSON handling
-func TestPolicy_CreateMetadata_InvalidJSON(t *testing.T) {
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBufferString("invalid json"))
+// TestPolicy_CreateFieldPolicies_InvalidJSON tests invalid JSON handling
+func TestPolicy_CreateFieldPolicies_InvalidJSON(t *testing.T) {
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBufferString("invalid json"))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected 400 Bad Request for invalid JSON")
 }
 
-// TestPolicy_CreateMetadata_MissingSchemaID tests validation error for missing schemaId
+// TestPolicy_CreateFieldPolicies_MissingSchemaID tests validation error for missing schemaId
 // The handler validates empty schemaId and returns 400 Bad Request.
-func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
-	req := PolicyMetadataCreateRequest{
+func TestPolicy_CreateFieldPolicies_MissingSchemaID(t *testing.T) {
+	req := FieldPolicyCreateRequest{
 		SchemaID: "", // Missing schemaId
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				Source:            "primary",
@@ -223,7 +223,7 @@ func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 	reqBody, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -241,11 +241,11 @@ func TestPolicy_CreateMetadata_MissingSchemaID(t *testing.T) {
 
 // TestPolicy_AccessGrants tests granting, listing and revoking access via HTTP API
 func TestPolicy_AccessGrants(t *testing.T) {
-	// First, create policy metadata
+	// First, create field policies
 	schemaID := generateTestID("test-schema-allowlist")
-	req := PolicyMetadataCreateRequest{
+	req := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				Source:            "primary",
@@ -257,7 +257,7 @@ func TestPolicy_AccessGrants(t *testing.T) {
 	reqBody, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -327,7 +327,7 @@ func TestPolicy_AccessGrants(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
@@ -342,14 +342,14 @@ func TestPolicy_CreateAccessGrants_InvalidJSON(t *testing.T) {
 
 // TestPolicy_GetPolicyDecision tests policy decision via HTTP API
 func TestPolicy_GetPolicyDecision(t *testing.T) {
-	// First, create policy metadata and add to allow list
+	// First, create field policies and add to allow list
 	schemaID := generateTestID("test-schema-decide")
 	appID := generateTestID("test-app-decide")
 
 	// Create metadata
-	createReq := PolicyMetadataCreateRequest{
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				Source:            "primary",
@@ -361,7 +361,7 @@ func TestPolicy_GetPolicyDecision(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -416,19 +416,19 @@ func TestPolicy_GetPolicyDecision(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
 // TestPolicy_GetPolicyDecision_Unauthorized tests policy decision for unauthorized app
 func TestPolicy_GetPolicyDecision_Unauthorized(t *testing.T) {
-	// Create policy metadata but don't add app to allow list
+	// Create field policies but don't add app to allow list
 	schemaID := generateTestID("test-schema-unauth")
 	appID := generateTestID("test-app-unauth")
 
-	createReq := PolicyMetadataCreateRequest{
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				Source:            "primary",
@@ -440,7 +440,7 @@ func TestPolicy_GetPolicyDecision_Unauthorized(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -478,7 +478,7 @@ func TestPolicy_GetPolicyDecision_Unauthorized(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
@@ -513,16 +513,16 @@ func TestPolicy_GetPolicyDecision_MissingApplicationID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected 400 Bad Request for missing applicationId")
 }
 
-// TestPolicy_UpdateMetadata tests updating existing policy metadata
-func TestPolicy_UpdateMetadata(t *testing.T) {
+// TestPolicy_UpdateFieldPolicies tests updating existing field policies
+func TestPolicy_UpdateFieldPolicies(t *testing.T) {
 	schemaID := generateTestID("test-schema-update")
 	displayName1 := "Full Name"
 	displayName2 := "Complete Name"
 
 	// Create initial metadata
-	createReq := PolicyMetadataCreateRequest{
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				DisplayName:       &displayName1,
@@ -535,15 +535,15 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Update metadata
-	updateReq := PolicyMetadataCreateRequest{
+	updateReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "person.fullName",
 				DisplayName:       &displayName2,
@@ -556,13 +556,13 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 	updateBody, err := json.Marshal(updateReq)
 	require.NoError(t, err)
 
-	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(updateBody))
+	updateResp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(updateBody))
 	require.NoError(t, err)
 	defer updateResp.Body.Close()
 
 	assert.Equal(t, http.StatusCreated, updateResp.StatusCode, "Expected 201 Created")
 
-	var updateResponse PolicyMetadataCreateResponse
+	var updateResponse FieldPolicyCreateResponse
 	err = json.NewDecoder(updateResp.Body).Decode(&updateResponse)
 	require.NoError(t, err)
 
@@ -571,6 +571,6 @@ func TestPolicy_UpdateMetadata(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }

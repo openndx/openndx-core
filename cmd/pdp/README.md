@@ -1,6 +1,6 @@
 # Policy Decision Point (PDP)
 
-Stores field-level policy metadata and per-application access grants, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
+Stores field policies and per-application access grants, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
 
 ## Overview
 
@@ -9,14 +9,14 @@ The PDP is a leaf service. It calls nothing else and stores everything in its ow
 ```mermaid
 flowchart LR
     OE[Orchestration Engine] -->|POST /policy/decide| PDP
-    PB[Portal Backend] -->|metadata and access grants| PDP
+    PB[Portal Backend] -->|field policies and access grants| PDP
     PDP --> DB[(PostgreSQL: pdp)]
 ```
 
 | Caller | Uses |
 |---|---|
 | Orchestration Engine | `POST /api/v1/policy/decide` before every federated query |
-| Portal Backend | metadata and access grant endpoints, when schemas and applications are approved or edited |
+| Portal Backend | field policy and access grant endpoints, when schemas and applications are approved or edited |
 
 Each field's `field_policies` record has two flags, `requiresAllowlist` and `requiresConsent`. The decision comes from those flags and the application's grant in `access_grants` (see [POLICY_MODEL.md](POLICY_MODEL.md)).
 
@@ -72,10 +72,10 @@ Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies 
 | Method and path                                                 | Purpose                                                            |
 |-----------------------------------------------------------------|--------------------------------------------------------------------|
 | `POST /api/v1/policy/decide`                                    | Authorization decision for an application and a list of fields     |
-| `GET /api/v1/policy/metadata?schemaId=`                         | List metadata records, optionally for one schema                   |
-| `POST /api/v1/policy/metadata`                                  | Sync a schema's field metadata (`201`)                             |
-| `PATCH /api/v1/policy/metadata/{id}`                            | Edit `displayName`, `description`, `requiresAllowlist` or `requiresConsent` |
-| `DELETE /api/v1/policy/metadata/{id}`                           | Delete a record and its grants (`204`)                             |
+| `GET /api/v1/policy/fields?schemaId=`                           | List field policies, optionally for one schema                     |
+| `POST /api/v1/policy/fields`                                    | Sync a schema's field policies (`201`)                             |
+| `PATCH /api/v1/policy/fields/{id}`                              | Edit `displayName`, `description`, `requiresAllowlist` or `requiresConsent` |
+| `DELETE /api/v1/policy/fields/{id}`                             | Delete a field policy and its grants (`204`)                       |
 | `GET /api/v1/policy/grants?applicationId=&schemaId=&status=&consentBypass=` | List access grants, optionally filtered                |
 | `POST /api/v1/policy/grants`                                    | Grant an application access to fields for `30d` or `365d`; with `consentBypass` and `legalBasis`, a consent bypass |
 | `GET /api/v1/policy/grants/{id}`                                | Read one grant                                                     |
@@ -96,13 +96,13 @@ A decision request and response:
   "appRequiresOwnerConsent": false, "consentRequiredFields": [] }
 ```
 
-`applicationId` is the OIDC `client_id` of the calling application. Metadata and grant requests use camelCase keys; see the schemas in `openapi.yaml`.
+`applicationId` is the OIDC `client_id` of the calling application. Field policy and grant requests use camelCase keys; see the schemas in `openapi.yaml`.
 
 ## How it works
 
 For each requested `(schemaId, fieldName)`, in order:
 
-1. No metadata record: the whole request fails with **HTTP 500**.
+1. No field policy: the whole request fails with **HTTP 500**.
 2. No application ID: the field is *unauthorized*.
 3. The field requires the allow-list and the application holds no active grant for it: the field is *unauthorized*.
 4. The field requires the allow-list and the grant has expired: the field is *expired*.
@@ -123,7 +123,7 @@ go test ./cmd/pdp/... ./internal/pdp/... -count=1
 make quality-check policy-decision-point    # format, vet, lint, security
 ```
 
-Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp), one package per concern, each with its service and handler: `fieldpolicy` (policy metadata), `grant` (access grants) and `decision` (decisions, reading fields and grants through interfaces it declares); `pdptest` holds test helpers.
+Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp), one package per concern, each with its service and handler: `fieldpolicy` (field policies), `grant` (access grants) and `decision` (decisions, reading fields and grants through interfaces it declares); `pdptest` holds test helpers.
 
 ## More docs
 

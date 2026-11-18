@@ -12,16 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPolicy_CreateMetadata_TransactionRollback tests that invalid requests
+// TestPolicy_CreateFieldPolicies_TransactionRollback tests that invalid requests
 // are properly rejected and don't leave partial data in the database.
 // This requires a real PostgreSQL database to test transaction rollback behavior.
-func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
+func TestPolicy_CreateFieldPolicies_TransactionRollback(t *testing.T) {
 	schemaID := generateTestID("test-schema-rollback")
 
 	// The second record leaves out requiresConsent, so the whole request fails
-	req := PolicyMetadataCreateRequest{
+	req := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "field1",
 				Source:            "primary",
@@ -39,7 +39,7 @@ func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 	reqBody, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -63,21 +63,21 @@ func TestPolicy_CreateMetadata_TransactionRollback(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
-// TestPolicy_CreateMetadata_UniqueConstraintViolation tests that duplicate records
+// TestPolicy_CreateFieldPolicies_UniqueConstraintViolation tests that duplicate records
 // are handled correctly (should update existing, not create duplicate).
 // This tests the unique constraint (schema_id, field_name) behavior with PostgreSQL.
-func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
+func TestPolicy_CreateFieldPolicies_UniqueConstraintViolation(t *testing.T) {
 	schemaID := generateTestID("test-schema-unique")
 	fieldName := "person.fullName"
 
 	// Create initial record
-	createReq := PolicyMetadataCreateRequest{
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         fieldName,
 				Source:            "primary",
@@ -89,12 +89,12 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp1, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp1, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	defer resp1.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp1.StatusCode)
 
-	var createResponse1 PolicyMetadataCreateResponse
+	var createResponse1 FieldPolicyCreateResponse
 	err = json.NewDecoder(resp1.Body).Decode(&createResponse1)
 	require.NoError(t, err)
 	require.Len(t, createResponse1.Records, 1)
@@ -102,9 +102,9 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 
 	// Create same record again - should update, not create duplicate
 	displayName := "Updated Name"
-	updateReq := PolicyMetadataCreateRequest{
+	updateReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         fieldName,
 				DisplayName:       &displayName,
@@ -117,12 +117,12 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 	updateBody, err := json.Marshal(updateReq)
 	require.NoError(t, err)
 
-	resp2, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(updateBody))
+	resp2, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(updateBody))
 	require.NoError(t, err)
 	defer resp2.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp2.StatusCode)
 
-	var createResponse2 PolicyMetadataCreateResponse
+	var createResponse2 FieldPolicyCreateResponse
 	err = json.NewDecoder(resp2.Body).Decode(&createResponse2)
 	require.NoError(t, err)
 	require.Len(t, createResponse2.Records, 1)
@@ -149,7 +149,7 @@ func TestPolicy_CreateMetadata_UniqueConstraintViolation(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
@@ -174,7 +174,7 @@ func TestPolicy_CreateAccessGrants_FieldNotFound(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// Should return not found for a field without policy metadata
+	// Should return not found for a field without a field policy
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode, "Should return not found for field not found")
 }
 
@@ -207,10 +207,10 @@ func TestPolicy_GetPolicyDecision_FieldNotFound(t *testing.T) {
 func TestPolicy_CreateAccessGrants_InvalidGrantDuration(t *testing.T) {
 	schemaID := generateTestID("test-schema-invalid-duration")
 
-	// Create policy metadata first
-	createReq := PolicyMetadataCreateRequest{
+	// Create field policies first
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         "field1",
 				Source:            "primary",
@@ -222,7 +222,7 @@ func TestPolicy_CreateAccessGrants_InvalidGrantDuration(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -251,7 +251,7 @@ func TestPolicy_CreateAccessGrants_InvalidGrantDuration(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }
 
@@ -262,10 +262,10 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 	fieldName := "person.fullName"
 	appID := generateTestID("test-app-expired")
 
-	// Create policy metadata
-	createReq := PolicyMetadataCreateRequest{
+	// Create field policies
+	createReq := FieldPolicyCreateRequest{
 		SchemaID: schemaID,
-		Records: []PolicyMetadataCreateRequestRecord{
+		Records: []FieldPolicyCreateRequestRecord{
 			{
 				FieldName:         fieldName,
 				Source:            "primary",
@@ -277,7 +277,7 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 	createBody, err := json.Marshal(createReq)
 	require.NoError(t, err)
 
-	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/metadata", "application/json", bytes.NewBuffer(createBody))
+	resp, err := http.Post(pdpBaseURL+"/api/v1/policy/fields", "application/json", bytes.NewBuffer(createBody))
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -352,6 +352,6 @@ func TestPolicy_GetPolicyDecision_ExpiredAccess(t *testing.T) {
 
 	// Cleanup
 	t.Cleanup(func() {
-		cleanupPolicyMetadata(t, schemaID)
+		cleanupFieldPolicies(t, schemaID)
 	})
 }

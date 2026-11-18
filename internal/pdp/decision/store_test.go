@@ -161,7 +161,7 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 
 		_, err := service.GetPolicyDecision(t.Context(), req)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "policy metadata not found")
+		assert.Contains(t, err.Error(), "field policy not found")
 	})
 
 	t.Run("GetPolicyDecision_PublicFieldNoConsent", func(t *testing.T) {

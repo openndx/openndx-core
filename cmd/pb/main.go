@@ -120,11 +120,11 @@ func main() {
 	apiMux.Handle("GET /api/v1/schemas/{schemaId}", authzr.RequireScope(caller.ScopeSchemaRead)(http.HandlerFunc(schemaHandler.GetSchema)))
 	apiMux.Handle("PUT /api/v1/schemas/{schemaId}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.UpdateSchema)))
 
-	// Schema policy metadata endpoints
-	apiMux.Handle("GET /api/v1/schemas/{schemaId}/policy-metadata", authzr.RequireScope(caller.ScopeSchemaRead)(http.HandlerFunc(schemaHandler.ListSchemaPolicyMetadata)))
-	apiMux.Handle("PATCH /api/v1/schemas/{schemaId}/policy-metadata/{id}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.PatchSchemaPolicyMetadata)))
-	apiMux.Handle("DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.DeleteSchemaPolicyMetadata)))
-	apiMux.Handle("DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.RevokeSchemaPolicyAllowListEntry)))
+	// Schema field policy endpoints
+	apiMux.Handle("GET /api/v1/schemas/{schemaId}/field-policies", authzr.RequireScope(caller.ScopeSchemaRead)(http.HandlerFunc(schemaHandler.ListSchemaFieldPolicies)))
+	apiMux.Handle("PATCH /api/v1/schemas/{schemaId}/field-policies/{id}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.PatchSchemaFieldPolicy)))
+	apiMux.Handle("DELETE /api/v1/schemas/{schemaId}/field-policies/{id}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.DeleteSchemaFieldPolicy)))
+	apiMux.Handle("DELETE /api/v1/schemas/{schemaId}/field-policies/{id}/allowlist/{applicationId}", authzr.RequireScope(caller.ScopeSchemaWrite)(http.HandlerFunc(schemaHandler.RevokeSchemaPolicyAllowListEntry)))
 
 	// Schema submission endpoints
 	apiMux.Handle("GET /api/v1/schema-submissions", authzr.RequireScope(caller.ScopeSchemaSubmissionRead)(http.HandlerFunc(schemaHandler.GetAllSchemaSubmissions)))

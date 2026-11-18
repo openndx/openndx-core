@@ -13,7 +13,7 @@ import (
 	"github.com/openndx/openndx-core/internal/utils"
 )
 
-// Handler handles the schema, schema submission and schema policy metadata HTTP API
+// Handler handles the schema, schema submission and schema field policy HTTP API
 type Handler struct {
 	service *Service
 }
@@ -268,7 +268,7 @@ func (h *Handler) UpdateSchema(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, schema)
 }
 
-// Schema policy metadata handlers
+// Schema field policy handlers
 
 // authorizeSchemaAccess checks that the caller owns the schema, unless it
 // holds allScope, which covers every organization unit. It writes the error
@@ -288,16 +288,16 @@ func (h *Handler) authorizeSchemaAccess(w http.ResponseWriter, r *http.Request, 
 	return true
 }
 
-// ListSchemaPolicyMetadata handles GET /api/v1/schemas/{schemaId}/policy-metadata
-func (h *Handler) ListSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+// ListSchemaFieldPolicies handles GET /api/v1/schemas/{schemaId}/field-policies
+func (h *Handler) ListSchemaFieldPolicies(w http.ResponseWriter, r *http.Request) {
 	schemaId := r.PathValue("schemaId")
 	if !h.authorizeSchemaAccess(w, r, schemaId, caller.ScopeSchemaReadAll) {
 		return
 	}
 
-	list, err := h.service.ListPolicyMetadata(schemaId)
+	list, err := h.service.ListFieldPolicies(schemaId)
 	if err != nil {
-		respondWithPolicyMetadataError(w, err)
+		respondWithFieldPolicyError(w, err)
 		return
 	}
 
@@ -308,15 +308,15 @@ func (h *Handler) ListSchemaPolicyMetadata(w http.ResponseWriter, r *http.Reques
 	utils.RespondWithSuccess(w, http.StatusOK, response)
 }
 
-// PatchSchemaPolicyMetadata handles PATCH /api/v1/schemas/{schemaId}/policy-metadata/{id}
-func (h *Handler) PatchSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+// PatchSchemaFieldPolicy handles PATCH /api/v1/schemas/{schemaId}/field-policies/{id}
+func (h *Handler) PatchSchemaFieldPolicy(w http.ResponseWriter, r *http.Request) {
 	schemaId := r.PathValue("schemaId")
 	id := r.PathValue("id")
 	if !h.authorizeSchemaAccess(w, r, schemaId, caller.ScopeSchemaWriteAll) {
 		return
 	}
 
-	var req policy.PolicyMetadataPatchRequest
+	var req policy.FieldPolicyPatchRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
@@ -329,12 +329,12 @@ func (h *Handler) PatchSchemaPolicyMetadata(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	record, err := h.service.PatchPolicyMetadata(schemaId, id, &req)
+	record, err := h.service.PatchFieldPolicy(schemaId, id, &req)
 	if err != nil {
 		// Log audit event for failure
 		middleware.LogAuditEvent(r, string(middleware.ResourceTypeSchemas), &schemaId, string(middleware.AuditStatusFailure))
 
-		respondWithPolicyMetadataError(w, err)
+		respondWithFieldPolicyError(w, err)
 		return
 	}
 
@@ -344,19 +344,19 @@ func (h *Handler) PatchSchemaPolicyMetadata(w http.ResponseWriter, r *http.Reque
 	utils.RespondWithSuccess(w, http.StatusOK, record)
 }
 
-// DeleteSchemaPolicyMetadata handles DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}
-func (h *Handler) DeleteSchemaPolicyMetadata(w http.ResponseWriter, r *http.Request) {
+// DeleteSchemaFieldPolicy handles DELETE /api/v1/schemas/{schemaId}/field-policies/{id}
+func (h *Handler) DeleteSchemaFieldPolicy(w http.ResponseWriter, r *http.Request) {
 	schemaId := r.PathValue("schemaId")
 	id := r.PathValue("id")
 	if !h.authorizeSchemaAccess(w, r, schemaId, caller.ScopeSchemaWriteAll) {
 		return
 	}
 
-	if err := h.service.DeletePolicyMetadata(schemaId, id); err != nil {
+	if err := h.service.DeleteFieldPolicy(schemaId, id); err != nil {
 		// Log audit event for failure
 		middleware.LogAuditEvent(r, string(middleware.ResourceTypeSchemas), &schemaId, string(middleware.AuditStatusFailure))
 
-		respondWithPolicyMetadataError(w, err)
+		respondWithFieldPolicyError(w, err)
 		return
 	}
 
@@ -366,7 +366,7 @@ func (h *Handler) DeleteSchemaPolicyMetadata(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// RevokeSchemaPolicyAllowListEntry handles DELETE /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}
+// RevokeSchemaPolicyAllowListEntry handles DELETE /api/v1/schemas/{schemaId}/field-policies/{id}/allowlist/{applicationId}
 func (h *Handler) RevokeSchemaPolicyAllowListEntry(w http.ResponseWriter, r *http.Request) {
 	schemaId := r.PathValue("schemaId")
 	id := r.PathValue("id")
@@ -379,7 +379,7 @@ func (h *Handler) RevokeSchemaPolicyAllowListEntry(w http.ResponseWriter, r *htt
 		// Log audit event for failure
 		middleware.LogAuditEvent(r, string(middleware.ResourceTypeSchemas), &schemaId, string(middleware.AuditStatusFailure))
 
-		respondWithPolicyMetadataError(w, err)
+		respondWithFieldPolicyError(w, err)
 		return
 	}
 
@@ -389,11 +389,11 @@ func (h *Handler) RevokeSchemaPolicyAllowListEntry(w http.ResponseWriter, r *htt
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// respondWithPolicyMetadataError maps policy metadata errors onto a response.
+// respondWithFieldPolicyError maps field policy errors onto a response.
 // Client errors reported by the PDP are passed through, while PDP failures and
 // unreachable PDPs are reported as a bad gateway.
-func respondWithPolicyMetadataError(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrPolicyMetadataNotFound) || errors.Is(err, ErrAllowListEntryNotFound) {
+func respondWithFieldPolicyError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrFieldPolicyNotFound) || errors.Is(err, ErrAllowListEntryNotFound) {
 		utils.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
@@ -407,6 +407,6 @@ func respondWithPolicyMetadataError(w http.ResponseWriter, err error) {
 		}
 	}
 
-	slog.Error("Policy metadata request to PDP failed", "error", err)
+	slog.Error("Field policy request to PDP failed", "error", err)
 	utils.RespondWithError(w, http.StatusBadGateway, "Policy decision point request failed")
 }

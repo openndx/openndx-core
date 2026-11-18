@@ -18,9 +18,8 @@ var (
 	ErrInvalidGrantRequest = errors.New("invalid access grant request")
 	// ErrFieldNotFound reports a grant for a field that has no field
 	// policy. Its text matches the field policy context's not found error,
-	// so API clients see the same message as before grants had their own
-	// package.
-	ErrFieldNotFound = errors.New("policy metadata not found")
+	// so API clients see one message for a missing field.
+	ErrFieldNotFound = errors.New("field policy not found")
 )
 
 // Service manages applications' access grants to fields.

@@ -83,8 +83,8 @@ func CleanupTestData(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// VerifyPolicyMetadataExists checks if a policy metadata record exists in the database
-func VerifyPolicyMetadataExists(t *testing.T, db *gorm.DB, schemaID, fieldName string) bool {
+// VerifyFieldPolicyExists checks if a field policy exists in the database
+func VerifyFieldPolicyExists(t *testing.T, db *gorm.DB, schemaID, fieldName string) bool {
 	if db == nil {
 		t.Skip("Database connection not available for verification")
 		return false
@@ -97,15 +97,15 @@ func VerifyPolicyMetadataExists(t *testing.T, db *gorm.DB, schemaID, fieldName s
 		Count(&count).Error
 
 	if err != nil {
-		t.Logf("Warning: could not verify policy metadata: %v", err)
+		t.Logf("Warning: could not verify field policy: %v", err)
 		return false
 	}
 
 	return count > 0
 }
 
-// GetPolicyMetadataCount returns the count of policy metadata records
-func GetPolicyMetadataCount(t *testing.T, db *gorm.DB) int64 {
+// GetFieldPolicyCount returns the number of field policies
+func GetFieldPolicyCount(t *testing.T, db *gorm.DB) int64 {
 	if db == nil {
 		return 0
 	}
@@ -113,7 +113,7 @@ func GetPolicyMetadataCount(t *testing.T, db *gorm.DB) int64 {
 	var count int64
 	// Use raw SQL to avoid importing models package
 	if err := db.Table("field_policies").Count(&count).Error; err != nil {
-		t.Logf("Warning: could not count policy metadata: %v", err)
+		t.Logf("Warning: could not count field policies: %v", err)
 		return 0
 	}
 

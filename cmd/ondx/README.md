@@ -86,7 +86,7 @@ Every command that logs in or calls the Portal Backend also accepts `--profile`,
 
 ### `ondx applications`
 
-- `create`: requires `--name`, `--member-id` and at least one `--field schemaId:fieldName`. The Portal Backend creates the application's OAuth2 client in the member's organization unit and prints its client secret **once**. To register a client you already created, pass `--idp-application-id` and `--idp-client-id` together. Optional `--description`. A field must already exist in a registered schema, or the command fails with "policy metadata not found".
+- `create`: requires `--name`, `--member-id` and at least one `--field schemaId:fieldName`. The Portal Backend creates the application's OAuth2 client in the member's organization unit and prints its client secret **once**. To register a client you already created, pass `--idp-application-id` and `--idp-client-id` together. Optional `--description`. A field must already exist in a registered schema, or the command fails with "field policy not found".
 - `list`: `--member-id` filters to one member.
 - `get`: `--app-id` (required). Shows the saved policy as `schemaId:fieldName` values.
 
@@ -144,7 +144,7 @@ The local ThunderID serves plain HTTP, so `--insecure` has no effect there. It s
 
 - An application's client secret is shown once, in the `applications create` output. It cannot be retrieved again.
 - Organization units and their users must already exist in the identity provider. The local stack seeds `drp` (`01900000-0000-7000-8000-0000000000c0`) and `die` (`01900000-0000-7000-8000-0000000000c1`), with users `drp-admin` and `die-admin` who hold the `OpenNDX_Member` role.
-- There are no update or delete commands, and the CLI does not manage schema policy metadata beyond `schemas create`.
+- There are no update or delete commands, and the CLI does not manage schema field policies beyond `schemas create`.
 - Applications created by approving an application submission in the portals do not surface their client secret.
 
 ## More docs

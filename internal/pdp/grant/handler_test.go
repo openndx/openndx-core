@@ -220,7 +220,7 @@ func TestHandler_CreateAccessGrants(t *testing.T) {
 			validateFunc: func(t *testing.T, w *httptest.ResponseRecorder) {
 				// The body is the same as before grants had their own package.
 				assert.JSONEq(t,
-					`{"error":"policy metadata not found for schema_id schema-123 and field_name person.nonexistent"}`,
+					`{"error":"field policy not found for schema_id schema-123 and field_name person.nonexistent"}`,
 					w.Body.String())
 			},
 		},

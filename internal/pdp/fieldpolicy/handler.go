@@ -19,7 +19,7 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// CreatePolicies handles POST /api/v1/policy/metadata
+// CreatePolicies handles POST /api/v1/policy/fields
 func (h *Handler) CreatePolicies(w http.ResponseWriter, r *http.Request) {
 	var req PolicyCreateRequest
 
@@ -47,7 +47,7 @@ func (h *Handler) CreatePolicies(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusCreated, resp)
 }
 
-// ListPolicies handles GET /api/v1/policy/metadata, with an optional
+// ListPolicies handles GET /api/v1/policy/fields, with an optional
 // schemaId filter.
 func (h *Handler) ListPolicies(w http.ResponseWriter, r *http.Request) {
 	schemaID := strings.TrimSpace(r.URL.Query().Get("schemaId"))
@@ -61,7 +61,7 @@ func (h *Handler) ListPolicies(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
-// PatchPolicy handles PATCH /api/v1/policy/metadata/{id}
+// PatchPolicy handles PATCH /api/v1/policy/fields/{id}
 func (h *Handler) PatchPolicy(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
@@ -93,7 +93,7 @@ func (h *Handler) PatchPolicy(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithSuccess(w, http.StatusOK, resp)
 }
 
-// DeletePolicy handles DELETE /api/v1/policy/metadata/{id}
+// DeletePolicy handles DELETE /api/v1/policy/fields/{id}
 func (h *Handler) DeletePolicy(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 

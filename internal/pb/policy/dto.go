@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// Request and Response DTOs for Policy Metadata and Allow List Management
+// Request and Response DTOs for Field Policy and Allow List Management
 
-// PolicyMetadataCreateRequestRecord represents the request to create policy metadata
-type PolicyMetadataCreateRequestRecord struct {
+// FieldPolicyCreateRequestRecord represents the request to create one field policy
+type FieldPolicyCreateRequestRecord struct {
 	FieldName   string  `json:"fieldName" validate:"required"`
 	DisplayName *string `json:"displayName,omitempty"`
 	Description *string `json:"description,omitempty"`
@@ -22,14 +22,14 @@ type PolicyMetadataCreateRequestRecord struct {
 	Owner             *Owner `json:"owner,omitempty" validate:"omitempty,owner_enum"`
 }
 
-// PolicyMetadataCreateRequest represents the request to create policy metadata
-type PolicyMetadataCreateRequest struct {
-	SchemaID string                              `json:"schemaId" validate:"required"`
-	Records  []PolicyMetadataCreateRequestRecord `json:"records" validate:"required,dive"`
+// FieldPolicyCreateRequest represents the request to create field policies
+type FieldPolicyCreateRequest struct {
+	SchemaID string                           `json:"schemaId" validate:"required"`
+	Records  []FieldPolicyCreateRequestRecord `json:"records" validate:"required,dive"`
 }
 
-// PolicyMetadataResponse represents the response from policy metadata operations
-type PolicyMetadataResponse struct {
+// FieldPolicyResponse represents the response from field policy operations
+type FieldPolicyResponse struct {
 	ID                string    `json:"id"`
 	SchemaID          string    `json:"schemaId"`
 	FieldName         string    `json:"fieldName"`
@@ -44,14 +44,14 @@ type PolicyMetadataResponse struct {
 	UpdatedAt         string    `json:"updatedAt"`
 }
 
-// PolicyMetadataCreateResponse represents the response from policy metadata creation
-type PolicyMetadataCreateResponse struct {
-	Records []PolicyMetadataResponse `json:"records"`
+// FieldPolicyCreateResponse represents the response from field policy creation
+type FieldPolicyCreateResponse struct {
+	Records []FieldPolicyResponse `json:"records"`
 }
 
-// PolicyMetadataListResponse represents the policy metadata records of a schema
-type PolicyMetadataListResponse struct {
-	Records []PolicyMetadataResponse `json:"records"`
+// FieldPolicyListResponse represents the field policies of a schema
+type FieldPolicyListResponse struct {
+	Records []FieldPolicyResponse `json:"records"`
 }
 
 // OptionalPatchField distinguishes between an omitted JSON property and a
@@ -94,9 +94,9 @@ func (o OptionalPatchField[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(*o.Value)
 }
 
-// PolicyMetadataPatchRequest contains the fields that can be changed
-// independently on one policy metadata record.
-type PolicyMetadataPatchRequest struct {
+// FieldPolicyPatchRequest contains the fields that can be changed
+// independently on one field policy.
+type FieldPolicyPatchRequest struct {
 	DisplayName       OptionalPatchField[string] `json:"displayName,omitzero"`
 	Description       OptionalPatchField[string] `json:"description,omitzero"`
 	RequiresAllowlist OptionalPatchField[bool]   `json:"requiresAllowlist,omitzero"`
@@ -104,7 +104,7 @@ type PolicyMetadataPatchRequest struct {
 }
 
 // IsEmpty reports whether the PATCH request contains no editable properties.
-func (r PolicyMetadataPatchRequest) IsEmpty() bool {
+func (r FieldPolicyPatchRequest) IsEmpty() bool {
 	return !r.DisplayName.Set &&
 		!r.Description.Set &&
 		!r.RequiresAllowlist.Set &&

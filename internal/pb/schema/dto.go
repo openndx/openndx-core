@@ -34,15 +34,15 @@ type CreateSchemaRequest struct {
 	SchemaDescription *string `json:"schemaDescription,omitempty"`
 	// SDL is a GraphQL SDL string annotated with @accessControl(allowlist: ..., consent: ...)
 	// and @source (and optionally @displayName/@description/@owner) directives,
-	// parsed into policy metadata records. Mutually exclusive with Fields.
+	// parsed into field policies. Mutually exclusive with Fields.
 	SDL string `json:"sdl,omitempty"`
-	// Fields lets a caller declare policy metadata records directly, skipping
+	// Fields lets a caller declare field policies directly, skipping
 	// SDL/GraphQL parsing entirely - each FieldName is used as-is (no forced
 	// typename.fieldName prefix the way SDL-derived field paths get).
 	// Mutually exclusive with SDL.
-	Fields   []policy.PolicyMetadataCreateRequestRecord `json:"fields,omitempty"`
-	Endpoint string                                     `json:"endpoint" validate:"required"`
-	MemberID string                                     `json:"memberId" validate:"required"`
+	Fields   []policy.FieldPolicyCreateRequestRecord `json:"fields,omitempty"`
+	Endpoint string                                  `json:"endpoint" validate:"required"`
+	MemberID string                                  `json:"memberId" validate:"required"`
 }
 
 // UpdateSchemaRequest updates an existing provider schema

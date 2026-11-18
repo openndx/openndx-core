@@ -1,5 +1,5 @@
 // Package schema is the Portal Backend's provider schema bounded context:
-// schemas, schema submissions, their PDP policy metadata, and the schema API.
+// schemas, schema submissions, their PDP field policies, and the schema API.
 package schema
 
 import (

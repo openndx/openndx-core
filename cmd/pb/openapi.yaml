@@ -298,13 +298,13 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/schemas/{schemaId}/policy-metadata:
+  /api/v1/schemas/{schemaId}/field-policies:
     get:
-      summary: List schema policy metadata
+      summary: List schema field policies
       description: |
-        Lists the PDP policy metadata of every field of the schema, including
+        Lists the PDP field policy of every field of the schema, including
         each field's allow-list. Members can only list their own schemas.
-      operationId: listSchemaPolicyMetadata
+      operationId: listSchemaFieldPolicies
       tags:
         - Schemas
       parameters:
@@ -316,11 +316,11 @@ paths:
           description: The schema ID
       responses:
         '200':
-          description: Policy metadata of the schema
+          description: Field policies of the schema
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyMetadataCollection'
+                $ref: '#/components/schemas/FieldPolicyCollection'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -330,7 +330,7 @@ paths:
         '502':
           $ref: '#/components/responses/BadGateway'
 
-  /api/v1/schemas/{schemaId}/policy-metadata/{id}:
+  /api/v1/schemas/{schemaId}/field-policies/{id}:
     parameters:
       - name: schemaId
         in: path
@@ -343,15 +343,15 @@ paths:
         required: true
         schema:
           type: string
-        description: The policy metadata record ID
+        description: The field policy ID
     patch:
-      summary: Update a field's policy metadata
+      summary: Update a field policy
       description: |
         Updates the displayName, description, requiresAllowlist or requiresConsent of one
         field without resending the schema's other fields. Requires the
         schema:update permission, and members can only update their own
         schemas.
-      operationId: patchSchemaPolicyMetadata
+      operationId: patchSchemaFieldPolicy
       tags:
         - Schemas
       requestBody:
@@ -359,14 +359,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PolicyMetadataPatchRequest'
+              $ref: '#/components/schemas/FieldPolicyPatchRequest'
       responses:
         '200':
-          description: Policy metadata updated successfully
+          description: Field policy updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyMetadata'
+                $ref: '#/components/schemas/FieldPolicy'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -378,18 +378,18 @@ paths:
         '502':
           $ref: '#/components/responses/BadGateway'
     delete:
-      summary: Delete a field's policy metadata
+      summary: Delete a field policy
       description: |
-        Deletes the policy metadata record of one field. This changes the
+        Deletes the field policy of one field. This changes the
         schema's policy rather than deleting the schema, so it requires the
         schema:update permission. Members can only delete from their own
         schemas.
-      operationId: deleteSchemaPolicyMetadata
+      operationId: deleteSchemaFieldPolicy
       tags:
         - Schemas
       responses:
         '204':
-          description: Policy metadata deleted successfully
+          description: Field policy deleted successfully
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -399,7 +399,7 @@ paths:
         '502':
           $ref: '#/components/responses/BadGateway'
 
-  /api/v1/schemas/{schemaId}/policy-metadata/{id}/allowlist/{applicationId}:
+  /api/v1/schemas/{schemaId}/field-policies/{id}/allowlist/{applicationId}:
     delete:
       summary: Revoke an application's access to a field
       description: |
@@ -422,7 +422,7 @@ paths:
           required: true
           schema:
             type: string
-          description: The policy metadata record ID
+          description: The field policy ID
         - name: applicationId
           in: path
           required: true
@@ -1224,7 +1224,7 @@ components:
       enum: ["30d", "365d"]
       description: PDP grant duration for an application's field access policy
 
-    PolicyMetadataCreateRequestRecord:
+    FieldPolicyCreateRequestRecord:
       type: object
       required:
         - fieldName
@@ -1270,9 +1270,9 @@ components:
         unless the application holds an unexpired consent bypass grant.
       example: true
 
-    PolicyMetadata:
+    FieldPolicy:
       type: object
-      description: The PDP policy metadata of one schema field
+      description: The PDP access policy of one schema field
       properties:
         id:
           type: string
@@ -1326,17 +1326,17 @@ components:
           type: string
           format: date-time
 
-    PolicyMetadataCollection:
+    FieldPolicyCollection:
       type: object
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/PolicyMetadata'
+            $ref: '#/components/schemas/FieldPolicy'
         count:
           type: integer
 
-    PolicyMetadataPatchRequest:
+    FieldPolicyPatchRequest:
       type: object
       description: |
         At least one property is required. Omitted properties are left
@@ -1385,7 +1385,7 @@ components:
             A GraphQL SDL string annotated with
             @accessControl(allowlist: Boolean!, consent: Boolean!) and @source
             (and optionally @displayName/@description/@owner) directives,
-            parsed into policy metadata records. @accessControl needs both
+            parsed into field policies. @accessControl needs both
             arguments. A field with @source but no @accessControl requires the
             allow-list and no consent. The removed @accessControl(policy: ...),
             @accessControl(type: ...) and @isOwner forms are rejected with 400. Mutually exclusive with fields - exactly one
@@ -1393,9 +1393,9 @@ components:
         fields:
           type: array
           items:
-            $ref: '#/components/schemas/PolicyMetadataCreateRequestRecord'
+            $ref: '#/components/schemas/FieldPolicyCreateRequestRecord'
           description: |
-            Declares policy metadata records directly, skipping SDL/GraphQL
+            Declares field policies directly, skipping SDL/GraphQL
             parsing entirely - each fieldName is used as-is (no forced
             typename.fieldName prefix the way SDL-derived field paths get).
             Mutually exclusive with sdl - exactly one of sdl or fields must

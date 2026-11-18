@@ -38,7 +38,7 @@ type testCleanupRegistry struct {
 }
 
 // cleanupTestData attempts to clean up test data created during test execution.
-// Note: Some services (like PDP) may not have DELETE endpoints for metadata/allowlists,
+// Note: Some services (like PDP) may not have DELETE endpoints for field policies/allowlists,
 // so this is a best-effort cleanup primarily for consents.
 // We rely on unique IDs (timestamps) for other resources to prevent test pollution.
 // Errors are logged but do not fail the test.
@@ -315,16 +315,16 @@ func parseGraphQLResponse(t *testing.T, resp *http.Response) map[string]interfac
 	return result
 }
 
-// createPolicyMetadata creates policy metadata in the PDP for the given schema and field
+// createFieldPolicies creates a field policy in the PDP for the given schema and field
 // that requires both the allow-list and owner consent.
-func createPolicyMetadata(t *testing.T, schemaID, fieldName string) {
-	createPolicyMetadataWithFlags(t, schemaID, fieldName, true, true)
+func createFieldPolicies(t *testing.T, schemaID, fieldName string) {
+	createFieldPoliciesWithFlags(t, schemaID, fieldName, true, true)
 }
 
-// createPolicyMetadataWithFlags creates policy metadata in the PDP for the given schema and
+// createFieldPoliciesWithFlags creates a field policy in the PDP for the given schema and
 // field with the given policy flags. The request syncs the whole schema, so it replaces any
-// other fields' metadata in schemaID.
-func createPolicyMetadataWithFlags(t *testing.T, schemaID, fieldName string, requiresAllowlist, requiresConsent bool) {
+// other fields' policies in schemaID.
+func createFieldPoliciesWithFlags(t *testing.T, schemaID, fieldName string, requiresAllowlist, requiresConsent bool) {
 	reqBody := map[string]interface{}{
 		"schemaId": schemaID,
 		"records": []map[string]interface{}{
@@ -340,7 +340,7 @@ func createPolicyMetadataWithFlags(t *testing.T, schemaID, fieldName string, req
 	jsonData, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
-	resp, err := testHTTPClient.Post(pdpURL+"/metadata", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := testHTTPClient.Post(pdpURL+"/fields", "application/json", bytes.NewBuffer(jsonData))
 	require.NoError(t, err)
 	if resp.StatusCode != http.StatusCreated {
 		bodyBytes, err := io.ReadAll(resp.Body)
@@ -348,11 +348,11 @@ func createPolicyMetadataWithFlags(t *testing.T, schemaID, fieldName string, req
 		bodyStr := string(bodyBytes)
 		if err != nil {
 			bodyStr = fmt.Sprintf("failed to read body: %v", err)
-			t.Logf("Failed to read policy metadata response body: %v", err)
+			t.Logf("Failed to read field policy response body: %v", err)
 		} else {
-			t.Logf("Policy metadata creation failed. Status: %d, Body: %s", resp.StatusCode, bodyStr)
+			t.Logf("Field policy creation failed. Status: %d, Body: %s", resp.StatusCode, bodyStr)
 		}
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "Policy metadata creation failed: %s", bodyStr)
+		require.Equal(t, http.StatusCreated, resp.StatusCode, "Field policy creation failed: %s", bodyStr)
 		return
 	}
 	defer func() {
@@ -474,7 +474,7 @@ func approveConsent(t *testing.T, consentID string) {
 // 3. Success path through consent-engine (consent check)
 // 4. Valid response back
 func TestGraphQLFlow_SuccessPath(t *testing.T) {
-	// Setup: Create policy metadata in PDP
+	// Setup: Create a field policy in PDP
 	// Use unique IDs to ensure test isolation
 	timestamp := time.Now().UnixNano()
 	// NOTE: We MUST use "test-schema-123" because it is hardcoded in `tests/integration/schema.graphql`
@@ -493,8 +493,8 @@ func TestGraphQLFlow_SuccessPath(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	t.Run("Setup_PolicyMetadata", func(t *testing.T) {
-		createPolicyMetadata(t, schemaID, fieldName)
+	t.Run("Setup_FieldPolicies", func(t *testing.T) {
+		createFieldPolicies(t, schemaID, fieldName)
 		updatePDPAllowlist(t, appID, schemaID, fieldName)
 	})
 
@@ -633,9 +633,9 @@ func TestGraphQLFlow_SuccessPath(t *testing.T) {
 	})
 }
 
-// TestGraphQLFlow_MissingPolicyMetadata tests the behavior when a field is queried
-// without any policy metadata configured in PDP. This should result in an authorization error.
-func TestGraphQLFlow_MissingPolicyMetadata(t *testing.T) {
+// TestGraphQLFlow_MissingFieldPolicy tests the behavior when a field is queried
+// without a field policy configured in PDP. This should result in an authorization error.
+func TestGraphQLFlow_MissingFieldPolicy(t *testing.T) {
 	testID := fmt.Sprintf("%d", time.Now().UnixNano())
 	appID := fmt.Sprintf("test-app-missing-policy-%s", testID)
 
@@ -663,7 +663,7 @@ func TestGraphQLFlow_MissingPolicyMetadata(t *testing.T) {
 
 	// We expect authorization/validation errors
 	errors, hasErrors := result["errors"]
-	assert.True(t, hasErrors, "Should return errors for field lacking policy metadata")
+	assert.True(t, hasErrors, "Should return errors for field lacking a field policy")
 	if hasErrors {
 		errorList := errors.([]interface{})
 		assert.NotEmpty(t, errorList, "Error list should not be empty")
@@ -676,11 +676,11 @@ func TestGraphQLFlow_MissingPolicyMetadata(t *testing.T) {
 			t.Logf("Error message: %s", message)
 
 			// Check for PDP-related error code in extensions
-			// When policy metadata is not found, PDP returns PDP_ERROR (500), not PDP_NOT_ALLOWED
+			// When the field policy is not found, PDP returns PDP_ERROR (500), not PDP_NOT_ALLOWED
 			extensions, hasExtensions := firstError["extensions"].(map[string]interface{})
 			if hasExtensions {
 				errorCode := fmt.Sprintf("%v", extensions["code"])
-				// Accept both PDP_ERROR (when metadata not found) and PDP_NOT_ALLOWED (when not authorized)
+				// Accept both PDP_ERROR (when the field policy is not found) and PDP_NOT_ALLOWED (when not authorized)
 				assert.True(t, errorCode == "PDP_ERROR" || errorCode == "PDP_NOT_ALLOWED",
 					"Error should have PDP_ERROR or PDP_NOT_ALLOWED code, got: %s", errorCode)
 			} else {
@@ -692,7 +692,7 @@ func TestGraphQLFlow_MissingPolicyMetadata(t *testing.T) {
 }
 
 // TestGraphQLFlow_UnauthorizedApp tests the behavior when an app queries a field that
-// requires consent but has no consent granted. Policy metadata exists, but app has no consent.
+// requires consent but has no consent granted. The field policy exists, but app has no consent.
 func TestGraphQLFlow_UnauthorizedApp(t *testing.T) {
 	timestamp := time.Now().UnixNano()
 	schemaID := "test-schema-123"
@@ -706,7 +706,7 @@ func TestGraphQLFlow_UnauthorizedApp(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	createPolicyMetadata(t, schemaID, fieldName)
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, unauthorizedAppID, schemaID, fieldName)
 
 	token, err := createTestJWT(unauthorizedAppID)
@@ -806,7 +806,7 @@ func TestGraphQLFlow_ConsentOnlyFieldWithoutAllowList(t *testing.T) {
 	defer cleanup.cleanup(t)
 
 	// The app is deliberately never added to the allow-list.
-	createPolicyMetadataWithFlags(t, schemaID, fieldName, false, true)
+	createFieldPoliciesWithFlags(t, schemaID, fieldName, false, true)
 
 	token, err := createTestJWT(appID)
 	require.NoError(t, err)
@@ -864,7 +864,7 @@ func TestGraphQLFlow_PublicFieldWithoutAllowList(t *testing.T) {
 	defer cleanup.cleanup(t)
 
 	// The app is deliberately never added to the allow-list, and no consent is created.
-	createPolicyMetadataWithFlags(t, schemaID, fieldName, false, false)
+	createFieldPoliciesWithFlags(t, schemaID, fieldName, false, false)
 
 	token, err := createTestJWT(appID)
 	require.NoError(t, err)

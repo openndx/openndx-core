@@ -35,27 +35,27 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// CreatePolicyMetadata sends a request to create policy metadata in the PDP,
+// CreateFieldPolicies sends a request to create field policies in the PDP,
 // parsing the field records out of a GraphQL SDL string.
-func (c *Client) CreatePolicyMetadata(schemaId string, sdl string) (*PolicyMetadataCreateResponse, error) {
+func (c *Client) CreateFieldPolicies(schemaId string, sdl string) (*FieldPolicyCreateResponse, error) {
 	policyRequest, err := newSDLParser().ParseSDLToPolicyRequest(schemaId, sdl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse SDL: %w", err)
 	}
-	return c.createPolicyMetadata(policyRequest)
+	return c.createFieldPolicies(policyRequest)
 }
 
-// CreatePolicyMetadataFromRecords sends a request to create policy metadata
+// CreateFieldPoliciesFromRecords sends a request to create field policies
 // in the PDP from caller-supplied records directly, skipping SDL/GraphQL
 // parsing entirely.
-func (c *Client) CreatePolicyMetadataFromRecords(schemaId string, records []PolicyMetadataCreateRequestRecord) (*PolicyMetadataCreateResponse, error) {
-	return c.createPolicyMetadata(&PolicyMetadataCreateRequest{
+func (c *Client) CreateFieldPoliciesFromRecords(schemaId string, records []FieldPolicyCreateRequestRecord) (*FieldPolicyCreateResponse, error) {
+	return c.createFieldPolicies(&FieldPolicyCreateRequest{
 		SchemaID: schemaId,
 		Records:  records,
 	})
 }
 
-func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest) (*PolicyMetadataCreateResponse, error) {
+func (c *Client) createFieldPolicies(policyRequest *FieldPolicyCreateRequest) (*FieldPolicyCreateResponse, error) {
 	// Marshal request to JSON
 	reqBody, err := json.Marshal(policyRequest)
 	if err != nil {
@@ -63,7 +63,7 @@ func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest
 	}
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/policy/metadata", c.baseURL)
+	url := fmt.Sprintf("%s/api/v1/policy/fields", c.baseURL)
 	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -89,7 +89,7 @@ func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Check status code. The PDP's CreatePolicyMetadata handler responds 201
+	// Check status code. The PDP's CreatePolicies handler responds 201
 	// Created (it's a creation endpoint), not 200 - see
 	// internal/pdp/fieldpolicy/handler.go.
 	if resp.StatusCode != http.StatusCreated {
@@ -98,12 +98,12 @@ func (c *Client) createPolicyMetadata(policyRequest *PolicyMetadataCreateRequest
 	}
 
 	// Parse response
-	var response PolicyMetadataCreateResponse
+	var response FieldPolicyCreateResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	slog.Info("Successfully created policy metadata in PDP", "schemaId", policyRequest.SchemaID, "recordsCreated", len(response.Records))
+	slog.Info("Successfully created field policies in PDP", "schemaId", policyRequest.SchemaID, "recordsCreated", len(response.Records))
 	return &response, nil
 }
 
@@ -180,11 +180,11 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("PDP returned status %d: %s", e.StatusCode, e.Message)
 }
 
-// ListPolicyMetadata lists the policy metadata records of a schema in the PDP
-func (c *Client) ListPolicyMetadata(schemaID string) (*PolicyMetadataListResponse, error) {
-	path := "/api/v1/policy/metadata?schemaId=" + url.QueryEscape(schemaID)
+// ListFieldPolicies lists the field policies of a schema in the PDP
+func (c *Client) ListFieldPolicies(schemaID string) (*FieldPolicyListResponse, error) {
+	path := "/api/v1/policy/fields?schemaId=" + url.QueryEscape(schemaID)
 
-	var response PolicyMetadataListResponse
+	var response FieldPolicyListResponse
 	if err := c.doRequest(http.MethodGet, path, nil, http.StatusOK, &response); err != nil {
 		return nil, err
 	}
@@ -192,28 +192,28 @@ func (c *Client) ListPolicyMetadata(schemaID string) (*PolicyMetadataListRespons
 	return &response, nil
 }
 
-// PatchPolicyMetadata updates selected properties of one policy metadata record in the PDP
-func (c *Client) PatchPolicyMetadata(id string, request *PolicyMetadataPatchRequest) (*PolicyMetadataResponse, error) {
-	path := "/api/v1/policy/metadata/" + url.PathEscape(id)
+// PatchFieldPolicy updates selected properties of one field policy in the PDP
+func (c *Client) PatchFieldPolicy(id string, request *FieldPolicyPatchRequest) (*FieldPolicyResponse, error) {
+	path := "/api/v1/policy/fields/" + url.PathEscape(id)
 
-	var response PolicyMetadataResponse
+	var response FieldPolicyResponse
 	if err := c.doRequest(http.MethodPatch, path, request, http.StatusOK, &response); err != nil {
 		return nil, err
 	}
 
-	slog.Info("Successfully patched policy metadata in PDP", "id", id)
+	slog.Info("Successfully patched field policy in PDP", "id", id)
 	return &response, nil
 }
 
-// DeletePolicyMetadata deletes one policy metadata record in the PDP
-func (c *Client) DeletePolicyMetadata(id string) error {
-	path := "/api/v1/policy/metadata/" + url.PathEscape(id)
+// DeleteFieldPolicy deletes one field policy in the PDP
+func (c *Client) DeleteFieldPolicy(id string) error {
+	path := "/api/v1/policy/fields/" + url.PathEscape(id)
 
 	if err := c.doRequest(http.MethodDelete, path, nil, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 
-	slog.Info("Successfully deleted policy metadata in PDP", "id", id)
+	slog.Info("Successfully deleted field policy in PDP", "id", id)
 	return nil
 }
 

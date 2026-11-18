@@ -110,7 +110,7 @@ GraphQL errors carry the code in `errors[].extensions.code`. Federation errors u
 | Code | Meaning |
 |---|---|
 | `PDP_NOT_ALLOWED` | The application is not authorized for some field, or its access has expired. `unauthorizedFields` or `expiredFields` lists them. |
-| `PDP_ERROR` | The PDP call failed, or the PDP asked for consent but listed no fields. A field with no policy metadata causes this. |
+| `PDP_ERROR` | The PDP call failed, or the PDP asked for consent but listed no fields. A field with no field policy causes this. |
 | `PDP_NO_RESPONSE` | The PDP returned nothing. |
 | `CE_NOT_APPROVED` | Consent is pending or otherwise not approved. `consentPortalUrl` and `consentStatus` tell the consumer where and what. |
 | `CE_ERROR` | The Consent Engine call failed, or consent is needed and no Consent Engine is configured. |

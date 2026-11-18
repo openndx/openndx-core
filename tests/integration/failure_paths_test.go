@@ -105,7 +105,7 @@ func TestFailurePath_PDP_ServiceUnavailable(t *testing.T) {
 }
 
 // TestFailurePath_PDP_Succeeds_ConsentNotGranted tests when PDP succeeds but consent is not granted.
-// Scenario: Policy metadata exists, app is in allowlist, but consent is pending or rejected.
+// Scenario: Field policy exists, app is in allowlist, but consent is pending or rejected.
 // Expected: GraphQL query should fail with CE_ERROR or CE_NOT_APPROVED.
 func TestFailurePath_PDP_Succeeds_ConsentNotGranted(t *testing.T) {
 	timestamp := time.Now().UnixNano()
@@ -122,8 +122,8 @@ func TestFailurePath_PDP_Succeeds_ConsentNotGranted(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	// Setup: Create policy metadata and add app to allowlist
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy and add app to allowlist
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, appID, schemaID, fieldName)
 
 	// Create consent but do NOT approve it (leaves it in "pending" status)
@@ -189,7 +189,7 @@ func TestFailurePath_PDP_Succeeds_ConsentNotGranted(t *testing.T) {
 }
 
 // TestFailurePath_PDP_Succeeds_ConsentExpired tests when PDP succeeds but consent has expired.
-// Scenario: Policy metadata exists, app is in allowlist, consent was approved but grant_expires_at is in the past.
+// Scenario: Field policy exists, app is in allowlist, consent was approved but grant_expires_at is in the past.
 // Expected: GraphQL query should fail with CE_ERROR or CE_EXPIRED.
 func TestFailurePath_PDP_Succeeds_ConsentExpired(t *testing.T) {
 	timestamp := time.Now().UnixNano()
@@ -206,8 +206,8 @@ func TestFailurePath_PDP_Succeeds_ConsentExpired(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	// Setup: Create policy metadata and add app to allowlist
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy and add app to allowlist
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, appID, schemaID, fieldName)
 
 	// Create consent
@@ -291,7 +291,7 @@ func TestFailurePath_PDP_Succeeds_ConsentExpired(t *testing.T) {
 }
 
 // TestFailurePath_PDP_AuthorizationFailure tests when PDP denies authorization (app not in allowlist).
-// Scenario: Policy metadata exists, but app is NOT in allowlist.
+// Scenario: Field policy exists, but app is NOT in allowlist.
 // Expected: GraphQL query should fail with PDP_NOT_ALLOWED or PDP_ERROR.
 func TestFailurePath_PDP_AuthorizationFailure(t *testing.T) {
 	timestamp := time.Now().UnixNano()
@@ -307,8 +307,8 @@ func TestFailurePath_PDP_AuthorizationFailure(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	// Setup: Create policy metadata but do NOT add app to allowlist
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy but do NOT add app to allowlist
+	createFieldPolicies(t, schemaID, fieldName)
 	// Intentionally skip updatePDPAllowlist to simulate app not authorized
 
 	// Make GraphQL request - should fail due to authorization failure
@@ -378,8 +378,8 @@ func TestFailurePath_ConsentEngine_ServiceUnavailable(t *testing.T) {
 
 	composeFiles := []string{"docker-compose.db.yml", "docker-compose.test.yml"}
 
-	// Setup: Create policy metadata and add app to allowlist (PDP should succeed)
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy and add app to allowlist (PDP should succeed)
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, appID, schemaID, fieldName)
 
 	// Pause Consent Engine service to simulate failure
@@ -480,8 +480,8 @@ func TestFailurePath_Provider_ServiceUnavailable(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	// Setup: Create policy metadata, add app to allowlist, and create approved consent
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy, add app to allowlist, and create approved consent
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, appID, schemaID, fieldName)
 
 	consentID := createConsent(t, appID, schemaID, fieldName, testNIC)
@@ -527,7 +527,7 @@ func TestFailurePath_Provider_ServiceUnavailable(t *testing.T) {
 }
 
 // TestFailurePath_PDP_Succeeds_ConsentRejected tests when PDP succeeds but consent was rejected.
-// Scenario: Policy metadata exists, app is in allowlist, but consent status is "rejected".
+// Scenario: Field policy exists, app is in allowlist, but consent status is "rejected".
 // Expected: GraphQL query should fail with CE_ERROR or CE_NOT_APPROVED.
 func TestFailurePath_PDP_Succeeds_ConsentRejected(t *testing.T) {
 	timestamp := time.Now().UnixNano()
@@ -544,8 +544,8 @@ func TestFailurePath_PDP_Succeeds_ConsentRejected(t *testing.T) {
 	}
 	defer cleanup.cleanup(t)
 
-	// Setup: Create policy metadata and add app to allowlist
-	createPolicyMetadata(t, schemaID, fieldName)
+	// Setup: Create field policy and add app to allowlist
+	createFieldPolicies(t, schemaID, fieldName)
 	updatePDPAllowlist(t, appID, schemaID, fieldName)
 
 	// Create consent

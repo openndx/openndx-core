@@ -14,9 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// ErrPolicyMetadataNotFound is returned when a policy metadata record does not
-// exist in the requested schema.
-var ErrPolicyMetadataNotFound = errors.New("policy metadata not found")
+// ErrFieldPolicyNotFound is returned when a field policy does not exist in
+// the requested schema.
+var ErrFieldPolicyNotFound = errors.New("field policy not found")
 
 // ErrAllowListEntryNotFound is returned when an application holds no active
 // grant for a field.
@@ -47,7 +47,7 @@ func NewService(db *gorm.DB, policyService *policy.Client) *Service {
 }
 
 // CreateSchema creates a new schema. Exactly one of req.SDL / req.Fields must
-// be set: SDL is parsed into policy metadata records via GraphQL directives,
+// be set: SDL is parsed into field policies via GraphQL directives,
 // while Fields are used directly, skipping that parsing entirely.
 //
 // req.SchemaID, if set, becomes the schema's ID; otherwise a UUID is
@@ -88,12 +88,12 @@ func (s *Service) CreateSchema(req *CreateSchemaRequest) (*SchemaResponse, error
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	// Step 2: Create policy metadata in PDP (Saga Pattern)
+	// Step 2: Create field policies in PDP (Saga Pattern)
 	var err error
 	if hasFields {
-		_, err = s.policyService.CreatePolicyMetadataFromRecords(schema.SchemaID, req.Fields)
+		_, err = s.policyService.CreateFieldPoliciesFromRecords(schema.SchemaID, req.Fields)
 	} else {
-		_, err = s.policyService.CreatePolicyMetadata(schema.SchemaID, schema.SDL)
+		_, err = s.policyService.CreateFieldPolicies(schema.SchemaID, schema.SDL)
 	}
 	if err != nil {
 		// Compensation: Delete the schema we just created
@@ -104,10 +104,10 @@ func (s *Service) CreateSchema(req *CreateSchemaRequest) (*SchemaResponse, error
 				"originalError", err,
 				"compensationError", deleteErr)
 			// Return both errors for visibility
-			return nil, fmt.Errorf("failed to create policy metadata in PDP: %w, and failed to compensate: %w", err, deleteErr)
+			return nil, fmt.Errorf("failed to create field policies in PDP: %w, and failed to compensate: %w", err, deleteErr)
 		}
 		slog.Info("Successfully compensated schema creation", "schemaID", schema.SchemaID)
-		return nil, fmt.Errorf("failed to create policy metadata in PDP: %w", err)
+		return nil, fmt.Errorf("failed to create field policies in PDP: %w", err)
 	}
 
 	response := &SchemaResponse{
@@ -236,10 +236,10 @@ func (s *Service) GetSchemas(memberID *string) ([]*SchemaResponse, error) {
 	return responses, nil
 }
 
-// ListPolicyMetadata lists the PDP policy metadata records of a schema, each
+// ListFieldPolicies lists the PDP field policies of a schema, each
 // with its allow-list: the applications holding an active grant for the field.
-func (s *Service) ListPolicyMetadata(schemaID string) (*policy.PolicyMetadataListResponse, error) {
-	list, err := s.policyService.ListPolicyMetadata(schemaID)
+func (s *Service) ListFieldPolicies(schemaID string) (*policy.FieldPolicyListResponse, error) {
+	list, err := s.policyService.ListFieldPolicies(schemaID)
 	if err != nil {
 		return nil, err
 	}
@@ -249,34 +249,34 @@ func (s *Service) ListPolicyMetadata(schemaID string) (*policy.PolicyMetadataLis
 	return list, nil
 }
 
-// PatchPolicyMetadata updates selected properties of one of a schema's policy metadata records
-func (s *Service) PatchPolicyMetadata(schemaID, id string, req *policy.PolicyMetadataPatchRequest) (*policy.PolicyMetadataResponse, error) {
-	if _, err := s.findPolicyMetadataInSchema(schemaID, id); err != nil {
+// PatchFieldPolicy updates selected properties of one of a schema's field policies
+func (s *Service) PatchFieldPolicy(schemaID, id string, req *policy.FieldPolicyPatchRequest) (*policy.FieldPolicyResponse, error) {
+	if _, err := s.findFieldPolicyInSchema(schemaID, id); err != nil {
 		return nil, err
 	}
-	record, err := s.policyService.PatchPolicyMetadata(id, req)
+	record, err := s.policyService.PatchFieldPolicy(id, req)
 	if err != nil {
 		return nil, err
 	}
-	records := []policy.PolicyMetadataResponse{*record}
+	records := []policy.FieldPolicyResponse{*record}
 	if err := s.attachAllowLists(schemaID, records); err != nil {
 		return nil, err
 	}
 	return &records[0], nil
 }
 
-// DeletePolicyMetadata deletes one of a schema's policy metadata records
-func (s *Service) DeletePolicyMetadata(schemaID, id string) error {
-	if _, err := s.findPolicyMetadataInSchema(schemaID, id); err != nil {
+// DeleteFieldPolicy deletes one of a schema's field policies
+func (s *Service) DeleteFieldPolicy(schemaID, id string) error {
+	if _, err := s.findFieldPolicyInSchema(schemaID, id); err != nil {
 		return err
 	}
-	return s.policyService.DeletePolicyMetadata(id)
+	return s.policyService.DeleteFieldPolicy(id)
 }
 
 // RevokeAllowListEntry removes one application from the allow-list of one of a
 // schema's fields by revoking the application's active grant for the field.
 func (s *Service) RevokeAllowListEntry(schemaID, id, applicationID string) error {
-	record, err := s.findPolicyMetadataInSchema(schemaID, id)
+	record, err := s.findFieldPolicyInSchema(schemaID, id)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (s *Service) RevokeAllowListEntry(schemaID, id, applicationID string) error
 // attachAllowLists sets each record's allow-list from the schema's active
 // plain access grants in the PDP. Consent bypass grants are managed through
 // the consent bypass API and are not part of the allow-list.
-func (s *Service) attachAllowLists(schemaID string, records []policy.PolicyMetadataResponse) error {
+func (s *Service) attachAllowLists(schemaID string, records []policy.FieldPolicyResponse) error {
 	plain := false
 	grants, err := s.policyService.ListAccessGrants(policy.AccessGrantFilter{
 		SchemaID:      schemaID,
@@ -337,11 +337,11 @@ func (s *Service) attachAllowLists(schemaID string, records []policy.PolicyMetad
 	return nil
 }
 
-// findPolicyMetadataInSchema returns the policy metadata record if it belongs
-// to the schema, so that ownership of one schema cannot be used to change the
-// policy metadata of another.
-func (s *Service) findPolicyMetadataInSchema(schemaID, id string) (*policy.PolicyMetadataResponse, error) {
-	list, err := s.policyService.ListPolicyMetadata(schemaID)
+// findFieldPolicyInSchema returns the field policy if it belongs to the
+// schema, so that ownership of one schema cannot be used to change the field
+// policies of another.
+func (s *Service) findFieldPolicyInSchema(schemaID, id string) (*policy.FieldPolicyResponse, error) {
+	list, err := s.policyService.ListFieldPolicies(schemaID)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func (s *Service) findPolicyMetadataInSchema(schemaID, id string) (*policy.Polic
 		}
 	}
 
-	return nil, fmt.Errorf("%w: %s", ErrPolicyMetadataNotFound, id)
+	return nil, fmt.Errorf("%w: %s", ErrFieldPolicyNotFound, id)
 }
 
 // CreateSchemaSubmission creates a new schema

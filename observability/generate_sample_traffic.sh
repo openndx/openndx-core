@@ -87,7 +87,7 @@ run_requests() {
         # Policy decision endpoint (will generate errors without proper data, but useful for metrics)
         send_request "$POLICY_DECISION_POINT_URL" "POST" "/api/v1/policy/decide" '{"consumer_id":"test-app","app_id":"test-app","request_id":"req_123","required_fields":["person.name"]}' "Policy decision"
         sleep 0.5
-        send_request "$POLICY_DECISION_POINT_URL" "POST" "/api/v1/policy/metadata" '{"field_name":"person.name","schema_id":"test-schema"}' "Policy metadata"
+        send_request "$POLICY_DECISION_POINT_URL" "POST" "/api/v1/policy/fields" '{"field_name":"person.name","schema_id":"test-schema"}' "Field policies"
         sleep 0.5
         
         # Invalid endpoints (404s)

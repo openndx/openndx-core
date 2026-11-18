@@ -32,13 +32,13 @@ The OE reads the consumer schema from `schemaPath` in `config.yaml` (default the
 
 ### Send a federated query
 
-`POST /public/graphql` needs a consumer token, policy metadata, an application grant and, for restricted fields, the citizen's consent. The token and curl example are in [dev/README.md](../../dev/README.md), and the full setup is in the [walkthrough](../../dev/WALKTHROUGH.md). The expected results:
+`POST /public/graphql` needs a consumer token, field policies, an application grant and, for restricted fields, the citizen's consent. The token and curl example are in [dev/README.md](../../dev/README.md), and the full setup is in the [walkthrough](../../dev/WALKTHROUGH.md). The expected results:
 
 | Situation | Response |
 |---|---|
 | No or bad token | HTTP `401`, `{"error":"unauthorized",...}` |
 | Application has no grant for a field | `errors[0].extensions.code` is `PDP_NOT_ALLOWED`, with `unauthorizedFields` |
-| Field has no policy metadata | `PDP_ERROR` |
+| Field has no field policy | `PDP_ERROR` |
 | No `nic` argument in the query | `BAD_REQUEST` (argument `nic` is required), or `MISSING_IDENTIFIER` if the schema declares `nic` as optional |
 | Unknown field, or wrong argument type | `BAD_REQUEST`, with `locations` |
 | Two aliases with different `nic` values | `AMBIGUOUS_IDENTIFIER` |
