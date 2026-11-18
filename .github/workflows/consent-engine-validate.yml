@@ -101,8 +101,10 @@ jobs:
           fi
           echo "Go mod files are clean."
 
-      # Settings in .golangci.yml. Reports only issues on lines this PR changes.
+      # Settings in .golangci.yml. Reports only issues on lines this PR changes;
+      # manual runs have no PR diff to filter by, so they skip it.
       - name: Lint
+        if: github.event_name == 'pull_request'
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
