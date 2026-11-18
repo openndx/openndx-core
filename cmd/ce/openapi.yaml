@@ -27,7 +27,10 @@ info:
     - The token is valid
     - The value of the configured subject claim (`idp.subjectClaim`, default `sub`) matches the consent's `ownerId`
 
-    Requests with a method a path doesn't support get a plain-text `405` from the router.
+    Requests with a method a path doesn't support get a plain-text `405` from the router, with one
+    exception: the router matches `HEAD` to the `GET` routes, so a `HEAD` request reaches the
+    handler (after authentication on `/api/v1/*`), which answers with a JSON `405` and code
+    `METHOD_NOT_ALLOWED`.
   version: 1.0.0
   contact:
     name: OpenNDX Team
@@ -657,8 +660,10 @@ components:
           example: "Your legal full name as it appears on official documents"
         owner:
           type: string
-          enum: [citizen]
-          description: The type of owner for this field. Stored and compared when matching an existing consent, but not checked against the enum.
+          description: |
+            The type of owner for this field. The only type in use is `citizen`. CE stores the
+            value as sent and compares it when matching an existing consent, but doesn't check
+            it, so a response can carry any string, including an empty one.
           example: "citizen"
       required:
         - fieldName
@@ -705,7 +710,7 @@ components:
         grantDuration:
           type: string
           nullable: true
-          enum: [PT1H, PT6H, PT12H, P1D, P7D, P30D, null]
+          enum: [PT1H, PT6H, PT12H, P1D, P7D, P30D, "", null]
           description: |
             How long the consent grant is valid once approved, as one of these ISO 8601
             durations: 1 hour, 6 hours, 12 hours, 1 day, 7 days or 30 days. Any other value
@@ -965,6 +970,7 @@ components:
                 - BAD_REQUEST
                 - UNAUTHORIZED
                 - FORBIDDEN
+                - METHOD_NOT_ALLOWED
               example: "BAD_REQUEST"
             message:
               type: string

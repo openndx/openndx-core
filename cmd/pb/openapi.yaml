@@ -21,8 +21,11 @@ info:
     Consent bypass grants use `consent-bypass:read` and `consent-bypass:write`, which span every
     organization unit and have no `-all` variants.
     A missing or invalid token gets 401. A token without the route's scope gets 403, and so does
-    a caller without the `-all` scope that reads or writes another organization unit's record,
-    or whose organization unit has no member record. Not every operation below lists this 403.
+    a caller without the `-all` scope that reads or writes another organization unit's record.
+    Routes that act on the caller's own member records (all but the member routes) also return
+    403 to such a caller whose organization unit has no member record; `GET /api/v1/members`
+    filters by organization unit instead and returns an empty list. Not every operation below
+    lists these 403s.
 
     ## Features
     - JWT authentication with pluggable OIDC identity provider integration
@@ -308,7 +311,8 @@ paths:
       summary: List schema field policies
       description: |
         Lists the PDP field policy of every field of the schema, including
-        each field's allow-list. Members can only list their own schemas.
+        each field's allow-list. Without `schema:read-all`, callers can only
+        list their own member's schemas.
       operationId: listSchemaFieldPolicies
       tags:
         - Schemas
@@ -354,8 +358,8 @@ paths:
       description: |
         Updates the displayName, description, requiresAllowlist or requiresConsent of one
         field without resending the schema's other fields. Requires the
-        `schema:write` scope, and members can only update their own
-        schemas.
+        `schema:write` scope. Without `schema:write-all`, callers can only
+        update their own member's schemas.
       operationId: patchSchemaFieldPolicy
       tags:
         - Schemas
@@ -387,8 +391,8 @@ paths:
       description: |
         Deletes the field policy of one field. This changes the
         schema's policy rather than deleting the schema, so it requires the
-        `schema:write` scope. Members can only delete from their own
-        schemas.
+        `schema:write` scope. Without `schema:write-all`, callers can only
+        delete from their own member's schemas.
       operationId: deleteSchemaFieldPolicy
       tags:
         - Schemas
@@ -410,8 +414,8 @@ paths:
       description: |
         Removes one application from the field's allow-list by revoking its
         active access grant in the PDP. The PDP keeps the revoked grant as a
-        record. Requires the `schema:write` scope, and members can only
-        revoke access to their own schemas.
+        record. Requires the `schema:write` scope. Without `schema:write-all`,
+        callers can only revoke access to their own member's schemas.
       operationId: revokeSchemaPolicyAllowListEntry
       tags:
         - Schemas
@@ -1089,7 +1093,10 @@ components:
               description: GraphQL endpoint URL
             version:
               type: string
-              description: Lifecycle state of the schema. New schemas are `active`.
+              description: |
+                Lifecycle state of the schema: `active` or `deprecated`. New
+                schemas are `active`. `PUT /api/v1/schemas/{schemaId}` doesn't
+                check the value yet, so it can save any string (#776).
               example: active
             memberId:
               type: string
@@ -1413,9 +1420,11 @@ components:
         memberId:
           type: string
           description: |
-            The owning member. Required with `schema:write-all`. Without it,
-            the value is ignored and the schema is created for the caller's
-            own member.
+            The owning member. Without `schema:write-all`, the value is
+            ignored and the schema is created for the caller's own member.
+            With it, send the owning member's ID: PB doesn't check it yet,
+            so an omitted value creates a schema with no owning member
+            (#776).
       oneOf:
         - required: [sdl]
           not:
@@ -1524,9 +1533,13 @@ components:
         memberId:
           type: string
           description: |
-            The owning member. Required with `application:write-all`. Without
-            it, the value is ignored and the application is created for the
-            caller's own member.
+            The owning member. Without `application:write-all`, the value is
+            ignored and the application is created for the caller's own
+            member. With it, send the owning member's ID: an omitted or
+            unknown value gets 400 `member not found`, except for an
+            externally provisioned application (`idpApplicationId` and
+            `idpClientId` set), which PB creates with no owning member
+            (#776).
         idpApplicationId:
           type: string
           nullable: true
