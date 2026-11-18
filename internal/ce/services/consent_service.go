@@ -383,7 +383,7 @@ func (s *ConsentService) UpdateConsentStatusByPortalAction(ctx context.Context, 
 	switch req.Action {
 	case models.ActionApprove:
 		updates["status"] = models.StatusApproved
-		updates["grant_expires_at"] = currentTime.Add(parseGrantDuration((models.GrantDuration)(consentRecord.GrantDuration)))
+		updates["grant_expires_at"] = currentTime.Add(parseGrantDuration(models.GrantDuration(consentRecord.GrantDuration)))
 	case models.ActionReject:
 		// Do not set GrantExpiresAt on rejection - only approval gets a grant expiry
 		updates["status"] = models.StatusRejected

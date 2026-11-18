@@ -32,4 +32,3 @@ func TestConsentEngine_DatabaseConnection(t *testing.T) {
 // NOTE: Tests for ConnectGormDB with invalid configs have been removed.
 // These tests require importing service packages which creates module dependency issues.
 // Connection error handling is tested at the service level in unit tests.
-

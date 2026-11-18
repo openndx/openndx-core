@@ -187,7 +187,7 @@ func TestClaims_CaseAndExactNames(t *testing.T) {
 func TestClaims_NilSafe(t *testing.T) {
 	var ctx *AuthContext
 	var principal *Principal
-	for _, claims := range []Claims{ctx.Claims(), (&AuthContext{}).Claims(), principal.Claims(), Claims{}} {
+	for _, claims := range []Claims{ctx.Claims(), (&AuthContext{}).Claims(), principal.Claims(), {}} {
 		if claims.String("sub") != "" || claims.Strings("roles") != nil {
 			t.Error("empty claims must return zero values")
 		}

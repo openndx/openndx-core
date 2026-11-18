@@ -272,15 +272,23 @@ func TestConsentBypassEndpoints_Errors(t *testing.T) {
 		path, body string
 		want       int
 	}{
-		"unknown application": {"/api/v1/applications/app-missing/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x","grantDuration":"30d"}`, http.StatusNotFound},
+		"unknown application": {
+			"/api/v1/applications/app-missing/consent-bypass-grants",
+			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x","grantDuration":"30d"}`, http.StatusNotFound,
+		},
 		"invalid body": {"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants", `{`, http.StatusBadRequest},
-		"no fields": {"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
-			`{"fields":[],"legalBasis":"x","grantDuration":"30d"}`, http.StatusBadRequest},
-		"no legal basis": {"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":" ","grantDuration":"30d"}`, http.StatusBadRequest},
-		"no grant duration": {"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x"}`, http.StatusBadRequest},
+		"no fields": {
+			"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
+			`{"fields":[],"legalBasis":"x","grantDuration":"30d"}`, http.StatusBadRequest,
+		},
+		"no legal basis": {
+			"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
+			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":" ","grantDuration":"30d"}`, http.StatusBadRequest,
+		},
+		"no grant duration": {
+			"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
+			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x"}`, http.StatusBadRequest,
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

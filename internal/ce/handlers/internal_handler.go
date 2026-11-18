@@ -50,7 +50,6 @@ func (h *InternalHandler) GetConsent(w http.ResponseWriter, r *http.Request) {
 
 	// Get consent from service (context with timeout is propagated)
 	consent, err := h.consentService.GetConsentInternalView(r.Context(), nil, &ownerID, &appID)
-
 	if err != nil {
 		// Check if error is due to context cancellation or timeout
 		if r.Context().Err() != nil {
