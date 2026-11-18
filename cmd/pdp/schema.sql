@@ -16,26 +16,6 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- Databases created before the rename hold field policies in policy_metadata.
--- Rename the table, its primary key and its unique index in place, before the
--- CREATE TABLE below, so an existing database keeps its rows and grants
--- instead of getting a second, empty table. The access_grants foreign key
--- follows the rename. Each step runs only when the old name exists and the
--- new one doesn't, so re-running changes nothing.
-DO $$ BEGIN
-    IF to_regclass('policy_metadata') IS NOT NULL AND to_regclass('field_policies') IS NULL THEN
-        ALTER TABLE policy_metadata RENAME TO field_policies;
-    END IF;
-    IF to_regclass('policy_metadata_pkey') IS NOT NULL AND to_regclass('field_policies_pkey') IS NULL THEN
-        ALTER INDEX policy_metadata_pkey RENAME TO field_policies_pkey;
-    END IF;
-    IF to_regclass('idx_policy_metadata_schema_field') IS NOT NULL
-        AND to_regclass('idx_field_policies_schema_field') IS NULL THEN
-        ALTER INDEX idx_policy_metadata_schema_field RENAME TO idx_field_policies_schema_field;
-    END IF;
-END $$;
-
--- The access policy of one field of a schema
 CREATE TABLE IF NOT EXISTS field_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schema_id VARCHAR(255) NOT NULL,
