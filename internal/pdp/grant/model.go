@@ -96,7 +96,7 @@ func (g *AccessGrant) ToResponse() AccessGrantResponse {
 	}
 }
 
-// field is the part of a policy_metadata row that granting reads: the field
+// field is the part of a field_policies row that granting reads: the field
 // must exist, and a consent bypass grant needs a field that asks for consent.
 // The field policy context owns the table; this model keeps grant independent
 // of it.
@@ -108,7 +108,7 @@ type field struct {
 
 // TableName specifies the table name for GORM
 func (field) TableName() string {
-	return "policy_metadata"
+	return "field_policies"
 }
 
 // FieldKey names one field of one schema.

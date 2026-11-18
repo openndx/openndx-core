@@ -77,9 +77,9 @@ func CleanupTestData(t *testing.T, db *gorm.DB) {
 		return
 	}
 
-	// Delete all policy metadata
-	if err := db.Exec("DELETE FROM policy_metadata").Error; err != nil {
-		t.Logf("Warning: could not cleanup policy_metadata: %v", err)
+	// Delete all field policies
+	if err := db.Exec("DELETE FROM field_policies").Error; err != nil {
+		t.Logf("Warning: could not cleanup field_policies: %v", err)
 	}
 }
 
@@ -92,7 +92,7 @@ func VerifyPolicyMetadataExists(t *testing.T, db *gorm.DB, schemaID, fieldName s
 
 	var count int64
 	// Use raw SQL to avoid importing models package
-	err := db.Table("policy_metadata").
+	err := db.Table("field_policies").
 		Where("schema_id = ? AND field_name = ?", schemaID, fieldName).
 		Count(&count).Error
 
@@ -112,7 +112,7 @@ func GetPolicyMetadataCount(t *testing.T, db *gorm.DB) int64 {
 
 	var count int64
 	// Use raw SQL to avoid importing models package
-	if err := db.Table("policy_metadata").Count(&count).Error; err != nil {
+	if err := db.Table("field_policies").Count(&count).Error; err != nil {
 		t.Logf("Warning: could not count policy metadata: %v", err)
 		return 0
 	}

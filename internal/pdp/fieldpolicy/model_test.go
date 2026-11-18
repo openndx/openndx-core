@@ -10,7 +10,7 @@ import (
 
 func TestPolicy_TableName(t *testing.T) {
 	p := Policy{}
-	assert.Equal(t, "policy_metadata", p.TableName())
+	assert.Equal(t, "field_policies", p.TableName())
 }
 
 func TestPolicy_ToResponse(t *testing.T) {

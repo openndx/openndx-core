@@ -16,7 +16,7 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
-CREATE TABLE IF NOT EXISTS policy_metadata (
+CREATE TABLE IF NOT EXISTS field_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schema_id VARCHAR(255) NOT NULL,
     field_name TEXT NOT NULL,
@@ -33,11 +33,11 @@ CREATE TABLE IF NOT EXISTS policy_metadata (
 );
 
 -- One policy record per field of a schema
-CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_metadata_schema_field
-    ON policy_metadata(schema_id, field_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_field_policies_schema_field
+    ON field_policies(schema_id, field_name);
 
 -- One application's access to one field. Revoked grants are kept as a record.
--- Deleting a field's policy metadata deletes its grants.
+-- Deleting a field's policy deletes its grants.
 --
 -- A consent bypass grant lets the application read a field that asks for the
 -- owner's consent without asking. It records the legal basis for it.
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS access_grants (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT access_grants_field_fkey FOREIGN KEY (schema_id, field_name)
-        REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE,
+        REFERENCES field_policies(schema_id, field_name) ON DELETE CASCADE,
     -- A bypass grant always records its legal basis
     CONSTRAINT access_grants_bypass_check CHECK (NOT consent_bypass OR legal_basis IS NOT NULL)
 );

@@ -20,7 +20,7 @@ func StringPtr(s string) *string {
 }
 
 // SetupTestDB creates an in-memory SQLite database for unit testing.
-// It creates the policy_metadata table with SQLite-compatible schema.
+// It creates the field_policies table with SQLite-compatible schema.
 // SQLite doesn't support PostgreSQL-specific features like gen_random_uuid(), enums, jsonb.
 // This is fast and doesn't require a real database connection.
 //
@@ -35,7 +35,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 
 	// Create tables manually for SQLite compatibility
 	createTableSQL := `
-		CREATE TABLE IF NOT EXISTS policy_metadata (
+		CREATE TABLE IF NOT EXISTS field_policies (
 			id TEXT PRIMARY KEY,
 			schema_id TEXT NOT NULL,
 			field_name TEXT NOT NULL,
@@ -67,7 +67,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (schema_id, field_name)
-				REFERENCES policy_metadata(schema_id, field_name) ON DELETE CASCADE,
+				REFERENCES field_policies(schema_id, field_name) ON DELETE CASCADE,
 			CHECK (NOT consent_bypass OR legal_basis IS NOT NULL)
 		)
 	`
@@ -226,11 +226,11 @@ func CleanupTestData(t *testing.T, db *gorm.DB) {
 		return
 	}
 
-	// Delete all access grants and policy metadata
+	// Delete all access grants and field policies
 	if err := db.Exec("DELETE FROM access_grants").Error; err != nil {
 		t.Logf("Warning: could not cleanup access_grants: %v", err)
 	}
-	if err := db.Exec("DELETE FROM policy_metadata").Error; err != nil {
-		t.Logf("Warning: could not cleanup policy_metadata: %v", err)
+	if err := db.Exec("DELETE FROM field_policies").Error; err != nil {
+		t.Logf("Warning: could not cleanup field_policies: %v", err)
 	}
 }

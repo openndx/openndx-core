@@ -35,7 +35,7 @@ func cleanupPolicyMetadata(t *testing.T, schemaID string) {
 	defer cleanup()
 
 	if db := testutils.SetupPostgresTestDB(t); db != nil {
-		db.Exec("DELETE FROM policy_metadata WHERE schema_id = ?", schemaID)
+		db.Exec("DELETE FROM field_policies WHERE schema_id = ?", schemaID)
 	}
 }
 

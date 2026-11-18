@@ -225,7 +225,7 @@ func TestService_PatchPolicy(t *testing.T) {
 	// patch must still succeed because it should update only the supplied field.
 	require.NoError(t, db.Exec(`
 		CREATE TRIGGER reject_policy_flags_update
-		BEFORE UPDATE OF requires_allowlist, requires_consent ON policy_metadata
+		BEFORE UPDATE OF requires_allowlist, requires_consent ON field_policies
 		BEGIN
 			SELECT RAISE(FAIL, 'policy flags were unexpectedly updated');
 		END;

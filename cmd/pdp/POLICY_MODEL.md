@@ -108,7 +108,7 @@ Only a field with both flags `false` lets every authenticated application read i
 
 ## Tables
 
-`policy_metadata` (PostgreSQL, created by [schema.sql](schema.sql)):
+`field_policies` (PostgreSQL, created by [schema.sql](schema.sql)):
 
 | Column                        | Type          | Notes                                         |
 |-------------------------------|---------------|-----------------------------------------------|
@@ -127,7 +127,7 @@ Only a field with both flags `false` lets every authenticated application read i
 | Column                          | Type         | Notes                                                                                     |
 |---------------------------------|--------------|-------------------------------------------------------------------------------------------|
 | `id`                            | uuid         | Primary key, generated.                                                                   |
-| `schema_id`, `field_name`       | varchar(255), text | Foreign key to `policy_metadata`, `ON DELETE CASCADE`.                              |
+| `schema_id`, `field_name`       | varchar(255), text | Foreign key to `field_policies`, `ON DELETE CASCADE`.                               |
 | `application_id`                | text         | OIDC `client_id`.                                                                         |
 | `expires_at`                    | timestamptz  | Required.                                                                                 |
 | `status`                        | text         | `active` (default) or `revoked`, enforced by `access_grants_status_check`.               |
@@ -137,4 +137,4 @@ Only a field with both flags `false` lets every authenticated application read i
 
 A partial unique index on `(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'` keeps one active grant of each kind per application and field.
 
-Source: [`internal/pdp/fieldpolicy`](../../internal/pdp/fieldpolicy) for `policy_metadata`, [`internal/pdp/grant`](../../internal/pdp/grant) for `access_grants`.
+Source: [`internal/pdp/fieldpolicy`](../../internal/pdp/fieldpolicy) for `field_policies`, [`internal/pdp/grant`](../../internal/pdp/grant) for `access_grants`.
