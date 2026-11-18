@@ -108,6 +108,8 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
+          # TODO: once the existing golangci-lint issues are fixed, remove
+          # only-new-issues and the `if:` above so every run lints everything.
           only-new-issues: true
 
       - name: Build application
