@@ -12,6 +12,7 @@ on:
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
+      - ".golangci.yml"
       - ".dockerignore"
       - ".github/workflows/orchestration-engine-validate.yml"
   workflow_dispatch:
@@ -30,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # golangci-lint reads the PR diff for only-new-issues
+      pull-requests: read
       security-events: write
 
     steps:
@@ -62,6 +65,13 @@ jobs:
             exit 1
           fi
           echo "Go mod files are clean."
+
+      # Settings in .golangci.yml. Reports only issues on lines this PR changes.
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          only-new-issues: true
 
       - name: Build application
         run: go build ./${{ env.SERVICE_PATH }}
