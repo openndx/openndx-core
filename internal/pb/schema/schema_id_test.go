@@ -19,7 +19,7 @@ import (
 )
 
 // newSchemaIDTestHandler returns a schema Handler on SQLite whose PDP accepts
-// every policy-metadata create, and records the schemaIds it was sent.
+// every field policy create, and records the schemaIds it was sent.
 func newSchemaIDTestHandler(t *testing.T) (*Handler, *gorm.DB, *[]string) {
 	var pdpSchemaIDs []string
 	pdp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func postSchema(t *testing.T, h *Handler, schemaID, memberID string) *httptest.R
 		SchemaName: "DRP Person Registry",
 		Endpoint:   "http://drp.example/graphql",
 		MemberID:   memberID,
-		Fields: []policy.PolicyMetadataCreateRequestRecord{
+		Fields: []policy.FieldPolicyCreateRequestRecord{
 			{FieldName: "person.fullName", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 		},
 	})
@@ -66,7 +66,7 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 		var resp SchemaResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Equal(t, "drp-person-v1", resp.SchemaID)
-		// The PDP's policy metadata is keyed by the same ID.
+		// The PDP's field policies are keyed by the same ID.
 		assert.Equal(t, []string{"drp-person-v1"}, *pdpSchemaIDs)
 
 		var stored Schema

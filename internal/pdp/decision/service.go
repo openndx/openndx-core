@@ -8,7 +8,7 @@ import (
 )
 
 // ErrFieldNotFound reports a requested field that has no policy.
-var ErrFieldNotFound = errors.New("policy metadata not found")
+var ErrFieldNotFound = errors.New("field policy not found")
 
 // Service decides an application's access to the fields it asks for.
 type Service struct {

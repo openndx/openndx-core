@@ -2,9 +2,9 @@
 
 How the Policy Decision Point represents field policy and turns it into a decision. API shapes are in [openapi.yaml](openapi.yaml); the service overview is in the [README](README.md).
 
-## Policy metadata
+## Field policies
 
-One record describes one field of one schema. `(schemaId, fieldName)` is unique.
+One field policy describes one field of one schema. `(schemaId, fieldName)` is unique.
 
 | Field                        | Values                 | Meaning                                                                                                                                  |
 |------------------------------|------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
@@ -16,7 +16,7 @@ One record describes one field of one schema. `(schemaId, fieldName)` is unique.
 | `requiresConsent`            | boolean                | The owner must consent, unless the application holds a [consent bypass](#consent-bypass) grant. Required.                                |
 | `owner`                      | `citizen`, optional    | Whose consent is asked for the field. Shown on the consent screen.                                                                       |
 
-`POST /api/v1/policy/metadata` is a sync for one schema. It upserts the records you send and deletes the schema's records that you omit, together with their [access grants](#access-grants). Records it updates keep their grants. If any record leaves out `requiresAllowlist` or `requiresConsent`, nothing is written and the request fails with HTTP 400. A missing flag is never read as `false`, which would open the field.
+`POST /api/v1/policy/fields` is a sync for one schema. It upserts the field policies you send and deletes the schema's field policies that you omit, together with their [access grants](#access-grants). Field policies it updates keep their grants. If any record leaves out `requiresAllowlist` or `requiresConsent`, nothing is written and the request fails with HTTP 400. A missing flag is never read as `false`, which would open the field.
 
 ## Field policy
 
@@ -38,7 +38,7 @@ An access grant gives one application access to one field until it expires. A gr
 | Property        | Meaning                                                                                              |
 |-----------------|------------------------------------------------------------------------------------------------------|
 | `id`            | Grant ID, used to revoke it.                                                                         |
-| `schemaId`, `fieldName` | The field. It must have policy metadata.                                                     |
+| `schemaId`, `fieldName` | The field. It must have a field policy.                                                      |
 | `applicationId` | The application's OIDC `client_id`.                                                                  |
 | `expiresAt`     | After this time the field is `expired` for the application until the grant is renewed.              |
 | `status`        | `active` or `revoked`. A field has at most one `active` plain grant and one `active` bypass grant per application. |
@@ -48,12 +48,12 @@ An access grant gives one application access to one field until it expires. A gr
 
 | Endpoint                                   | Behavior                                                                                                                                                                               |
 |--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `POST /api/v1/policy/grants`               | Takes `applicationId`, `records` and `grantDuration` of `30d` or `365d`, and sets the expiry from the time of the call. Renews the application's active grant of the same kind for a field, or creates one. With `consentBypass: true` and a `legalBasis` it grants consent bypass; see [Consent bypass](#consent-bypass). A field without metadata fails with HTTP 404 and nothing is written. |
+| `POST /api/v1/policy/grants`               | Takes `applicationId`, `records` and `grantDuration` of `30d` or `365d`, and sets the expiry from the time of the call. Renews the application's active grant of the same kind for a field, or creates one. With `consentBypass: true` and a `legalBasis` it grants consent bypass; see [Consent bypass](#consent-bypass). A field without a field policy fails with HTTP 404 and nothing is written. |
 | `GET /api/v1/policy/grants`                | Lists grants, filtered by any of `applicationId`, `schemaId`, `status` and `consentBypass`.                                                                                            |
 | `GET /api/v1/policy/grants/{id}`           | Reads one grant.                                                                                                                                                                       |
 | `POST /api/v1/policy/grants/{id}/revoke`   | Sets an active grant's status to `revoked`. The grant is kept as a record. Revoking a grant that is not active fails with HTTP 404. Granting the field again creates a new grant.       |
 
-Deleting a field's policy metadata deletes its grants. An expired grant stays `active`: the decision reports the field as `expired`, which tells the application to renew access rather than ask for it.
+Deleting a field's policy deletes its grants. An expired grant stays `active`: the decision reports the field as `expired`, which tells the application to renew access rather than ask for it.
 
 ### Consent bypass
 
@@ -80,7 +80,7 @@ The PDP doesn't authenticate callers or decide who may grant a bypass. That is a
 
 A grant is valid up to and including its `expiresAt`. A field that doesn't require the allow-list ignores the grant's expiry: an expired grant neither denies it nor marks it `expired`.
 
-A requested field without a metadata record fails the whole request with HTTP 500 and `policy metadata not found for schema_id ... and field_name ...`.
+A requested field without a field policy fails the whole request with HTTP 500 and `field policy not found for schema_id ... and field_name ...`.
 
 ### Field outcomes
 

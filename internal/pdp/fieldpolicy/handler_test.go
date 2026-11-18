@@ -31,7 +31,7 @@ func TestHandler_CreatePolicies_InvalidJSON(t *testing.T) {
 	db := setupTestDB(t)
 	handler := NewHandler(NewService(db))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBufferString("invalid json"))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/fields", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -214,7 +214,7 @@ func TestHandler_CreatePolicies(t *testing.T) {
 			}
 
 			body, _ := json.Marshal(tt.requestBody)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/metadata", bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/policy/fields", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
@@ -269,7 +269,7 @@ func TestHandler_ListPolicies(t *testing.T) {
 
 	allReq := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/policy/metadata",
+		"/api/v1/policy/fields",
 		nil,
 	)
 	allRecorder := httptest.NewRecorder()
@@ -287,7 +287,7 @@ func TestHandler_ListPolicies(t *testing.T) {
 
 	filteredReq := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/policy/metadata?schemaId=schema-123",
+		"/api/v1/policy/fields?schemaId=schema-123",
 		nil,
 	)
 	filteredRecorder := httptest.NewRecorder()
@@ -331,7 +331,7 @@ func TestHandler_PatchPolicy(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodPatch,
-		"/api/v1/policy/metadata/"+emailID,
+		"/api/v1/policy/fields/"+emailID,
 		bytes.NewBufferString(`{"displayName":"Primary Email"}`),
 	)
 	req.Header.Set("Content-Type", "application/json")
@@ -390,7 +390,7 @@ func TestHandler_PatchPolicy_Flags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPatch, "/api/v1/policy/metadata/"+id, bytes.NewBufferString(tt.body))
+			req := httptest.NewRequest(http.MethodPatch, "/api/v1/policy/fields/"+id, bytes.NewBufferString(tt.body))
 			req.SetPathValue("id", id)
 			w := httptest.NewRecorder()
 
@@ -431,7 +431,7 @@ func TestHandler_DeletePolicy(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodDelete,
-		"/api/v1/policy/metadata/"+createResp.Records[1].ID,
+		"/api/v1/policy/fields/"+createResp.Records[1].ID,
 		nil,
 	)
 	req.SetPathValue("id", createResp.Records[1].ID)
@@ -449,7 +449,7 @@ func TestHandler_DeletePolicy(t *testing.T) {
 
 	unknownReq := httptest.NewRequest(
 		http.MethodDelete,
-		"/api/v1/policy/metadata/not-a-uuid",
+		"/api/v1/policy/fields/not-a-uuid",
 		nil,
 	)
 	unknownReq.SetPathValue("id", "not-a-uuid")

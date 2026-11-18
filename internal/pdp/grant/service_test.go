@@ -238,7 +238,7 @@ func TestService_CreateAccessGrants_EdgeCases(t *testing.T) {
 		_, err := service.CreateAccessGrants(plainRequest("app-123", GrantDurationTypeOneMonth,
 			AccessGrantCreateRequestRecord{FieldName: "nonexistent", SchemaID: "schema-123"}))
 		assert.ErrorIs(t, err, ErrFieldNotFound)
-		assert.EqualError(t, err, "policy metadata not found for schema_id schema-123 and field_name nonexistent")
+		assert.EqualError(t, err, "field policy not found for schema_id schema-123 and field_name nonexistent")
 	})
 
 	t.Run("CreateAccessGrants_OneYearDuration", func(t *testing.T) {

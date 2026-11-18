@@ -3,6 +3,6 @@
 // two flags, requiresAllowlist and requiresConsent, plus its display name,
 // description, source and owner.
 //
-// Handler serves /api/v1/policy/metadata. Service.FieldPolicies implements
+// Handler serves /api/v1/policy/fields. Service.FieldPolicies implements
 // decision.FieldReader, the port policy decisions read fields through.
 package fieldpolicy

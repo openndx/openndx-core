@@ -35,7 +35,7 @@ A scope is `<resource>:<action>`:
 - `GET` routes require `<resource>:read`. `POST`, `PUT`, `PATCH` and `DELETE` routes require `<resource>:write`.
 - The exception is `POST /api/v1/members`, which requires `member:write-all`.
 - Consent bypass grants always span every member, so their scopes have no own-member form; see [Consent bypass](#consent-bypass).
-- Policy-metadata routes under `/schemas/{schemaId}/` use the schema scopes, and `PUT /applications/{applicationId}/policy` uses the application scopes.
+- Field policy routes under `/schemas/{schemaId}/` use the schema scopes, and `PUT /applications/{applicationId}/policy` uses the application scopes.
 - The `-all` scopes never open a route by themselves. Handlers check them to widen access beyond the caller's own member. A caller that works across members therefore needs both, for example `schema:read` and `schema:read-all`.
 
 ## Whose records a caller can reach

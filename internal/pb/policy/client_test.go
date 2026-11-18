@@ -23,9 +23,9 @@ func TestNewClient(t *testing.T) {
 	assert.Equal(t, 10*time.Second, service.HTTPClient.Timeout)
 }
 
-func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
+func TestClient_CreateFieldPolicies_Success(t *testing.T) {
 	schemaID := "test-schema-123"
-	expectedRecords := []PolicyMetadataResponse{
+	expectedRecords := []FieldPolicyResponse{
 		{
 			ID:                "record-1",
 			SchemaID:          schemaID,
@@ -44,22 +44,22 @@ func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify the request
 		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/fields", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		// Verify request body
-		var req PolicyMetadataCreateRequest
+		var req FieldPolicyCreateRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		require.NoError(t, err)
 		assert.Equal(t, schemaID, req.SchemaID)
 		// Note: Records may be empty if SDL has no directives, which is valid
 
 		// Send response
-		response := PolicyMetadataCreateResponse{
+		response := FieldPolicyCreateResponse{
 			Records: expectedRecords,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicyMetadata handler returns 201
+		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicies handler returns 201
 		json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
@@ -74,7 +74,7 @@ func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
 		}
 	`
 
-	response, err := service.CreatePolicyMetadata(schemaID, sdl)
+	response, err := service.CreateFieldPolicies(schemaID, sdl)
 	require.NoError(t, err)
 	assert.NotNil(t, response)
 	// The response will have records from the mock server regardless of SDL parsing
@@ -83,9 +83,9 @@ func TestClient_CreatePolicyMetadata_Success(t *testing.T) {
 	assert.Equal(t, expectedRecords[0].SchemaID, response.Records[0].SchemaID)
 }
 
-func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
+func TestClient_CreateFieldPoliciesFromRecords_Success(t *testing.T) {
 	schemaID := "test-schema-123"
-	records := []PolicyMetadataCreateRequestRecord{
+	records := []FieldPolicyCreateRequestRecord{
 		{
 			FieldName:         "email",
 			Source:            SourcePrimary,
@@ -94,26 +94,26 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 		},
 	}
 
-	var capturedReq PolicyMetadataCreateRequest
+	var capturedReq FieldPolicyCreateRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/fields", r.URL.Path)
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&capturedReq))
 
-		response := PolicyMetadataCreateResponse{
-			Records: []PolicyMetadataResponse{
+		response := FieldPolicyCreateResponse{
+			Records: []FieldPolicyResponse{
 				{ID: "record-1", SchemaID: schemaID, FieldName: "email"},
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicyMetadata handler returns 201
+		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicies handler returns 201
 		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
 	service := NewClient(server.URL)
 
-	response, err := service.CreatePolicyMetadataFromRecords(schemaID, records)
+	response, err := service.CreateFieldPoliciesFromRecords(schemaID, records)
 
 	require.NoError(t, err)
 	assert.NotNil(t, response)
@@ -132,7 +132,7 @@ func TestClient_CreatePolicyMetadataFromRecords_Success(t *testing.T) {
 	}
 }
 
-func TestClient_CreatePolicyMetadataFromRecords_Non200Status(t *testing.T) {
+func TestClient_CreateFieldPoliciesFromRecords_Non200Status(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error": "bad records"}`))
@@ -140,7 +140,7 @@ func TestClient_CreatePolicyMetadataFromRecords_Non200Status(t *testing.T) {
 	defer server.Close()
 
 	service := NewClient(server.URL)
-	response, err := service.CreatePolicyMetadataFromRecords("schema-1", []PolicyMetadataCreateRequestRecord{
+	response, err := service.CreateFieldPoliciesFromRecords("schema-1", []FieldPolicyCreateRequestRecord{
 		{FieldName: "email", Source: SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 	})
 
@@ -149,19 +149,19 @@ func TestClient_CreatePolicyMetadataFromRecords_Non200Status(t *testing.T) {
 	assert.Contains(t, err.Error(), "status 400")
 }
 
-func TestClient_CreatePolicyMetadata_InvalidSDL(t *testing.T) {
+func TestClient_CreateFieldPolicies_InvalidSDL(t *testing.T) {
 	service := NewClient("http://localhost:8082")
 
 	// Use invalid SDL
 	invalidSDL := "invalid graphql syntax {"
 
-	response, err := service.CreatePolicyMetadata("test-schema", invalidSDL)
+	response, err := service.CreateFieldPolicies("test-schema", invalidSDL)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "failed to parse SDL")
 }
 
-func TestClient_CreatePolicyMetadata_Non200Status(t *testing.T) {
+func TestClient_CreateFieldPolicies_Non200Status(t *testing.T) {
 	// Create a mock HTTP server that returns 400
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -177,17 +177,17 @@ func TestClient_CreatePolicyMetadata_Non200Status(t *testing.T) {
 		}
 	`
 
-	response, err := service.CreatePolicyMetadata("test-schema", sdl)
+	response, err := service.CreateFieldPolicies("test-schema", sdl)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "PDP returned status 400")
 }
 
-func TestClient_CreatePolicyMetadata_InvalidJSONResponse(t *testing.T) {
+func TestClient_CreateFieldPolicies_InvalidJSONResponse(t *testing.T) {
 	// Create a mock HTTP server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicyMetadata handler returns 201
+		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicies handler returns 201
 		w.Write([]byte(`invalid json`))
 	}))
 	defer server.Close()
@@ -200,13 +200,13 @@ func TestClient_CreatePolicyMetadata_InvalidJSONResponse(t *testing.T) {
 		}
 	`
 
-	response, err := service.CreatePolicyMetadata("test-schema", sdl)
+	response, err := service.CreateFieldPolicies("test-schema", sdl)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "failed to parse response")
 }
 
-func TestClient_CreatePolicyMetadata_NetworkError(t *testing.T) {
+func TestClient_CreateFieldPolicies_NetworkError(t *testing.T) {
 	// Use an invalid URL to simulate network error
 	service := NewClient("http://invalid-host:9999")
 
@@ -216,7 +216,7 @@ func TestClient_CreatePolicyMetadata_NetworkError(t *testing.T) {
 		}
 	`
 
-	response, err := service.CreatePolicyMetadata("test-schema", sdl)
+	response, err := service.CreateFieldPolicies("test-schema", sdl)
 	assert.Error(t, err)
 	assert.Nil(t, response)
 	assert.Contains(t, err.Error(), "failed to send request to PDP")
@@ -384,10 +384,10 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-func TestClient_ListPolicyMetadata_Success(t *testing.T) {
+func TestClient_ListFieldPolicies_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/fields", r.URL.Path)
 		assert.Equal(t, "sch_1&x", r.URL.Query().Get("schemaId"))
 
 		w.Header().Set("Content-Type", "application/json")
@@ -398,7 +398,7 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 
 	service := NewClient(server.URL)
 
-	response, err := service.ListPolicyMetadata("sch_1&x")
+	response, err := service.ListFieldPolicies("sch_1&x")
 	require.NoError(t, err)
 	require.Len(t, response.Records, 1)
 	assert.Equal(t, "pm-1", response.Records[0].ID)
@@ -406,10 +406,10 @@ func TestClient_ListPolicyMetadata_Success(t *testing.T) {
 	assert.True(t, response.Records[0].RequiresConsent)
 }
 
-func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
+func TestClient_PatchFieldPolicy_ForwardsOnlySetFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata/pm-1", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/fields/pm-1", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		var body map[string]any
@@ -424,26 +424,26 @@ func TestClient_PatchPolicyMetadata_ForwardsOnlySetFields(t *testing.T) {
 
 	service := NewClient(server.URL)
 
-	var req PolicyMetadataPatchRequest
+	var req FieldPolicyPatchRequest
 	require.NoError(t, json.Unmarshal([]byte(`{"displayName":"Name","description":null}`), &req))
 
-	response, err := service.PatchPolicyMetadata("pm-1", &req)
+	response, err := service.PatchFieldPolicy("pm-1", &req)
 	require.NoError(t, err)
 	assert.Equal(t, "pm-1", response.ID)
 	assert.Equal(t, "Name", *response.DisplayName)
 }
 
-func TestClient_DeletePolicyMetadata_Success(t *testing.T) {
+func TestClient_DeleteFieldPolicy_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
-		assert.Equal(t, "/api/v1/policy/metadata/pm-1", r.URL.Path)
+		assert.Equal(t, "/api/v1/policy/fields/pm-1", r.URL.Path)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
 
 	service := NewClient(server.URL)
 
-	assert.NoError(t, service.DeletePolicyMetadata("pm-1"))
+	assert.NoError(t, service.DeleteFieldPolicy("pm-1"))
 }
 
 func TestClient_RevokeAccessGrant_Success(t *testing.T) {
@@ -507,7 +507,7 @@ func TestAccessGrant_AllowListEntry_InvalidTime(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid expiresAt")
 }
 
-func TestClient_PolicyMetadata_ReturnsError(t *testing.T) {
+func TestClient_FieldPolicy_ReturnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
@@ -524,10 +524,10 @@ func TestClient_PolicyMetadata_ReturnsError(t *testing.T) {
 	assert.Equal(t, "active access grant not found: g-1", pdpErr.Message)
 }
 
-func TestClient_PolicyMetadata_NetworkError(t *testing.T) {
+func TestClient_FieldPolicy_NetworkError(t *testing.T) {
 	service := NewClient("http://invalid-host:9999")
 
-	_, err := service.ListPolicyMetadata("sch_1")
+	_, err := service.ListFieldPolicies("sch_1")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to send request to PDP")
 

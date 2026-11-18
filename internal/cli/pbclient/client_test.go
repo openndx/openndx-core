@@ -40,7 +40,7 @@ func TestCreateSchema_Success(t *testing.T) {
 		SchemaName: "Citizen Info",
 		Endpoint:   "http://example.com/graphql",
 		MemberID:   "member-1",
-		Fields: []policy.PolicyMetadataCreateRequestRecord{
+		Fields: []policy.FieldPolicyCreateRequestRecord{
 			{FieldName: "email", RequiresAllowlist: new(true), RequiresConsent: new(false), Source: policy.SourcePrimary},
 		},
 	}
@@ -362,13 +362,13 @@ func TestListSchemas_ErrorResponse(t *testing.T) {
 	assert.ErrorContains(t, err, "User member record not found")
 }
 
-func TestListSchemaPolicyMetadata_Success(t *testing.T) {
+func TestListSchemaFieldPolicies_Success(t *testing.T) {
 	var capturedPath, capturedMethod string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.Path
 		capturedMethod = r.Method
 		resp := map[string]any{
-			"items": []policy.PolicyMetadataResponse{
+			"items": []policy.FieldPolicyResponse{
 				{ID: "pm_1", SchemaID: "drp-person-v1", FieldName: "person.fullName", RequiresAllowlist: true},
 				{ID: "pm_2", SchemaID: "drp-person-v1", FieldName: "person.nic", RequiresAllowlist: true, RequiresConsent: true},
 			},
@@ -380,10 +380,10 @@ func TestListSchemaPolicyMetadata_Success(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	fields, err := client.ListSchemaPolicyMetadata(context.Background(), "drp-person-v1")
+	fields, err := client.ListSchemaFieldPolicies(context.Background(), "drp-person-v1")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "/api/v1/schemas/drp-person-v1/policy-metadata", capturedPath)
+	assert.Equal(t, "/api/v1/schemas/drp-person-v1/field-policies", capturedPath)
 	assert.Equal(t, http.MethodGet, capturedMethod)
 	assert.Equal(t, 2, fields.Count)
 	if assert.Len(t, fields.Items, 2) {
@@ -392,7 +392,7 @@ func TestListSchemaPolicyMetadata_Success(t *testing.T) {
 	}
 }
 
-func TestListSchemaPolicyMetadata_ErrorResponse(t *testing.T) {
+func TestListSchemaFieldPolicies_ErrorResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "schema not found"})
@@ -400,7 +400,7 @@ func TestListSchemaPolicyMetadata_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	fields, err := client.ListSchemaPolicyMetadata(context.Background(), "missing")
+	fields, err := client.ListSchemaFieldPolicies(context.Background(), "missing")
 
 	assert.Error(t, err)
 	assert.Nil(t, fields)

@@ -798,7 +798,7 @@ func runSchemasList(ctx context.Context, args []string) error {
 // grantable fields, which Portal Backend serves from a separate endpoint.
 type schemaDetails struct {
 	*schema.SchemaResponse
-	Fields []policy.PolicyMetadataResponse `json:"fields"`
+	Fields []policy.FieldPolicyResponse `json:"fields"`
 }
 
 func runSchemasGet(ctx context.Context, args []string) error {
@@ -843,7 +843,7 @@ func runSchemasGet(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch schema: %w", err)
 	}
-	fields, err := client.ListSchemaPolicyMetadata(ctx, s.SchemaID)
+	fields, err := client.ListSchemaFieldPolicies(ctx, s.SchemaID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch schema fields: %w", err)
 	}
@@ -854,7 +854,7 @@ func runSchemasGet(ctx context.Context, args []string) error {
 		// Keep "fields" an array even when Portal Backend sends null items.
 		fieldItems := fields.Items
 		if fieldItems == nil {
-			fieldItems = []policy.PolicyMetadataResponse{}
+			fieldItems = []policy.FieldPolicyResponse{}
 		}
 		return enc.Encode(schemaDetails{SchemaResponse: s, Fields: fieldItems})
 	}
@@ -938,7 +938,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage of schemas create:")
 		fs.PrintDefaults()
-		fmt.Fprint(fs.Output(), "\nEach -field declares one policy-metadata record directly, skipping GraphQL\n"+
+		fmt.Fprint(fs.Output(), "\nEach -field declares one field policy directly, skipping GraphQL\n"+
 			"SDL parsing entirely - the fieldName is used as-is (no typename. prefix).\n"+
 			"Example: -field email:allowlist+consent:primary\n"+
 			"'allowlist' means the application needs an access grant for the field;\n"+
@@ -965,7 +965,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 		return fmt.Errorf("--pb-url is required (or set NDX_PB_URL, or configure it in a profile)")
 	}
 
-	records := make([]policy.PolicyMetadataCreateRequestRecord, 0, len(fields))
+	records := make([]policy.FieldPolicyCreateRequestRecord, 0, len(fields))
 	for _, f := range fields {
 		parts := strings.Split(f, ":")
 		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
@@ -977,7 +977,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 		}
 
 		owner := policy.OwnerCitizen
-		records = append(records, policy.PolicyMetadataCreateRequestRecord{
+		records = append(records, policy.FieldPolicyCreateRequestRecord{
 			FieldName:         parts[0],
 			RequiresAllowlist: &requiresAllowlist,
 			RequiresConsent:   &requiresConsent,

@@ -187,21 +187,21 @@ func (c *Client) ListSchemas(ctx context.Context, memberID *string) (*SchemaColl
 	return &collection, nil
 }
 
-// PolicyMetadataCollection is the GET /api/v1/schemas/{schemaId}/policy-metadata
+// FieldPolicyCollection is the GET /api/v1/schemas/{schemaId}/field-policies
 // response envelope.
-type PolicyMetadataCollection struct {
-	Items []policy.PolicyMetadataResponse `json:"items"`
-	Count int                             `json:"count"`
+type FieldPolicyCollection struct {
+	Items []policy.FieldPolicyResponse `json:"items"`
+	Count int                          `json:"count"`
 }
 
-// ListSchemaPolicyMetadata calls GET /api/v1/schemas/{schemaId}/policy-metadata
+// ListSchemaFieldPolicies calls GET /api/v1/schemas/{schemaId}/field-policies
 // to list a schema's grantable fields.
-func (c *Client) ListSchemaPolicyMetadata(ctx context.Context, schemaID string) (*PolicyMetadataCollection, error) {
-	body, err := c.doJSON(ctx, http.MethodGet, "/api/v1/schemas/"+url.PathEscape(schemaID)+"/policy-metadata", nil)
+func (c *Client) ListSchemaFieldPolicies(ctx context.Context, schemaID string) (*FieldPolicyCollection, error) {
+	body, err := c.doJSON(ctx, http.MethodGet, "/api/v1/schemas/"+url.PathEscape(schemaID)+"/field-policies", nil)
 	if err != nil {
 		return nil, err
 	}
-	var collection PolicyMetadataCollection
+	var collection FieldPolicyCollection
 	if err := json.Unmarshal(body, &collection); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}

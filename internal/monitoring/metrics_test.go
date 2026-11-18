@@ -72,7 +72,7 @@ func TestNormalizeRoute(t *testing.T) {
 	RegisterRoutes([]string{
 		"/health",
 		"/metrics",
-		"/api/v1/policy/metadata",
+		"/api/v1/policy/fields",
 		"/api/v1/policy/decide",
 		"/consents/:id",
 		"/data-owner/:id",
@@ -90,7 +90,7 @@ func TestNormalizeRoute(t *testing.T) {
 		{"/consents/abc123def456", "/consents/:id"},
 		{"/consents/consent_abc123", "/consents/:id"},
 		{"/data-owner/user@example.com", "/data-owner/:id"},
-		{"/api/v1/policy/metadata", "/api/v1/policy/metadata"},
+		{"/api/v1/policy/fields", "/api/v1/policy/fields"},
 		{"/api/v1/policy/decide", "/api/v1/policy/decide"},
 		{"/api/v1/policy/123", "/api/v1/policy/:id"},
 		{"/consumer/app-123", "/consumer/:id"},
@@ -153,7 +153,7 @@ func TestIsExactRoute(t *testing.T) {
 	RegisterRoutes([]string{
 		"/health",
 		"/metrics",
-		"/api/v1/policy/metadata",
+		"/api/v1/policy/fields",
 		"/api/v1/schema/:id", // Template, not exact
 	})
 
@@ -166,7 +166,7 @@ func TestIsExactRoute(t *testing.T) {
 		t.Error("IsExactRoute should return true for registered exact route")
 	}
 
-	if !IsExactRoute("/api/v1/policy/metadata") {
+	if !IsExactRoute("/api/v1/policy/fields") {
 		t.Error("IsExactRoute should return true for registered exact route")
 	}
 

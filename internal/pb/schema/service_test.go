@@ -26,7 +26,7 @@ func TestSchemaService_CreateSchema_WithFields(t *testing.T) {
 			RoundTripFunc: func(req *http.Request) (*http.Response, error) {
 				capturedBody, _ = io.ReadAll(req.Body)
 				return &http.Response{
-					StatusCode: http.StatusCreated, // PDP's CreatePolicyMetadata handler returns 201
+					StatusCode: http.StatusCreated, // PDP's CreatePolicies handler returns 201
 					Body:       io.NopCloser(bytes.NewBufferString(`{"records": [{"id": "record-1", "fieldName": "email"}]}`)),
 					Header:     make(http.Header),
 				}, nil
@@ -44,7 +44,7 @@ func TestSchemaService_CreateSchema_WithFields(t *testing.T) {
 			SchemaName: "Direct Fields Schema",
 			Endpoint:   "http://example.com/graphql",
 			MemberID:   "member-123",
-			Fields: []policy.PolicyMetadataCreateRequestRecord{
+			Fields: []policy.FieldPolicyCreateRequestRecord{
 				{FieldName: "email", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		}
@@ -88,7 +88,7 @@ func TestSchemaService_CreateSchema_WithFields(t *testing.T) {
 			SchemaName: "Direct Fields Schema",
 			Endpoint:   "http://example.com/graphql",
 			MemberID:   "member-123",
-			Fields: []policy.PolicyMetadataCreateRequestRecord{
+			Fields: []policy.FieldPolicyCreateRequestRecord{
 				{FieldName: "email", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
 			},
 		}
@@ -597,7 +597,7 @@ func TestSchemaService_CreateSchema_EdgeCases(t *testing.T) {
 		req := &CreateSchemaRequest{
 			SchemaName: "Test Schema",
 			SDL:        "type Query { test: String }",
-			Fields: []policy.PolicyMetadataCreateRequestRecord{
+			Fields: []policy.FieldPolicyCreateRequestRecord{
 				{FieldName: "email", RequiresAllowlist: new(true), RequiresConsent: new(false), Source: policy.SourcePrimary},
 			},
 		}

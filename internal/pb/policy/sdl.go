@@ -8,7 +8,7 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// sdlParser handles GraphQL SDL parsing and conversion to policy metadata requests
+// sdlParser handles GraphQL SDL parsing and conversion to field policy requests
 type sdlParser struct{}
 
 // newSDLParser creates a new sdlParser instance
@@ -16,14 +16,14 @@ func newSDLParser() *sdlParser {
 	return &sdlParser{}
 }
 
-// ParseSDLToPolicyRequest parses GraphQL SDL and creates a PolicyMetadataCreateRequest
-func (h *sdlParser) ParseSDLToPolicyRequest(schemaID, sdl string) (*PolicyMetadataCreateRequest, error) {
+// ParseSDLToPolicyRequest parses GraphQL SDL and creates a FieldPolicyCreateRequest
+func (h *sdlParser) ParseSDLToPolicyRequest(schemaID, sdl string) (*FieldPolicyCreateRequest, error) {
 	schema, err := gqlparser.LoadSchema(&ast.Source{Input: sdl})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse GraphQL schema: %w", err)
 	}
 
-	var records []PolicyMetadataCreateRequestRecord
+	var records []FieldPolicyCreateRequestRecord
 
 	// Process all types (excluding built-ins and Query/Mutation/Subscription)
 	for typeName, typeDefinition := range schema.Types {
@@ -53,14 +53,14 @@ func (h *sdlParser) ParseSDLToPolicyRequest(schemaID, sdl string) (*PolicyMetada
 		}
 	}
 
-	return &PolicyMetadataCreateRequest{
+	return &FieldPolicyCreateRequest{
 		SchemaID: schemaID,
 		Records:  records,
 	}, nil
 }
 
-// createRecordFromField creates a PolicyMetadataCreateRequestRecord from a GraphQL field
-func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefinition) (*PolicyMetadataCreateRequestRecord, error) {
+// createRecordFromField creates a FieldPolicyCreateRequestRecord from a GraphQL field
+func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefinition) (*FieldPolicyCreateRequestRecord, error) {
 	if err := h.rejectRemovedDirectives(fieldPath, field.Directives); err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (h *sdlParser) createRecordFromField(fieldPath string, field *ast.FieldDefi
 		}
 	}
 
-	record := PolicyMetadataCreateRequestRecord{
+	record := FieldPolicyCreateRequestRecord{
 		FieldName:         fieldPath,
 		RequiresAllowlist: &requiresAllowlist,
 		RequiresConsent:   &requiresConsent,
@@ -158,8 +158,8 @@ func (h *sdlParser) boolArgument(fieldPath string, directive *ast.Directive, nam
 }
 
 // processNestedFields recursively processes nested object fields
-func (h *sdlParser) processNestedFields(schema *ast.Schema, basePath string, fieldType *ast.Type, parentField *ast.FieldDefinition) ([]PolicyMetadataCreateRequestRecord, error) {
-	var records []PolicyMetadataCreateRequestRecord
+func (h *sdlParser) processNestedFields(schema *ast.Schema, basePath string, fieldType *ast.Type, parentField *ast.FieldDefinition) ([]FieldPolicyCreateRequestRecord, error) {
+	var records []FieldPolicyCreateRequestRecord
 
 	// Get the actual type name (handle lists and non-nulls)
 	typeName := h.getBaseTypeName(fieldType)

@@ -8,9 +8,9 @@ How to make the Orchestration Engine fetch data from a new provider. The example
 - Its authentication details: an API key header, or OAuth2 client-credentials (token URL, client ID, secret, scopes).
 - Its GraphQL schema: the query fields and their paths, for example `person.fullName`.
 
-## 1. Register the schema and its policy metadata
+## 1. Register the schema and its field policies
 
-The Policy Decision Point only answers for fields it has metadata for. A field with no metadata makes the whole query fail with `PDP_ERROR`. Register the provider's schema through Portal Backend, which creates the metadata in the PDP:
+The Policy Decision Point only answers for fields it has a policy for. A field with no field policy makes the whole query fail with `PDP_ERROR`. Register the provider's schema through Portal Backend, which creates the field policies in the PDP:
 
 ```bash
 ondx schemas create --profile local \
@@ -98,7 +98,7 @@ Providers are read once at startup, so restart the OE after editing `config.yaml
 
 | Error | Likely cause |
 |---|---|
-| `PDP_ERROR` | A queried field has no policy metadata for that `schemaId` (step 1). |
+| `PDP_ERROR` | A queried field has no field policy for that `schemaId` (step 1). |
 | `PDP_NOT_ALLOWED` | The consumer application has no grant for the field. |
 | `CE_NOT_APPROVED` | The owner has not approved consent yet. |
 | Field is `null` with a `PROVIDER_ERROR` at its `path` | The provider call failed: the provider was unreachable or not configured, answered with a non-2xx status, or sent a body that isn't a GraphQL response. Check the OE log and the provider's URL and credentials. |

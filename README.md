@@ -14,7 +14,7 @@ flowchart LR
     CP --> CE
     Operator[Operators and member staff] --> CLI[ondx CLI]
     CLI --> PB[Portal Backend]
-    PB -->|policy metadata, allow-lists| PDP
+    PB -->|field policies, allow-lists| PDP
     PB -->|application clients| IDP[ThunderID]
     CP -.->|sign in| IDP
     CLI -.->|sign in| IDP
@@ -30,7 +30,7 @@ Each core service keeps its own PostgreSQL database. Detail for every component 
 | Component | Role | Port | Docs |
 |---|---|---|---|
 | Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
-| Policy Decision Point (PDP) | Field-level policy metadata, application allow-lists, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
+| Policy Decision Point (PDP) | Field policies, application allow-lists, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
 | Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
 | Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
 | `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |

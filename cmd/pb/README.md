@@ -65,7 +65,7 @@ All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full sc
 |---|---|---|
 | Members | `GET /members`, `GET /members/{memberId}`<br>`POST /members`<br>`PUT /members/{memberId}` | `member:read`<br>`member:write-all`<br>`member:write` |
 | Schemas | `GET /schemas`, `GET /schemas/{schemaId}`<br>`POST /schemas`, `PUT /schemas/{schemaId}` | `schema:read`<br>`schema:write` |
-| Schema policy metadata | `GET /schemas/{schemaId}/policy-metadata`<br>`PATCH`, `DELETE` on `.../policy-metadata/{id}`<br>`DELETE .../policy-metadata/{id}/allowlist/{applicationId}` | `schema:read`<br>`schema:write` |
+| Schema field policies | `GET /schemas/{schemaId}/field-policies`<br>`PATCH`, `DELETE` on `.../field-policies/{id}`<br>`DELETE .../field-policies/{id}/allowlist/{applicationId}` | `schema:read`<br>`schema:write` |
 | Schema submissions | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}` | `schema-submission:read`<br>`schema-submission:write` |
 | Applications | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write` |
 | Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
@@ -92,8 +92,8 @@ sequenceDiagram
     PB-->>C: application and idpClientSecret (shown once)
 ```
 
-- PDP access grants are keyed by the IdP `client_id`, which is the identity the Orchestration Engine reads from consumer tokens. The `allowList` in policy metadata responses lists the applications with an active grant.
-- `POST /schemas` stores the schema, then registers its policy metadata in the PDP, and removes the schema if that fails.
+- PDP access grants are keyed by the IdP `client_id`, which is the identity the Orchestration Engine reads from consumer tokens. The `allowList` in field policy responses lists the applications with an active grant.
+- `POST /schemas` stores the schema, then registers its field policies in the PDP, and removes the schema if that fails.
 - A submission is a request that becomes a schema or application when its status is set to `approved` (`PUT .../{submissionId}`); the creation steps above then run, and the status goes back to `pending` if they fail. Who may set that status is described in [AUTHORIZATION.md](AUTHORIZATION.md#submission-approval).
 - A caller reaches its own member's records. Reaching other members' records needs the matching `-all` scope as well.
 

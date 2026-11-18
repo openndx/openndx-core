@@ -4,7 +4,7 @@ info:
   description: |
     Policy Decision Point API for making authorization decisions in the Data Exchange Platform.
     This service evaluates data access requests against policies and determines if consent is required.
-    The service uses database-driven metadata management and supports real-time policy updates.
+    The service uses database-driven field policy management and supports real-time policy updates.
   version: 1.0.0
   contact:
     name: OpenNDX Team
@@ -163,7 +163,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: A requested field has no policy metadata
+          description: A requested field has no field policy
           content:
             application/json:
               schema:
@@ -237,27 +237,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/policy/metadata:
+  /api/v1/policy/fields:
     get:
-      summary: List Policy Metadata
-      description: List current policy metadata records, optionally filtered by schema. Access grants are listed with GET /api/v1/policy/grants.
+      summary: List Field Policies
+      description: List current field policies, optionally filtered by schema. Access grants are listed with GET /api/v1/policy/grants.
       tags:
-        - Policy Metadata Management
+        - Field Policy Management
       parameters:
         - name: schemaId
           in: query
           required: false
-          description: Optional schema identifier used to filter policy metadata records
+          description: Optional schema identifier used to filter field policies
           schema:
             type: string
           example: "schema_001"
       responses:
         '200':
-          description: Policy metadata retrieved successfully
+          description: Field policies retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyMetadataListResponse'
+                $ref: '#/components/schemas/FieldPolicyListResponse'
         '500':
           description: Internal server error
           content:
@@ -265,23 +265,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
-      summary: Create or Update Policy Metadata
-      description: Synchronize all policy metadata records for a schema. Existing fields omitted from the request are deleted, together with their access grants.
+      summary: Create or Update Field Policies
+      description: Synchronize all field policies of a schema. Existing fields omitted from the request are deleted, together with their access grants.
       tags:
-        - Policy Metadata Management
+        - Field Policy Management
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PolicyMetadataCreateRequest'
+              $ref: '#/components/schemas/FieldPolicyCreateRequest'
       responses:
         '201':
-          description: Policy metadata created successfully
+          description: Field policies created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyMetadataCreateResponse'
+                $ref: '#/components/schemas/FieldPolicyCreateResponse'
         '400':
           description: Invalid input, such as a record without requiresAllowlist or requiresConsent. Nothing is written.
           content:
@@ -294,32 +294,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/policy/metadata/{id}:
+  /api/v1/policy/fields/{id}:
     parameters:
       - name: id
         in: path
         required: true
-        description: Identifier of the policy metadata record
+        description: Identifier of the field policy
         schema:
           type: string
     patch:
-      summary: Update Policy Metadata
-      description: Update selected properties of one policy metadata record without changing other records or its access grants.
+      summary: Update Field Policy
+      description: Update selected properties of one field policy without changing other field policies or its access grants.
       tags:
-        - Policy Metadata Management
+        - Field Policy Management
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PolicyMetadataPatchRequest'
+              $ref: '#/components/schemas/FieldPolicyPatchRequest'
       responses:
         '200':
-          description: Policy metadata updated successfully
+          description: Field policy updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyMetadataResponse'
+                $ref: '#/components/schemas/FieldPolicyResponse'
         '400':
           description: Invalid request body, unknown property, or requiresAllowlist or requiresConsent set to null
           content:
@@ -327,7 +327,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Policy metadata record not found
+          description: Field policy not found
           content:
             application/json:
               schema:
@@ -339,15 +339,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Delete Policy Metadata
-      description: Delete one policy metadata record by ID, together with its access grants.
+      summary: Delete Field Policy
+      description: Delete one field policy by ID, together with its access grants.
       tags:
-        - Policy Metadata Management
+        - Field Policy Management
       responses:
         '204':
-          description: Policy metadata deleted successfully
+          description: Field policy deleted successfully
         '404':
-          description: Policy metadata record not found
+          description: Field policy not found
           content:
             application/json:
               schema:
@@ -507,7 +507,7 @@ components:
               description: Detailed error message
               example: "application_id is required"
 
-    PolicyMetadataCreateRequest:
+    FieldPolicyCreateRequest:
       type: object
       required:
         - schemaId
@@ -519,11 +519,11 @@ components:
           example: "schema_001"
         records:
           type: array
-          description: List of policy metadata records to create
+          description: List of field policies to create
           items:
-            $ref: '#/components/schemas/PolicyMetadataCreateRequestRecord'
+            $ref: '#/components/schemas/FieldPolicyCreateRequestRecord'
 
-    PolicyMetadataCreateRequestRecord:
+    FieldPolicyCreateRequestRecord:
       type: object
       required:
         - fieldName
@@ -574,7 +574,7 @@ components:
         unless the application holds an unexpired consent bypass grant.
       example: true
 
-    PolicyMetadataPatchRequest:
+    FieldPolicyPatchRequest:
       type: object
       minProperties: 1
       additionalProperties: false
@@ -594,7 +594,7 @@ components:
         requiresConsent:
           $ref: '#/components/schemas/RequiresConsent'
 
-    PolicyMetadataResponse:
+    FieldPolicyResponse:
       type: object
       required:
         - id
@@ -643,7 +643,7 @@ components:
           type: string
           format: date-time
 
-    PolicyMetadataListResponse:
+    FieldPolicyListResponse:
       type: object
       required:
         - records
@@ -651,9 +651,9 @@ components:
         records:
           type: array
           items:
-            $ref: '#/components/schemas/PolicyMetadataResponse'
+            $ref: '#/components/schemas/FieldPolicyResponse'
 
-    PolicyMetadataCreateResponse:
+    FieldPolicyCreateResponse:
       type: object
       required:
         - records
@@ -661,7 +661,7 @@ components:
         records:
           type: array
           items:
-            $ref: '#/components/schemas/PolicyMetadataResponse'
+            $ref: '#/components/schemas/FieldPolicyResponse'
 
     GrantStatus:
       type: string
@@ -770,7 +770,7 @@ tags:
     description: Health check endpoints
   - name: Policy Decision
     description: Policy decision and authorization operations
-  - name: Policy Metadata Management
-    description: Policy metadata management operations
+  - name: Field Policy Management
+    description: Field policy management operations
   - name: Access Grants
     description: Grant, list and revoke applications' access to fields

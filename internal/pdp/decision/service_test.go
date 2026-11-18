@@ -151,7 +151,7 @@ func TestService_GetPolicyDecision_FieldNotFound(t *testing.T) {
 	_, err := newFakeService(fields, &fakeGrants{}).GetPolicyDecision(t.Context(), request("app", "open", "missing"))
 
 	require.ErrorIs(t, err, ErrFieldNotFound)
-	assert.EqualError(t, err, "policy metadata not found for schema_id s1 and field_name missing")
+	assert.EqualError(t, err, "field policy not found for schema_id s1 and field_name missing")
 }
 
 func TestService_GetPolicyDecision_ReaderErrors(t *testing.T) {

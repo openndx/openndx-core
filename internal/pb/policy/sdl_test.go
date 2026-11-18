@@ -240,7 +240,7 @@ func TestSDLParser_ParseSDLToPolicyRequest_WithDirectives(t *testing.T) {
 	assert.NotNil(t, request)
 
 	// Find the user.id record
-	var userIDRecord *PolicyMetadataCreateRequestRecord
+	var userIDRecord *FieldPolicyCreateRequestRecord
 	for i := range request.Records {
 		if request.Records[i].FieldName == "user.id" {
 			userIDRecord = &request.Records[i]
@@ -275,7 +275,7 @@ func TestSDLParser_ParseSDLToPolicyRequest_DefaultsToAllowlist(t *testing.T) {
 	assert.Nil(t, request.Records[0].Owner)
 }
 
-func assertFlags(t *testing.T, record PolicyMetadataCreateRequestRecord, allowlist, consent bool) {
+func assertFlags(t *testing.T, record FieldPolicyCreateRequestRecord, allowlist, consent bool) {
 	t.Helper()
 	require.NotNil(t, record.RequiresAllowlist, record.FieldName)
 	require.NotNil(t, record.RequiresConsent, record.FieldName)
@@ -299,7 +299,7 @@ func TestSDLParser_ParseSDLToPolicyRequest_AccessControlFlags(t *testing.T) {
 
 	request, err := newSDLParser().ParseSDLToPolicyRequest("test-schema", sdl)
 	require.NoError(t, err)
-	records := make(map[string]PolicyMetadataCreateRequestRecord, len(request.Records))
+	records := make(map[string]FieldPolicyCreateRequestRecord, len(request.Records))
 	for _, record := range request.Records {
 		records[record.FieldName] = record
 	}

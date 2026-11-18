@@ -95,7 +95,7 @@ fields from both providers in one request. The mock data uses the fictional
 names (Suresh, Ramesh, Naresh, Gomesh) used for test accounts across our other
 projects, not real people.
 
-This request needs policy metadata, application grants, and citizen consent.
+This request needs field policies, application grants, and citizen consent.
 A freshly started stack has none of those. Follow the
 [walkthrough](WALKTHROUGH.md#4-register-members-and-both-provider-schemas) to
 register them with `ondx`, then use the client credentials printed for your

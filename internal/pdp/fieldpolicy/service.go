@@ -12,9 +12,7 @@ import (
 )
 
 var (
-	// ErrPolicyNotFound keeps the text clients of the field policy API match
-	// on until the API itself is renamed.
-	ErrPolicyNotFound = errors.New("policy metadata not found")
+	ErrPolicyNotFound = errors.New("field policy not found")
 	ErrInvalidPolicy  = errors.New("invalid field policy")
 )
 
