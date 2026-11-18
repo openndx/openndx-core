@@ -18,7 +18,11 @@ info:
     With only those, the caller is limited to its own organization unit's records. The `-all` scopes
     never open a route on their own: held alongside `read` or `write`, they widen the caller to every
     organization unit. Creating a member requires `member:write-all`.
-    A missing or invalid token gets 401; a token without the route's scope gets 403.
+    Consent bypass grants use `consent-bypass:read` and `consent-bypass:write`, which span every
+    organization unit and have no `-all` variants.
+    A missing or invalid token gets 401. A token without the route's scope gets 403, and so does
+    a caller without the `-all` scope that reads or writes another organization unit's record,
+    or whose organization unit has no member record. Not every operation below lists this 403.
 
     ## Features
     - JWT authentication with pluggable OIDC identity provider integration
@@ -45,8 +49,9 @@ paths:
     get:
       summary: List members
       description: |
-        Retrieve members. Admins see all members and can filter by `ouId`;
-        other users only see the member linked to their token's organization unit.
+        Retrieve members. Callers with `member:read-all` see all members and can filter by `ouId`;
+        other callers only see the member linked to their token's organization unit, and get 403
+        if the token has no organization unit.
       operationId: getAllMembers
       tags:
         - Members
@@ -56,7 +61,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Filter by ThunderID organization unit ID (admins only)
+          description: Filter by ThunderID organization unit ID. Ignored without `member:read-all`.
       responses:
         '200':
           description: List of members
@@ -349,7 +354,7 @@ paths:
       description: |
         Updates the displayName, description, requiresAllowlist or requiresConsent of one
         field without resending the schema's other fields. Requires the
-        schema:update permission, and members can only update their own
+        `schema:write` scope, and members can only update their own
         schemas.
       operationId: patchSchemaFieldPolicy
       tags:
@@ -382,7 +387,7 @@ paths:
       description: |
         Deletes the field policy of one field. This changes the
         schema's policy rather than deleting the schema, so it requires the
-        schema:update permission. Members can only delete from their own
+        `schema:write` scope. Members can only delete from their own
         schemas.
       operationId: deleteSchemaFieldPolicy
       tags:
@@ -405,7 +410,7 @@ paths:
       description: |
         Removes one application from the field's allow-list by revoking its
         active access grant in the PDP. The PDP keeps the revoked grant as a
-        record. Requires the schema:update permission, and members can only
+        record. Requires the `schema:write` scope, and members can only
         revoke access to their own schemas.
       operationId: revokeSchemaPolicyAllowListEntry
       tags:
@@ -782,6 +787,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          description: The application has no IdP client, so it can't hold grants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '502':
           $ref: '#/components/responses/BadGateway'
 
@@ -1054,10 +1065,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-        deletedAt:
-          type: string
-          format: date-time
-          nullable: true
 
     Schema:
       allOf:
@@ -1082,7 +1089,8 @@ components:
               description: GraphQL endpoint URL
             version:
               type: string
-              description: Schema version
+              description: Lifecycle state of the schema. New schemas are `active`.
+              example: active
             memberId:
               type: string
               description: Reference to the owning member
@@ -1361,7 +1369,6 @@ components:
       required:
         - schemaName
         - endpoint
-        - memberId
       properties:
         schemaId:
           type: string
@@ -1405,7 +1412,10 @@ components:
           description: GraphQL endpoint URL
         memberId:
           type: string
-          description: Reference to the owning member
+          description: |
+            The owning member. Required with `schema:write-all`. Without it,
+            the value is ignored and the schema is created for the caller's
+            own member.
       oneOf:
         - required: [sdl]
           not:
@@ -1497,7 +1507,6 @@ components:
       required:
         - applicationName
         - selectedFields
-        - memberId
       properties:
         applicationName:
           type: string
@@ -1514,7 +1523,10 @@ components:
           description: Selected fields for data access
         memberId:
           type: string
-          description: Reference to the owning member
+          description: |
+            The owning member. Required with `application:write-all`. Without
+            it, the value is ignored and the application is created for the
+            caller's own member.
         idpApplicationId:
           type: string
           nullable: true
