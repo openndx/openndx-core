@@ -87,7 +87,7 @@ To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
 ## Documentation
 
-- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` tutorial](docs/TUTORIAL-ondx-cli.md)
+- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` CLI](cmd/ondx/README.md)
 - **Components:** the table above
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
 - **Releases:** [docs/RELEASE.md](docs/RELEASE.md)

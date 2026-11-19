@@ -196,5 +196,4 @@ The local ThunderID serves plain HTTP, so `--insecure` has no effect there. It s
 ## More docs
 
 - [End-to-end walkthrough](https://github.com/openndx/openndx-core/blob/main/dev/WALKTHROUGH.md)
-- [CLI tutorial](https://github.com/openndx/openndx-core/blob/main/docs/TUTORIAL-ondx-cli.md)
 - [Portal Backend](https://github.com/openndx/openndx-core/blob/main/cmd/pb/README.md) and its [authorization model](https://github.com/openndx/openndx-core/blob/main/cmd/pb/AUTHORIZATION.md)
