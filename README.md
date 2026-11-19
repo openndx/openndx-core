@@ -71,7 +71,7 @@ The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock provi
 
 ## Working on the code
 
-Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker and Make, then:
+Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker, Make, and on Linux and Windows a C compiler such as gcc (for the race detector), then:
 
 ```bash
 make help     # all commands

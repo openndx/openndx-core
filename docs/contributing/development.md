@@ -12,7 +12,9 @@ Before you begin, ensure you have the following installed:
 -   [Make](https://www.gnu.org/software/make/)
 -   [Git](https://git-scm.com/downloads)
 
-On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash. `make test` uses the race detector, which needs a C compiler (gcc) on Windows.
+On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
+
+`make test`, `make check` and so the pre-commit hook use the race detector, which needs a C compiler on Linux (gcc, for example from `build-essential`) and Windows. macOS needs none.
 
 ## Initial Setup
 

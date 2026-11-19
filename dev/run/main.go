@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -74,7 +75,9 @@ func run(args []string) int {
 	}
 
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	// SIGHUP is closing the terminal. The services run in process groups of
+	// their own on Linux and macOS, so it doesn't reach them; stop them here.
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	exited := make(chan string, len(selected))
 	var running []*exec.Cmd
@@ -212,10 +215,10 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 		_ = w.Close()
 		var exitErr *exec.ExitError
 		switch {
+		case stopping.Load():
+			logf(s.name, "stopped")
 		case err == nil:
 			logf(s.name, "exited")
-		case errors.As(err, &exitErr) && exitErr.ExitCode() == -1:
-			logf(s.name, "stopped") // ended by a signal
 		case errors.As(err, &exitErr):
 			logf(s.name, "exited with code %d", exitErr.ExitCode())
 		default:
@@ -226,10 +229,15 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 	return cmd, nil
 }
 
+// stopping is set once stopAll runs, so services report "stopped" rather
+// than how the stop ended them (a signal, or taskkill's exit code 1).
+var stopping atomic.Bool
+
 // stopAll stops every service and the processes it started. interrupted
-// says the runner got Ctrl+C, which on Windows has already reached the
+// says the runner got a signal, which on Windows has already reached the
 // services. Stopping a service that has already exited fails harmlessly.
 func stopAll(cmds []*exec.Cmd, interrupted bool) {
+	stopping.Store(true)
 	for _, cmd := range cmds {
 		stop(cmd, interrupted)
 	}

@@ -16,8 +16,9 @@ func newProcessGroup(cmd *exec.Cmd) {
 }
 
 // stop sends SIGINT to the service's process group, then SIGKILL to whatever
-// is left after 10 seconds. A terminal's Ctrl+C reaches only the foreground
-// group, not the services, so this is also how they stop on Ctrl+C.
+// is left after 10 seconds. Signals from the terminal (Ctrl+C, or SIGHUP when
+// it closes) reach only the runner's group, not the services, so this is how
+// they stop in every case.
 func stop(cmd *exec.Cmd, _ bool) {
 	group := -cmd.Process.Pid
 	_ = syscall.Kill(group, syscall.SIGINT)
