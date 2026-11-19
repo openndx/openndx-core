@@ -21,7 +21,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -174,6 +173,11 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 		cmd = exec.Command("pnpm", "dev")
 	}
 	cmd.Dir = s.dir
+	newProcessGroup(cmd)
+	// Wait also waits for every process holding the output pipe. If a child
+	// outlives the service, stop waiting for it this long after the service
+	// exits, so the runner can't hang.
+	cmd.WaitDelay = 15 * time.Second
 
 	r, w := io.Pipe()
 	cmd.Stdout, cmd.Stderr = w, w
@@ -203,6 +207,8 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 		switch {
 		case err == nil:
 			logf(s.name, "exited")
+		case errors.As(err, &exitErr) && exitErr.ExitCode() == -1:
+			logf(s.name, "stopped") // ended by a signal
 		case errors.As(err, &exitErr):
 			logf(s.name, "exited with code %d", exitErr.ExitCode())
 		default:
@@ -213,19 +219,10 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 	return cmd, nil
 }
 
-// stopAll stops every service. Ctrl+C in a terminal already reaches them, so
-// this mostly matters when one service exits by itself. Stopping a service
-// that has already exited fails harmlessly.
+// stopAll stops every service and the processes it started. Stopping a
+// service that has already exited fails harmlessly.
 func stopAll(cmds []*exec.Cmd) {
 	for _, cmd := range cmds {
-		if runtime.GOOS == "windows" {
-			// pnpm runs node in a child process; stop the whole tree.
-			pid := strconv.Itoa(cmd.Process.Pid)
-			_ = exec.Command("taskkill", "/T", "/F", "/PID", pid).Run() //nolint:gosec // pid of a process this program started
-			continue
-		}
-		_ = cmd.Process.Signal(os.Interrupt)
-		p := cmd.Process
-		time.AfterFunc(10*time.Second, func() { _ = p.Kill() })
+		stop(cmd)
 	}
 }
