@@ -196,7 +196,7 @@ func TestLoadConfigErrors(t *testing.T) {
 		{name: "consent engine without ownerIdArgName", extra: "consentEngine:\n  url: http://ce.internal/internal/api/v1", wantErr: "consentEngine.ownerIdArgName is required when consentEngine.url is set"},
 		{name: "missing idp audience", replace: [2]string{"  audience: http://api.example", ""}, wantErr: "invalid idp configuration"},
 		{name: "invalid pdp url", extra: "pdp:\n  url: pdp.internal", wantErr: "pdp.url"},
-		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal", wantErr: "consentEngine.url"},
+		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal\n  ownerIdArgName: nic", wantErr: "consentEngine.url must use http or https"},
 		{name: "invalid audit url", extra: "audit:\n  url: audit", wantErr: "audit.url"},
 		{name: "empty audit actor", extra: "audit:\n  actorId: \"\"", wantErr: "audit.actorType and audit.actorId"},
 		{name: "incomplete arg mapping", extra: "argMappings:\n  - schemaId: drp-person-v1\n    targetArgName: nic", wantErr: "argMappings[0] must set"},
