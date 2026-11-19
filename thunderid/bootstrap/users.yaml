@@ -161,8 +161,8 @@ members:
 # LOCAL-DEV ONLY: sample member organizations. A Portal Backend member is an
 # organization linked 1:1 to a ThunderID organization unit (members.ou_id), and
 # its staff are the users inside that OU. These two match the walkthrough in
-# docs/TUTORIAL-ondx-cli.md: DRP owns and provides a schema, DIE registers an
-# application against it. Register them in PB with
+# dev/WALKTHROUGH.md: DRP owns the provider schemas, and DIE registers an
+# application that reads them. Register them in PB with
 # `ondx members create --ou-id <id below>`.
 resource_type: organization_unit
 id: 01900000-0000-7000-8000-0000000000c0
