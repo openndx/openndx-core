@@ -63,7 +63,8 @@ curl http://localhost:4000/health
 
 OE's GraphQL endpoint requires a consumer access token issued by ThunderID for OE's
 audience. OE verifies its signature, issuer and audience with `internal/authn`
-(`IDP_*` in `compose.yml`; see `cmd/oe/AUTHENTICATION.md`). Get one for the seeded M2M
+(`IDP_*` in `compose.yml`; see the `idp` section of `cmd/oe/CONFIGURATION.md`). Get one
+for the seeded M2M
 data-consumer client (`thunderid/bootstrap/application.yaml`, `DATA_CONSUMER`; secret is
 `DATA_CONSUMER_CLIENT_SECRET`, default `1234`):
 

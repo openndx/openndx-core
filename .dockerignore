@@ -20,7 +20,6 @@ coverage.html
 **/README.md
 **/openapi.yaml
 docs/
-cmd/oe/HOW_TO_TEST.md
 cmd/oe/PROVIDER_CONFIGURATION.md
 
 # Orchestration Engine: config provided at runtime via mount/env, never baked

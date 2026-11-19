@@ -47,7 +47,7 @@ The OE reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`) a
 | `server`, `environment`, `logging` | Port (default `4000`) and request timeout; deployment name on log lines; log level and format. |
 | `schemaPath` | The consumer schema file; default `schema.graphql`, resolved against the directory of the config file. |
 | `foundationalIdArgName` | **Required.** Name of the query argument that identifies the data owner, for example `nic`. |
-| `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [AUTHENTICATION.md](AUTHENTICATION.md). |
+| `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [CONFIGURATION.md](CONFIGURATION.md#idp). |
 | `pdp.url` | PDP base URL. If empty, the OE skips authorization and consent checks (see Security). |
 | `consentEngine.url` | Consent Engine URL **including** `/internal/api/v1`. |
 | `audit` | Argus audit service URL, API key and actor identity. |
@@ -63,7 +63,7 @@ Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATIO
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
 | `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
 
-[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here and in [AUTHENTICATION.md](AUTHENTICATION.md).
+[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here, and its token requirements in [CONFIGURATION.md](CONFIGURATION.md#idp).
 
 ## How it works
 
@@ -97,7 +97,7 @@ sequenceDiagram
 
 > **Deployment security.** Only `/public/graphql` requires a token. `/health` is not authenticated; expose only `/public/graphql` to consumers.
 
-- Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([AUTHENTICATION.md](AUTHENTICATION.md)).
+- Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([CONFIGURATION.md](CONFIGURATION.md#idp)).
 - With `pdp.url` empty, the OE returns provider data without any authorization or consent check. Always set it.
 - Keep provider and audit secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
 - The OE sends no CORS headers, so browsers can't call it directly. Its callers are machine clients.
@@ -111,12 +111,44 @@ go test ./cmd/oe/... ./internal/oe/... -count=1
 make quality-check orchestration-engine
 ```
 
-[HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
+The tests are in `cmd/oe`, for configuration loading, and in `internal/oe`. They need no database or running service: the clients are tested against local test servers.
+
+The federation tests in `internal/oe/federator` compare each result with a golden file in `internal/oe/federator/testdata/golden`. After an intended change in behavior, regenerate the files and review the diff:
+
+```bash
+go test ./internal/oe/federator -run TestFederateQueryGolden -update
+```
+
+The cross-service suite, which runs the OE against the PDP and the Consent Engine, is a separate Go module in [tests/integration](../../tests/integration/README.md).
+
+### Changing the schema
+
+The OE reads the consumer schema from `schemaPath` once, at startup ([CONFIGURATION.md](CONFIGURATION.md#schema)). To try a different schema, edit the file or point `schemaPath` at another one, and restart the OE. A missing file or an invalid schema stops the OE at startup, with an error that names the path.
+
+### Trying queries
+
+Start the OE and the rest of the stack (see [Quick start](#quick-start)). `POST /public/graphql` needs a consumer token, field policies, an application grant and, for restricted fields, the citizen's consent. The token and a curl example are in [dev/README.md](../../dev/README.md), and the full setup is in the [walkthrough](../../dev/WALKTHROUGH.md). What to expect:
+
+| Situation | Response |
+|---|---|
+| No token, or an invalid one | HTTP `401` with a JSON body, such as `{"error":"unauthorized","message":"invalid authentication token"}` |
+| The application has no grant for a field | `PDP_NOT_ALLOWED`, with the fields in `unauthorizedFields` |
+| A field has no field policy | `PDP_ERROR` |
+| The query has no `nic` argument | `BAD_REQUEST`, because the schema declares `nic: String!`; `MISSING_IDENTIFIER` if the schema makes it optional |
+| An unknown field, or an argument of the wrong type | `BAD_REQUEST`, with `locations` |
+| Two aliases with different `nic` values | `AMBIGUOUS_IDENTIFIER` |
+| A provider is down or returns a non-2xx status | That provider's fields are `null` in `data`, each with a `PROVIDER_ERROR` at its `path` |
+| Consent is still pending | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending` |
+| Everything is granted and approved | `data` holds the merged fields from every provider |
+
+The codes are in `errors[].extensions.code`, with HTTP 200; [CONFIGURATION.md](CONFIGURATION.md#error-codes) describes each one. For a pending consent, open `consentPortalUrl` as the citizen, approve, and repeat the query.
+
+### Code layout
+
+The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
 
 ## More docs
 
-- [CONFIGURATION.md](CONFIGURATION.md): all `config.yaml` keys, error codes, the schema file
-- [AUTHENTICATION.md](AUTHENTICATION.md): token validation, `idp` settings, JWKS handling
+- [CONFIGURATION.md](CONFIGURATION.md): all `config.yaml` keys, consumer token validation, error codes, the schema file
 - [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md): adding a data provider
-- [HOW_TO_TEST.md](HOW_TO_TEST.md): testing and manual checks
 - [Policy Decision Point](../pdp/README.md) and [Consent Engine](../ce/README.md): the services the OE calls
