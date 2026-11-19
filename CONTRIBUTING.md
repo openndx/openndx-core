@@ -94,6 +94,57 @@ cd tests/integration && ./run-local-tests.sh
 
 The script starts the databases and services from `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set. Many tests skip rather than fail when a database or service they need is unreachable, so check the skip messages in the output.
 
+## Branches and commits
+
+Name branches `<type>/<issue#>-<slug>`, using a commit type below and the number of the issue the branch works on, for example `fix/501-validate-trace-id` or `docs/780-consolidate-contributing`.
+
+Commit titles and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```text
+<type>(<scope>)!: <description>
+```
+
+- **type**: the kind of change. The types used here are `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci` and `style`.
+- **scope**: the component the change is in, such as `oe`, `pdp`, `ce`, `pb` or `ondx`, or another area such as `deploy`, `authn` or `release`. Separate several with commas, as in `refactor(pdp,pb)`. Repository-wide changes, such as a formatting pass, leave the scope out.
+- **`!`**: marks a breaking change, such as a removed or renamed endpoint; leave it out otherwise. Describe what users of the change must do in a `BREAKING CHANGE:` footer in the commit body.
+- **description**: lowercase, imperative and without a final period, for example `refactor(pdp,pb)!: rename the policy metadata API to field policies`.
+
+`main` accepts only squash merges, so each pull request lands on `main` as one commit, with GitHub adding the pull request number, as in `(#774)`. No CI check enforces this format.
+
+## Pull requests
+
+Work on a fork and open pull requests against `main` in `openndx/openndx-core`:
+
+```bash
+git remote add upstream https://github.com/openndx/openndx-core.git   # once, in your clone
+git fetch upstream
+git switch -c fix/501-validate-trace-id upstream/main
+# commit your changes
+git push -u origin fix/501-validate-trace-id
+```
+
+If `main` moves on and your branch needs its changes or conflicts with it, rebase with `git fetch upstream && git rebase upstream/main` and push with `git push --force-with-lease`.
+
+When you open the pull request:
+
+- Give it a title in the [commit format](#branches-and-commits).
+- Fill in [the template](.github/pull_request_template.md), which GitHub adds to the description when you open the pull request in the browser. Keep every section, and where one doesn't apply say so, for example "Not applicable; no UI changes."
+- Under Related Issues, `Closes #<n>` or `Fixes #<n>` closes the issue when the pull request is merged; `Related to #<n>` only links it.
+
+### Checks
+
+Each component's validate workflow runs when the pull request changes that component's files, as set by the `paths` in `.github/workflows/*-validate.yml`. For a Go service it checks that `go mod tidy` leaves `go.mod` and `go.sum` unchanged, runs golangci-lint on the changed lines, builds the service, runs the unit tests, and builds and scans the Docker image with Trivy. For the Consent Portal it runs `eslint` and builds and scans the image. The integration tests run when the pull request changes the OE, PDP or CE, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`, and a TruffleHog secret scan runs on every pull request. CodeRabbit, an automated reviewer, also comments on pull requests.
+
+### Review and merge
+
+The rules on `main` require:
+
+- at least one approving review;
+- approval of the latest push by someone other than the person who pushed it, so a push after an approval needs a new one;
+- every review conversation resolved.
+
+`main` accepts only squash merges, so your branch lands as one commit.
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
