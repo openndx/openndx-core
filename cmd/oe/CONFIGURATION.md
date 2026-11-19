@@ -20,8 +20,7 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `logging.level` | `info` | `debug`, `info`, `warn` or `error`. |
 | `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. |
 | `schemaPath` | `schema.graphql` | The consumer schema file. A relative path is resolved against the directory of the config file. See [Schema](#schema). |
-| `idp.jwksURL`, `idp.issuer`, `idp.audience` | | **Required.** Consumer token validation. See [AUTHENTICATION.md](AUTHENTICATION.md#configuration). |
-| `idp.insecureSkipTLSVerify` | `false` | Skips TLS checks on the JWKS fetch. Local development only. |
+| `idp` | | Consumer token validation. `idp.jwksURL`, `idp.issuer` and `idp.audience` are **required**. See [idp](#idp). |
 | `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. |
 | `consentEngine.url` | | Consent Engine URL, which must end in `/internal/api/v1` because the OE appends `/consents`. If the PDP requires consent and this is empty, the request fails with `CE_ERROR`. |
 | `consentEngine.ownerIdArgName` | | **Required when `consentEngine.url` is set.** The query argument that carries the ID of the data owner whose consent is asked, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires consent, so a query that needs none can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no value the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |

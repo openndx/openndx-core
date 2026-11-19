@@ -46,7 +46,7 @@ The OE reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`) a
 |---|---|
 | `server`, `environment`, `logging` | Port (default `4000`) and request timeout; deployment name on log lines; log level and format. |
 | `schemaPath` | The consumer schema file; default `schema.graphql`, resolved against the directory of the config file. |
-| `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [AUTHENTICATION.md](AUTHENTICATION.md). |
+| `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [CONFIGURATION.md](CONFIGURATION.md#idp). |
 | `pdp.url` | PDP base URL. If empty, the OE skips authorization and consent checks (see Security). |
 | `consentEngine.url` | Consent Engine URL **including** `/internal/api/v1`. |
 | `consentEngine.ownerIdArgName` | **Required when `consentEngine.url` is set.** Name of the query argument that identifies the data owner whose consent is asked, for example `nic`. Read only when a field requires consent. |
@@ -63,7 +63,7 @@ Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATIO
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
 | `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
 
-[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here and in [AUTHENTICATION.md](AUTHENTICATION.md).
+[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here, and its token requirements in [CONFIGURATION.md](CONFIGURATION.md#idp).
 
 ## How it works
 
@@ -97,7 +97,7 @@ sequenceDiagram
 
 > **Deployment security.** Only `/public/graphql` requires a token. `/health` is not authenticated; expose only `/public/graphql` to consumers.
 
-- Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([AUTHENTICATION.md](AUTHENTICATION.md)).
+- Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([CONFIGURATION.md](CONFIGURATION.md#idp)).
 - With `pdp.url` empty, the OE returns provider data without any authorization or consent check. Always set it.
 - Keep provider and audit secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
 - The OE sends no CORS headers, so browsers can't call it directly. Its callers are machine clients.
@@ -145,12 +145,10 @@ The codes are in `errors[].extensions.code`, with HTTP 200; [CONFIGURATION.md](C
 
 ### Code layout
 
-[HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
+The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
 
 ## More docs
 
-- [CONFIGURATION.md](CONFIGURATION.md): all `config.yaml` keys, error codes, the schema file
-- [AUTHENTICATION.md](AUTHENTICATION.md): token validation, `idp` settings, JWKS handling
+- [CONFIGURATION.md](CONFIGURATION.md): all `config.yaml` keys, consumer token validation, error codes, the schema file
 - [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md): adding a data provider
-- [HOW_TO_TEST.md](HOW_TO_TEST.md): testing and manual checks
 - [Policy Decision Point](../pdp/README.md) and [Consent Engine](../ce/README.md): the services the OE calls
