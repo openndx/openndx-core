@@ -16,17 +16,53 @@ After `ondx login` the token is cached in `~/.openndx/` and refreshed automatica
 
 ## Install
 
+Prebuilt binaries for Linux, macOS and Windows, on amd64 and arm64, are attached to each [GitHub Release](https://github.com/openndx/openndx-core/releases), together with a `checksums.txt`. After installing, `ondx version` shows which build you have.
+
+### Homebrew
+
 ```bash
 brew install openndx/tap/ondx
-# or
+```
+
+Run `brew upgrade ondx` to update it.
+
+### Install script (Linux and macOS)
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
-# or, on Windows (PowerShell)
+```
+
+The script downloads the archive for your operating system and CPU from the latest release, checks it against the release's `checksums.txt`, and installs `ondx` to `/usr/local/bin` if that directory is writable, or to `~/.local/bin` otherwise. Set `ONDX_VERSION` to install a specific release, for example `ONDX_VERSION=v0.7.0`, or `ONDX_INSTALL_DIR` to choose the directory.
+
+### Install script (Windows)
+
+```powershell
 irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
-# or
+```
+
+The script downloads the amd64 or arm64 build, checks it against the release's `checksums.txt`, installs `ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that directory to your user `PATH`. Open a new terminal afterwards. Set `$env:ONDX_VERSION` to install a specific release, or `$env:ONDX_INSTALL_DIR` to choose the directory. Run the script again to upgrade.
+
+### Manual download
+
+Download `ondx_<os>_<arch>.tar.gz`, or `ondx_windows_<arch>.zip` on Windows, from the release page. Each archive from v0.4.0 onward has a build provenance attestation, which you can verify with the GitHub CLI:
+
+```bash
+gh attestation verify ondx_linux_amd64.tar.gz --repo openndx/openndx-core
+```
+
+The binaries are not code-signed, so Windows SmartScreen may show a warning the first time you run one downloaded through a browser.
+
+### Go
+
+```bash
 go install github.com/openndx/openndx-core/cmd/ondx@latest
 ```
 
-Prebuilt binaries and checksums for every OS and CPU are attached to each [GitHub Release](https://github.com/openndx/openndx-core/releases); the [tutorial](https://github.com/openndx/openndx-core/blob/main/docs/TUTORIAL-ondx-cli.md#1-install) covers every install option, including verifying a download with `gh attestation verify`. From a checkout, use `go build -o ondx ./cmd/ondx`. `ondx version` shows which build you have.
+This needs Go 1.26.4 or later. It installs `ondx` to `GOBIN`, or to `$(go env GOPATH)/bin` if `GOBIN` is not set, so make sure that directory is on your `PATH`.
+
+### From source
+
+From a checkout of this repository, `go build -o ondx ./cmd/ondx` writes `ondx` to the current directory. To run it without building, use `go run ./cmd/ondx <command>`.
 
 > **Version note.** Commands marked **†** below, and `profile set --resource`, are newer than release v0.4.0. Use a later release, or build from source, to get them.
 
@@ -115,8 +151,9 @@ Callback port, `--insecure`, `--extra` and the profile's `resource` have no envi
 | Resource | `http://pb.openndx.local` |
 | Portal Backend URL | `http://localhost:8083` |
 | Scopes | `openid roles email` and every Portal Backend scope |
+| `--insecure` | `true` |
 
-`ondx profile set <name>` creates or updates a profile and changes only the flags you pass: `--issuer`, `--auth-url`, `--token-url`, `--client-id`, `--scopes`, `--callback-port`, `--resource`, `--pb-url`, `--insecure`. Each non-`local` profile has its own token cache, `~/.openndx/credentials-<name>.json`, so switching profiles never reuses another provider's token.
+To work with several environments, such as local, staging and production, save each one as a profile instead of passing `--issuer`, `--client-id` and `--pb-url` on every command. `ondx profile set <name>` creates or updates a profile and changes only the flags you pass: `--issuer`, `--auth-url`, `--token-url`, `--client-id`, `--scopes`, `--callback-port`, `--resource`, `--pb-url`, `--insecure`. Each non-`local` profile has its own token cache, `~/.openndx/credentials-<name>.json`, so switching profiles never reuses another provider's token.
 
 ```bash
 ondx profile set staging --issuer https://idp.staging.example.com --client-id ondx-cli-staging \
@@ -138,7 +175,16 @@ ThunderID sets a token's `aud` to the resource requested with `resource=`, and t
 
 ### TLS and `--insecure`
 
-The local ThunderID serves plain HTTP, so `--insecure` has no effect there. It skips certificate verification for HTTPS endpoints with untrusted certificates. Use it only for local or test setups.
+The local ThunderID serves plain HTTP, so `--insecure` has no effect there. It skips certificate verification for HTTPS endpoints with untrusted certificates. Use it only for local or test setups. The `local` profile turns it on, so if you use that profile with flags that point at an HTTPS endpoint, also pass `--insecure=false`, or create a separate profile for that environment.
+
+## Troubleshooting
+
+- **`field policy not found` from `applications create` or `policy update`.** A `--field` you passed is not part of any registered schema. Register it with `schemas create` first, and pass it in the `schemaId:fieldName` form that command prints.
+- **`--ou-id is required` from `members create`.** Every member needs an organization unit in the identity provider. Create the organization unit first, then pass its ID.
+- **`Application already exists` from `applications create`.** The identity provider already has an application with that `--name`. Choose a different name.
+- **`ondx login` rejects `--callback-port`.** The `NDX_CLI` client accepts only port `8765`. See [Callback port](#callback-port).
+- **`401` from the Portal Backend after logging in.** The token was issued for a different audience. See [Resource binding](#resource-binding).
+- **Connection errors against `https://localhost:8090`.** The local ThunderID serves plain HTTP. Use `http://localhost:8090`, and update any `.env` or `~/.openndx/config.json` setting that still points at `https://`.
 
 ## Limitations
 
