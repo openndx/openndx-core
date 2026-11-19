@@ -36,11 +36,6 @@ type Config struct {
 	Providers     []provider.Config   `yaml:"providers"`
 	// ArgMappings map consumer query arguments to provider query arguments.
 	ArgMappings []*graphql.ArgMapping `yaml:"argMappings"`
-
-	// MovedFoundationalIDArgName catches the top-level foundationalIdArgName,
-	// which moved to consentEngine.ownerIdArgName, so that an old config
-	// fails at startup instead of losing the value silently. It is never used.
-	MovedFoundationalIDArgName string `yaml:"foundationalIdArgName"`
 }
 
 // ServerConfig holds the HTTP server settings.
@@ -129,9 +124,6 @@ func (c *Config) Validate() error {
 	}
 	if c.SchemaPath == "" {
 		return fmt.Errorf("schemaPath must not be empty")
-	}
-	if c.MovedFoundationalIDArgName != "" {
-		return fmt.Errorf("foundationalIdArgName has moved to consentEngine.ownerIdArgName")
 	}
 	if c.ConsentEngine.URL != "" && c.ConsentEngine.OwnerIDArgName == "" {
 		return fmt.Errorf("consentEngine.ownerIdArgName is required when consentEngine.url is set")

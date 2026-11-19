@@ -194,7 +194,6 @@ func TestLoadConfigErrors(t *testing.T) {
 		{name: "unknown log format", extra: "logging:\n  format: xml", wantErr: "logging.format"},
 		{name: "empty schemaPath", extra: `schemaPath: ""`, wantErr: "schemaPath must not be empty"},
 		{name: "consent engine without ownerIdArgName", extra: "consentEngine:\n  url: http://ce.internal/internal/api/v1", wantErr: "consentEngine.ownerIdArgName is required when consentEngine.url is set"},
-		{name: "top-level foundationalIdArgName", extra: "foundationalIdArgName: nic", wantErr: "foundationalIdArgName has moved to consentEngine.ownerIdArgName"},
 		{name: "missing idp audience", replace: [2]string{"  audience: http://api.example", ""}, wantErr: "invalid idp configuration"},
 		{name: "invalid pdp url", extra: "pdp:\n  url: pdp.internal", wantErr: "pdp.url"},
 		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal", wantErr: "consentEngine.url"},
