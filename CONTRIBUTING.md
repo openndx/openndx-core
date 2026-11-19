@@ -145,6 +145,14 @@ The rules on `main` require:
 
 `main` accepts only squash merges, so your branch lands as one commit.
 
+## Issues
+
+Search the [existing issues](https://github.com/openndx/openndx-core/issues?q=is%3Aissue) first, then open a new one with one of the [issue forms](https://github.com/openndx/openndx-core/issues/new/choose): Report a Bug, Improvement Request or New Feature Request. Blank issues are turned off. Issues labelled [`good first issue`](https://github.com/openndx/openndx-core/labels/good%20first%20issue) suit newcomers.
+
+## Security
+
+Don't report a security vulnerability in a public issue or pull request. Follow [SECURITY.md](SECURITY.md) instead.
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
