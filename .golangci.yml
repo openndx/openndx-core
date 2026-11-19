@@ -1,6 +1,6 @@
 # golangci-lint configuration. CI runs it in the *-validate.yml workflows with
-# the version pinned there; run the same version locally:
-#   golangci-lint run --new-from-rev=HEAD ./...
+# the version pinned there; tools/go.mod pins the same version for `make fmt`,
+# `make lint` and `make check`. Change both together.
 version: "2"
 
 linters:

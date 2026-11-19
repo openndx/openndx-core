@@ -27,14 +27,16 @@ curl http://localhost:4000/health
 
 Compose mounts `cmd/oe/config.docker.yaml` and `cmd/oe/schema.graphql` into the container. The sample providers are the mock APIs in [dev/](../../dev/README.md).
 
-Native, from the repo root, with ThunderID from `docker compose up thunderid` for consumer tokens:
+Natively, while the rest of the stack runs in Docker. No container calls the OE, so it can swap out on its own (see [running the platform](../../docs/contributing/development.md#running-the-platform)):
 
 ```bash
-cp cmd/oe/config.example.yaml cmd/oe/config.yaml     # git-ignored
-make run orchestration-engine
+make up                                             # full stack and the mock providers
+docker compose stop orchestration-engine
+cp cmd/oe/config.example.yaml cmd/oe/config.yaml    # once; config.yaml is git-ignored
+make dev SVC=oe
 ```
 
-`make run` starts the service from `cmd/oe`, where it reads `config.yaml`; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
+`make dev` starts the service from `cmd/oe`, where it reads `config.yaml`; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
 
 To send a real query you need a consumer token, registered field policies and an application grant. Follow the [walkthrough](../../dev/WALKTHROUGH.md), or the token and curl example in [dev/README.md](../../dev/README.md).
 
@@ -106,9 +108,8 @@ sequenceDiagram
 ## Development
 
 ```bash
-make validate-test orchestration-engine        # tests with -race and coverage
-go test ./cmd/oe/... ./internal/oe/... -count=1
-make quality-check orchestration-engine
+make test PKG="./cmd/oe/... ./internal/oe/..."    # tests with -race
+make check                                        # tidy, lint and test the whole module
 ```
 
 [HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.

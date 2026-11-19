@@ -25,7 +25,7 @@ We welcome pull requests from the community! This guide will help ensure your co
 4.  **Test your changes:**
     - Run all tests: `go test ./...`
     - Run integration tests if applicable
-    - Ensure builds succeed: `make validate-build-all`
+    - Run `make check` (go.mod tidiness, lint and unit tests)
 
 5.  **Commit your changes:**
     - Write clear, descriptive commit messages

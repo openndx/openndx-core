@@ -4,29 +4,32 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 ## Commands
 
-One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
+One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**, and `tools/go.mod` only pins golangci-lint. Make targets work on the whole module. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
 
-| Service | Make name | Go packages |
+| Service | `make dev` name | Go packages |
 |---|---|---|
-| Orchestration Engine | `orchestration-engine` | `./cmd/oe/... ./internal/oe/...` |
-| Policy Decision Point | `policy-decision-point` | `./cmd/pdp/... ./internal/pdp/...` |
-| Consent Engine | `consent-engine` | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
-| Portal Backend | `portal-backend` | `./cmd/pb/... ./internal/pb/...` |
+| Orchestration Engine | `oe` | `./cmd/oe/... ./internal/oe/...` |
+| Policy Decision Point | `pdp` | `./cmd/pdp/... ./internal/pdp/...` |
+| Consent Engine | `ce` | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
+| Portal Backend | `pb` | `./cmd/pb/... ./internal/pb/...` |
 
 ```bash
-make setup-all                          # git hooks, Go modules, portal deps
-make validate-test <service>            # go test -race with coverage
-make quality-check <service>            # gofumpt/goimports, vet, lint, gosec
-make run <service>                      # run natively (needs cmd/<svc>/config.yaml)
+make setup                              # git hook, Go modules, pinned golangci-lint, portal deps
+make test PKG=./internal/pdp/...        # go test -race; PKG defaults to ./...
+make fmt                                # gofumpt and goimports
+make lint                               # golangci-lint with .golangci.yml
+make check                              # go mod tidy -diff, lint, test; the pre-commit hook runs it
+make up / make down                     # full stack in Docker, with the mock providers
+make deps && make dev SVC="oe pb"       # dependencies in Docker, services native (needs cmd/<svc>/config.yaml)
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
-golangci-lint run --new-from-rev=HEAD ./internal/... ./cmd/...   # only issues you introduced
-docker compose up --build               # full local stack
+go tool -modfile=tools/go.mod golangci-lint run --new-from-rev=HEAD ./...   # only issues you introduced
 ```
 
+- `make lint` and `make check` lint the whole module and fail on any issue, so they fail on `main` until the existing issues in #791 are fixed. Use the `--new-from-rev=HEAD` command above to see only what you introduced; the pre-commit hook can be skipped with `git commit --no-verify`.
 - Unit tests need no database: PDP and PB tests use in-memory SQLite (PDP helpers in `internal/pdp/pdptest`, PB in `internal/pb/database/dbtest`).
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
 - PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.
-- Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `cd tests/integration && ./run-local-tests.sh`, or bring up `docker-compose.test.yml` and `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
+- Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `make test-integration`, or bring up `docker-compose.test.yml` and `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
 - `TestLooksLikeIDImprovedLogic` in `internal/monitoring` fails on `main`; it is not caused by your change.
 
 ## Architecture

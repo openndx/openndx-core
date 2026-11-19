@@ -74,16 +74,18 @@ The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock provi
 Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker and Make, then:
 
 ```bash
-make help                        # all commands
-make setup-all                   # git hooks, Go modules, portal dependencies
-make validate-test <service>     # tests
-make quality-check <service>     # format, lint, security
-make run <service>               # run one service
+make help     # all commands
+make setup    # git hook, Go modules, golangci-lint, portal packages
+make test     # unit tests; make test PKG=./internal/pdp/... for some packages
+make check    # tidy go.mod, lint and test, as the pre-commit hook does
+make up       # full stack in Docker; make down to stop
+make deps     # only the dependencies in Docker, then...
+make dev      # ...the services natively, with labelled logs
 ```
 
 On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
 
-`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend` or `consent-portal`. Batch commands and automatic pre-commit validation cover these maintained components. Explicit commands for the paused `admin-portal` and `member-portal` prototypes remain available for local exploration. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
+The [development guide](docs/contributing/development.md) covers every target and the ways to run the platform. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
 To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
@@ -93,7 +95,7 @@ To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 - **Components:** the table above
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
 - **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
-- **Contributor and ops references (refresh pending):** [Makefile usage](docs/MAKEFILE_USAGE.md), [code quality setup](docs/LOCAL_CODE_QUALITY_SETUP.md), [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
+- **Contributor and ops references (refresh pending):** [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
 
 ## Security and license
 
