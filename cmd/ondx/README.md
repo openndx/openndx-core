@@ -64,7 +64,7 @@ This needs Go 1.26.4 or later. It installs `ondx` to `GOBIN`, or to `$(go env GO
 
 From a checkout of this repository, `go build -o ondx ./cmd/ondx` writes `ondx` to the current directory. To run it without building, use `go run ./cmd/ondx <command>`.
 
-> **Version note.** Commands marked **†** below, and `profile set --resource`, are newer than release v0.4.0. Use a later release, or build from source, to get them.
+> **Version note.** `members list`, `members get`, `schemas list`, `schemas get` and `profile set --resource` need v0.5.0 or later. Run `ondx version` to check which build you have.
 
 ## Quick start
 
@@ -84,11 +84,11 @@ Every Portal Backend route checks an OAuth2 scope (see [authorization](https://g
 | `ondx login` | Browser login; caches a token | none | |
 | `ondx profile list`, `use <name>`, `set <name>` | Manage named profiles | none | |
 | `ondx members create` | Register a member organization | `member:write-all` | |
-| `ondx members list` **†** | List members | `member:read` (+ `member:read-all` for all) | yes |
-| `ondx members get` **†** | Show one member | `member:read` (+ `member:read-all`) | yes |
+| `ondx members list` | List members | `member:read` (+ `member:read-all` for all) | yes |
+| `ondx members get` | Show one member | `member:read` (+ `member:read-all`) | yes |
 | `ondx schemas create` | Register a schema and its fields | `schema:write` (+ `schema:write-all`) | |
-| `ondx schemas list` **†** | List schemas | `schema:read` (+ `schema:read-all`) | yes |
-| `ondx schemas get` **†** | Show a schema and its fields | `schema:read` (+ `schema:read-all`) | yes |
+| `ondx schemas list` | List schemas | `schema:read` (+ `schema:read-all`) | yes |
+| `ondx schemas get` | Show a schema and its fields | `schema:read` (+ `schema:read-all`) | yes |
 | `ondx applications create` | Register an application and its client | `application:write` (+ `application:write-all`) | |
 | `ondx applications list`, `get` | List or show applications | `application:read` (+ `application:read-all`) | yes |
 | `ondx policy update` | Replace an application's granted fields | `application:write` (+ `application:write-all`) | |
@@ -111,14 +111,14 @@ Every command that logs in or calls the Portal Backend also accepts `--profile`,
 ### `ondx members`
 
 - `create`: `--name` and `--ou-id` are required. `--ou-id` is the ID of the member's organization unit in the identity provider, which must exist first; it is unique and cannot be changed. Optional `--email` and `--phone` are organization contact details. Nothing is created in the identity provider.
-- `list` **†**: `--ou-id` filters to one organization unit's member. Without `member:read-all` you see only your own.
-- `get` **†**: `--member-id` (required).
+- `list`: `--ou-id` filters to one organization unit's member. Without `member:read-all` you see only your own.
+- `get`: `--member-id` (required).
 
 ### `ondx schemas`
 
 - `create`: requires `--name`, `--endpoint` (the provider's GraphQL URL), `--member-id` and at least one `--field fieldName:requirements:source`. `requirements` is what the PDP requires before an application reads the field: `allowlist` (an access grant), `consent` (the owner's consent), `allowlist+consent` (both) or `none` (public; see [POLICY_MODEL.md](../pdp/POLICY_MODEL.md)); `source` is `primary` or `fallback`. Optional `--schema-id` (3 to 64 lowercase letters, digits, `.`, `_` or `-`; defaults to a generated UUID; cannot change later; a taken ID fails with `409`) and `--description`. Use the ID that the Orchestration Engine's `@sourceInfo(schemaId: ...)` names. Prints each field as `schemaId:fieldName`, the form `applications create` expects.
-- `list` **†**: `--member-id` filters to one member.
-- `get` **†**: `--schema-id` (required). Prints the fields as `schemaId:fieldName`.
+- `list`: `--member-id` filters to one member.
+- `get`: `--schema-id` (required). Prints the fields as `schemaId:fieldName`.
 
 ### `ondx applications`
 
