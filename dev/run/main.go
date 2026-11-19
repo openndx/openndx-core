@@ -83,7 +83,7 @@ func run(args []string) int {
 		cmd, err := start(s, exited, &wg)
 		if err != nil {
 			logf(s.name, "failed to start: %v", err)
-			stopAll(running)
+			stopAll(running, false)
 			wg.Wait()
 			return 1
 		}
@@ -91,14 +91,16 @@ func run(args []string) int {
 	}
 
 	code := 0
+	interrupted := false
 	select {
 	case <-signals:
 		logf("dev", "stopping")
+		interrupted = true
 	case name := <-exited:
 		logf("dev", "%s exited; stopping the others", name)
 		code = 1
 	}
-	stopAll(running)
+	stopAll(running, interrupted)
 	wg.Wait()
 	return code
 }
@@ -108,7 +110,12 @@ func selectServices(names []string) ([]service, error) {
 		return services, nil
 	}
 	var selected []service
+	seen := map[string]bool{}
 	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
 		found := false
 		for _, s := range services {
 			if s.name == name {
@@ -219,10 +226,11 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 	return cmd, nil
 }
 
-// stopAll stops every service and the processes it started. Stopping a
-// service that has already exited fails harmlessly.
-func stopAll(cmds []*exec.Cmd) {
+// stopAll stops every service and the processes it started. interrupted
+// says the runner got Ctrl+C, which on Windows has already reached the
+// services. Stopping a service that has already exited fails harmlessly.
+func stopAll(cmds []*exec.Cmd, interrupted bool) {
 	for _, cmd := range cmds {
-		stop(cmd)
+		stop(cmd, interrupted)
 	}
 }

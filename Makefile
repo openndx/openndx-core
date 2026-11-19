@@ -6,9 +6,10 @@
 
 # Recipes are POSIX sh. On Windows, make would otherwise fall back to cmd.exe
 # when no sh.exe is on PATH, so point it at the sh and coreutils that ship
-# with Git for Windows.
+# with Git for Windows. `git --exec-path` is <git>/<mingw64|clangarm64|...>/
+# libexec/git-core, and the tools are in <git>/usr/bin.
 ifeq ($(OS),Windows_NT)
-GIT_USR_BIN := $(subst /mingw64/libexec/git-core,/usr/bin,$(shell git --exec-path))
+GIT_USR_BIN := $(subst /libexec/git-core,/../usr/bin,$(shell git --exec-path))
 export PATH := $(GIT_USR_BIN);$(PATH)
 SHELL := sh.exe
 endif

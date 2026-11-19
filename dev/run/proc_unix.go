@@ -17,8 +17,8 @@ func newProcessGroup(cmd *exec.Cmd) {
 
 // stop sends SIGINT to the service's process group, then SIGKILL to whatever
 // is left after 10 seconds. A terminal's Ctrl+C reaches only the foreground
-// group, so this is also how the services stop on Ctrl+C.
-func stop(cmd *exec.Cmd) {
+// group, not the services, so this is also how they stop on Ctrl+C.
+func stop(cmd *exec.Cmd, _ bool) {
 	group := -cmd.Process.Pid
 	_ = syscall.Kill(group, syscall.SIGINT)
 	time.AfterFunc(10*time.Second, func() { _ = syscall.Kill(group, syscall.SIGKILL) })
