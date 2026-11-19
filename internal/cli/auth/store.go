@@ -59,7 +59,7 @@ func SaveToken(path string, token *Token) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("failed to create credentials directory: %w", err)
 	}
-	data, err := json.MarshalIndent(token, "", "  ")
+	data, err := json.MarshalIndent(token, "", "  ") //nolint:gosec // the token cache must store the token; it is written with 0600 permissions
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
@@ -71,7 +71,7 @@ func SaveToken(path string, token *Token) error {
 
 // LoadToken reads a cached token from the given path.
 func LoadToken(path string) (*Token, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // the CLI's own credentials file, under the user's home directory
 	if err != nil {
 		return nil, fmt.Errorf("failed to read credentials file: %w", err)
 	}

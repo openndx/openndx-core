@@ -200,7 +200,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 			sdkmetric.WithInterval(15*time.Second))
 		metricsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("# Metrics exported via OTLP\n"))
+			_, _ = w.Write([]byte("# Metrics exported via OTLP\n"))
 		})
 		slog.Info("Initialized OpenTelemetry metrics with OTLP exporter",
 			"service", config.ServiceName,
@@ -212,7 +212,7 @@ func initializeInternal(ctx context.Context, config Config) error {
 		reader = sdkmetric.NewManualReader()
 		metricsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("# Metrics disabled\n"))
+			_, _ = w.Write([]byte("# Metrics disabled\n"))
 		})
 		slog.Info("OpenTelemetry metrics disabled",
 			"service", config.ServiceName)
@@ -321,7 +321,7 @@ func otelHandler() http.Handler {
 		// Fallback if not initialized
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("# Metrics not initialized\n"))
+			_, _ = w.Write([]byte("# Metrics not initialized\n"))
 		})
 	}
 	return metricsHandler

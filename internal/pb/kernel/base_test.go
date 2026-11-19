@@ -26,8 +26,8 @@ func TestBaseModel_BeforeCreate(t *testing.T) {
 		}
 
 		// Auto-migrate
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		assert.NoError(t, db.AutoMigrate(&TestModel{}))
+		defer func() { assert.NoError(t, db.Migrator().DropTable(&TestModel{})) }()
 
 		// Create a record
 		model := TestModel{
@@ -60,8 +60,8 @@ func TestBaseModel_BeforeUpdate(t *testing.T) {
 			Name string
 		}
 
-		db.AutoMigrate(&TestModel{})
-		defer db.Migrator().DropTable(&TestModel{})
+		assert.NoError(t, db.AutoMigrate(&TestModel{}))
+		defer func() { assert.NoError(t, db.Migrator().DropTable(&TestModel{})) }()
 
 		// Create a record - timestamps will be set by BeforeCreate hook
 		model := TestModel{

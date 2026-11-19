@@ -15,7 +15,7 @@ import (
 func TestWrapGORMUsesProvidedPoolWithoutPing(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 	require.NoError(t, err)
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	db, err := wrapGORM(sqlDB)
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestWrapGORMUsesProvidedPoolWithoutPing(t *testing.T) {
 func TestWrapGORMTranslatesDriverErrors(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	db, err := wrapGORM(sqlDB)
 	require.NoError(t, err)
