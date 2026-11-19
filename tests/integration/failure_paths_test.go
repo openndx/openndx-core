@@ -72,7 +72,6 @@ func TestFailurePath_PDP_ServiceUnavailable(t *testing.T) {
 			}
 		}
 	`, map[string]interface{}{"nic": testNIC}, token)
-
 	if err != nil {
 		t.Logf("Request failed as expected when PDP is down: %v", err)
 		assert.Error(t, err, "Request should fail when PDP is unavailable")
@@ -431,7 +430,6 @@ func TestFailurePath_ConsentEngine_ServiceUnavailable(t *testing.T) {
 			}
 		}
 	`, map[string]interface{}{"nic": testNIC}, token)
-
 	if err != nil {
 		t.Logf("Request failed as expected when Consent Engine is down: %v", err)
 		assert.Error(t, err, "Request should fail when Consent Engine is unavailable")

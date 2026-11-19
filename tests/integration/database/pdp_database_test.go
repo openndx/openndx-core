@@ -50,4 +50,3 @@ func TestPolicyDecisionPoint_SetupPostgresTestDB_NoConnection(t *testing.T) {
 		t.Skip("Database connection not available - this is expected")
 	}
 }
-

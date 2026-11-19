@@ -56,14 +56,14 @@ func DefaultCredentialsPath(profileName string) (string, error) {
 // SaveToken writes the token to the given path, creating parent directories
 // as needed. The file is written with 0600 permissions since it holds secrets.
 func SaveToken(path string, token *Token) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("failed to create credentials directory: %w", err)
 	}
 	data, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write credentials file: %w", err)
 	}
 	return nil

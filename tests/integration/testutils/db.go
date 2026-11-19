@@ -95,7 +95,6 @@ func VerifyFieldPolicyExists(t *testing.T, db *gorm.DB, schemaID, fieldName stri
 	err := db.Table("field_policies").
 		Where("schema_id = ? AND field_name = ?", schemaID, fieldName).
 		Count(&count).Error
-
 	if err != nil {
 		t.Logf("Warning: could not verify field policy: %v", err)
 		return false
