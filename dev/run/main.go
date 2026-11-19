@@ -84,17 +84,18 @@ func run(args []string) int {
 	signal.Ignore(syscall.SIGPIPE)
 
 	exited := make(chan string, len(selected))
-	var running []*exec.Cmd
+	var running []*proc
 	var wg sync.WaitGroup
 	for _, s := range selected {
-		cmd, err := start(s, exited, &wg)
+		p, err := start(s, exited, &wg)
 		if err != nil {
 			logf(s.name, "failed to start: %v", err)
-			stopAll(running, false)
+			deadline := stopAll(running, false)
 			wg.Wait()
+			reap(running, deadline)
 			return 1
 		}
-		running = append(running, cmd)
+		running = append(running, p)
 	}
 
 	code := 0
@@ -107,8 +108,9 @@ func run(args []string) int {
 		logf("dev", "%s exited; stopping the others", name)
 		code = 1
 	}
-	stopAll(running, interrupted)
+	deadline := stopAll(running, interrupted)
 	wg.Wait()
+	reap(running, deadline)
 	return code
 }
 
@@ -175,7 +177,15 @@ func build(selected []service) error {
 	return nil
 }
 
-func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, error) {
+// proc is a started service.
+type proc struct {
+	cmd *exec.Cmd
+	// exited is set once Wait returns. After that, Windows may give the
+	// service's PID to another process, so stop must not use it.
+	exited atomic.Bool
+}
+
+func start(s service, exited chan<- string, wg *sync.WaitGroup) (*proc, error) {
 	var cmd *exec.Cmd
 	if s.goPkg != "" {
 		bin, err := filepath.Abs(binPath(s.name))
@@ -198,6 +208,7 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+	p := &proc{cmd: cmd}
 
 	wg.Add(2)
 	go func() {
@@ -216,6 +227,7 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 	go func() {
 		defer wg.Done()
 		err := cmd.Wait()
+		p.exited.Store(true)
 		_ = w.Close()
 		var exitErr *exec.ExitError
 		switch {
@@ -230,19 +242,24 @@ func start(s service, exited chan<- string, wg *sync.WaitGroup) (*exec.Cmd, erro
 		}
 		exited <- s.name
 	}()
-	return cmd, nil
+	return p, nil
 }
 
 // stopping is set once stopAll runs, so services report "stopped" rather
 // than how the stop ended them (a signal, or taskkill's exit code 1).
 var stopping atomic.Bool
 
-// stopAll stops every service and the processes it started. interrupted
-// says the runner got a signal, which on Windows has already reached the
-// services. Stopping a service that has already exited fails harmlessly.
-func stopAll(cmds []*exec.Cmd, interrupted bool) {
+// gracePeriod is how long services get to shut down before they are killed.
+const gracePeriod = 10 * time.Second
+
+// stopAll asks every service, and the processes it started, to stop, and
+// returns when the grace period ends. interrupted says the runner got a
+// signal, which on Windows has already reached the services.
+func stopAll(procs []*proc, interrupted bool) time.Time {
 	stopping.Store(true)
-	for _, cmd := range cmds {
-		stop(cmd, interrupted)
+	deadline := time.Now().Add(gracePeriod)
+	for _, p := range procs {
+		stop(p, interrupted)
 	}
+	return deadline
 }

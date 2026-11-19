@@ -37,7 +37,7 @@ export DB_PASSWORD=1234                             # the Compose default
 make dev SVC=ce
 ```
 
-The Orchestration Engine container and the Consent Portal call the CE, so to use them with a native CE, run them natively too (`make dev`, or `make dev SVC="ce portal"`). [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. The service does not create tables; Compose's PostgreSQL loads `schema.sql` on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
+The Orchestration Engine and the Consent Portal call the CE, so to use them with a native CE, run them natively too: stop the runner above and run `make dev`, which starts every service, or `make dev SVC="ce portal"`. [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. The service does not create tables; Compose's PostgreSQL loads `schema.sql` on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 
