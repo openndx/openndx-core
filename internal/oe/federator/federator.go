@@ -90,18 +90,13 @@ func (f *Federator) FederateQuery(ctx context.Context, request graphql.Request, 
 		return operationErrorResponse(err)
 	}
 
-	dataOwnerID, denied := f.dataOwnerID(ctx, op)
-	if denied != nil {
-		return *denied
-	}
-
 	queryPlan, err := buildPlan(op, f.opts.ArgMapping, f.targetTypes)
 	if err != nil {
 		slog.InfoContext(ctx, "Failed to plan query", "Error", err)
 		return createErrorResponseWithCode(err.Error(), errors.CodeBadRequest)
 	}
 
-	ctx, denied = f.authorizeAccess(ctx, appID, queryPlan.requiredFields(), dataOwnerID)
+	ctx, denied := f.authorizeAccess(ctx, appID, op, queryPlan.requiredFields())
 	if denied != nil {
 		return *denied
 	}

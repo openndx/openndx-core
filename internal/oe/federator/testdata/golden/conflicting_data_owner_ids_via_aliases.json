@@ -10,7 +10,21 @@
       }
     ]
   },
-  "policyRequests": [],
+  "policyRequests": [
+    {
+      "applicationId": "app-golden",
+      "requiredFields": [
+        {
+          "fieldName": "person.fullName",
+          "schemaId": "drp-v1"
+        },
+        {
+          "fieldName": "person.permanentAddress",
+          "schemaId": "drp-v1"
+        }
+      ]
+    }
+  ],
   "consentRequests": [],
   "providerRequests": {},
   "auditEvents": [
@@ -21,6 +35,14 @@
       "actorId": "app-golden",
       "targetType": "SERVICE",
       "targetId": "SERVICE"
+    },
+    {
+      "eventType": "POLICY_CHECK",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "policy-decision-point"
     }
   ]
 }

@@ -46,7 +46,7 @@ The OE reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`) a
 |---|---|
 | `server`, `environment`, `logging` | Port (default `4000`) and request timeout; deployment name on log lines; log level and format. |
 | `schemaPath` | The consumer schema file; default `schema.graphql`, resolved against the directory of the config file. |
-| `foundationalIdArgName` | **Required.** Name of the query argument that identifies the data owner, for example `nic`. |
+| `foundationalIdArgName` | **Required.** Name of the query argument that identifies the data owner, for example `nic`. Read only when a field requires consent. |
 | `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [AUTHENTICATION.md](AUTHENTICATION.md). |
 | `pdp.url` | PDP base URL. If empty, the OE skips authorization and consent checks (see Security). |
 | `consentEngine.url` | Consent Engine URL **including** `/internal/api/v1`. |

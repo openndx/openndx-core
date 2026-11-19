@@ -20,7 +20,7 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `logging.level` | `info` | `debug`, `info`, `warn` or `error`. |
 | `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. |
 | `schemaPath` | `schema.graphql` | The consumer schema file. A relative path is resolved against the directory of the config file. See [Schema](#schema). |
-| `foundationalIdArgName` | | **Required.** The query argument that carries the data owner's ID, matched by name (for example `nic`) on every field of the query, aliases included. If a query has none the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
+| `foundationalIdArgName` | | **Required.** The query argument that carries the data owner's ID, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires the data owner's consent, so a query that needs no consent can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no value the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
 | `idp.jwksURL`, `idp.issuer`, `idp.audience` | | **Required.** Consumer token validation. See [AUTHENTICATION.md](AUTHENTICATION.md#configuration). |
 | `idp.insecureSkipTLSVerify` | `false` | Skips TLS checks on the JWKS fetch. Local development only. |
 | `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. |
@@ -115,8 +115,8 @@ GraphQL errors carry the code in `errors[].extensions.code`. Federation errors u
 | `CE_NOT_APPROVED` | Consent is pending or otherwise not approved. `consentPortalUrl` and `consentStatus` tell the consumer where and what. |
 | `CE_ERROR` | The Consent Engine call failed, or consent is needed and no Consent Engine is configured. |
 | `CE_NO_RESPONSE` | The Consent Engine returned nothing. |
-| `MISSING_IDENTIFIER` | The query has no value for the `foundationalIdArgName` argument. When the schema declares that argument as required (for example `nic: String!`), a query without it fails validation with `BAD_REQUEST` instead. |
-| `AMBIGUOUS_IDENTIFIER` | The query has that argument with different values, for example on two aliased fields. The PDP isn't called. |
+| `MISSING_IDENTIFIER` | The PDP requires the data owner's consent, and the query has no value for the `foundationalIdArgName` argument. When the schema declares that argument as required (for example `nic: String!`), a query without it fails validation with `BAD_REQUEST` instead. |
+| `AMBIGUOUS_IDENTIFIER` | The PDP requires the data owner's consent, and the query has that argument with different values, for example on two aliased fields. The Consent Engine isn't called. |
 | `BAD_REQUEST` | The query could not be parsed, failed validation against the schema, has invalid variables, or uses something the OE doesn't support (see [Queries](#queries)). Parse and validation errors carry `locations` in the query. |
 | `PROVIDER_ERROR` | A provider call failed: the provider was unreachable or not configured, answered with a non-2xx HTTP status, or sent a body that isn't a GraphQL response. Also used for errors a provider returned in its response, with the message prefixed by the provider's schema ID. |
 
