@@ -75,6 +75,40 @@ The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https
 
 The variable is named after `targetArgName`, with a suffix such as `_2` when two mapped arguments in one query share a name. It is declared with `targetArgType` when set. Otherwise it is declared with the consumer argument's type, made non-null when the value isn't null. The provider rejects the query when that type doesn't fit its argument, so set `targetArgType` when the types differ. The example above is declared `ID!` because the DRP mapping sets `targetArgType: "ID!"`: the consumer schema declares `nic: String!`, and a `String!` variable can't be passed to the provider's `ID!` argument, even though an inlined string literal could.
 
+### idp
+
+How the OE authenticates data consumers on `POST /public/graphql`. The only other route, `/health`, is not authenticated. Tokens are validated by the shared [`internal/authn`](../../internal/authn) package, which the Portal Backend and the Consent Engine also use. Every token's signature is verified; no setting skips it.
+
+| Key | Default | Notes |
+|---|---|---|
+| `idp.jwksURL` | | **Required.** Where the signing keys are fetched. Must be an `http` or `https` URL. |
+| `idp.issuer` | | **Required.** The expected `iss`. Must be an `http` or `https` URL, equal to the `iss` the identity provider puts in its tokens. ThunderID's is its public URL (`http://localhost:8090` locally), not its `/oauth2/token` endpoint. |
+| `idp.audience` | | **Required.** The expected `aud`: the OE's resource server identifier. |
+| `idp.insecureSkipTLSVerify` | `false` | `true` skips TLS certificate checks when fetching the JWKS. Local development only. |
+
+The OE exits at startup if `jwksURL`, `issuer` or `audience` is missing or invalid. In Docker Compose, [config.docker.yaml](config.docker.yaml) reads them from `IDP_JWKS_URL` (ThunderID's address on the Compose network), `IDP_PUBLIC_URL` (its public URL) and `IDP_AUDIENCE` (default `http://api.openndx.local`).
+
+A consumer sends an access token in the `Authorization: Bearer <token>` header. In the bundled stack, consumers are machine clients that get a ThunderID `client_credentials` token requested with `resource=http://api.openndx.local`; see the example in [dev/README.md](../../dev/README.md). The token must pass these checks:
+
+| Check | Requirement |
+|---|---|
+| Signature | `RS256`, `RS384` or `RS512`, signed by a key in the JWKS at `idp.jwksURL`, with a `kid` header that names the key. |
+| `iss` | Equals `idp.issuer`. |
+| `aud` | Contains `idp.audience`. |
+| `exp` | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
+| `sub` | Present. |
+| `client_id` | Present. It becomes the application's identity (`applicationId`) for the PDP and the Consent Engine. |
+
+A request without a valid token gets `401` with a JSON body, such as `{"error":"unauthorized","message":"invalid authentication token"}`. The reason is logged at debug level, not returned.
+
+The signing keys are fetched on the first request, not at startup, so the OE starts even when the identity provider is not yet up. They are cached for 5 minutes. A token whose `kid` is not in the cached set triggers one refresh, so key rotation needs no restart.
+
+In production:
+
+- set `idp.jwksURL` and `idp.issuer` to the production identity provider over `https`, and `idp.audience` to the OE's resource server;
+- leave `idp.insecureSkipTLSVerify` unset;
+- terminate TLS in front of the OE, and expose only `POST /public/graphql`.
+
 ## Environment variables
 
 Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`. The audit client library also reads `ENABLE_AUDIT`: auditing is on when `audit.url` is set and `ENABLE_AUDIT` isn't `false`. The OE does not load `.env` files. Compose passes `SERVICE_NAME` and `OTEL_*` to every Go service, but the OE does not read them and does not serve `/metrics`.
