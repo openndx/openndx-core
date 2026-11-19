@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
@@ -58,7 +57,7 @@ func postSchema(t *testing.T, h *Handler, schemaID, memberID string) *httptest.R
 func TestCreateSchema_SchemaID(t *testing.T) {
 	t.Run("uses a caller-supplied schemaId", func(t *testing.T) {
 		h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
 
 		w := postSchema(t, h, "drp-person-v1", memberID)
 
@@ -75,7 +74,7 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 
 	t.Run("generates a UUID when schemaId is omitted", func(t *testing.T) {
 		h, db, _ := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
 
 		w := postSchema(t, h, "", memberID)
 
@@ -88,7 +87,7 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 
 	t.Run("rejects a duplicate schemaId with 409", func(t *testing.T) {
 		h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
 
 		require.Equal(t, http.StatusCreated, postSchema(t, h, "drp-person-v1", memberID).Code)
 		w := postSchema(t, h, "drp-person-v1", memberID)
@@ -103,7 +102,7 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 		for _, id := range []string{"ab", "DRP-Schema", "drp:schema", "drp/schema", "-drp", "drp schema", strings.Repeat("a", 65)} {
 			t.Run(fmt.Sprintf("%q", id), func(t *testing.T) {
 				h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-				memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", time.Now().UnixNano()))
+				memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
 
 				w := postSchema(t, h, id, memberID)
 

@@ -2,6 +2,7 @@ package application
 
 import (
 	"net/http"
+	"sync/atomic"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -38,4 +39,14 @@ type MockRoundTripper struct {
 // RoundTrip executes the mock RoundTripFunc
 func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.RoundTripFunc(req)
+}
+
+// testIDs backs uniqueID.
+var testIDs atomic.Int64
+
+// uniqueID returns a number no other call in this test binary returns, for
+// building unique test IDs and emails. uniqueID() isn't unique:
+// on Windows, consecutive calls can return the same value.
+func uniqueID() int64 {
+	return testIDs.Add(1)
 }

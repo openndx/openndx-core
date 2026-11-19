@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
 	"github.com/openndx/openndx-core/internal/pb/idp"
@@ -62,11 +61,11 @@ func NewTestHandlerWithMockPDP(t *testing.T, db *gorm.DB, idpMock *idptest.Mock)
 // createTestMember creates a member in the database for testing (bypasses IDP)
 func createTestMember(t *testing.T, db *gorm.DB, email string) string {
 	m := member.Member{
-		MemberID:    "mem_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		MemberID:    "mem_" + fmt.Sprintf("%d", uniqueID()),
 		Name:        "Test Member",
 		Email:       email,
 		PhoneNumber: "1234567890",
-		OuID:        "ou-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		OuID:        "ou-" + fmt.Sprintf("%d", uniqueID()),
 	}
 	err := db.Create(&m).Error
 	assert.NoError(t, err)
@@ -76,7 +75,7 @@ func createTestMember(t *testing.T, db *gorm.DB, email string) string {
 // createTestSchema creates a schema in the database for testing (bypasses async creation)
 func createTestSchema(t *testing.T, db *gorm.DB, memberID string) string {
 	s := schema.Schema{
-		SchemaID:   "schema_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		SchemaID:   "schema_" + fmt.Sprintf("%d", uniqueID()),
 		SchemaName: "Test Schema",
 		SDL:        "type Query { test: String }",
 		Endpoint:   "http://example.com/graphql",
@@ -93,7 +92,7 @@ func createTestApplication(t *testing.T, db *gorm.DB, memberID string) string {
 		{FieldName: "field1", SchemaID: "schema-123"},
 	}
 	application := Application{
-		ApplicationID:   "app_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		ApplicationID:   "app_" + fmt.Sprintf("%d", uniqueID()),
 		ApplicationName: "Test Application",
 		SelectedFields:  selectedFields,
 		MemberID:        memberID,
@@ -123,7 +122,7 @@ func createTestApplicationWithClientID(t *testing.T, db *gorm.DB, memberID, idpC
 		{FieldName: "field1", SchemaID: "schema-123"},
 	}
 	application := Application{
-		ApplicationID:   "app_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		ApplicationID:   "app_" + fmt.Sprintf("%d", uniqueID()),
 		ApplicationName: "Test Application",
 		SelectedFields:  selectedFields,
 		MemberID:        memberID,
@@ -233,7 +232,7 @@ func TestApplicationEndpoints(t *testing.T) {
 
 	t.Run("GET /api/v1/applications/:applicationId - GetApplication", func(t *testing.T) {
 		// Create test data directly in DB
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 		applicationID := createTestApplication(t, testHandler.db, memberID)
 
 		httpReq := callertest.NewAdminRequest(http.MethodGet, fmt.Sprintf("/api/v1/applications/%s", applicationID), nil)
@@ -259,7 +258,7 @@ func TestApplicationEndpoints(t *testing.T) {
 
 	t.Run("PUT /api/v1/applications/:applicationId - UpdateApplication", func(t *testing.T) {
 		// Create test data directly in DB
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 		applicationID := createTestApplication(t, testHandler.db, memberID)
 
 		// Verify the application exists before attempting to update
@@ -307,7 +306,7 @@ func TestApplicationPolicyEndpoint(t *testing.T) {
 		}
 		handler := newTestHandlerWithWorkingPDP(t, db, http.StatusOK, `{"records": [{"id": "policy_1"}]}`)
 
-		memberID := createTestMember(t, db, fmt.Sprintf("policy-success-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, db, fmt.Sprintf("policy-success-%d@example.com", uniqueID()))
 		applicationID := createTestApplicationWithClientID(t, db, memberID, "idp-client-abc")
 
 		req := UpdateApplicationPolicyRequest{
@@ -342,7 +341,7 @@ func TestApplicationPolicyEndpoint(t *testing.T) {
 		}
 		handler := newTestHandlerWithWorkingPDP(t, db, http.StatusInternalServerError, `{"error": "pdp error"}`)
 
-		memberID := createTestMember(t, db, fmt.Sprintf("policy-failure-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, db, fmt.Sprintf("policy-failure-%d@example.com", uniqueID()))
 		applicationID := createTestApplicationWithClientID(t, db, memberID, "idp-client-abc")
 
 		req := UpdateApplicationPolicyRequest{
@@ -385,7 +384,7 @@ func TestApplicationPolicyEndpoint(t *testing.T) {
 	})
 
 	t.Run("PUT /api/v1/applications/:id/policy - Invalid JSON", func(t *testing.T) {
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("policy-invalidjson-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("policy-invalidjson-%d@example.com", uniqueID()))
 		applicationID := createTestApplication(t, testHandler.db, memberID)
 
 		httpReq := callertest.NewAdminRequest(http.MethodPut, fmt.Sprintf("/api/v1/applications/%s/policy", applicationID), bytes.NewBufferString("invalid json"))
@@ -440,7 +439,7 @@ func TestApplicationSubmissionEndpoints(t *testing.T) {
 
 	t.Run("PUT /api/v1/application-submissions/:id - UpdateApplicationSubmission", func(t *testing.T) {
 		// Create test data directly in DB (simpler and more reliable)
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 		schemaID := createTestSchema(t, testHandler.db, memberID)
 
 		// Create a submission directly in DB
@@ -448,7 +447,7 @@ func TestApplicationSubmissionEndpoints(t *testing.T) {
 			{FieldName: "field1", SchemaID: schemaID},
 		}
 		submission := ApplicationSubmission{
-			SubmissionID:    "sub_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			SubmissionID:    "sub_" + fmt.Sprintf("%d", uniqueID()),
 			ApplicationName: "Test Submission",
 			SelectedFields:  selectedFields,
 			MemberID:        memberID,
@@ -526,7 +525,7 @@ func TestApplicationSubmissionEndpoints(t *testing.T) {
 
 	t.Run("GET /api/v1/application-submissions/:submissionId - GetApplicationSubmission", func(t *testing.T) {
 		// Create test data directly in DB
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 		schemaID := createTestSchema(t, testHandler.db, memberID)
 		_ = createTestApplication(t, testHandler.db, memberID)
 
@@ -535,7 +534,7 @@ func TestApplicationSubmissionEndpoints(t *testing.T) {
 			{FieldName: "field1", SchemaID: schemaID},
 		}
 		submission := ApplicationSubmission{
-			SubmissionID:    "sub_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			SubmissionID:    "sub_" + fmt.Sprintf("%d", uniqueID()),
 			ApplicationName: "Test Submission",
 			SelectedFields:  selectedFields,
 			MemberID:        memberID,
