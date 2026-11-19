@@ -111,6 +111,40 @@ go test ./cmd/oe/... ./internal/oe/... -count=1
 make quality-check orchestration-engine
 ```
 
+The tests are in `cmd/oe`, for configuration loading, and in `internal/oe`. They need no database or running service: the clients are tested against local test servers.
+
+The federation tests in `internal/oe/federator` compare each result with a golden file in `internal/oe/federator/testdata/golden`. After an intended change in behavior, regenerate the files and review the diff:
+
+```bash
+go test ./internal/oe/federator -run TestFederateQueryGolden -update
+```
+
+The cross-service suite, which runs the OE against the PDP and the Consent Engine, is a separate Go module in [tests/integration](../../tests/integration/README.md).
+
+### Changing the schema
+
+The OE reads the consumer schema from `schemaPath` once, at startup ([CONFIGURATION.md](CONFIGURATION.md#schema)). To try a different schema, edit the file or point `schemaPath` at another one, and restart the OE. A missing file or an invalid schema stops the OE at startup, with an error that names the path.
+
+### Trying queries
+
+Start the OE and the rest of the stack (see [Quick start](#quick-start)). `POST /public/graphql` needs a consumer token, field policies, an application grant and, for restricted fields, the citizen's consent. The token and a curl example are in [dev/README.md](../../dev/README.md), and the full setup is in the [walkthrough](../../dev/WALKTHROUGH.md). What to expect:
+
+| Situation | Response |
+|---|---|
+| No token, or an invalid one | HTTP `401` with a JSON body, such as `{"error":"unauthorized","message":"invalid authentication token"}` |
+| The application has no grant for a field | `PDP_NOT_ALLOWED`, with the fields in `unauthorizedFields` |
+| A field has no field policy | `PDP_ERROR` |
+| The query has no `nic` argument | `BAD_REQUEST`, because the schema declares `nic: String!`; `MISSING_IDENTIFIER` if the schema makes it optional |
+| An unknown field, or an argument of the wrong type | `BAD_REQUEST`, with `locations` |
+| Two aliases with different `nic` values | `AMBIGUOUS_IDENTIFIER` |
+| A provider is down or returns a non-2xx status | That provider's fields are `null` in `data`, each with a `PROVIDER_ERROR` at its `path` |
+| Consent is still pending | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending` |
+| Everything is granted and approved | `data` holds the merged fields from every provider |
+
+The codes are in `errors[].extensions.code`, with HTTP 200; [CONFIGURATION.md](CONFIGURATION.md#error-codes) describes each one. For a pending consent, open `consentPortalUrl` as the citizen, approve, and repeat the query.
+
+### Code layout
+
 [HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.
 
 ## More docs
