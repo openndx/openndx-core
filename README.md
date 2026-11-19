@@ -81,6 +81,8 @@ make quality-check <service>     # format, lint, security
 make run <service>               # run one service
 ```
 
+On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
+
 `<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend` or `consent-portal`. Batch commands and automatic pre-commit validation cover these maintained components. Explicit commands for the paused `admin-portal` and `member-portal` prototypes remain available for local exploration. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
 To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).

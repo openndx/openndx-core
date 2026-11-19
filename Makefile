@@ -3,6 +3,15 @@
 
 .PHONY: help install-hooks setup validate-build validate-test validate-docker-build check-lint run clean setup-all validate-build-all validate-test-all
 
+# Recipes are POSIX sh. On Windows, make would otherwise fall back to cmd.exe
+# when no sh.exe is on PATH, so point it at the sh and coreutils that ship
+# with Git for Windows.
+ifeq ($(OS),Windows_NT)
+GIT_USR_BIN := $(subst /mingw64/libexec/git-core,/usr/bin,$(shell git --exec-path))
+export PATH := $(GIT_USR_BIN);$(PATH)
+SHELL := sh.exe
+endif
+
 # Default target
 help:
 	@echo "OpenNDX - Available Commands"
@@ -53,7 +62,7 @@ help:
 	@echo "  make run consent-portal"
 
 # Variables
-ROOT_DIR := $(shell pwd)
+ROOT_DIR := $(CURDIR)
 BIN_DIR := $(ROOT_DIR)/bin
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
