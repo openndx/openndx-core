@@ -22,10 +22,10 @@ make check                              # go mod tidy -diff, lint, test; the pre
 make up / make down                     # full stack in Docker, with the mock providers
 make deps && make dev SVC="oe pb"       # dependencies in Docker, services native (needs cmd/<svc>/config.yaml)
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
-go tool -modfile=tools/go.mod golangci-lint run --new-from-rev=HEAD ./...   # only issues you introduced
+make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 ```
 
-- `make lint` and `make check` lint the whole module and fail on any issue, so they fail on `main` until the existing issues in #791 are fixed. Use the `--new-from-rev=HEAD` command above to see only what you introduced; the pre-commit hook can be skipped with `git commit --no-verify`.
+- `make lint` and `make check` lint the whole module and fail on any issue, so they fail on `main` until the existing issues in #791 are fixed. Use `make lint LINT_FLAGS=--new-from-rev=HEAD` (or `--new-from-merge-base=main` for the whole branch) to see only what you introduced; the pre-commit hook can be skipped with `git commit --no-verify`.
 - Unit tests need no database: PDP and PB tests use in-memory SQLite (PDP helpers in `internal/pdp/pdptest`, PB in `internal/pb/database/dbtest`).
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
 - PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.

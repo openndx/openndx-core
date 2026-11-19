@@ -21,6 +21,11 @@ GOLANGCI_LINT := go tool -modfile=tools/go.mod golangci-lint
 # Packages for `make test`.
 PKG ?= ./...
 
+# Extra golangci-lint flags for `make lint`, e.g. --new-from-rev=HEAD to
+# report only issues in uncommitted changes, or --new-from-merge-base=main
+# for the whole branch.
+LINT_FLAGS ?=
+
 # Services for `make dev`: any of pdp ce oe pb portal. Empty runs all of them.
 SVC ?=
 
@@ -56,8 +61,8 @@ test-integration: ## Run the integration tests against services in Docker
 fmt: ## Format Go code (gofumpt, goimports)
 	$(GOLANGCI_LINT) fmt
 
-lint: ## Lint Go code (vet, staticcheck, gosec and the rest of .golangci.yml)
-	$(GOLANGCI_LINT) run ./...
+lint: ## Lint Go code (LINT_FLAGS=--new-from-rev=HEAD for only your uncommitted changes)
+	$(GOLANGCI_LINT) run $(LINT_FLAGS) ./...
 
 check: ## Check go.mod is tidy, lint and test, changing nothing; run by the pre-commit hook
 	go mod tidy -diff

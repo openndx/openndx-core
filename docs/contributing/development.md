@@ -47,7 +47,7 @@ On Windows, install GNU Make (for example `choco install make`) and Git for Wind
 | `make test` | `go test -race ./...`; `make test PKG=./internal/pdp/...` for some packages |
 | `make test-integration` | Runs the integration tests against services in Docker (see [tests/integration](../../tests/integration/README.md)) |
 | `make fmt` | Formats Go code with gofumpt and goimports |
-| `make lint` | Runs golangci-lint with [.golangci.yml](../../.golangci.yml): vet, staticcheck, gosec and the rest |
+| `make lint` | Runs golangci-lint with [.golangci.yml](../../.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags |
 | `make check` | Checks `go.mod` is tidy, then `lint` and `test`; changes nothing |
 | `make deps` | Starts only the dependencies in Docker |
 | `make up` / `make down` | Starts or stops the full stack in Docker |
@@ -56,7 +56,12 @@ On Windows, install GNU Make (for example `choco install make`) and Git for Wind
 
 golangci-lint is pinned in [tools/go.mod](../../tools/go.mod), the same version CI uses, and runs through `go tool`, so there is nothing to install. The first run compiles it.
 
-The pre-commit hook runs `make check` when a commit touches Go code. `make check` fails while existing lint issues remain ([#791](https://github.com/openndx/openndx-core/issues/791)); until they are fixed, commit with `git commit --no-verify` and run `make lint` to see what your change adds.
+The pre-commit hook runs `make check` when a commit touches Go code. `make check` fails while existing lint issues remain ([#791](https://github.com/openndx/openndx-core/issues/791)); until they are fixed, commit with `git commit --no-verify`, and see what your change adds with:
+
+```bash
+make lint LINT_FLAGS=--new-from-rev=HEAD           # uncommitted changes
+make lint LINT_FLAGS=--new-from-merge-base=main    # everything on your branch
+```
 
 ## Running the platform
 

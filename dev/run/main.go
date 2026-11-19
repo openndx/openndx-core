@@ -78,6 +78,10 @@ func run(args []string) int {
 	// SIGHUP is closing the terminal. The services run in process groups of
 	// their own on Linux and macOS, so it doesn't reach them; stop them here.
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	// If whatever reads our output is gone (`make dev | tee dev.log` with the
+	// terminal closed), a write would otherwise kill the runner before it
+	// stops the services. logf ignores the write errors.
+	signal.Ignore(syscall.SIGPIPE)
 
 	exited := make(chan string, len(selected))
 	var running []*exec.Cmd
