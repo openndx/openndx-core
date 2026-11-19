@@ -1,0 +1,20 @@
+# golangci-lint configuration. CI runs it in the *-validate.yml workflows with
+# the version pinned there; run the same version locally:
+#   golangci-lint run --new-from-rev=HEAD ./...
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck and unused
+  default: standard
+  enable:
+    - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+issues:
+  # Report every issue, not the first few per linter.
+  max-issues-per-linter: 0
+  max-same-issues: 0

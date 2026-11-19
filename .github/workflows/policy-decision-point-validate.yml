@@ -12,6 +12,7 @@ on:
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
+      - ".golangci.yml"
       - ".dockerignore"
       - ".github/workflows/policy-decision-point-validate.yml"
   workflow_dispatch:
@@ -30,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # golangci-lint reads the PR diff for only-new-issues
+      pull-requests: read
       security-events: write
 
     steps:
@@ -62,6 +65,17 @@ jobs:
             exit 1
           fi
           echo "Go mod files are clean."
+
+      # Settings in .golangci.yml. Reports only issues on lines this PR changes;
+      # manual runs have no PR diff to filter by, so they skip it.
+      - name: Lint
+        if: github.event_name == 'pull_request'
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          # TODO(#791): once the existing golangci-lint issues are fixed, remove
+          # only-new-issues and the `if:` above so every run lints everything.
+          only-new-issues: true
 
       - name: Build application
         run: go build ./${{ env.SERVICE_PATH }}
