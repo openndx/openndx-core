@@ -18,6 +18,28 @@ This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participatin
 
 `make quality-check` also runs `gofumpt`, `goimports`, `staticcheck` and `gosec` if they are installed, and skips each one with a notice if it isn't.
 
+## Setup
+
+Fork the repository, clone your fork, and run this from the repository root:
+
+```bash
+make setup-all
+```
+
+It does three things:
+
+1. **Installs the pre-commit hook.** It copies `.githooks/pre-commit` into your clone's Git hooks directory. Because it is a copy, run `make install-hooks` again whenever `.githooks/pre-commit` changes.
+2. **Fetches the Go dependencies.** It runs `go mod tidy` and `go mod download` on the root module, once for each Go service. `go mod tidy` rewrites `go.mod` and `go.sum` if they are out of step with the code. The separate `tests/integration` module is not set up.
+3. **Installs the Consent Portal's dependencies.** It runs `pnpm install --frozen-lockfile --filter consent-portal...` in the `portals` workspace, which fails rather than change `portals/pnpm-lock.yaml`. The paused Admin and Member portals are skipped.
+
+It does not install the tools listed under [Prerequisites](#prerequisites), create any service's `config.yaml`, or start a database. To set up a single component, run `make setup <service>`, where `<service>` is `portal-backend`, `orchestration-engine`, `consent-engine`, `policy-decision-point` or `consent-portal`.
+
+### The pre-commit hook
+
+On each commit, the hook finds the maintained services that have staged files in their directories: `cmd/<svc>` and `internal/<svc>` for the Go services (plus `internal/database` for the Consent Engine), and `portals/apps/consent` for the Consent Portal. For each one it runs `make quality-check`, `make validate-build` and `make validate-test`, and it blocks the commit if any of them fails. A commit that touches none of those directories, such as a documentation change, an edit to `go.mod`, or a change to a shared package like `internal/authn`, skips the checks.
+
+For the Go services, `make quality-check` formats code in place. The hook doesn't stage what it changes, so run `git status` after committing and commit any formatting changes it left behind.
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
