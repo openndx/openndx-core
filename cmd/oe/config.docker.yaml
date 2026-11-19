@@ -15,8 +15,6 @@ logging:
 
 schemaPath: schema.graphql
 
-foundationalIdArgName: nic
-
 idp:
   # Reached over the compose network; the issuer is ThunderID's public URL.
   jwksURL: "{{env:IDP_JWKS_URL}}"
@@ -27,6 +25,7 @@ pdp:
   url: http://policy-decision-point:8082
 consentEngine:
   url: http://consent-engine:8081/internal/api/v1
+  ownerIdArgName: nic
 
 # Optional: the OE degrades gracefully if the audit service is unreachable.
 audit:

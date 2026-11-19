@@ -28,17 +28,19 @@ type Config struct {
 	// SchemaPath is the consumer GraphQL schema file, read once at startup. A
 	// relative path is resolved against the directory of the config file.
 	SchemaPath string `yaml:"schemaPath"`
-	// FoundationalIDArgName is the query argument that identifies the data
-	// owner (e.g. "nic"), recognized by name rather than by position.
-	FoundationalIDArgName string `yaml:"foundationalIdArgName"`
 	// IDP validates each consumer token's signature, issuer, audience and expiry.
-	IDP           authn.Config      `yaml:"idp"`
-	PDP           ServiceURLConfig  `yaml:"pdp"`
-	ConsentEngine ServiceURLConfig  `yaml:"consentEngine"`
-	Audit         AuditConfig       `yaml:"audit"`
-	Providers     []provider.Config `yaml:"providers"`
+	IDP           authn.Config        `yaml:"idp"`
+	PDP           ServiceURLConfig    `yaml:"pdp"`
+	ConsentEngine ConsentEngineConfig `yaml:"consentEngine"`
+	Audit         AuditConfig         `yaml:"audit"`
+	Providers     []provider.Config   `yaml:"providers"`
 	// ArgMappings map consumer query arguments to provider query arguments.
 	ArgMappings []*graphql.ArgMapping `yaml:"argMappings"`
+
+	// MovedFoundationalIDArgName catches the top-level foundationalIdArgName,
+	// which moved to consentEngine.ownerIdArgName, so that an old config
+	// fails at startup instead of losing the value silently. It is never used.
+	MovedFoundationalIDArgName string `yaml:"foundationalIdArgName"`
 }
 
 // ServerConfig holds the HTTP server settings.
@@ -53,6 +55,16 @@ type ServerConfig struct {
 // the service's check when URL is empty.
 type ServiceURLConfig struct {
 	URL string `yaml:"url"`
+}
+
+// ConsentEngineConfig holds the Consent Engine settings. The OE can't ask for
+// consent when URL is empty.
+type ConsentEngineConfig struct {
+	URL string `yaml:"url"`
+	// OwnerIDArgName is the query argument that identifies the data
+	// owner whose consent is asked (e.g. "nic"), recognized by name rather than
+	// by position. Required when URL is set.
+	OwnerIDArgName string `yaml:"ownerIdArgName"`
 }
 
 // AuditConfig holds the Argus audit service settings. Auditing is off when URL is empty.
@@ -118,8 +130,11 @@ func (c *Config) Validate() error {
 	if c.SchemaPath == "" {
 		return fmt.Errorf("schemaPath must not be empty")
 	}
-	if c.FoundationalIDArgName == "" {
-		return fmt.Errorf("foundationalIdArgName is required")
+	if c.MovedFoundationalIDArgName != "" {
+		return fmt.Errorf("foundationalIdArgName has moved to consentEngine.ownerIdArgName")
+	}
+	if c.ConsentEngine.URL != "" && c.ConsentEngine.OwnerIDArgName == "" {
+		return fmt.Errorf("consentEngine.ownerIdArgName is required when consentEngine.url is set")
 	}
 	if err := c.IDP.Validate(); err != nil {
 		return fmt.Errorf("invalid idp configuration: %w", err)

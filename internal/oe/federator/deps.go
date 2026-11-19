@@ -85,10 +85,11 @@ type Deps struct {
 
 // Options configure how queries are federated.
 type Options struct {
-	// FoundationalIdArgName identifies the Data Owner ID argument by name in every
-	// federated query. Required.
-	FoundationalIdArgName string
-	ArgMapping            []*graphql.ArgMapping
+	// OwnerIDArgName identifies the Data Owner ID argument by name in every
+	// federated query. It is read only to ask the owner's consent, so it is
+	// required when Deps.Consent is set.
+	OwnerIDArgName string
+	ArgMapping     []*graphql.ArgMapping
 }
 
 // New returns a Federator that uses deps and opts.
@@ -100,9 +101,9 @@ func New(deps Deps, opts Options) (*Federator, error) {
 	if deps.Schemas == nil {
 		return nil, errors.New("fatal configuration error: a schema source is required")
 	}
-	// An empty FoundationalIdArgName would silently reject all requests.
-	if opts.FoundationalIdArgName == "" {
-		return nil, fmt.Errorf("fatal configuration error: foundationalIdArgName is not configured - cannot identify the Data Owner ID argument")
+	// Without OwnerIDArgName every query that needs consent would be rejected.
+	if deps.Consent != nil && opts.OwnerIDArgName == "" {
+		return nil, fmt.Errorf("fatal configuration error: ownerIdArgName is not configured - cannot identify the Data Owner ID argument for consent")
 	}
 	targetTypes, err := targetArgTypes(opts.ArgMapping)
 	if err != nil {

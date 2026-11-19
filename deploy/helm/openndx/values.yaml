@@ -181,7 +181,6 @@ orchestrationEngine:
       format: json
     # Resolved against /app/config; the file comes from configFiles below.
     schemaPath: schema.graphql
-    foundationalIdArgName: nic
     idp:
       jwksURL: http://thunderid-service:8090/oauth2/jwks
       # Empty: global.idpPublicURL.
@@ -198,6 +197,10 @@ orchestrationEngine:
     # consent, which also makes consentEngine.url unnecessary:
     # pdp:
     #   url: ""
+    consentEngine:
+      # The query argument that identifies the data owner whose consent is
+      # asked. Required while consentEngine.url is set.
+      ownerIdArgName: nic
     # Auditing is off while url is empty. To turn it on, set url and
     # apiKey: "{{env:ARGUS_API_KEY}}".
     audit:

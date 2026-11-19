@@ -1,6 +1,6 @@
 # LOCAL-DEV ONLY: a "Citizen" user type carrying a `nic` attribute — the same
-# foundational-ID shape OE uses as its `foundationalIdArgName` (config.yaml) and
-# seeds as the consent record's OwnerID (federator.go's dataOwnerID, taken
+# foundational-ID shape OE uses as its `consentEngine.ownerIdArgName`
+# (config.yaml) and seeds as the consent record's OwnerID (access.go's dataOwnerID, taken
 # verbatim from the query's `nic` argument). Consent-engine's owner-match is a
 # literal string compare against a JWT claim (IDP_SUBJECT_CLAIM, default "sub"
 # — see internal/ce/config/config.go), so for a citizen to be recognized as the

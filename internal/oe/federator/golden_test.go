@@ -109,6 +109,8 @@ type goldenCase struct {
 
 	// noPDP leaves the PDP URL unset so the policy check is skipped.
 	noPDP bool
+	// noConsent leaves the consent engine and ownerIdArgName unset.
+	noConsent bool
 	// pdpStatus overrides the PDP HTTP status (default 200).
 	pdpStatus int
 	// pdpResponse overrides the PDP decision (default: authorized, no consent).
@@ -271,6 +273,25 @@ var goldenCases = []goldenCase{
 		},
 	},
 	{
+		// Consent that isn't set up is reported as such, not as a query
+		// missing the data owner's ID.
+		name:      "consent_required_without_consent_engine",
+		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make ownerName } }`},
+		noConsent: true,
+		pdpResponse: &policy.PdpResponse{
+			AppAuthorized:           true,
+			AppRequiresOwnerConsent: true,
+			ConsentRequiredFields: []policy.ConsentRequiredField{
+				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "dmt-v1", DisplayName: strPtr("Owner name")},
+			},
+		},
+	},
+	{
+		name:      "non_foundational_key_without_consent_engine",
+		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		noConsent: true,
+	},
+	{
 		name:    "aliases",
 		request: graphql.Request{Query: `query { a: personInfo(nic: "199012345678") { name: fullName } b: personInfo(nic: "199012345678") { home: address birth: birthInfo { day: date } } }`},
 	},
@@ -349,12 +370,16 @@ func newGoldenFederator(t *testing.T, env *goldenEnv) *federator.Federator {
 		Providers: federator.ProviderLookup(providers.Get),
 		Schemas:   schemas,
 		Auditor:   middleware.NewAuditor(env.audit, "SERVICE", "orchestration-engine"),
-		Consent:   consent.NewCEServiceClient(env.consentURL),
 	}
 	if env.pdpURL != "" {
 		deps.Policy = policy.NewPdpClient(env.pdpURL)
 	}
-	f, err := federator.New(deps, federator.Options{FoundationalIdArgName: "nic", ArgMapping: goldenArgMappings})
+	opts := federator.Options{ArgMapping: goldenArgMappings}
+	if env.consentURL != "" {
+		deps.Consent = consent.NewCEServiceClient(env.consentURL)
+		opts.OwnerIDArgName = "nic"
+	}
+	f, err := federator.New(deps, opts)
 	require.NoError(t, err)
 	return f
 }
@@ -404,7 +429,9 @@ func newGoldenEnv(t *testing.T, tc goldenCase) *goldenEnv {
 		},
 	}
 
-	env.consentURL = env.consentServer(t, tc).URL
+	if !tc.noConsent {
+		env.consentURL = env.consentServer(t, tc).URL
+	}
 	if !tc.noPDP {
 		env.pdpURL = env.pdpServer(t, tc).URL
 	}

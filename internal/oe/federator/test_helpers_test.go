@@ -13,11 +13,11 @@ import (
 )
 
 type testConfig struct {
-	FoundationalIdArgName string
-	ArgMapping            []*graphql.ArgMapping
-	PdpURL                string
-	CeURL                 string
-	Providers             []provider.Config
+	OwnerIDArgName string
+	ArgMapping     []*graphql.ArgMapping
+	PdpURL         string
+	CeURL          string
+	Providers      []provider.Config
 }
 
 // newTestFederator builds a Federator from cfg and schemas with the real PDP,
@@ -39,8 +39,8 @@ func newTestFederator(t *testing.T, cfg *testConfig, schemas SchemaSource) *Fede
 		deps.Consent = consent.NewCEServiceClient(cfg.CeURL)
 	}
 	f, err := New(deps, Options{
-		FoundationalIdArgName: cfg.FoundationalIdArgName,
-		ArgMapping:            cfg.ArgMapping,
+		OwnerIDArgName: cfg.OwnerIDArgName,
+		ArgMapping:     cfg.ArgMapping,
 	})
 	require.NoError(t, err)
 	return f

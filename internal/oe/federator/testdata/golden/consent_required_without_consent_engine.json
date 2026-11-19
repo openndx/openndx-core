@@ -1,0 +1,48 @@
+{
+  "response": {
+    "data": null,
+    "errors": [
+      {
+        "extensions": {
+          "code": "CE_ERROR"
+        },
+        "message": "Consent required but consent engine not available"
+      }
+    ]
+  },
+  "policyRequests": [
+    {
+      "applicationId": "app-golden",
+      "requiredFields": [
+        {
+          "fieldName": "vehicle.getVehicleByRegNo.make",
+          "schemaId": "dmt-v1"
+        },
+        {
+          "fieldName": "vehicle.getVehicleByRegNo.ownerName",
+          "schemaId": "dmt-v1"
+        }
+      ]
+    }
+  ],
+  "consentRequests": [],
+  "providerRequests": {},
+  "auditEvents": [
+    {
+      "eventType": "DATA_REQUEST",
+      "status": "SUCCESS",
+      "actorType": "APPLICATION",
+      "actorId": "app-golden",
+      "targetType": "SERVICE",
+      "targetId": "SERVICE"
+    },
+    {
+      "eventType": "POLICY_CHECK",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "policy-decision-point"
+    }
+  ]
+}

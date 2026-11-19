@@ -27,6 +27,13 @@ func (f *Federator) authorizeAccess(ctx context.Context, appID string, op *opera
 		return ctx, nil
 	}
 
+	// Consent that isn't set up is the deployment's fault, not the query's, so
+	// it is reported before the Data Owner ID is looked for.
+	if f.deps.Consent == nil {
+		slog.WarnContext(ctx, "Consent required but no consent engine is configured")
+		return ctx, rejectWithCode("Consent required but consent engine not available", errors.CodeCEError)
+	}
+
 	dataOwnerID, denied := f.dataOwnerID(ctx, op)
 	if denied != nil {
 		return ctx, denied
@@ -101,18 +108,18 @@ func (f *Federator) checkPolicy(ctx context.Context, appID string, fields []poli
 	return ctx, pdpResponse, nil
 }
 
-// dataOwnerID returns the Data Owner ID: the value of the configured foundational
-// identifier argument (e.g. "nic") on every field of op, aliases included.
+// dataOwnerID returns the Data Owner ID: the value of the configured owner ID
+// argument (e.g. "nic") on every field of op, aliases included.
 func (f *Federator) dataOwnerID(ctx context.Context, op *operation.Operation) (string, *graphql.Response) {
-	id, err := op.DataOwnerID(f.opts.FoundationalIdArgName)
+	id, err := op.DataOwnerID(f.opts.OwnerIDArgName)
 	switch {
 	case stderrors.Is(err, operation.ErrMissingIdentifier):
 		slog.InfoContext(ctx, "Data Owner ID argument is missing or invalid",
-			"foundationalIdArgName", f.opts.FoundationalIdArgName)
+			"ownerIdArgName", f.opts.OwnerIDArgName)
 		return "", rejectWithCode("Data Owner ID argument is missing or invalid", errors.CodeMissingEntityIdentifier)
 	case stderrors.Is(err, operation.ErrAmbiguousIdentifier):
 		slog.InfoContext(ctx, "Conflicting Data Owner ID values found in query",
-			"foundationalIdArgName", f.opts.FoundationalIdArgName)
+			"ownerIdArgName", f.opts.OwnerIDArgName)
 		return "", rejectWithCode("Conflicting Data Owner ID values in query", errors.CodeAmbiguousEntityIdentifier)
 	}
 	return id, nil
@@ -128,11 +135,6 @@ func (f *Federator) checkConsent(ctx context.Context, appID, dataOwnerID string,
 	if len(pdpResponse.ConsentRequiredFields) == 0 {
 		slog.ErrorContext(ctx, "PDP indicates consent required but no fields specified")
 		return ctx, rejectWithCode("Invalid PDP response: consent required but no fields specified", errors.CodePDPError)
-	}
-
-	if f.deps.Consent == nil {
-		slog.WarnContext(ctx, "CE client not available, skipping consent check")
-		return ctx, rejectWithCode("Consent required but consent engine not available", errors.CodeCEError)
 	}
 
 	// Map PDP response fields to Consent Engine request with all metadata

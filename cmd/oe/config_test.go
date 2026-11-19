@@ -28,7 +28,6 @@ import (
 
 // minimalConfig holds only the settings that have no default.
 const minimalConfig = `
-foundationalIdArgName: nic
 idp:
   jwksURL: https://idp.example/oauth2/jwks
   issuer: https://idp.example
@@ -54,14 +53,13 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	assert.Equal(t, logging.Config{Level: "info", Format: "json"}, cfg.Logging)
 	assert.Equal(t, filepath.Join(filepath.Dir(path), "schema.graphql"), cfg.SchemaPath,
 		"the schema defaults to the schema.graphql next to the config file")
-	assert.Equal(t, "nic", cfg.FoundationalIDArgName)
 	assert.Equal(t, authn.Config{
 		JWKSURL:  "https://idp.example/oauth2/jwks",
 		Issuer:   "https://idp.example",
 		Audience: "http://api.example",
 	}, cfg.IDP)
 	assert.Empty(t, cfg.PDP.URL, "the PDP check is off by default")
-	assert.Empty(t, cfg.ConsentEngine.URL, "the consent check is off by default")
+	assert.Equal(t, ConsentEngineConfig{}, cfg.ConsentEngine, "the consent check is off by default")
 	assert.Equal(t, AuditConfig{ActorType: "SERVICE", ActorID: "orchestration-engine"}, cfg.Audit, "auditing is off by default")
 	assert.Empty(t, cfg.Providers)
 	assert.Empty(t, cfg.ArgMappings)
@@ -80,7 +78,6 @@ logging:
   level: debug
   format: text
 schemaPath: /etc/oe/schema.graphql
-foundationalIdArgName: nic
 idp:
   jwksURL: https://idp.example/oauth2/jwks
   issuer: https://idp.example
@@ -90,6 +87,7 @@ pdp:
   url: http://pdp.internal:8082
 consentEngine:
   url: http://ce.internal:8081/internal/api/v1
+  ownerIdArgName: nic
 audit:
   url: http://audit.internal:3001
   apiKey: "{{env:TEST_OE_ARGUS_API_KEY}}"
@@ -126,7 +124,7 @@ argMappings:
 	assert.Equal(t, "/etc/oe/schema.graphql", cfg.SchemaPath, "an absolute schemaPath is used as is")
 	assert.True(t, cfg.IDP.InsecureSkipTLSVerify)
 	assert.Equal(t, "http://pdp.internal:8082", cfg.PDP.URL)
-	assert.Equal(t, "http://ce.internal:8081/internal/api/v1", cfg.ConsentEngine.URL)
+	assert.Equal(t, ConsentEngineConfig{URL: "http://ce.internal:8081/internal/api/v1", OwnerIDArgName: "nic"}, cfg.ConsentEngine)
 	assert.Equal(t, AuditConfig{URL: "http://audit.internal:3001", APIKey: "argus-key", ActorType: "SERVICE", ActorID: "oe-1"}, cfg.Audit)
 
 	require.Len(t, cfg.Providers, 2)
@@ -195,7 +193,8 @@ func TestLoadConfigErrors(t *testing.T) {
 		{name: "unknown log level", extra: "logging:\n  level: verbose", wantErr: "logging.level"},
 		{name: "unknown log format", extra: "logging:\n  format: xml", wantErr: "logging.format"},
 		{name: "empty schemaPath", extra: `schemaPath: ""`, wantErr: "schemaPath must not be empty"},
-		{name: "missing foundationalIdArgName", replace: [2]string{"foundationalIdArgName: nic", ""}, wantErr: "foundationalIdArgName is required"},
+		{name: "consent engine without ownerIdArgName", extra: "consentEngine:\n  url: http://ce.internal/internal/api/v1", wantErr: "consentEngine.ownerIdArgName is required when consentEngine.url is set"},
+		{name: "top-level foundationalIdArgName", extra: "foundationalIdArgName: nic", wantErr: "foundationalIdArgName has moved to consentEngine.ownerIdArgName"},
 		{name: "missing idp audience", replace: [2]string{"  audience: http://api.example", ""}, wantErr: "invalid idp configuration"},
 		{name: "invalid pdp url", extra: "pdp:\n  url: pdp.internal", wantErr: "pdp.url"},
 		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal", wantErr: "consentEngine.url"},
@@ -339,8 +338,8 @@ func TestCommittedConfigsFederate(t *testing.T) {
 					Schemas:   schemas,
 					Policy:    policy.NewPdpClient(pdp.URL),
 				}, federator.Options{
-					FoundationalIdArgName: cfg.FoundationalIDArgName,
-					ArgMapping:            cfg.ArgMappings,
+					OwnerIDArgName: cfg.ConsentEngine.OwnerIDArgName,
+					ArgMapping:     cfg.ArgMappings,
 				})
 				require.NoError(t, err)
 
