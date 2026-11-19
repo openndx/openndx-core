@@ -89,9 +89,9 @@ To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
 - **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` CLI](cmd/ondx/README.md)
 - **Components:** the table above
-- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
-- **Contributor and ops references (refresh pending):** [Makefile usage](docs/MAKEFILE_USAGE.md), [code quality setup](docs/LOCAL_CODE_QUALITY_SETUP.md), [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
+- **Contributor and ops references (refresh pending):** [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
 
 ## Security and license
 
