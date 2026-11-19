@@ -6,6 +6,18 @@ Thank you for your interest in contributing to the OpenNDX Core project! We welc
 
 This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
+## Prerequisites
+
+| Tool | Version | Used for |
+|---|---|---|
+| [Go](https://go.dev/dl/) | 1.26.4 or later, as set in [`go.mod`](go.mod) | every service and the `ondx` CLI |
+| Git, Make and a POSIX shell | any recent | the `make` commands and the pre-commit hook; on Windows, use WSL |
+| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later; pnpm 11, pinned in [`portals/package.json`](portals/package.json) | the Consent Portal, and `make setup-all`, which installs its dependencies |
+| [Docker](https://docs.docker.com/get-docker/) with Compose v2 | any recent | the full local stack and the integration tests; unit tests don't need it |
+| [golangci-lint](https://golangci-lint.run/welcome/install/) | v2.14.0, the version CI pins | the lint and format checks CI runs, configured in [`.golangci.yml`](.golangci.yml) |
+
+`make quality-check` also runs `gofumpt`, `goimports`, `staticcheck` and `gosec` if they are installed, and skips each one with a notice if it isn't.
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
