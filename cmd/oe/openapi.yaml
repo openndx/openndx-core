@@ -5,7 +5,7 @@ info:
   description: |
     The Orchestration Engine federates consumer GraphQL queries across data providers.
     This document describes the health endpoint. The consumer endpoint, `POST /public/graphql`,
-    is described in cmd/oe/README.md and cmd/oe/AUTHENTICATION.md.
+    is described in cmd/oe/README.md, and its token requirements in cmd/oe/CONFIGURATION.md.
   contact:
     name: OpenNDX Team
   license:
