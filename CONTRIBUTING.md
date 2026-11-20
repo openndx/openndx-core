@@ -115,10 +115,11 @@ Keep the following in mind:
 CI runs golangci-lint v2.14.0 with [`.golangci.yml`](.golangci.yml), and reports only the issues on lines that the pull request changes. Because `make quality-check` does not run golangci-lint, run it yourself before you push:
 
 ```bash
-golangci-lint run --new-from-rev=HEAD ./internal/... ./cmd/...
+git fetch upstream
+golangci-lint run --new-from-merge-base=upstream/main ./internal/... ./cmd/...
 ```
 
-The `--new-from-rev=HEAD` option limits the report to your uncommitted changes.
+The `--new-from-merge-base=upstream/main` option limits the report to the lines your branch has changed since it left `main`, whether committed or not, which matches what CI checks. While you work, `--new-from-rev=HEAD` checks only your uncommitted changes.
 
 ### Integration Tests
 
