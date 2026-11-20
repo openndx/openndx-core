@@ -17,7 +17,7 @@ All quality checks are orchestrated through a centralized Makefile that automati
 
 ### Required Tools
 
-1. **Go** (version 1.21+)
+1. **Go** (version 1.26 or later; `go.mod` declares 1.26.4)
 
    ```bash
    go version

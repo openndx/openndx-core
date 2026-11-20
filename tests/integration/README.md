@@ -32,10 +32,12 @@ SKIP_GO_MOD_CHECK=1 ./run-local-tests.sh
 
 ```bash
 cd tests/integration
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build
 go test -v ./...
-docker compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml down -v
 ```
+
+`docker-compose.test.yml` alone is not a valid project. The database services it depends on are in `docker-compose.db.yml`.
 
 **Prerequisites:** Docker and Docker Compose installed.
 
@@ -118,12 +120,16 @@ Consumer tokens are signed by the mock provider (`POST /token`), which also serv
 
 ### Environment Variables
 
-**Database Credentials:**
-- `POSTGRES_PASSWORD` - Database password (default: `test-password-change-in-production` in `docker-compose.test.yml`; **override for security**)
-- `POSTGRES_USER` - Database username (default: `postgres`)
-- `POSTGRES_DB` - Database name (default: `postgres`)
+**Database credentials:**
 
-> **Note:** The default `POSTGRES_PASSWORD` is for convenience in local testing only. Always set a strong password for production or CI environments.
+`docker-compose.db.yml` sets these directly. They are not read from the environment.
+
+| Database | Host port | Name | User | Password |
+|---|---|---|---|---|
+| `pdp-db` | 5433 | `policy_db` | `postgres` | `password` |
+| `ce-db` | 5434 | `consent_db` | `postgres` | `password` |
+
+Tests that open a database themselves need `POSTGRES_PASSWORD=password`. For the Policy Decision Point database also set `TEST_DB_PORT=5433`.
 
 **Service URLs (Optional):**
 - `ORCHESTRATION_ENGINE_URL` - Default: `http://127.0.0.1:4000/public/graphql`
@@ -133,18 +139,14 @@ Consumer tokens are signed by the mock provider (`POST /token`), which also serv
 
 **Setting Variables:**
 ```bash
-# Export before running
-export POSTGRES_PASSWORD=your-password
+export POSTGRES_PASSWORD=password
+export TEST_DB_PORT=5433
 go test ./...
-
-# Or inline
-POSTGRES_PASSWORD=your-password go test ./...
 ```
 
-**Security Notes:**
+**Security notes:**
 - Never commit `.env` files or credentials
-- Test credentials should differ from production
-- `docker-compose.test.yml` uses environment variable substitution
+- These database passwords are for the local test databases only
 
 ---
 
@@ -152,9 +154,9 @@ POSTGRES_PASSWORD=your-password go test ./...
 
 ### Run All Tests
 ```bash
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build
 go test -v ./...
-docker compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml down -v
 ```
 
 ### Run Specific Test
@@ -172,15 +174,16 @@ go test -v ./...
 
 ## Test Services
 
-The `docker-compose.test.yml` starts:
+`docker-compose.db.yml` and `docker-compose.test.yml` together start:
 
-- **PostgreSQL** (5432) - Shared database for all services
-- **Policy Decision Point** (8082) - Policy evaluation service
-- **Consent Engine** (8081) - Consent management service
-- **Orchestration Engine** (4000) - GraphQL orchestration service
-- **Portal Backend** (8083) - Admin portal backend
+- **pdp-db** (host port 5433) — PostgreSQL for the Policy Decision Point, database `policy_db`
+- **ce-db** (host port 5434) — PostgreSQL for the Consent Engine, database `consent_db`
+- **Policy Decision Point** (8082)
+- **Consent Engine** (8081)
+- **Orchestration Engine** (4000)
+- **Mock provider** (8083) — sample data, and the token issuer for the tests
 
-All services run on `test-network` Docker network.
+There is no Portal Backend in this stack. The mock provider uses host port 8083.
 
 ---
 
@@ -200,15 +203,16 @@ Tests automatically clean up created resources using `t.Cleanup()`.
 **Services not starting:**
 ```bash
 # Check logs
-docker compose -f docker-compose.test.yml logs
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml logs
 
 # Verify services are healthy
-docker compose -f docker-compose.test.yml ps
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml ps
 ```
 
 **Database connection errors:**
-- Verify `POSTGRES_PASSWORD` is set
-- Check database is healthy: `docker compose -f docker-compose.test.yml ps shared-db`
+- Set `POSTGRES_PASSWORD=password` to match `docker-compose.db.yml`
+- For the Policy Decision Point database, set `TEST_DB_PORT=5433`
+- Check the databases: `docker compose -f docker-compose.db.yml -f docker-compose.test.yml ps pdp-db ce-db`
 
 **Port conflicts:**
 ```bash

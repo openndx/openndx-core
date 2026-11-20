@@ -6,7 +6,8 @@ This guide will help you set up your local development environment for contribut
 
 Before you begin, ensure you have the following installed:
 
--   [Go](https://go.dev/dl/) (1.21 or later)
+-   [Go](https://go.dev/dl/) 1.26 or later (`go.mod` declares 1.26.4)
+-   [Node.js](https://nodejs.org/) 24 or later and [pnpm](https://pnpm.io/), for the Consent Portal
 -   [Docker](https://www.docker.com/products/docker-desktop/) and Docker Compose
 -   [Make](https://www.gnu.org/software/make/)
 -   [Git](https://git-scm.com/downloads)
@@ -32,7 +33,7 @@ Before you begin, ensure you have the following installed:
     This will:
     - Install Git hooks (pre-commit checks)
     - Install Go dependencies for all services
-    - Install pnpm dependencies for all frontend portals
+    - Install pnpm dependencies for the Consent Portal
 
 ## Development Workflow
 
@@ -62,10 +63,12 @@ go test ./cmd/ce/... ./internal/ce/...
 **Integration Tests:**
 ```bash
 cd tests/integration
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build
 go test -v ./...
-docker compose -f docker-compose.test.yml down
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml down -v
 ```
+
+`docker-compose.test.yml` alone is not a valid project: the services depend on databases defined in `docker-compose.db.yml`. `./run-local-tests.sh` runs this same pair and then the tests.
 
 **Build Validation:**
 ```bash
@@ -124,7 +127,8 @@ openndx-core/
 │   ├── oe/                # Orchestration Engine
 │   ├── ce/                # Consent Engine
 │   ├── pdp/               # Policy Decision Point
-│   └── pb/                # Portal Backend
+│   ├── pb/                # Portal Backend
+│   └── ondx/              # Operator CLI
 ├── internal/              # Go service internals
 │   ├── oe/
 │   ├── ce/
@@ -140,6 +144,21 @@ openndx-core/
 │   └── integration/
 └── docs/                  # Documentation
 ```
+
+## Upstream and downstream
+
+A patch goes upstream as a pull request to `main` on [openndx/openndx-core](https://github.com/openndx/openndx-core). Follow the [pull request guide](pull-requests.md).
+
+A downstream copy is your fork, run with [Deploy](../DEPLOY.md). `docker compose up --build` builds from that checkout, so commits on the fork are what starts. Take newer upstream work with:
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
+docker compose up --build
+```
+
+Images and `ondx` binaries published by the project are built from upstream tags. Rebuild from the fork to run a downstream patch. Keep deployment-only settings (`.env`, `cmd/<svc>/config.yaml`) out of the pull request.
 
 ## Getting Help
 

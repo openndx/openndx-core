@@ -4,6 +4,8 @@ An open-source data exchange platform. Data consumers ask for citizens' data thr
 
 ## Architecture
 
+Components, request flow, technology stack, and functional requirements are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ```mermaid
 flowchart LR
     Consumer[Data consumer app] -->|GraphQL| OE[Orchestration Engine]
@@ -81,17 +83,23 @@ make quality-check <service>     # format, lint, security
 make run <service>               # run one service
 ```
 
-`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend` or `consent-portal`. Batch commands and automatic pre-commit validation cover these maintained components. Explicit commands for the paused `admin-portal` and `member-portal` prototypes remain available for local exploration. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
+`<service>` is `orchestration-engine`, `policy-decision-point`, `consent-engine`, `portal-backend` or `consent-portal`. A Go service reads `config.yaml` from its `cmd/<svc>` directory and exits if that file is missing. Copy `cmd/<svc>/config.example.yaml` to `cmd/<svc>/config.yaml` first (`config.yaml` is gitignored). The Consent Portal does not use that file. Batch commands and automatic pre-commit validation cover these maintained components. Explicit commands for the paused `admin-portal` and `member-portal` prototypes remain available for local exploration. Each component README has its own run, test and configuration details. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
 To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
 ## Documentation
 
-- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` tutorial](docs/TUTORIAL-ondx-cli.md)
-- **Components:** the table above
-- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
-- **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
-- **Contributor and ops references (refresh pending):** [Makefile usage](docs/MAKEFILE_USAGE.md), [code quality setup](docs/LOCAL_CODE_QUALITY_SETUP.md), [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
+| Guide | What it covers |
+|---|---|
+| This README | Overview and local install (`docker compose up --build`) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Diagrams, technology stack, functional requirements |
+| [Walkthrough](dev/WALKTHROUGH.md) | User guide: register, consent, and query, with the [mock providers](dev/README.md) and the [`ondx` tutorial](docs/TUTORIAL-ondx-cli.md) |
+| [Deploy](docs/DEPLOY.md) | Run a release tag or a fork for use |
+| [Development guide](docs/contributing/development.md) | Toolchain, tests, fork, upstream pull request, downstream copy |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Reporting issues and sending changes |
+| [Release guide](docs/RELEASE.md) | Version tags, images, CLI binaries, GitHub Release notes |
+
+Component READMEs are in the table above. Also: [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md), [Makefile usage](docs/MAKEFILE_USAGE.md), [code quality setup](docs/LOCAL_CODE_QUALITY_SETUP.md), [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md).
 
 ## Security and license
 

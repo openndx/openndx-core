@@ -22,13 +22,14 @@ Ready to submit code changes? Please review our [Pull Request Guidelines](docs/c
 
 ### Development Setup
 
-New to the project? Start with our [Development Guide](docs/contributing/development.md) to set up your local development environment.
+New to the project? Start with our [Development Guide](docs/contributing/development.md) to set up your local development environment. Forking, upstream pull requests, and downstream copies are in that guide under [Upstream and downstream](docs/contributing/development.md#upstream-and-downstream). Deploying a checkout is [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Quick Links
 
 -   [**Reporting Issues**](docs/contributing/reporting-issues.md): How to report bugs and request features
 -   [**Pull Requests**](docs/contributing/pull-requests.md): Guidelines for submitting code changes
--   [**Development Guide**](docs/contributing/development.md): Instructions for setting up your development environment and running tests
+-   [**Development Guide**](docs/contributing/development.md): Setup, tests, upstream pull requests, and downstream copies
+-   [**Deploy**](docs/DEPLOY.md): Run a checkout as the system you operate
 -   [**Code of Conduct**](CODE_OF_CONDUCT.md): Our community standards and expectations
 
 ## Getting Help
