@@ -1,6 +1,6 @@
-# golangci-lint configuration. CI runs it in the *-validate.yml workflows with
-# the version pinned there; run the same version locally:
-#   golangci-lint run --new-from-rev=HEAD ./...
+# golangci-lint configuration. tools/go.mod pins the version: `make fmt`,
+# `make lint` and `make check` run it from there, and the *-validate.yml
+# workflows read it from there, so a bump changes only that file.
 version: "2"
 
 linters:

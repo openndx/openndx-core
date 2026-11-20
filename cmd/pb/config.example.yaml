@@ -1,7 +1,7 @@
 # Portal Backend configuration for running natively. Copy it to config.yaml
 # (git-ignored) and edit the copy:
 #   cp cmd/pb/config.example.yaml cmd/pb/config.yaml
-# then run `make run portal-backend`.
+# then run `cd cmd/pb && go run .`.
 # Keys left out keep their defaults, listed in CONFIGURATION.md.
 # A value written as "{{env:NAME}}" or "{{file:/path}}" is read from that
 # environment variable or file at startup; an unset variable stops the service.

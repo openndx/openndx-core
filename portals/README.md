@@ -79,21 +79,19 @@ cd portals
 docker build -f apps/consent/Dockerfile -t consent-portal .     # or apps/admin, apps/member
 ```
 
-Compose and CI both use `portals/` as the build context. `make validate-docker-build <portal>` builds from inside the app directory instead, where those files are missing, so it does not work for the portals; use the command above.
+Compose and CI both use `portals/` as the build context.
 
 ## Development
 
-From the repo root, `make setup`, `validate-build`, `check-lint`, `quality-check` and `run` accept `consent-portal`, `admin-portal` and `member-portal`:
+`make setup` from the repo root installs the consent portal's packages; to run it against the other services, see [running the platform](../docs/contributing/development.md#running-the-platform). From `portals/`:
 
 ```bash
-make run consent-portal             # pnpm run dev in apps/consent
-make validate-build consent-portal # build
-make check-lint consent-portal
+pnpm --filter consent-portal run dev       # dev server on localhost:5173
+pnpm --filter consent-portal run build     # type-check and production build
+pnpm --filter consent-portal run lint
 ```
 
-Batch Make targets and automatic pre-commit validation cover only the maintained consent portal. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. Explicit Make and pnpm commands remain available for prototype exploration.
-
-`make validate-test <portal>` runs the TypeScript check and lint, not tests. `format`, `lint`, `staticcheck` and `security` are Go-only.
+The Make targets and the pre-commit hook cover Go code only; the consent portal's validation workflow builds and lints it in CI. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. pnpm commands remain available for prototype exploration.
 
 `packages/` is empty, so each app carries its own copy of the `window.configs` typing, the audit log service, the schema and application types, the logo, and the nginx and entrypoint files. See [packages/README.md](packages/README.md).
 

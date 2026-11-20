@@ -96,7 +96,7 @@ pnpm --filter consent-portal run build     # type-check and production build
 pnpm --filter consent-portal run lint
 ```
 
-There is no test script. From the repo root, `make run consent-portal`, `make validate-build consent-portal` and `make check-lint consent-portal` wrap the same commands; `make validate-test consent-portal` runs the type-check and lint only. Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
+There is no test script. To run the portal against the other services, see [running the platform](../../../docs/contributing/development.md#running-the-platform). Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
 
 Source is in [`src`](src): `pages` (routes), `contexts/ConsentContext.tsx` (consent state and decisions), `components`, `types`.
 

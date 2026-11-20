@@ -29,10 +29,14 @@ already wired to these ports.
 
 ## Usage
 
+`make up` and `make deps` start these with the rest of the stack. To start them on their own:
+
 ```bash
 # From the repo root
 docker compose -f dev/compose.yml up -d
 ```
+
+The images are published for `linux/arm64` only, so `compose.yml` pins that platform. Docker Desktop emulates it on Intel and AMD machines. Docker Engine on Intel or AMD Linux needs emulation installed once: `docker run --privileged --rm tonistiigi/binfmt --install arm64`.
 
 Then bring up the rest of the exchange stack (Postgres, ThunderID, PDP, CE,
 and `oe` itself), which already knows how to reach the containers above via

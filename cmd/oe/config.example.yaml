@@ -1,7 +1,7 @@
 # Orchestration Engine configuration for running natively. Copy it to
 # config.yaml (git-ignored) and edit the copy:
 #   cp cmd/oe/config.example.yaml cmd/oe/config.yaml
-# then run `make run orchestration-engine`.
+# then run `cd cmd/oe && go run .`.
 # Keys left out keep their defaults, listed in CONFIGURATION.md.
 # A value written as "{{env:NAME}}" or "{{file:/path}}" is read from that
 # environment variable or file at startup; an unset variable stops the service.

@@ -10,10 +10,18 @@
 #   docker compose -f dev/compose.yml down
 #
 # See dev/README.md for the full walkthrough.
+#
+# The images are published for linux/arm64 only, so each service pins that
+# platform (PROVIDER_PLATFORM overrides it, e.g. for your own amd64 images).
+# Docker Desktop emulates it on Intel and AMD machines; Docker Engine
+# on Intel or AMD Linux needs emulation installed once:
+#   docker run --privileged --rm tonistiigi/binfmt --install arm64
+# Remove the pins once linux/amd64 images are published.
 
 services:
   drp-api:
     image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api:${IMAGE_TAG:-v0.1.0}
+    platform: ${PROVIDER_PLATFORM:-linux/arm64}
     container_name: dev-drp-api
     ports:
       - "9090:9090"
@@ -26,6 +34,7 @@ services:
   # entry (cmd/oe/config.docker.yaml / config.example.yaml) points at.
   drp-api-adapter:
     image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api-adapter:${IMAGE_TAG:-v0.1.0}
+    platform: ${PROVIDER_PLATFORM:-linux/arm64}
     container_name: dev-drp-adapter
     ports:
       - "9091:9091"
@@ -37,6 +46,7 @@ services:
 
   rgd-api:
     image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/rgd-api:${IMAGE_TAG:-v0.1.0}
+    platform: ${PROVIDER_PLATFORM:-linux/arm64}
     container_name: dev-rgd-api
     ports:
       - "8080:8080"
