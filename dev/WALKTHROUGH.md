@@ -67,8 +67,8 @@ curl --fail --silent --show-error http://localhost:4000/health
 curl --fail --silent --show-error http://localhost:5173/health
 ```
 
-These are readiness checks; they do not prove that a provider query works. The
-checks in steps 6–9 do that.
+These show that each process is answering. They do not check the database, and
+they do not prove that a provider query works. The checks in steps 6–9 do that.
 
 ## 3. Log in as the operator
 

@@ -197,7 +197,7 @@ The integration tests live in `tests/integration`, which is a separate Go module
 make test-integration
 ```
 
-This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
+This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set. Host ports 4000, 8081, 8082, 8083, 5433 and 5434 must be free. Stop the root Compose stack first; it uses some of the same ports. `docker-compose.test.yml` alone is not a valid project.
 
 Many of the tests are skipped, rather than failed, when a database or service they need is unreachable, so check the skip messages in the output.
 
@@ -290,6 +290,21 @@ Before you open an issue, search the [existing issues](https://github.com/opennd
 ## Reporting Security Vulnerabilities
 
 Please do not report security vulnerabilities through public issues or pull requests. Follow the process in [SECURITY.md](SECURITY.md) instead.
+
+## Upstream and Downstream
+
+A patch goes upstream as a pull request to `main` on [openndx/openndx-core](https://github.com/openndx/openndx-core), using the steps under [Submitting a Pull Request](#submitting-a-pull-request).
+
+A downstream copy is a fork, run with [Deploy](docs/DEPLOY.md). `docker compose up --build` builds from that checkout, so the commits on the fork are what starts. Take newer upstream work with:
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
+docker compose up --build
+```
+
+Images and `ondx` binaries published by the project are built from upstream tags. Rebuild from the fork to run a downstream patch. Keep deployment-only settings (`.env`, `cmd/<svc>/config.yaml`) out of the pull request.
 
 ## Getting Help
 

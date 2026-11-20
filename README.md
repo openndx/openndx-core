@@ -28,6 +28,8 @@ OpenNDX is in initial development, before version 1.0, so a release can include 
 
 ## Architecture
 
+Components, request flow, technology stack, and functional requirements are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ```mermaid
 flowchart LR
     Consumer[Data consumer app] -->|GraphQL| OE[Orchestration Engine]
@@ -67,7 +69,7 @@ The Policy Decision Point, Consent Engine and Portal Backend each keep their own
 | PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
 | Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
 
-Ports are the Docker Compose defaults. ThunderID's and the mock providers' ports are fixed; the others can be changed in `.env`, and [.env.example](.env.example) lists every variable that `compose.yml` reads.
+Ports are the Docker Compose defaults. ThunderID's and the mock providers' ports are fixed; the others can be changed in `.env`, and [.env.example](.env.example) lists every variable that `compose.yml` reads. The quick start below uses the defaults, so those ports have to be free.
 
 The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees, and both portals are excluded from release images and Compose. Manage the platform through `ondx` or the Portal Backend API.
 
@@ -82,7 +84,19 @@ Providers, schemas, applications and their access are set up beforehand through 
 
 ## Quick start
 
-You need Docker with Compose.
+You need [Docker](https://docs.docker.com/get-docker/) with Compose v2. The command is `docker compose` (the Compose file is `compose.yml`). The first start builds the OpenNDX images and pulls ThunderID, so it needs network access and several minutes.
+
+These host ports must be free. If any is already in use, Compose stops with `port is already allocated` and the stack is not fully up:
+
+| Port | Service |
+|---|---|
+| 5432 | PostgreSQL |
+| 8090 | ThunderID |
+| 8082 | Policy Decision Point |
+| 8081 | Consent Engine |
+| 5173 | Consent Portal |
+| 4000 | Orchestration Engine |
+| 8083 | Portal Backend |
 
 ```bash
 git clone https://github.com/openndx/openndx-core.git
@@ -90,9 +104,22 @@ cd openndx-core
 docker compose up --build
 ```
 
-This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend and the Consent Portal. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. Audit records are dropped until an OpenTelemetry endpoint is set; [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) shows how to send them to a local OpenObserve.
+This runs in the foreground and starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend and the Consent Portal. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. Audit records are dropped until an OpenTelemetry endpoint is set; [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) shows how to send them to a local OpenObserve.
 
-The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data.
+In a second terminal, from the same directory, wait until these all return HTTP 200. The first request can fail while PostgreSQL and ThunderID are still starting; run them again. They show that the process is answering. They do not check the database.
+
+```bash
+curl --fail --silent --show-error http://localhost:8090/health/readiness
+curl --fail --silent --show-error http://localhost:8082/health
+curl --fail --silent --show-error http://localhost:8081/health
+curl --fail --silent --show-error http://localhost:4000/health
+curl --fail --silent --show-error http://localhost:8083/health
+curl --fail --silent --show-error http://localhost:5173/health
+```
+
+`docker compose ps -a` should then show the services running, and `thunderid-setup` exited. `docker compose down` stops this stack. Add `-v` only when you want the next start to create the databases again; `init-db.sql` loads them once, on an empty PostgreSQL volume.
+
+The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data. That also needs ports 8080, 8765, 9090 and 9091 free, and it must not run beside the [integration-test stack](tests/integration/README.md).
 
 ## Deploy
 
@@ -127,9 +154,10 @@ OpenNDX doesn't keep the data that consumers request: the Orchestration Engine h
 ## Documentation
 
 - **Tutorial:** the [end-to-end walkthrough](dev/WALKTHROUGH.md), which runs the platform with the [mock providers](dev/README.md).
-- **How-to guides:** [add a data provider](cmd/oe/PROVIDER_CONFIGURATION.md), [deploy with Helm](deploy/helm/openndx/README.md), [make a release](docs/RELEASE.md).
+- **How-to guides:** [add a data provider](cmd/oe/PROVIDER_CONFIGURATION.md), [deploy with Helm](deploy/helm/openndx/README.md), [run a checkout or a fork](docs/DEPLOY.md), [make a release](docs/RELEASE.md).
+- **Explanation:** [ARCHITECTURE.md](ARCHITECTURE.md) — diagrams, technology stack, and functional requirements.
 - **Reference:** each component's README, linked from the [table above](#architecture), with its configuration and `openapi.yaml`; the [policy model](cmd/pdp/POLICY_MODEL.md), the [consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md) and the [Portal Backend's authorization](cmd/pb/AUTHORIZATION.md); the [`ondx` CLI](cmd/ondx/README.md).
-- **Contributor and ops references:** [integration tests](tests/integration/README.md), [Consent Engine metrics](cmd/ce/README.md#metrics), [viewing audit records](CONTRIBUTING.md#viewing-audit-records)
+- **Contributor and ops references:** [CONTRIBUTING.md](CONTRIBUTING.md), [integration tests](tests/integration/README.md), [Consent Engine metrics](cmd/ce/README.md#metrics), [viewing audit records](CONTRIBUTING.md#viewing-audit-records)
 
 ## Get help
 
