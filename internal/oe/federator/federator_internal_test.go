@@ -46,7 +46,7 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 
 	// 3. Setup Config
 	cfg := &testConfig{
-		FoundationalIdArgName: "nic",
+		OwnerIDArgName: "nic",
 		Providers: []provider.Config{
 			{
 				ID:  "drp-schema",
@@ -104,7 +104,7 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 }
 
 // TestFederateQuery_DataOwnerIdentification verifies that the Data Owner ID is
-// matched by the configured foundationalIdArgName rather than by argument
+// matched by the configured ownerIdArgName rather than by argument
 // position, and that multiple mappings agreeing on the same value don't
 // trigger a false conflict.
 //
@@ -173,10 +173,10 @@ func TestFederateQuery_DataOwnerIdentification(t *testing.T) {
 		t.Cleanup(ceServer.Close)
 
 		cfg := &testConfig{
-			FoundationalIdArgName: "nic",
-			PdpURL:                pdpServer.URL,
-			CeURL:                 ceServer.URL,
-			ArgMapping:            argMapping,
+			OwnerIDArgName: "nic",
+			PdpURL:         pdpServer.URL,
+			CeURL:          ceServer.URL,
+			ArgMapping:     argMapping,
 		}
 
 		f := newTestFederator(t, cfg, staticSchema(schemaSDL))
@@ -235,8 +235,8 @@ func TestFederateQuery_PDPDeny(t *testing.T) {
 	defer pdpServer.Close()
 
 	cfg := &testConfig{
-		FoundationalIdArgName: "nic",
-		PdpURL:                pdpServer.URL,
+		OwnerIDArgName: "nic",
+		PdpURL:         pdpServer.URL,
 		ArgMapping: []*graphql.ArgMapping{
 			{
 				SchemaID:      "drp-schema",
@@ -280,33 +280,38 @@ func TestNew(t *testing.T) {
 	schemas := staticSchema("type Query { a: String }")
 
 	t.Run("fails without a provider registry", func(t *testing.T) {
-		_, err := New(Deps{Schemas: schemas}, Options{FoundationalIdArgName: "nic"})
+		_, err := New(Deps{Schemas: schemas}, Options{OwnerIDArgName: "nic"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "provider registry is required")
 	})
 
 	t.Run("fails without a schema source", func(t *testing.T) {
-		_, err := New(Deps{Providers: providers}, Options{FoundationalIdArgName: "nic"})
+		_, err := New(Deps{Providers: providers}, Options{OwnerIDArgName: "nic"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "schema source is required")
 	})
 
-	t.Run("fails when foundationalIdArgName is not configured", func(t *testing.T) {
-		_, err := New(Deps{Providers: providers, Schemas: schemas}, Options{})
+	t.Run("fails when consent is set up without ownerIdArgName", func(t *testing.T) {
+		_, err := New(Deps{Providers: providers, Schemas: schemas, Consent: &fakeConsent{}}, Options{})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "foundationalIdArgName is not configured")
+		assert.Contains(t, err.Error(), "ownerIdArgName is not configured")
+	})
+
+	t.Run("succeeds without consent or ownerIdArgName", func(t *testing.T) {
+		_, err := New(Deps{Providers: providers, Schemas: schemas}, Options{})
+		require.NoError(t, err)
 	})
 
 	t.Run("fails when a targetArgType isn't a GraphQL type", func(t *testing.T) {
 		_, err := New(Deps{Providers: providers, Schemas: schemas}, Options{
-			FoundationalIdArgName: "nic",
-			ArgMapping:            []*graphql.ArgMapping{{SchemaID: "drp", SourceArgPath: "a-nic", TargetArgPath: "person", TargetArgName: "nic", TargetArgType: "[ID"}},
+			OwnerIDArgName: "nic",
+			ArgMapping:     []*graphql.ArgMapping{{SchemaID: "drp", SourceArgPath: "a-nic", TargetArgPath: "person", TargetArgName: "nic", TargetArgType: "[ID"}},
 		})
 		assert.EqualError(t, err, `fatal configuration error: argMappings[0].targetArgType: "[ID" is not a GraphQL type`)
 	})
 
 	t.Run("succeeds without optional dependencies", func(t *testing.T) {
-		f, err := New(Deps{Providers: providers, Schemas: schemas}, Options{FoundationalIdArgName: "nic"})
+		f, err := New(Deps{Providers: providers, Schemas: schemas}, Options{OwnerIDArgName: "nic"})
 		require.NoError(t, err)
 		assert.NotNil(t, f.deps.Auditor, "a nil Auditor should default to one that records nothing")
 	})
@@ -395,7 +400,7 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 		}
 	`
 	opts := Options{
-		FoundationalIdArgName: "nic",
+		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
 			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},
@@ -522,7 +527,7 @@ func TestFederateQuery_ValidatesAgainstSchema(t *testing.T) {
 		}
 	`
 	opts := Options{
-		FoundationalIdArgName: "nic",
+		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
 			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},
@@ -582,7 +587,7 @@ func TestFederateQuery_SharedSchemaConcurrently(t *testing.T) {
 		Providers: fakeRegistry{"drp-schema": drp},
 		Schemas:   fixedSchema{compiled},
 	}, Options{
-		FoundationalIdArgName: "nic",
+		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
 			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},

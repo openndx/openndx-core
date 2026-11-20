@@ -91,8 +91,8 @@ func run() error {
 	}
 
 	federationObject, err := federator.New(deps, federator.Options{
-		FoundationalIdArgName: config.FoundationalIDArgName,
-		ArgMapping:            config.ArgMappings,
+		OwnerIDArgName: config.ConsentEngine.OwnerIDArgName,
+		ArgMapping:     config.ArgMappings,
 	})
 	if err != nil {
 		return fmt.Errorf("initialize federator: %w", err)

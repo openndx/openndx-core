@@ -1,0 +1,39 @@
+{
+  "response": {
+    "data": {
+      "vehicle": {
+        "make": "Toyota"
+      }
+    }
+  },
+  "policyRequests": [],
+  "consentRequests": [],
+  "providerRequests": {
+    "dmt-v1": [
+      {
+        "query": "query Querydmt_v1 ( $registrationNumber : String ! ) { vehicle { getVehicleByRegNo ( registrationNumber : $registrationNumber ) { make } } }",
+        "variables": {
+          "registrationNumber": "CAB-1234"
+        }
+      }
+    ]
+  },
+  "auditEvents": [
+    {
+      "eventType": "DATA_REQUEST",
+      "status": "SUCCESS",
+      "actorType": "APPLICATION",
+      "actorId": "app-golden",
+      "targetType": "SERVICE",
+      "targetId": "SERVICE"
+    },
+    {
+      "eventType": "PROVIDER_FETCH",
+      "status": "SUCCESS",
+      "actorType": "SERVICE",
+      "actorId": "orchestration-engine",
+      "targetType": "SERVICE",
+      "targetId": "dmt-v1"
+    }
+  ]
+}

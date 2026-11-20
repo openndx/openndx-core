@@ -22,9 +22,6 @@ logging:
 # directory of this file.
 schemaPath: schema.graphql
 
-# The query argument that identifies the data owner.
-foundationalIdArgName: nic
-
 # Validates consumer access tokens. The local ThunderID's `iss` is its base URL.
 idp:
   jwksURL: http://localhost:8090/oauth2/jwks
@@ -38,6 +35,9 @@ pdp:
   url: http://localhost:8082
 consentEngine:
   url: http://localhost:8081/internal/api/v1
+  # The query argument that identifies the data owner whose consent is asked.
+  # Required when url is set.
+  ownerIdArgName: nic
 
 # Argus audit service. Auditing is off when url is empty.
 audit:

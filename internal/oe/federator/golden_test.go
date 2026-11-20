@@ -50,6 +50,12 @@ directive @sourceInfo(
 
 type Query {
 	personInfo(nic: String!, vehicleFilter: VehicleFilter): PersonInfo
+	vehicle(regNo: String!): Vehicle
+}
+
+type Vehicle {
+	make: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleByRegNo.make")
+	ownerName: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleByRegNo.ownerName")
 }
 
 type PersonInfo {
@@ -80,6 +86,7 @@ var goldenArgMappings = []*graphql.ArgMapping{
 	{SchemaID: "rgd-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "getPersonInfo", TargetArgName: "nic"},
 	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "ownerNic"},
 	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-vehicleFilter", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "filter", TargetArgType: "VehicleFilterInput"},
+	{SchemaID: "dmt-v1", SourceArgPath: "vehicle-regNo", TargetArgPath: "vehicle.getVehicleByRegNo", TargetArgName: "registrationNumber"},
 }
 
 type goldenProvider struct {
@@ -93,7 +100,7 @@ var goldenProviders = []goldenProvider{
 	{schemaID: "dmt-v1", data: `{"vehicle": {"getVehicleInfos": {"data": [
 		{"registrationNumber": "CAB-1234", "make": "Toyota"},
 		{"registrationNumber": "WP-5678", "make": "Honda"}
-	]}}}`},
+	]}, "getVehicleByRegNo": {"make": "Toyota", "ownerName": "Nimal Perera"}}}`},
 }
 
 type goldenCase struct {
@@ -102,6 +109,8 @@ type goldenCase struct {
 
 	// noPDP leaves the PDP URL unset so the policy check is skipped.
 	noPDP bool
+	// noConsent leaves the consent engine and ownerIdArgName unset.
+	noConsent bool
 	// pdpStatus overrides the PDP HTTP status (default 200).
 	pdpStatus int
 	// pdpResponse overrides the PDP decision (default: authorized, no consent).
@@ -226,10 +235,61 @@ var goldenCases = []goldenCase{
 		request: graphql.Request{Query: `query { personInfo { fullName } }`},
 	},
 	{
-		// Every field's nic is read, aliases included, so the two data owners are
-		// rejected before the PDP is called.
-		name:    "conflicting_data_owner_ids_via_aliases",
-		request: graphql.Request{Query: `query { a: personInfo(nic: "111") { fullName } b: personInfo(nic: "222") { address } }`},
+		// Every field's nic is read, aliases included, so when consent is
+		// required the two data owners are rejected before the consent engine
+		// is called.
+		name:        "conflicting_data_owner_ids_via_aliases",
+		request:     graphql.Request{Query: `query { a: personInfo(nic: "111") { fullName } b: personInfo(nic: "222") { address } }`},
+		pdpResponse: consentRequired(),
+	},
+	{
+		// Without consent there is no data owner to identify, so differing nic
+		// values are served. Each alias reads one provider so the provider
+		// calls, which run in parallel, are recorded in a fixed order.
+		name:    "differing_nic_values_without_consent",
+		request: graphql.Request{Query: `query { a: personInfo(nic: "111") { fullName } b: personInfo(nic: "222") { birthInfo { date } } }`},
+	},
+	{
+		// A query keyed by an argument other than the foundational ID is served
+		// when no field requires consent.
+		name:    "non_foundational_key_without_consent",
+		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+	},
+	{
+		name:    "non_foundational_key_pdp_not_configured",
+		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		noPDP:   true,
+	},
+	{
+		// Consent needs the data owner's ID, which a query keyed by regNo lacks.
+		name:    "non_foundational_key_consent_required",
+		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make ownerName } }`},
+		pdpResponse: &policy.PdpResponse{
+			AppAuthorized:           true,
+			AppRequiresOwnerConsent: true,
+			ConsentRequiredFields: []policy.ConsentRequiredField{
+				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "dmt-v1", DisplayName: strPtr("Owner name")},
+			},
+		},
+	},
+	{
+		// Consent that isn't set up is reported as such, not as a query
+		// missing the data owner's ID.
+		name:      "consent_required_without_consent_engine",
+		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make ownerName } }`},
+		noConsent: true,
+		pdpResponse: &policy.PdpResponse{
+			AppAuthorized:           true,
+			AppRequiresOwnerConsent: true,
+			ConsentRequiredFields: []policy.ConsentRequiredField{
+				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "dmt-v1", DisplayName: strPtr("Owner name")},
+			},
+		},
+	},
+	{
+		name:      "non_foundational_key_without_consent_engine",
+		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		noConsent: true,
 	},
 	{
 		name:    "aliases",
@@ -310,12 +370,16 @@ func newGoldenFederator(t *testing.T, env *goldenEnv) *federator.Federator {
 		Providers: federator.ProviderLookup(providers.Get),
 		Schemas:   schemas,
 		Auditor:   middleware.NewAuditor(env.audit, "SERVICE", "orchestration-engine"),
-		Consent:   consent.NewCEServiceClient(env.consentURL),
 	}
 	if env.pdpURL != "" {
 		deps.Policy = policy.NewPdpClient(env.pdpURL)
 	}
-	f, err := federator.New(deps, federator.Options{FoundationalIdArgName: "nic", ArgMapping: goldenArgMappings})
+	opts := federator.Options{ArgMapping: goldenArgMappings}
+	if env.consentURL != "" {
+		deps.Consent = consent.NewCEServiceClient(env.consentURL)
+		opts.OwnerIDArgName = "nic"
+	}
+	f, err := federator.New(deps, opts)
 	require.NoError(t, err)
 	return f
 }
@@ -365,7 +429,9 @@ func newGoldenEnv(t *testing.T, tc goldenCase) *goldenEnv {
 		},
 	}
 
-	env.consentURL = env.consentServer(t, tc).URL
+	if !tc.noConsent {
+		env.consentURL = env.consentServer(t, tc).URL
+	}
 	if !tc.noPDP {
 		env.pdpURL = env.pdpServer(t, tc).URL
 	}
