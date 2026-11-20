@@ -95,9 +95,9 @@ sleep 10
 echo ""
 
 # Check each service health endpoint
-check_health "policy-decision-point" "http://localhost:8082/health" || exit 1
-check_health "consent-engine" "http://localhost:8081/health" || exit 1
-check_health "orchestration-engine" "http://localhost:4000/health" || exit 1
+check_health "policy-decision-point" "http://localhost:8082/health/readiness" || exit 1
+check_health "consent-engine" "http://localhost:8081/health/readiness" || exit 1
+check_health "orchestration-engine" "http://localhost:4000/health/readiness" || exit 1
 
 echo ""
 echo -e "${GREEN}🎉 All services are healthy and ready!${NC}"

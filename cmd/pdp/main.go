@@ -84,8 +84,11 @@ func run() error {
 	mux.HandleFunc("POST /api/v1/policy/grants/{id}/revoke", grantHandler.RevokeAccessGrant)
 	mux.HandleFunc("POST /api/v1/policy/decide", decisionHandler.GetPolicyDecision)
 
-	// Health check endpoint
+	// Health check endpoints. Liveness answers for the process alone, readiness
+	// for the service and its database.
 	mux.Handle("GET /health", utils.HealthHandler("policy-decision-point"))
+	mux.Handle("GET /health/liveness", utils.HealthHandler("policy-decision-point"))
+	mux.Handle("GET /health/readiness", utils.ReadinessHandler(sqlDB.PingContext))
 
 	// Create server configuration
 	serverConfig := &utils.ServerConfig{

@@ -62,8 +62,10 @@ Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATIO
 |---|---|---|
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
 | `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
+| `GET /health/liveness` | none | The same body. The process is up. |
+| `GET /health/readiness` | none | `{"status": "ok"}`. The Orchestration Engine owns no database, so it is ready as soon as it runs. |
 
-[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here and in [AUTHENTICATION.md](AUTHENTICATION.md).
+[openapi.yaml](openapi.yaml) describes `/health` and the two health sub-paths. `/public/graphql` is described here and in [AUTHENTICATION.md](AUTHENTICATION.md).
 
 ## How it works
 

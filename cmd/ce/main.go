@@ -108,7 +108,11 @@ func run() error {
 	mux.Handle("GET /api/v1/consents/{consentId}", authenticate(http.HandlerFunc(portalHandler.GetConsent)))
 	mux.Handle("PUT /api/v1/consents/{consentId}", authenticate(http.HandlerFunc(portalHandler.UpdateConsent)))
 
+	// Health check endpoints. Liveness answers for the process alone, readiness
+	// for the service and its database.
 	mux.Handle("GET /health", utils.HealthHandler("consent-engine"))
+	mux.Handle("GET /health/liveness", utils.HealthHandler("consent-engine"))
+	mux.Handle("GET /health/readiness", utils.ReadinessHandler(sqlDB.PingContext))
 
 	// Register /metrics endpoint for Prometheus scraping
 	mux.Handle("/metrics", monitoring.Handler())
