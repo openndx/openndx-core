@@ -36,7 +36,7 @@ make up
 docker compose stop portal-backend
 cp cmd/pb/config.example.yaml cmd/pb/config.yaml    # once; config.yaml is git-ignored
 export DB_PASSWORD=1234 IDP_CLIENT_SECRET=1234      # the Compose defaults
-make dev SVC=pb
+cd cmd/pb && go run .
 ```
 
 [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, a PDP on `localhost:8082` and a ThunderID on `localhost:8090`, and reads the two secrets from the environment. The service does not create tables; Compose's PostgreSQL loads [schema.sql](schema.sql) on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.

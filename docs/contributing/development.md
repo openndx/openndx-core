@@ -49,12 +49,11 @@ On Windows, install GNU Make (for example `choco install make`) and Git for Wind
 | `make fmt` | Formats Go code with gofumpt and goimports |
 | `make lint` | Runs golangci-lint with [.golangci.yml](../../.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags |
 | `make check` | Checks `go.mod` is tidy, then `lint` and `test`; changes nothing |
-| `make deps` | Starts only the dependencies in Docker |
+| `make deps` | Starts only the dependencies in Docker, to run the services natively |
 | `make up` / `make down` | Starts or stops the full stack in Docker |
-| `make dev` | Runs the services natively with labelled logs; `SVC="oe pb"` for some |
 | `make clean` | Removes `bin/` and coverage files |
 
-golangci-lint is pinned in [tools/go.mod](../../tools/go.mod), the same version CI uses, and runs through `go tool`, so there is nothing to install. The first run compiles it.
+golangci-lint is pinned in [tools/go.mod](../../tools/go.mod) and runs through `go tool`, so there is nothing to install; the first run compiles it. The CI validate workflows read the version from the same file.
 
 The pre-commit hook runs `make check` when a commit touches Go code. `make check` fails while existing lint issues remain ([#791](https://github.com/openndx/openndx-core/issues/791)); until they are fixed, commit with `git commit --no-verify`, and see what your change adds with:
 
@@ -82,10 +81,19 @@ The development loop: fast rebuilds, a debugger, plain logs.
 
 ```bash
 make deps    # PostgreSQL (with every schema.sql loaded), ThunderID, the audit service, the mock providers
-make dev     # PDP, CE, OE, PB and the Consent Portal, natively
 ```
 
-`make dev` builds the Go services into `bin/` and starts each from `cmd/<svc>`, where it reads `config.yaml`; the Consent Portal runs `pnpm dev` and reads `portals/apps/consent/public/config.js`. Each line of output is prefixed with the service name, and Ctrl+C, or any service exiting, stops all of them. Before the first run, create the git-ignored config files from the examples next to them:
+Then run each service in a terminal of its own, from its directory, where it reads `config.yaml`:
+
+```bash
+cd cmd/pdp && go run .
+cd cmd/ce && go run .
+cd cmd/oe && go run .
+cd cmd/pb && go run .
+cd portals/apps/consent && pnpm dev    # reads public/config.js
+```
+
+Before the first run, create the git-ignored config files from the examples next to them:
 
 | Copy | To | Then |
 |---|---|---|
@@ -111,7 +119,7 @@ Native services reach containers through ports on `localhost`, but containers re
 ```bash
 make up
 docker compose stop orchestration-engine
-make dev SVC=oe
+cd cmd/oe && go run .
 ```
 
 Running the PDP or the Consent Engine natively means running their callers natively too, which is the mode above.
@@ -191,7 +199,7 @@ openndx-core/
 │   ├── ce/
 │   ├── pdp/
 │   └── pb/
-├── dev/                   # Mock data providers and the `make dev` runner
+├── dev/                   # Mock data providers
 ├── portals/               # Frontend React applications (pnpm workspace)
 │   ├── apps/
 │   │   ├── member/

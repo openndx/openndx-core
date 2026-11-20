@@ -79,8 +79,7 @@ make setup    # git hook, Go modules, golangci-lint, portal packages
 make test     # unit tests; make test PKG=./internal/pdp/... for some packages
 make check    # tidy go.mod, lint and test, as the pre-commit hook does
 make up       # full stack in Docker; make down to stop
-make deps     # only the dependencies in Docker, then...
-make dev      # ...the services natively, with labelled logs
+make deps     # only the dependencies in Docker, to run the services natively
 ```
 
 On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.

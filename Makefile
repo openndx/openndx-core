@@ -2,7 +2,8 @@
 #
 # Every target works on the whole Go module; narrow `test` with PKG, e.g.
 #   make test PKG=./internal/pdp/...
-# CI runs the same tools with the same settings (.golangci.yml, tools/go.mod).
+# golangci-lint uses .golangci.yml and the version in tools/go.mod, here and
+# in the CI validate workflows, which read the version from that file.
 
 # Recipes are POSIX sh. On Windows, make would otherwise fall back to cmd.exe
 # when no sh.exe is on PATH, so point it at the sh and coreutils that ship
@@ -26,9 +27,6 @@ PKG ?= ./...
 # for the whole branch.
 LINT_FLAGS ?=
 
-# Services for `make dev`: any of pdp ce oe pb portal. Empty runs all of them.
-SVC ?=
-
 # Containers `make deps` starts: everything the services need, not the
 # services themselves. Compose also starts what these depend on (the
 # ThunderID init and setup steps).
@@ -38,7 +36,7 @@ DEPS := postgres thunderid audit-service
 PROVIDERS := docker compose -f dev/compose.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help setup build test test-integration fmt lint check deps up down dev clean
+.PHONY: help setup build test test-integration fmt lint check deps up down clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-17s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -69,7 +67,7 @@ check: ## Check go.mod is tidy, lint and test, changing nothing; run by the pre-
 	$(MAKE) --no-print-directory lint
 	$(MAKE) --no-print-directory test
 
-deps: ## Start only the dependencies in Docker, to run the services with `make dev`
+deps: ## Start only the dependencies in Docker, to run the services natively
 	docker compose up -d $(DEPS)
 	$(PROVIDERS) up -d
 
@@ -80,9 +78,6 @@ up: ## Build and start the full stack in Docker
 down: ## Stop everything `deps` or `up` started
 	$(PROVIDERS) down
 	docker compose down
-
-dev: ## Run the services natively with labelled logs (SVC="oe pb" for some)
-	go run ./dev/run $(SVC)
 
 clean: ## Remove bin/ and coverage files
 	rm -rf bin

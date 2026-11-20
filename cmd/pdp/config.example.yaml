@@ -1,7 +1,7 @@
 # Policy Decision Point configuration for running natively. Copy it to
 # config.yaml (git-ignored) and edit the copy:
 #   cp cmd/pdp/config.example.yaml cmd/pdp/config.yaml
-# then run `make dev SVC=pdp`.
+# then run `cd cmd/pdp && go run .`.
 # Keys left out keep their defaults, listed in README.md.
 # A value written as "{{env:NAME}}" or "{{file:/path}}" is read from that
 # environment variable or file at startup; an unset variable stops the service.

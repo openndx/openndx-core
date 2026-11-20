@@ -6,12 +6,12 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**, and `tools/go.mod` only pins golangci-lint. Make targets work on the whole module. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
 
-| Service | `make dev` name | Go packages |
-|---|---|---|
-| Orchestration Engine | `oe` | `./cmd/oe/... ./internal/oe/...` |
-| Policy Decision Point | `pdp` | `./cmd/pdp/... ./internal/pdp/...` |
-| Consent Engine | `ce` | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
-| Portal Backend | `pb` | `./cmd/pb/... ./internal/pb/...` |
+| Service | Go packages |
+|---|---|
+| Orchestration Engine | `./cmd/oe/... ./internal/oe/...` |
+| Policy Decision Point | `./cmd/pdp/... ./internal/pdp/...` |
+| Consent Engine | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
+| Portal Backend | `./cmd/pb/... ./internal/pb/...` |
 
 ```bash
 make setup                              # git hook, Go modules, pinned golangci-lint, portal deps
@@ -20,7 +20,8 @@ make fmt                                # gofumpt and goimports
 make lint                               # golangci-lint with .golangci.yml
 make check                              # go mod tidy -diff, lint, test; the pre-commit hook runs it
 make up / make down                     # full stack in Docker, with the mock providers
-make deps && make dev SVC="oe pb"       # dependencies in Docker, services native (needs cmd/<svc>/config.yaml)
+make deps                               # only the dependencies in Docker
+cd cmd/oe && go run .                   # run a service natively; reads cmd/oe/config.yaml
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
 make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 ```

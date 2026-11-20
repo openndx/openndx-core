@@ -34,10 +34,10 @@ Natively, with its dependencies in Docker (see [running the platform](../../docs
 make deps                                           # PostgreSQL with schema.sql loaded, ThunderID and the rest
 cp cmd/ce/config.example.yaml cmd/ce/config.yaml    # once; config.yaml is git-ignored
 export DB_PASSWORD=1234                             # the Compose default
-make dev SVC=ce
+cd cmd/ce && go run .
 ```
 
-The Orchestration Engine and the Consent Portal call the CE, so to use them with a native CE, run them natively too: stop the runner above and run `make dev`, which starts every service, or `make dev SVC="ce portal"`. [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. The service does not create tables; Compose's PostgreSQL loads `schema.sql` on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
+The Orchestration Engine and the Consent Portal call the CE, so to use them with a native CE, run them natively too, each in another terminal (`cd cmd/oe && go run .`, `cd portals/apps/consent && pnpm dev`). [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. The service does not create tables; Compose's PostgreSQL loads `schema.sql` on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 

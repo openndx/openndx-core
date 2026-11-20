@@ -35,10 +35,10 @@ Natively, with its dependencies in Docker (see [running the platform](../../docs
 make deps                                             # PostgreSQL with schema.sql loaded, and the rest
 cp cmd/pdp/config.example.yaml cmd/pdp/config.yaml    # once; config.yaml is git-ignored
 export DB_PASSWORD=1234                               # the Compose default
-make dev SVC=pdp
+cd cmd/pdp && go run .
 ```
 
-The Orchestration Engine and Portal Backend call the PDP, so to use them with a native PDP, run them natively too: stop the runner above and run `make dev`, which starts every service. [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. The service does not create tables; Compose's PostgreSQL loads [schema.sql](schema.sql) on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
+The Orchestration Engine and Portal Backend call the PDP, so to use them with a native PDP, run them natively too, each from its own directory in another terminal. [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. The service does not create tables; Compose's PostgreSQL loads [schema.sql](schema.sql) on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 

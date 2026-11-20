@@ -33,10 +33,10 @@ Natively, while the rest of the stack runs in Docker. No container calls the OE,
 make up                                             # full stack and the mock providers
 docker compose stop orchestration-engine
 cp cmd/oe/config.example.yaml cmd/oe/config.yaml    # once; config.yaml is git-ignored
-make dev SVC=oe
+cd cmd/oe && go run .
 ```
 
-`make dev` starts the service from `cmd/oe`, where it reads `config.yaml`; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
+Run from `cmd/oe`, the service reads `config.yaml` there; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
 
 To send a real query you need a consumer token, registered field policies and an application grant. Follow the [walkthrough](../../dev/WALKTHROUGH.md), or the token and curl example in [dev/README.md](../../dev/README.md).
 

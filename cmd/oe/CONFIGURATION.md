@@ -6,7 +6,7 @@ Every setting the Orchestration Engine reads. The overview and the short version
 
 All settings are in one YAML file, read once at startup. The OE looks for it at the `-config` flag, then `CONFIG_PATH`, then `config.yaml` in the working directory. It exits at startup if the file is missing or a setting is invalid. Keys left out keep the defaults below. `cmd/oe/config.yaml` is git-ignored.
 
-`make dev SVC=oe` runs it from `cmd/oe`, so the default is `cmd/oe/config.yaml`. The image sets `CONFIG_PATH=/app/config/config.yaml`, and Compose mounts [config.docker.yaml](config.docker.yaml) there.
+Run natively from `cmd/oe` (`cd cmd/oe && go run .`), the default is `cmd/oe/config.yaml`. The image sets `CONFIG_PATH=/app/config/config.yaml`, and Compose mounts [config.docker.yaml](config.docker.yaml) there.
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, and an unset variable stops the OE. Use it for secrets, such as `apiKey: "{{env:ARGUS_API_KEY}}"`. The whole value must be the placeholder.
 
