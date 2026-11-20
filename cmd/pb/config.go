@@ -137,7 +137,7 @@ func (c *Config) Validate() error {
 	if err := c.CORS.Validate(); err != nil {
 		return fmt.Errorf("invalid cors configuration: %w", err)
 	}
-	if err := c.IDP.Config.Validate(); err != nil {
+	if err := c.IDP.Validate(); err != nil {
 		return fmt.Errorf("invalid idp configuration: %w", err)
 	}
 	if err := validation.HTTPURL("idp.management.baseURL", c.IDP.Management.BaseURL); err != nil {

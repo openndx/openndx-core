@@ -54,7 +54,7 @@ func (c *CEServiceClient) CreateConsent(ctx context.Context, request *CreateCons
 		slog.ErrorContext(ctx, "Failed to send HTTP request for CreateConsent", "error", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		var errorBody bytes.Buffer

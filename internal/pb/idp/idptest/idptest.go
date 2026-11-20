@@ -113,7 +113,7 @@ func (m *Mock) CreateApplication(ctx context.Context, app *idp.Application) (*id
 	if m.CreateApplicationFunc != nil {
 		return m.CreateApplicationFunc(ctx, app)
 	}
-	return &idp.CreatedApplication{
+	return &idp.CreatedApplication{ //nolint:gosec // fake credentials for tests
 		Id:           "mock-idp-app-id",
 		ClientId:     "mock-client-id",
 		ClientSecret: "mock-client-secret",
@@ -145,7 +145,7 @@ func (m *Mock) GetApplicationOIDC(ctx context.Context, applicationID string) (*i
 	if m.GetApplicationOIDCFunc != nil {
 		return m.GetApplicationOIDCFunc(ctx, applicationID)
 	}
-	return &idp.ApplicationOIDCInfo{
+	return &idp.ApplicationOIDCInfo{ //nolint:gosec // fake credentials for tests
 		ClientId:     "mock-client-id",
 		ClientSecret: "mock-client-secret",
 	}, nil

@@ -8,6 +8,13 @@ linters:
   default: standard
   enable:
     - gosec
+  exclusions:
+    rules:
+      # Tests use fake credentials, local test servers, temp files and
+      # fixture paths, which gosec reports as risks.
+      - path: _test\.go
+        linters:
+          - gosec
 
 formatters:
   enable:

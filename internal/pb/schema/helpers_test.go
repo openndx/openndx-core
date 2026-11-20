@@ -3,8 +3,8 @@ package schema
 import (
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/database/dbtest"
 	"github.com/openndx/openndx-core/internal/pb/member"
@@ -52,11 +52,11 @@ func newTestHandlerEnv(t *testing.T) *testHandlerEnv {
 // createTestMember creates a member in the database for testing (bypasses IDP)
 func createTestMember(t *testing.T, db *gorm.DB, email string) string {
 	m := member.Member{
-		MemberID:    "mem_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		MemberID:    "mem_" + fmt.Sprintf("%d", uniqueID()),
 		Name:        "Test Member",
 		Email:       email,
 		PhoneNumber: "1234567890",
-		OuID:        "ou-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		OuID:        "ou-" + fmt.Sprintf("%d", uniqueID()),
 	}
 	err := db.Create(&m).Error
 	assert.NoError(t, err)
@@ -66,7 +66,7 @@ func createTestMember(t *testing.T, db *gorm.DB, email string) string {
 // createTestSchema creates a schema in the database for testing (bypasses async creation)
 func createTestSchema(t *testing.T, db *gorm.DB, memberID string) string {
 	schema := Schema{
-		SchemaID:   "schema_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		SchemaID:   "schema_" + fmt.Sprintf("%d", uniqueID()),
 		SchemaName: "Test Schema",
 		SDL:        "type Query { test: String }",
 		Endpoint:   "http://example.com/graphql",
@@ -75,4 +75,14 @@ func createTestSchema(t *testing.T, db *gorm.DB, memberID string) string {
 	err := db.Create(&schema).Error
 	assert.NoError(t, err)
 	return schema.SchemaID
+}
+
+// testIDs backs uniqueID.
+var testIDs atomic.Int64
+
+// uniqueID returns a number no other call in this test binary returns, for
+// building unique test IDs and emails. uniqueID() isn't unique:
+// on Windows, consecutive calls can return the same value.
+func uniqueID() int64 {
+	return testIDs.Add(1)
 }

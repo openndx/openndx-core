@@ -68,6 +68,8 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 func TestLoadConfigReadsEverySetting(t *testing.T) {
 	t.Setenv("TEST_OE_ARGUS_API_KEY", "argus-key")
 	t.Setenv("TEST_OE_RGD_SECRET", "rgd-secret")
+	// Absolute on every OS; on Windows that needs a drive letter.
+	absSchemaPath := filepath.Join(t.TempDir(), "schema.graphql")
 
 	cfg, err := loadConfig([]string{"-config", writeConfig(t, `
 server:
@@ -77,7 +79,7 @@ environment: staging
 logging:
   level: debug
   format: text
-schemaPath: /etc/oe/schema.graphql
+schemaPath: `+absSchemaPath+`
 idp:
   jwksURL: https://idp.example/oauth2/jwks
   issuer: https://idp.example
@@ -121,7 +123,7 @@ argMappings:
 	assert.Equal(t, ServerConfig{Port: 4100, Timeout: 45 * time.Second}, cfg.Server)
 	assert.Equal(t, "staging", cfg.Environment)
 	assert.Equal(t, logging.Config{Level: "debug", Format: "text"}, cfg.Logging)
-	assert.Equal(t, "/etc/oe/schema.graphql", cfg.SchemaPath, "an absolute schemaPath is used as is")
+	assert.Equal(t, absSchemaPath, cfg.SchemaPath, "an absolute schemaPath is used as is")
 	assert.True(t, cfg.IDP.InsecureSkipTLSVerify)
 	assert.Equal(t, "http://pdp.internal:8082", cfg.PDP.URL)
 	assert.Equal(t, ConsentEngineConfig{URL: "http://ce.internal:8081/internal/api/v1", OwnerIDArgName: "nic"}, cfg.ConsentEngine)

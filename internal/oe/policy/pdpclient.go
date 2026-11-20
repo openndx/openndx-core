@@ -61,7 +61,7 @@ func (p *PdpClient) MakePdpRequest(ctx context.Context, request *PdpRequest) (*P
 		slog.ErrorContext(ctx, "Failed to make PDP request", "error", err)
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		var errorBody bytes.Buffer
