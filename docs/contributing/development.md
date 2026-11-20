@@ -122,6 +122,8 @@ docker compose stop orchestration-engine
 cd cmd/oe && go run .
 ```
 
+`make up` starts every service in Docker, on the same host ports the native services use. Stop any service you run natively before running it, or Docker can't publish that port and `make up` stops before starting the mock providers.
+
 Running the PDP or the Consent Engine natively means running their callers natively too, which is the mode above.
 
 ## Development Workflow

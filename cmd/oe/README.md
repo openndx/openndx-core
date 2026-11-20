@@ -27,7 +27,7 @@ curl http://localhost:4000/health
 
 Compose mounts `cmd/oe/config.docker.yaml` and `cmd/oe/schema.graphql` into the container. The sample providers are the mock APIs in [dev/](../../dev/README.md).
 
-Natively, while the rest of the stack runs in Docker. No container calls the OE, so it can swap out on its own (see [running the platform](../../docs/contributing/development.md#running-the-platform)):
+Natively, while the rest of the stack runs in Docker. No container calls the OE, so it can swap out on its own. Stop any other service you run natively first, since `make up` starts it in Docker on the same port (see [running the platform](../../docs/contributing/development.md#running-the-platform)):
 
 ```bash
 make up                                             # full stack and the mock providers
