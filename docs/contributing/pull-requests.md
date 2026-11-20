@@ -11,13 +11,11 @@ We welcome pull requests from the community! This guide will help ensure your co
 ## Pull Request Workflow
 
 1.  **Fork the repository** (if you haven't already)
-2.  **Create a branch** from `main`:
+2.  **Create a branch** from `main`, named `<type>/<issue#>-<slug>`:
     ```bash
     git checkout main
     git pull upstream main
-    git checkout -b feature/your-feature-name
-    # or
-    git checkout -b fix/issue-123
+    git checkout -b fix/795-windows-platform-compatibility
     ```
 
 3.  **Make your changes** following our [Development Guide](development.md)
@@ -28,16 +26,16 @@ We welcome pull requests from the community! This guide will help ensure your co
     - Run `make check` (go.mod tidiness, lint and unit tests)
 
 5.  **Commit your changes:**
-    - Write clear, descriptive commit messages
+    - Use Conventional Commits with a scope, and `!` for breaking changes, e.g. `fix(ce): ...` or `refactor(pdp,pb)!: ...` (see [commit messages](development.md#commit-messages))
     - Keep commits focused and logical
-    - Reference issues: `Fixes #123` or `Closes #456`
+    - Reference issues: `Closes #123` or `Refs #123`
 
 6.  **Push to your fork:**
     ```bash
-    git push origin feature/your-feature-name
+    git push origin fix/795-windows-platform-compatibility
     ```
 
-7.  **Open a pull request** to the `main` branch
+7.  **Open a pull request** to `openndx/openndx-core` `main`, with a Conventional Commits title and the [template](../../.github/pull_request_template.md) filled in with every section kept
 
 ## Pull Request Guidelines
 

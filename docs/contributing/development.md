@@ -14,7 +14,9 @@ Before you begin, ensure you have the following installed:
 
 On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
 
-`make test`, `make check` and so the pre-commit hook use the race detector, which needs a C compiler on Linux (gcc, for example from `build-essential`) and Windows. macOS needs none.
+On macOS, install the Xcode Command Line Tools (`xcode-select --install`), which provide Make and Git.
+
+`make test`, `make check` and so the pre-commit hook use the race detector, which needs a C compiler on Linux (gcc, for example from `build-essential`) and Windows. On macOS it needs no C compiler.
 
 ## Initial Setup
 
@@ -130,15 +132,15 @@ Running the PDP or the Consent Engine natively means running their callers nativ
 
 ### Creating a Branch
 
-Always create a new branch from `main` for your changes:
+Work happens on your fork. Create a branch from an up-to-date `main`, named `<type>/<issue#>-<slug>`, where `<type>` is the Conventional Commits type of the change:
 
 ```bash
 git checkout main
 git pull upstream main
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-number
+git checkout -b fix/795-windows-platform-compatibility
 ```
+
+Pull requests target `openndx/openndx-core` `main`.
 
 ### Before you push
 
@@ -158,23 +160,25 @@ Run `make test-integration` too when your change affects how services talk to ea
 
 ### Commit Messages
 
-Write clear, descriptive commit messages:
+Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/) with a scope, the service or area the change is in:
 
--   Use the imperative mood ("Add feature" not "Added feature")
--   Keep the first line under 50 characters
--   Add a blank line and detailed explanation if needed
--   Reference issues: `Fixes #123` or `Closes #456`
+-   `<type>(<scope>): <summary>`, for example `fix(ce): ...` or `refactor(pdp,pb): ...`
+-   Add `!` after the scope for a breaking change, for example `refactor(pdp,pb)!: ...`, and explain the break in the body
+-   Write the summary in the imperative mood ("add", not "added")
+-   Add a blank line and an explanation of why, if it isn't obvious
+-   Reference issues in the body: `Closes #123` or `Refs #123`
 
 Example:
 ```
-Fix consent-engine database connection handling
+fix(ce): retry transient database connection failures
 
-- Handle connection timeouts gracefully
-- Add retry logic for transient failures
-- Update error messages for better debugging
+Connection timeouts during startup made the Consent Engine exit. Retry
+them with backoff, and report the last error if every attempt fails.
 
-Fixes #123
+Closes #123
 ```
+
+Pull request descriptions use the [template](../../.github/pull_request_template.md), with every section kept.
 
 ### Code Review Checklist
 
