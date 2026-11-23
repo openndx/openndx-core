@@ -40,6 +40,49 @@ paths:
                   service: orchestration-engine
                   status: healthy
 
+  /health/liveness:
+    get:
+      summary: Liveness check
+      description: Reports that the process is running. It does not check any dependency.
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Successful liveness response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                  status:
+                    type: string
+                example:
+                  service: orchestration-engine
+                  status: healthy
+
+  /health/readiness:
+    get:
+      summary: Readiness check
+      description: Reports that the service can serve requests. The Orchestration Engine owns no database, so it is ready as soon as it runs.
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                example:
+                  status: ok
+
 tags:
   - name: Health
     description: Health check endpoints

@@ -91,7 +91,7 @@ Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "..."
 | `GET /api/v1/consents/{consentId}` | One consent. `403` if it belongs to someone else.                                                                     |
 | `PUT /api/v1/consents/{consentId}` | Body `{"action": "approve" \| "reject" \| "revoke"}`. `409` if the consent is not in a state that allows the action.  |
 
-**System:** `GET /health` (`{"service": "consent-engine", "status": "healthy"}`) and `GET /metrics` (Prometheus), both unauthenticated.
+**System:** `GET /health` (`{"service": "consent-engine", "status": "healthy"}`), `GET /health/liveness` (the same body), `GET /health/readiness` (`{"status": "ok"}`, or `{"status": "unavailable"}` with `503` when the database does not answer within two seconds) and `GET /metrics` (Prometheus), all unauthenticated.
 
 ## How it works
 
@@ -104,7 +104,7 @@ States, durations and the exact create rules: [CONSENT_LIFECYCLE.md](CONSENT_LIF
 
 ## Security and deployment
 
-> **Deployment security: network isolation.** The `/internal/api/v1/*`, `/health` and `/metrics` routes are not authenticated. Anyone who can reach them can create consents and read consent status. Expose only the portal routes (`/api/v1/*`) to the Consent Portal's network, and keep the rest reachable only by the Orchestration Engine and your monitoring.
+> **Deployment security: network isolation.** The `/internal/api/v1/*`, `/health`, `/health/liveness`, `/health/readiness` and `/metrics` routes are not authenticated. Anyone who can reach them can create consents and read consent status. Expose only the portal routes (`/api/v1/*`) to the Consent Portal's network, and keep the rest reachable only by the Orchestration Engine and your monitoring.
 
 ## Development
 

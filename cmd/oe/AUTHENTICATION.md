@@ -1,6 +1,6 @@
 # OE authentication
 
-How the Orchestration Engine authenticates data consumers on `POST /public/graphql`. The only other route, `/health`, is not authenticated. The overview is in the [README](README.md).
+How the Orchestration Engine authenticates data consumers on `POST /public/graphql`. The only other routes, `/health`, `/health/liveness` and `/health/readiness`, are not authenticated. The overview is in the [README](README.md).
 
 The OE uses the shared [`internal/authn`](../../internal/authn) package, like Portal Backend. Every token's signature is verified; there is no setting that skips verification.
 

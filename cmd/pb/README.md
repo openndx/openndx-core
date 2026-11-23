@@ -71,7 +71,7 @@ All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full sc
 | Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
 | Consent bypass grants | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke` | `consent-bypass:read`<br>`consent-bypass:write` |
 
-Outside `/api/v1`, with no authentication: `GET /health` (liveness only, it does not check the database). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
+Outside `/api/v1`, with no authentication: `GET /health` and `GET /health/liveness` (liveness only, they do not check the database), and `GET /health/readiness` (`{"status": "ok"}`, or `{"status": "unavailable"}` with `503` when the database does not answer within two seconds). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
 
 ## How it works
 
@@ -99,7 +99,7 @@ sequenceDiagram
 
 ## Security and deployment
 
-> **Deployment security: network isolation.** `/health` is not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
+> **Deployment security: network isolation.** `/health`, `/health/liveness` and `/health/readiness` are not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
 
 - CORS defaults to `http://localhost:5173`. Compose sets `*`; set explicit origins for any shared deployment.
 - PB serves no `/metrics` endpoint and no `/openapi.yaml`; the spec is the file in this directory.

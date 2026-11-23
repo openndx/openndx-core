@@ -183,6 +183,51 @@ paths:
                     type: string
                     example: portal-backend
 
+  /health/liveness:
+    get:
+      summary: Liveness check endpoint
+      description: Reports that the Portal Backend process is running. It does not check the database.
+      operationId: getLiveness
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  service:
+                    type: string
+                    example: portal-backend
+
+  /health/readiness:
+    get:
+      summary: Readiness check endpoint
+      description: Reports that the Portal Backend can serve requests. It pings the database with a two second timeout.
+      operationId: getReadiness
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Service is not ready. The database did not answer in time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
   /api/v1/schemas:
     get:
       summary: List all schemas
@@ -1009,6 +1054,15 @@ paths:
 
 components:
   schemas:
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - unavailable
+          example: ok
     Member:
       allOf:
         - $ref: '#/components/schemas/BaseModel'

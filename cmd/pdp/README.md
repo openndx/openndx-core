@@ -81,6 +81,8 @@ Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies 
 | `GET /api/v1/policy/grants/{id}`                                | Read one grant                                                     |
 | `POST /api/v1/policy/grants/{id}/revoke`                        | Revoke one grant; it is kept with status `revoked`                 |
 | `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
+| `GET /health/liveness`                                          | Same as `/health`. The process is up. It does not check the database. |
+| `GET /health/readiness`                                         | `{"status": "ok"}` when the database answers, `{"status": "unavailable"}` with `503` when it does not. The ping runs under a two second timeout. |
 
 A decision request and response:
 
