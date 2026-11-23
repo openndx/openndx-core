@@ -38,7 +38,7 @@ func TestHTTPMetricsMiddleware(t *testing.T) {
 	// Create a test handler
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	})
 
 	// Wrap with metrics middleware
@@ -309,9 +309,10 @@ func TestLooksLikeIDImprovedLogic(t *testing.T) {
 		{"abc123def456", true, "Alphanumeric ID"},
 		{"app123", true, "Alphanumeric ID"},
 
-		// Short strings should NOT be detected (unless numeric)
+		// Short strings should NOT be detected, unless numeric. Callers drop
+		// short segments separately, through isCommonPathWord.
 		{"abc", false, "Too short"},
-		{"12", false, "Too short even if numeric"},
+		{"12", true, "looksLikeID accepts any all-numeric string; isCommonPathWord filters short segments"},
 
 		// Common path words should NOT be detected (tested via isCommonPathWord)
 		{"api", false, "Common path word"},

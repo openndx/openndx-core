@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
 	"github.com/openndx/openndx-core/internal/pb/database/dbtest"
@@ -27,9 +27,9 @@ func newTestHandler(t *testing.T) (*Handler, *gorm.DB) {
 // createTestMember stores a member linked to the given organization unit and returns its ID
 func createTestMember(t *testing.T, db *gorm.DB, ouID string) string {
 	m := Member{
-		MemberID:    "mem_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		MemberID:    "mem_" + fmt.Sprintf("%d", uniqueID()),
 		Name:        "Test Member",
-		Email:       fmt.Sprintf("org-%d@example.com", time.Now().UnixNano()),
+		Email:       fmt.Sprintf("org-%d@example.com", uniqueID()),
 		PhoneNumber: "1234567890",
 		OuID:        ouID,
 	}
@@ -44,9 +44,9 @@ func TestMemberEndpoints(t *testing.T) {
 	t.Run("POST /api/v1/members - CreateMember", func(t *testing.T) {
 		req := CreateMemberRequest{
 			Name:        "Test Member",
-			Email:       fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()),
+			Email:       fmt.Sprintf("test-%d@example.com", uniqueID()),
 			PhoneNumber: "1234567890",
-			OuID:        fmt.Sprintf("ou-%d", time.Now().UnixNano()),
+			OuID:        fmt.Sprintf("ou-%d", uniqueID()),
 		}
 
 		reqBody, _ := json.Marshal(req)
@@ -68,7 +68,7 @@ func TestMemberEndpoints(t *testing.T) {
 	})
 
 	t.Run("POST /api/v1/members - DuplicateOuID", func(t *testing.T) {
-		ouID := fmt.Sprintf("ou-%d", time.Now().UnixNano())
+		ouID := fmt.Sprintf("ou-%d", uniqueID())
 		for i, wantCode := range []int{http.StatusCreated, http.StatusBadRequest} {
 			reqBody, _ := json.Marshal(CreateMemberRequest{Name: fmt.Sprintf("Org %d", i), OuID: ouID})
 			httpReq := callertest.NewAdminRequest(http.MethodPost, "/api/v1/members", bytes.NewBuffer(reqBody))
@@ -87,7 +87,7 @@ func TestMemberEndpoints(t *testing.T) {
 	t.Run("POST /api/v1/members - MissingOuID", func(t *testing.T) {
 		req := CreateMemberRequest{
 			Name:        "Test Member",
-			Email:       fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()),
+			Email:       fmt.Sprintf("test-%d@example.com", uniqueID()),
 			PhoneNumber: "1234567890",
 		}
 
@@ -256,4 +256,14 @@ func TestMemberEndpoints_OrganizationUnitOwnership(t *testing.T) {
 		require.Len(t, response.Items, 1)
 		assert.Equal(t, otherMemberID, response.Items[0].MemberID)
 	})
+}
+
+// testIDs backs uniqueID.
+var testIDs atomic.Int64
+
+// uniqueID returns a number no other call in this test binary returns, for
+// building unique test IDs and emails. uniqueID() isn't unique:
+// on Windows, consecutive calls can return the same value.
+func uniqueID() int64 {
+	return testIDs.Add(1)
 }

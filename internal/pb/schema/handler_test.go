@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
 	"github.com/openndx/openndx-core/internal/pb/kernel"
@@ -212,11 +211,11 @@ func TestSchemaSubmissionEndpoints(t *testing.T) {
 
 	t.Run("GET /api/v1/schema-submissions/:submissionId - GetSchemaSubmission", func(t *testing.T) {
 		// Create test data directly in DB
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 
 		// Create a submission directly in DB
 		submission := SchemaSubmission{
-			SubmissionID:   "sub_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			SubmissionID:   "sub_" + fmt.Sprintf("%d", uniqueID()),
 			SchemaName:     "Test Submission",
 			SDL:            "type Query { test: String }",
 			SchemaEndpoint: "http://example.com/graphql",
@@ -240,11 +239,11 @@ func TestSchemaSubmissionEndpoints(t *testing.T) {
 
 	t.Run("PUT /api/v1/schema-submissions/:submissionId - UpdateSchemaSubmission", func(t *testing.T) {
 		// Create test data directly in DB
-		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", time.Now().UnixNano()))
+		memberID := createTestMember(t, testHandler.db, fmt.Sprintf("test-%d@example.com", uniqueID()))
 
 		// Create a submission directly in DB
 		submission := SchemaSubmission{
-			SubmissionID:   "sub_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+			SubmissionID:   "sub_" + fmt.Sprintf("%d", uniqueID()),
 			SchemaName:     "Test Submission",
 			SDL:            "type Query { test: String }",
 			SchemaEndpoint: "http://example.com/graphql",

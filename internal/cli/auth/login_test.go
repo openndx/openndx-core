@@ -170,10 +170,13 @@ func TestLogin_RepeatedCallbacksDoNotBlock(t *testing.T) {
 		done <- err
 	}()
 
+	// A deadlock hangs forever, so any generous limit catches it. Keep it
+	// above Login's own 5s timeout: under the race detector with the whole
+	// suite running, a working Login took over 2s on Windows.
 	select {
 	case err := <-done:
 		assert.NoError(t, err)
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("Login did not return - a repeated callback likely deadlocked the handler")
 	}
 }

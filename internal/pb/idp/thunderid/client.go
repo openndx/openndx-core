@@ -218,7 +218,7 @@ func (c *Client) do(ctx context.Context, method, path string, in any, want int, 
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != want {
 		var apiErr apiError

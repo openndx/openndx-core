@@ -27,7 +27,6 @@ docker compose up --build               # full local stack
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
 - PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.
 - Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `cd tests/integration && ./run-local-tests.sh`, or bring up `docker-compose.test.yml` and `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
-- `TestLooksLikeIDImprovedLogic` in `internal/monitoring` fails on `main`; it is not caused by your change.
 
 ## Architecture
 

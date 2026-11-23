@@ -60,7 +60,7 @@ func TestClient_CreateFieldPolicies_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicies handler returns 201
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -165,7 +165,7 @@ func TestClient_CreateFieldPolicies_Non200Status(t *testing.T) {
 	// Create a mock HTTP server that returns 400
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"invalid request"}`))
+		_, _ = w.Write([]byte(`{"error":"invalid request"}`))
 	}))
 	defer server.Close()
 
@@ -188,7 +188,7 @@ func TestClient_CreateFieldPolicies_InvalidJSONResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated) // PDP's CreatePolicies handler returns 201
-		w.Write([]byte(`invalid json`))
+		_, _ = w.Write([]byte(`invalid json`))
 	}))
 	defer server.Close()
 
@@ -258,7 +258,7 @@ func TestClient_CreateAccessGrants_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -288,7 +288,7 @@ func TestClient_CreateAccessGrants_Non200Status(t *testing.T) {
 	// Create a mock HTTP server that returns 400
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"invalid request"}`))
+		_, _ = w.Write([]byte(`{"error":"invalid request"}`))
 	}))
 	defer server.Close()
 
@@ -316,7 +316,7 @@ func TestClient_CreateAccessGrants_InvalidJSONResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`invalid json`))
+		_, _ = w.Write([]byte(`invalid json`))
 	}))
 	defer server.Close()
 

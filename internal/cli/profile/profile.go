@@ -94,7 +94,7 @@ func DefaultConfigPath() (string, error) {
 // default profile is likewise injected whenever the file exists but doesn't
 // define one of its own under DefaultName.
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // the CLI's own config file, under the user's home directory
 	if errors.Is(err, os.ErrNotExist) {
 		return &Config{
 			CurrentProfile: DefaultName,

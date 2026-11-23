@@ -15,7 +15,7 @@ type Source struct {
 
 // Load reads and compiles the consumer schema file at path.
 func Load(path string) (*Source, error) {
-	sdl, err := os.ReadFile(path)
+	sdl, err := os.ReadFile(path) //nolint:gosec // schemaPath from the operator's config file
 	if err != nil {
 		return nil, fmt.Errorf("read schema file: %w", err)
 	}
