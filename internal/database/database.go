@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package database initializes shared PostgreSQL pools for SQL and GORM callers.
 package database
 

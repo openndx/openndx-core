@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 
 # Integration Tests Local Runner
 # This script mimics the GitHub Actions workflow for integration tests

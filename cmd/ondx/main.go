@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Command ondx is a CLI for OpenNDX management operations against the Portal Backend.
 package main
 

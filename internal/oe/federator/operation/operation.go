@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package operation normalizes a validated consumer query into the fields the
 // federator plans against: fragments merged, @skip and @include applied, fields
 // grouped by response key, and each field bound to its schema definition and

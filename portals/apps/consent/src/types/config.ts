@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 // Runtime configuration injected via public/config.js and exposed on
 // `window.configs`. See public/config.example.js for the template.
 export interface AppConfig {

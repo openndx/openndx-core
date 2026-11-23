@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package thunderid implements idp.ApplicationManager against ThunderID's
 // management API: Portal Backend creates each data-consumer application as an
 // M2M client in its member's organization unit and grants it the data-consumer

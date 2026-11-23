@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package application is the Portal Backend's consumer application bounded
 // context: applications, application submissions, their IdP clients and PDP
 // allow-lists, and the application API.

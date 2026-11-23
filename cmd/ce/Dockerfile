@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # Multi-stage Dockerfile for Consent Engine
 FROM golang:1.26-alpine AS builder
 

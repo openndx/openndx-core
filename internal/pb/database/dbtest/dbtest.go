@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package dbtest provides database fixtures for Portal Backend tests. Import
 // it only from _test.go files.
 package dbtest

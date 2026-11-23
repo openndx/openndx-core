@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package policy is the Portal Backend's client for the Policy Decision Point
 // (PDP). It owns the PDP request/response types the Portal Backend relies on,
 // so the rest of the Portal Backend never depends on PDP internals.

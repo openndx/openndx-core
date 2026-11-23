@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: Apache-2.0
+-- Copyright (c) 2026 Lanka Software Foundation
+
 -- PostgreSQL schema for the Policy Decision Point.
 -- Apply to the PDP database before starting the service. Safe to re-run.
 

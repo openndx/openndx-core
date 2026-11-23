@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 // Turns a dotted/camelCase field path such as "person.dateOfBirth" into "Date Of Birth"
 export const formatFieldName = (field: string): string => {
   const lastField = field ? field.split('.').at(-1) : '';

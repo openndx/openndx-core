@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # Portal Backend configuration for docker-compose.test.yml, which mounts it at
 # /app/config/config.yaml. The IdP and PDP are not started; PB only needs
 # their URLs to boot and answer /health.

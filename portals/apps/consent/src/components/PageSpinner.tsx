@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 import React from 'react';
 
 const PageSpinner: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (

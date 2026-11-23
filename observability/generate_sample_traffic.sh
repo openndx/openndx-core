@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 
 # Script to generate sample traffic for Grafana dashboard
 # This sends requests to various endpoints to populate metrics

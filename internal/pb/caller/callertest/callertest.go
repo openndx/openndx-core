@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package callertest provides authenticated test personas and request helpers
 // for Portal Backend handler tests. Import it only from _test.go files.
 package callertest
