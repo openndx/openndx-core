@@ -21,7 +21,7 @@ The OE splits a consumer query into one sub-query per provider using `@sourceInf
 With Docker Compose, from the repo root, start the full stack and the mock data providers:
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 docker compose -f dev/compose.yml up -d
 curl http://localhost:4000/health
 ```
