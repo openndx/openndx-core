@@ -21,7 +21,7 @@ make lint                               # golangci-lint with .golangci.yml
 make check                              # go mod tidy -diff, license-check, lint, test; the pre-commit hook runs it
 make up / make down                     # full stack in Docker, with the mock providers
 make deps                               # only the dependencies in Docker
-cd cmd/oe && go run .                   # run a service natively; reads cmd/oe/config.yaml
+(cd cmd/oe && go run .)                 # run a service natively; reads cmd/oe/config.yaml
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
 make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 ```
@@ -30,7 +30,7 @@ make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 - Unit tests need no database: PDP and PB tests use in-memory SQLite (PDP helpers in `internal/pdp/pdptest`, PB in `internal/pb/database/dbtest`).
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
 - PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.
-- Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `make test-integration`, or from `tests/integration` run `docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build` and then `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
+- Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `make test-integration`, or from `tests/integration` run `docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build` and then `go test ./...`. Tests skip rather than fail when a dependency is unreachable.
 
 ## Architecture
 

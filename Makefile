@@ -78,8 +78,8 @@ license-check: ## List files without the license header, and fail if any, as CI 
 check: ## Check go.mod is tidy and the license headers, lint and test, changing nothing; run by the pre-commit hook
 	go mod tidy -diff
 	$(MAKE) --no-print-directory license-check
-	$(MAKE) --no-print-directory lint
-	$(MAKE) --no-print-directory test
+	$(MAKE) --no-print-directory lint LINT_FLAGS=
+	$(MAKE) --no-print-directory test PKG=./...
 
 deps: ## Start only the dependencies in Docker, to run the services natively
 	docker compose up -d $(DEPS)

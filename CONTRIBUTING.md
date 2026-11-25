@@ -105,7 +105,7 @@ Before the first run, create the configuration files, which Git ignores, from th
 | `cmd/pb/config.example.yaml` | `cmd/pb/config.yaml` | |
 | `portals/apps/consent/public/config.example.js` | `portals/apps/consent/public/config.js` | Set `idpClientId: 'CONSENT_PORTAL'` and `idpBaseUrl: 'http://localhost:8090'` |
 
-The example configurations point at the ports that `make deps` publishes on `localhost`, and read their secrets from the environment. With the Compose defaults:
+The example configurations point at the ports that `make deps` publishes on `localhost`, and read their secrets from the environment. An `export` lasts only for its terminal, so set them in each terminal you start a service from. With the Compose defaults:
 
 ```bash
 export DB_PASSWORD=1234          # PowerShell: $env:DB_PASSWORD = "1234"
@@ -158,7 +158,6 @@ Keep the following in mind:
 
 - The unit tests do not need a running database. The Consent Engine, Policy Decision Point and Portal Backend tests use in-memory SQLite, with helpers in `internal/pdp/pdptest` and `internal/pb/database/dbtest`.
 - The PostgreSQL tests in `cmd/ce` and `internal/database` are skipped unless `TEST_DATABASE_URL` points to a disposable PostgreSQL database with `cmd/ce/schema.sql` applied.
-- Some Portal Backend tests expect nothing to be listening on `localhost:8082`, the Policy Decision Point's port.
 - The Orchestration Engine's golden tests compare its output with the files in `internal/oe/federator/testdata/golden`. After an intentional change, regenerate the files with `go test ./internal/oe/federator -run TestFederateQueryGolden -update`, and review the diff before committing it.
 
 ### Linting the Way CI Does

@@ -32,7 +32,10 @@ EOF
 	fi
 fi
 
-if git diff --cached --name-only | grep -qE '\.go$|(^|/)go\.(mod|sum)$|^\.golangci\.yml$'; then
+# Pathspecs rather than grep over the names, which Git quotes when they hold
+# non-ASCII characters. --no-renames counts a .go file renamed to another
+# extension as a deleted .go file.
+if ! git diff --cached --quiet --no-renames -- '*.go' ':(glob)**/go.mod' ':(glob)**/go.sum' .golangci.yml; then
 	echo "pre-commit: running make check (skip with git commit --no-verify)"
 	exec make check
 fi
