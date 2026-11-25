@@ -1,4 +1,8 @@
 {{- /*
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Lanka Software Foundation
+*/ -}}
+{{- /*
 One ConfigMap per enabled service that reads a config file: <service>.config
 rendered into config.yaml (as-is, apart from the empty public URLs
 openndx.config fills in), plus <service>.configFiles. Mounted at /app/config

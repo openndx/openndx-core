@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 set -e
 
 # Generate config.js from environment variables at runtime

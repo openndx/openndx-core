@@ -1,3 +1,7 @@
+{{- /*
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Lanka Software Foundation
+*/ -}}
 {{- $fullname := include "openndx.fullname" . }}
 {{- range $name, $c := include "openndx.components" . | fromYaml }}
 {{- $v := index $.Values $c.values }}

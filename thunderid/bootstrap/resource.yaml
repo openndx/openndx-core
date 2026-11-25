@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # Orchestration Engine (OE) resource server: declares the `getdata` scope that
 # data-consumer clients request via client_credentials to call OE's federated
 # data API.

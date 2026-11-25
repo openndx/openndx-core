@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: Apache-2.0
+-- Copyright (c) 2026 Lanka Software Foundation
+
 -- Creates the databases required by the Exchange services and loads each
 -- service's schema into its database.
 -- Runs automatically on first Postgres container startup

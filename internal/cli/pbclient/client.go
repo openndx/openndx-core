@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package pbclient is a minimal Portal Backend API client for CLI management commands.
 package pbclient
 

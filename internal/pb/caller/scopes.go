@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 package caller
 
 // OAuth2 scopes the Portal Backend checks. Each route in cmd/pb/main.go

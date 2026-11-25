@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 
 # Script to test Docker builds for all services
 # This validates that all Dockerfiles can build successfully with the current context

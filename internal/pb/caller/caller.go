@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package caller is the Portal Backend's view of who is calling: the OAuth2
 // scopes its routes require, the scopes and organization unit internal/authn
 // validated, and the member that organization unit belongs to. Middleware

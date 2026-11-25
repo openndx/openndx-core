@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package member is the Portal Backend's member bounded context: member
 // organizations, their link to the IdP, and the member API.
 package member

@@ -1,7 +1,7 @@
 # OpenNDX - Comprehensive Makefile
 # This Makefile provides standardized commands for all services in the repository
 
-.PHONY: help install-hooks setup validate-build validate-test validate-docker-build check-lint run clean setup-all validate-build-all validate-test-all
+.PHONY: help install-hooks setup validate-build validate-test validate-docker-build check-lint run clean setup-all validate-build-all validate-test-all license license-check
 
 # Default target
 help:
@@ -35,6 +35,8 @@ help:
 	@echo "  security [SERVICE]             - Run security checks with gosec"
 	@echo "  staticcheck [SERVICE]          - Run staticcheck analysis"
 	@echo "  install-tools                  - Install all required Go quality tools"
+	@echo "  license                        - Add the SPDX license header to files that lack it"
+	@echo "  license-check                  - List files without the license header (as CI does)"
 	@echo "  run [SERVICE]                  - Run the service locally"
 	@echo "  clean                          - Clean all build artifacts"
 	@echo ""
@@ -296,6 +298,16 @@ install-tools:
 	@echo "✅ Essential Go quality tools installed"
 	@echo "💡 Configure your IDE (VS Code/GoLand) for real-time linting!"
 	@echo "ℹ️  For security scanning, install gosec or use 'make security <service>'"
+
+# Add the SPDX license header (.github/license-header.tmpl) to every tracked
+# file that lacks one. scripts/license-headers.sh lists the files left out.
+license:
+	@scripts/license-headers.sh add
+
+# List the tracked files without the license header, and fail if there are
+# any, as the License Headers workflow does
+license-check:
+	@scripts/license-headers.sh check
 
 # Format Go code
 format-go-service:

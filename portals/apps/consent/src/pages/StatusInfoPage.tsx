@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 import { AlertCircle, CheckCircle, Shield, X } from 'lucide-react';
 import React from 'react';
 import { useAuth } from "react-oidc-context";

@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 import { CheckCircle, ChevronRight, Inbox, RefreshCw, Shield, XCircle } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package consentbypass is the Portal Backend's consent bypass bounded
 // context: granting an application access to fields without the owner's
 // consent, for a duration and with a legal basis, listing those grants and

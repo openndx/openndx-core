@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package logging sets up the slog logger every service writes through.
 //
 // main calls Setup once, right after loading its configuration. All other code

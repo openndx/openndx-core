@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # OpenNDX Pre-commit Hook
-# Validates quality checks, builds, and tests for staged services only
+# Adds the license header to staged files that lack it, then validates quality
+# checks, builds, and tests for staged services only
 # Compatible with macOS default Bash 3.2+
 # Note: set -e is intentionally not used to allow graceful error handling
 
@@ -32,6 +33,40 @@ get_service_path() {
 
 # Maintained services only; paused portals can be validated explicitly.
 ALL_SERVICES="portal-backend orchestration-engine consent-engine policy-decision-point consent-portal"
+
+# Add the SPDX license header to staged files that lack it, and stage the
+# result so the header is part of this commit. scripts/license-headers.sh
+# decides which files need one. Only those files are staged again; if you
+# staged part of one of them (git add -p), the rest of it is staged too.
+LICENSE_STAGED=()
+while IFS= read -r -d '' f; do LICENSE_STAGED+=("$f"); done \
+    < <(git diff --cached --name-only -z --diff-filter=ACMR)
+if [ "${#LICENSE_STAGED[@]}" -gt 0 ]; then
+    LICENSE_OUT=$(scripts/license-headers.sh check "${LICENSE_STAGED[@]}" 2>/dev/null)
+    LICENSE_STATUS=$?
+    if [ "$LICENSE_STATUS" -ne 0 ] && [ -z "$LICENSE_OUT" ]; then
+        echo -e "${RED}✗ Could not check the license headers. Run 'make license-check' to see why.${NC}"
+        echo -e "${YELLOW}To bypass the hook temporarily (not recommended):${NC}"
+        echo -e "${YELLOW}  git commit --no-verify${NC}"
+        exit 1
+    fi
+    LICENSE_MISSING=()
+    while IFS= read -r f; do
+        [ -n "$f" ] && LICENSE_MISSING+=("$f")
+    done <<EOF
+$LICENSE_OUT
+EOF
+    if [ "${#LICENSE_MISSING[@]}" -gt 0 ]; then
+        echo -e "${BLUE}Adding the license header to:${NC}"
+        printf '  %s\n' "${LICENSE_MISSING[@]}"
+        if ! scripts/license-headers.sh add "${LICENSE_MISSING[@]}"; then
+            echo -e "${RED}✗ Could not add the license headers${NC}"
+            exit 1
+        fi
+        git add -- "${LICENSE_MISSING[@]}"
+        echo -e "${GREEN}✓ License headers added and staged${NC}\n"
+    fi
+fi
 
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)

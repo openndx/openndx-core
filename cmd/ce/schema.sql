@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: Apache-2.0
+-- Copyright (c) 2026 Lanka Software Foundation
+
 -- Initial PostgreSQL schema for the Consent Engine.
 -- Apply to the CE database before starting the service.
 

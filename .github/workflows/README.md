@@ -16,6 +16,7 @@ Run on every PR when service code changes. Perform code quality checks and tests
 | `portal-backend-validate.yml`        | Portal Backend        | Changes to `cmd/pb/**`, `internal/pb/**`       |
 | `consent-portal-validate.yml`        | Consent Portal        | Consent app, workspace, or workflow changes  |
 | `integration-tests.yml`              | All Services          | Manual or scheduled                            |
+| `license-headers.yml`                | All files             | Every PR and push to `main`: SPDX headers      |
 
 Admin and Member Portal validation workflows are **manual only** while the apps
 are paused, unsupported prototypes. They do not run on pull requests or shared
