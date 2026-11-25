@@ -18,14 +18,15 @@ The OE splits a consumer query into one sub-query per provider using `@sourceInf
 
 ## Quick start
 
-With Docker Compose, the full stack including the OE (from the repo root):
+With Docker Compose, from the repo root, start the full stack and the mock data providers:
 
 ```bash
-docker compose up --build orchestration-engine
+docker compose up --build
+docker compose -f dev/compose.yml up -d
 curl http://localhost:4000/health
 ```
 
-Compose mounts `cmd/oe/config.docker.yaml` and `cmd/oe/schema.graphql` into the container. The sample providers are the mock APIs in [dev/](../../dev/README.md).
+Compose mounts `cmd/oe/config.docker.yaml` and `cmd/oe/schema.graphql` into the container. The mock providers are described in [dev/](../../dev/README.md). `docker compose up --build orchestration-engine` rebuilds and starts only the OE, because the service declares no dependencies.
 
 Native, from the repo root, with ThunderID from `docker compose up thunderid` for consumer tokens:
 
@@ -119,6 +120,8 @@ The federation tests in `internal/oe/federator` compare each result with a golde
 go test ./internal/oe/federator -run TestFederateQueryGolden -update
 ```
 
+The golden files are compared byte for byte, so the test needs a checkout with LF line endings. On Windows, a clone with `core.autocrlf=true` gets CRLF files, and every golden case fails.
+
 The cross-service suite, which runs the OE against the PDP and the Consent Engine, is a separate Go module in [tests/integration](../../tests/integration/README.md).
 
 ### Changing the schema
@@ -131,17 +134,12 @@ Start the OE and the rest of the stack (see [Quick start](#quick-start)). `POST 
 
 | Situation | Response |
 |---|---|
-| No token, or an invalid one | HTTP `401` with a JSON body, such as `{"error":"unauthorized","message":"invalid authentication token"}` |
-| The application has no grant for a field | `PDP_NOT_ALLOWED`, with the fields in `unauthorizedFields` |
-| A field has no field policy | `PDP_ERROR` |
-| The query has no `nic` argument | `BAD_REQUEST`, because the schema declares `nic: String!`; `MISSING_IDENTIFIER` if the schema makes it optional |
-| An unknown field, or an argument of the wrong type | `BAD_REQUEST`, with `locations` |
-| Two aliases with different `nic` values | `AMBIGUOUS_IDENTIFIER` |
-| A provider is down or returns a non-2xx status | That provider's fields are `null` in `data`, each with a `PROVIDER_ERROR` at its `path` |
-| Consent is still pending | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending` |
+| No token | HTTP `401`, `{"error":"unauthorized","message":"authentication required"}` |
+| An invalid token | HTTP `401`, `{"error":"unauthorized","message":"invalid authentication token"}` |
+| Consent is still pending | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending`. Open `consentPortalUrl` as the citizen, approve, and repeat the query. |
 | Everything is granted and approved | `data` holds the merged fields from every provider |
 
-The codes are in `errors[].extensions.code`, with HTTP 200; [CONFIGURATION.md](CONFIGURATION.md#error-codes) describes each one. For a pending consent, open `consentPortalUrl` as the citizen, approve, and repeat the query.
+Any other problem with a query, such as a missing grant or a provider that is down, comes back with HTTP 200 and a code in `errors[].extensions.code`. [CONFIGURATION.md](CONFIGURATION.md#error-codes) lists every code. The `401` responses are not among those codes: they are HTTP errors, returned before the query is read.
 
 ### Code layout
 
