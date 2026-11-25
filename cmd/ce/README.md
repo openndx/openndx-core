@@ -106,6 +106,8 @@ States, durations and the exact create rules: [CONSENT_LIFECYCLE.md](CONSENT_LIF
 
 ## Development
 
+From the repository root:
+
 ```bash
 make test PKG="./cmd/ce/... ./internal/ce/... ./internal/database/..."    # tests with -race
 make check                                                                # tidy, lint and test the whole module

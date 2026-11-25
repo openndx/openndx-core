@@ -105,6 +105,8 @@ sequenceDiagram
 
 ## Development
 
+From the repository root:
+
 ```bash
 make test PKG="./cmd/pb/... ./internal/pb/... ./internal/authn/..."    # tests with -race
 make check                                                            # tidy, lint and test the whole module

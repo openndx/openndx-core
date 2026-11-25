@@ -107,6 +107,8 @@ sequenceDiagram
 
 ## Development
 
+From the repository root:
+
 ```bash
 make test PKG="./cmd/oe/... ./internal/oe/..."    # tests with -race
 make check                                        # tidy, lint and test the whole module

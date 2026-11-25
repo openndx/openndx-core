@@ -115,6 +115,8 @@ For each requested `(schemaId, fieldName)`, in order:
 
 ## Development
 
+From the repository root:
+
 ```bash
 make test PKG="./cmd/pdp/... ./internal/pdp/..."    # tests with -race
 make check                                          # tidy, lint and test the whole module

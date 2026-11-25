@@ -77,6 +77,14 @@ This is the development loop: fast rebuilds, a debugger and plain logs.
 make deps    # PostgreSQL (with every schema.sql loaded), ThunderID, the audit service, the mock providers
 ```
 
+PostgreSQL loads the schemas only when its volume is first created. After pulling a `schema.sql` change, load them again into the running database:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -f /docker-entrypoint-initdb.d/init-db.sql'
+```
+
+Every `schema.sql` is safe to re-run: this adds missing tables and indexes, and skips those that exist. A change to an existing table therefore needs a fresh database: `docker compose down -v` deletes the stack's volumes, ThunderID's data included, and the next `make deps` starts from scratch.
+
 Then run each service in a terminal of its own, from its directory, where it reads `config.yaml`:
 
 ```bash
