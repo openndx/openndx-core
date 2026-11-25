@@ -18,7 +18,7 @@ on:
       - "go.mod"
       - "go.sum"
       - ".golangci.yml"
-      - "tools/go.mod"
+      - "Makefile"
       - ".dockerignore"
       - ".github/workflows/consent-engine-validate.yml"
   workflow_dispatch:
@@ -102,12 +102,12 @@ jobs:
           fi
           echo "Go mod files are clean."
 
-      # tools/go.mod pins golangci-lint for `make lint` too; read it so both
+      # The Makefile pins golangci-lint for `make lint` too; read it so both
       # always run the same version.
       - name: Read the golangci-lint version
         id: golangci-lint
         if: github.event_name == 'pull_request'
-        run: echo "version=$(awk '$1 == "github.com/golangci/golangci-lint/v2" { print $2 }' tools/go.mod)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(awk '$1 == "GOLANGCI_LINT_VERSION" { print $3 }' Makefile)" >> "$GITHUB_OUTPUT"
 
       # Settings in .golangci.yml. Reports only issues on lines this PR changes;
       # manual runs have no PR diff to filter by, so they skip it.

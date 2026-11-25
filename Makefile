@@ -2,8 +2,8 @@
 #
 # Every target works on the whole Go module; narrow `test` with PKG, e.g.
 #   make test PKG=./internal/pdp/...
-# golangci-lint uses .golangci.yml and the version in tools/go.mod, here and
-# in the CI validate workflows, which read the version from that file.
+# golangci-lint uses .golangci.yml and GOLANGCI_LINT_VERSION below, here and
+# in the CI validate workflows, which read the version from this file.
 
 # Recipes are POSIX sh. On Windows, make would otherwise fall back to cmd.exe
 # when no sh.exe is on PATH, so point it at the sh and coreutils that ship
@@ -13,11 +13,16 @@ ifeq ($(OS),Windows_NT)
 GIT_USR_BIN := $(subst /libexec/git-core,/../usr/bin,$(shell git --exec-path))
 export PATH := $(GIT_USR_BIN);$(PATH)
 SHELL := sh.exe
+EXE := .exe
 endif
 
-# golangci-lint, pinned in tools/go.mod so its dependencies stay out of the
-# service module. The first run compiles it; later runs use the build cache.
-GOLANGCI_LINT := go tool -modfile=tools/go.mod golangci-lint
+# golangci-lint's release binary, the one CI runs. The first `make setup`,
+# `fmt` or `lint` downloads it with the installer from the same release tag,
+# which checks it against the release's SHA-256 checksums. The version is in
+# the path, so a bump downloads the new release.
+GOLANGCI_LINT_VERSION := v2.14.0
+GOLANGCI_LINT := bin/golangci-lint-$(GOLANGCI_LINT_VERSION)/golangci-lint$(EXE)
+GOLANGCI_LINT_INSTALLER := https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh
 
 # Packages for `make test`.
 PKG ?= ./...
@@ -41,7 +46,7 @@ PROVIDERS := docker compose -f dev/compose.yml
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-17s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-setup: ## Install the git hook, Go modules, golangci-lint and portal packages
+setup: $(GOLANGCI_LINT) ## Install the git hook, Go modules, golangci-lint and portal packages
 	git config core.hooksPath .githooks
 	go mod download
 	$(GOLANGCI_LINT) version
@@ -56,10 +61,10 @@ test: ## Run unit tests with the race detector (PKG=./internal/pdp/... for one p
 test-integration: ## Run the integration tests against services in Docker
 	bash tests/integration/run-local-tests.sh
 
-fmt: ## Format Go code (gofumpt, goimports)
+fmt: $(GOLANGCI_LINT) ## Format Go code (gofumpt, goimports)
 	$(GOLANGCI_LINT) fmt
 
-lint: ## Lint Go code (LINT_FLAGS=--new-from-rev=HEAD for only your uncommitted changes)
+lint: $(GOLANGCI_LINT) ## Lint Go code (LINT_FLAGS=--new-from-rev=HEAD for only your uncommitted changes)
 	$(GOLANGCI_LINT) run $(LINT_FLAGS) ./...
 
 check: ## Check go.mod is tidy, lint and test, changing nothing; run by the pre-commit hook
@@ -82,3 +87,10 @@ down: ## Stop everything `deps` or `up` started
 clean: ## Remove bin/ and coverage files
 	rm -rf bin
 	find . -name node_modules -prune -o -type f \( -name 'coverage*.out' -o -name 'coverage*.html' \) -exec rm -f {} +
+
+# Saved to a file first: piped into sh, a failed download would still succeed.
+$(GOLANGCI_LINT):
+	mkdir -p $(@D)
+	curl -sSfL -o $(@D)/install.sh $(GOLANGCI_LINT_INSTALLER)
+	sh $(@D)/install.sh -b $(@D) $(GOLANGCI_LINT_VERSION)
+	rm $(@D)/install.sh

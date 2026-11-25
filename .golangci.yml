@@ -1,6 +1,7 @@
-# golangci-lint configuration. tools/go.mod pins the version: `make fmt`,
-# `make lint` and `make check` run it from there, and the *-validate.yml
-# workflows read it from there, so a bump changes only that file.
+# golangci-lint configuration. GOLANGCI_LINT_VERSION in the Makefile pins the
+# version: `make fmt`, `make lint` and `make check` download that release, and
+# the *-validate.yml workflows read it from there, so a bump changes only that
+# line.
 version: "2"
 
 linters:

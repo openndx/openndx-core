@@ -21,7 +21,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 |---|---|---|
 | [Go](https://go.dev/dl/) | 1.26.4 or later, as set in [`go.mod`](go.mod) | Every service and the `ondx` CLI |
 | A C compiler, such as gcc or clang | Any recent version | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables |
-| Git and GNU Make | Any recent version | The `make` commands and the pre-commit hook |
+| Git, GNU Make and curl | Any recent version | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl. |
 | [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup`, which installs its dependencies |
 | [Docker](https://docs.docker.com/get-docker/) with Compose v2 | Any recent version | The local stack (`make up`, `make deps`) and the integration tests. The unit tests do not need it. |
 
@@ -31,7 +31,7 @@ On Windows, install GNU Make (for example `choco install make`) and [Git for Win
 
 If `go env CGO_ENABLED` prints `0`, Go did not find a C compiler, and the unit tests will not build.
 
-golangci-lint needs no installing. Its version is pinned in [`tools/go.mod`](tools/go.mod), a module of its own so that its dependencies stay out of the services' module, and the `make` commands run it through `go tool`. The first run compiles it. The CI validate workflows read the version from the same file, so a version bump changes only that file.
+golangci-lint needs no installing. `GOLANGCI_LINT_VERSION` in the [`Makefile`](Makefile) pins its version. The first `make setup`, `make fmt` or `make lint` downloads that release's binary, the same one CI runs, into `bin/`, and checks it against the release's SHA-256 checksums. After a version bump, the next run downloads the new release. The CI validate workflows read the version from the Makefile, so a version bump changes only that line.
 
 ## Setting Up
 
@@ -45,10 +45,10 @@ This command does four things:
 
 1. **It installs the pre-commit hook.** It points Git at the `.githooks` directory (`git config core.hooksPath .githooks`), so a change to the hook takes effect without installing it again.
 2. **It fetches the Go dependencies.** It runs `go mod download`, which does not change `go.mod` or `go.sum`. The separate `tests/integration` module is not set up.
-3. **It builds golangci-lint** at the pinned version.
+3. **It downloads golangci-lint** at the pinned version.
 4. **It installs the Consent Portal's dependencies.** It runs `pnpm install --frozen-lockfile --filter consent-portal...` in the `portals` workspace, which fails rather than changes `portals/pnpm-lock.yaml`. The paused Admin and Member portals are skipped.
 
-Run it again after pulling changes to `tools/go.mod` or to the portal's dependencies. It does not create a `config.yaml` for any service or start a database.
+Run it again after pulling changes to the portal's dependencies. It does not create a `config.yaml` for any service or start a database.
 
 ### The Pre-commit Hook
 
@@ -153,7 +153,7 @@ Keep the following in mind:
 
 ### Linting the Way CI Does
 
-CI runs golangci-lint at the version in [`tools/go.mod`](tools/go.mod) with [`.golangci.yml`](.golangci.yml), and reports only the issues on lines that the pull request changes. `make lint` and `make check` report every issue in the module. To see only what CI will report:
+CI runs golangci-lint at the version in the [`Makefile`](Makefile) with [`.golangci.yml`](.golangci.yml), and reports only the issues on lines that the pull request changes. `make lint` and `make check` report every issue in the module. To see only what CI will report:
 
 ```bash
 git fetch upstream

@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 ## Commands
 
-One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**, and `tools/go.mod` only pins golangci-lint. Make targets work on the whole module. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
+One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**. Make targets work on the whole module. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
 
 | Service | Go packages |
 |---|---|
@@ -14,7 +14,7 @@ One Go module at the repo root (`github.com/openndx/openndx-core`) holds every s
 | Portal Backend | `./cmd/pb/... ./internal/pb/...` |
 
 ```bash
-make setup                              # git hook, Go modules, pinned golangci-lint, portal deps
+make setup                              # git hook, Go modules, golangci-lint (version in the Makefile), portal deps
 make test PKG=./internal/pdp/...        # go test -race; PKG defaults to ./...
 make fmt                                # gofumpt and goimports
 make lint                               # golangci-lint with .golangci.yml
