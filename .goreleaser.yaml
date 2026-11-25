@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # GoReleaser config for the ondx management CLI (cmd/ondx).
 # Run by the goreleaser job in .github/workflows/release.yml on v*.*.* tags; it
 # creates the GitHub Release, attaches the CLI archives, and updates the

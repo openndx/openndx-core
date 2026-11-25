@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 name: "🐞 Report a Bug"
 description: "Create new issue in LSFLK/OpenNDX: 🐞 Report a Bug"
 labels: ["Type/Bug"]

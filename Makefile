@@ -41,7 +41,7 @@ DEPS := postgres thunderid audit-service
 PROVIDERS := docker compose -f dev/compose.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help setup build test test-integration fmt lint check deps up down clean
+.PHONY: help setup build test test-integration fmt lint license license-check check deps up down clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-17s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -67,8 +67,17 @@ fmt: $(GOLANGCI_LINT) ## Format Go code (gofumpt, goimports)
 lint: $(GOLANGCI_LINT) ## Lint Go code (LINT_FLAGS=--new-from-rev=HEAD for only your uncommitted changes)
 	$(GOLANGCI_LINT) run $(LINT_FLAGS) ./...
 
-check: ## Check go.mod is tidy, lint and test, changing nothing; run by the pre-commit hook
+# scripts/license-headers.sh decides which files need the SPDX header
+# (.github/license-header.tmpl) and lists the ones left out.
+license: ## Add the SPDX license header to files that lack it
+	bash scripts/license-headers.sh add
+
+license-check: ## List files without the license header, and fail if any, as CI does
+	bash scripts/license-headers.sh check
+
+check: ## Check go.mod is tidy and the license headers, lint and test, changing nothing; run by the pre-commit hook
 	go mod tidy -diff
+	$(MAKE) --no-print-directory license-check
 	$(MAKE) --no-print-directory lint
 	$(MAKE) --no-print-directory test
 

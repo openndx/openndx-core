@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 import { Route, Routes } from 'react-router-dom';
 import ConsentDetailPage from "./pages/ConsentDetailPage.tsx";
 import ConsentListPage from "./pages/ConsentListPage.tsx";

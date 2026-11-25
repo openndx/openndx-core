@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: Apache-2.0
+-- Copyright (c) 2026 Lanka Software Foundation
+
 -- PostgreSQL schema for Portal Backend.
 -- Apply to the Portal Backend database before starting the service. Safe to re-run.
 

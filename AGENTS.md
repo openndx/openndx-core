@@ -18,7 +18,7 @@ make setup                              # git hook, Go modules, golangci-lint (v
 make test PKG=./internal/pdp/...        # go test -race; PKG defaults to ./...
 make fmt                                # gofumpt and goimports
 make lint                               # golangci-lint with .golangci.yml
-make check                              # go mod tidy -diff, lint, test; the pre-commit hook runs it
+make check                              # go mod tidy -diff, license-check, lint, test; the pre-commit hook runs it
 make up / make down                     # full stack in Docker, with the mock providers
 make deps                               # only the dependencies in Docker
 cd cmd/oe && go run .                   # run a service natively; reads cmd/oe/config.yaml
@@ -54,4 +54,5 @@ A consumer sends one GraphQL query to the **Orchestration Engine**. For every re
 
 - Commit and PR titles are conventional commits with a scope, `!` for breaking changes, e.g. `refactor(pdp,pb)!: ...`. PR bodies use `.github/pull_request_template.md` with every section kept.
 - Branches are `<type>/<issue#>-<slug>`. Work happens on forks; PRs target `openndx/openndx-core` `main`.
+- Every source file starts with the SPDX header from `.github/license-header.tmpl`, in the file type's comment syntax (Helm templates use a `{{- /* */ -}}` template comment). `make license` adds it to new files; CI fails on a file without it. `scripts/license-headers.sh` lists the exclusions.
 - Each service has an `openapi.yaml` and README in `cmd/<svc>`. Keep the `openapi.yaml` current: any change to a route, request or response body, query parameter, status code, error code, required scope or validation rule updates the spec in the same PR. The spec describes what the code does; where they disagree and the code is wrong, file an issue rather than documenting the intended behaviour as if it shipped.

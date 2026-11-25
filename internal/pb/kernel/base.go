@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package kernel holds the shared kernel of the Portal Backend: types used by
 // more than one bounded context. Anything with a single owner belongs in that
 // owner's package instead.

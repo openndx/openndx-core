@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # Orchestration Engine configuration for Docker Compose (compose.yml mounts it
 # at /app/config/config.yaml, next to the schema). Values shared with other
 # services come from the environment that compose.yml passes in, with the

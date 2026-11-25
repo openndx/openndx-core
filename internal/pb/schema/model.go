@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package schema is the Portal Backend's provider schema bounded context:
 // schemas, schema submissions, their PDP field policies, and the schema API.
 package schema

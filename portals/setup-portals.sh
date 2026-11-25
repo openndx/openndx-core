@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 
 # Comprehensive portal setup and validation script
 # Creates config.js files and validates configuration for all portals

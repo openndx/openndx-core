@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # LOCAL-DEV ONLY: a "Citizen" user type carrying a `nic` attribute — the same
 # foundational-ID shape OE uses as its `consentEngine.ownerIdArgName`
 # (config.yaml) and seeds as the consent record's OwnerID (access.go's dataOwnerID, taken

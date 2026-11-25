@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
 # Policy Decision Point configuration for running natively. Copy it to
 # config.yaml (git-ignored) and edit the copy:
 #   cp cmd/pdp/config.example.yaml cmd/pdp/config.yaml

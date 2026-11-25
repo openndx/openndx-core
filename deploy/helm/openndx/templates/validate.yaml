@@ -1,4 +1,8 @@
 {{- /*
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Lanka Software Foundation
+*/ -}}
+{{- /*
 Renders nothing. Fails the install, listing every missing required value at
 once, before any resource is created (see openndx.validate).
 */ -}}

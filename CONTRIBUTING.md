@@ -52,7 +52,7 @@ Run it again after pulling changes to the portal's dependencies. It does not cre
 
 ### The Pre-commit Hook
 
-When a commit stages a `.go` file, `go.mod`, `go.sum` or `.golangci.yml`, the hook runs `make check` and blocks the commit if it fails. `make check` changes no files. It checks the working tree, so unstaged changes count too. Other commits, such as documentation changes, skip the checks.
+On every commit, the hook first adds the [license header](#license-headers) to staged files that lack it, and stages the result. Then, when the commit stages a `.go` file, `go.mod`, `go.sum` or `.golangci.yml`, it runs `make check` and blocks the commit if it fails. `make check` changes no files. It checks the working tree, so unstaged changes count too. Other commits, such as documentation changes, skip `make check`.
 
 To skip the hook for one commit, run `git commit --no-verify`.
 
@@ -139,7 +139,9 @@ Every Go target works on the whole module. For the full list of commands, run `m
 | `make test-integration` | Runs the [integration tests](#integration-tests) against services in Docker |
 | `make fmt` | Formats Go code with `gofumpt` and `goimports` |
 | `make lint` | Runs golangci-lint with [`.golangci.yml`](.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags. |
-| `make check` | Checks that `go.mod` and `go.sum` are tidy, then runs `make lint` and `make test`. It changes no files. |
+| `make license` | Adds the [license header](#license-headers) to files that lack it |
+| `make license-check` | Lists the files without the license header, and fails if there are any, as CI does |
+| `make check` | Checks that `go.mod` and `go.sum` are tidy, then runs `make license-check`, `make lint` and `make test`. It changes no files. |
 | `make clean` | Removes `bin/` and the coverage files |
 
 Before you push, run `make fmt` and `make check`.
@@ -190,6 +192,22 @@ Many of the tests are skipped, rather than failed, when a database or service th
 - Each service describes its API in `cmd/<svc>/openapi.yaml`. Any change to a route, a request or response body, a query parameter, a status code, an error code, a required scope or a validation rule must update the specification in the same pull request. The specification describes what the code does. If the code and the specification disagree because the code is wrong, file an issue rather than documenting the intended behavior as if it had shipped.
 - The Admin and Member portals are paused prototypes. Please do not change them.
 
+### License Headers
+
+Every source file starts with an SPDX license header, taken from `.github/license-header.tmpl`:
+
+```text
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) <year> Lanka Software Foundation
+```
+
+The header is written in the comment syntax of the file's type, for example `//` in Go, `#` in YAML and shell scripts, and `--` in SQL. `scripts/license-headers.sh` decides which files need a header: every file that Git tracks and whose type has a comment syntax, except the Admin and Member portals, `pnpm-lock.yaml`, `testdata` directories, `node_modules` and `dist`. JSON and Markdown files have no header.
+
+- `make license` adds the header to every file that lacks one, and `make license-check` lists those files and fails, as CI does.
+- The pre-commit hook adds the header to staged files that lack it, and stages the result. If you staged only part of such a file, the hook stages the rest of it too.
+- The License Headers workflow runs the same check on every pull request, whatever the pull request changes.
+- In Helm templates, write the header as a template comment, `{{- /* ... */ -}}`, as the existing templates do, so that it does not appear in the rendered manifests.
+
 ## Branches and Commits
 
 Name your branch `<type>/<issue#>-<slug>`, using one of the commit types below and the number of the issue that the branch addresses. For example: `fix/501-validate-trace-id` or `docs/780-consolidate-contributing`.
@@ -234,7 +252,7 @@ Each component's validate workflow runs when a pull request changes that compone
 - For a Go service, the workflow checks that `go mod tidy` leaves `go.mod` and `go.sum` unchanged, runs golangci-lint on the changed lines, builds the service, runs the unit tests, and builds the Docker image and scans it with Trivy.
 - For the Consent Portal, the workflow runs `eslint`, and builds and scans the Docker image.
 
-The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point, the Consent Engine, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`. A TruffleHog secret scan runs on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
+The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point, the Consent Engine, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
 
 ### Review and Merge
 

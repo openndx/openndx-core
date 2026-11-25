@@ -1,3 +1,8 @@
+<#
+ SPDX-License-Identifier: Apache-2.0
+ Copyright (c) 2026 Lanka Software Foundation
+#>
+
 # Install the ondx CLI from GitHub Releases on Windows.
 #
 #   irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex

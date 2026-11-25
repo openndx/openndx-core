@@ -1,4 +1,8 @@
 {{- /*
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Lanka Software Foundation
+*/ -}}
+{{- /*
 One NetworkPolicy per enabled service, limiting inbound traffic to its
 container port. Egress is left open: PostgreSQL, ThunderID, the providers and
 Argus are all outside the chart. Each service accepts:

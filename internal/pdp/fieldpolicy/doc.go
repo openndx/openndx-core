@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package fieldpolicy owns the field policy catalogue: the policy of every
 // field a schema exposes, stored in field_policies. Each field carries
 // two flags, requiresAllowlist and requiresConsent, plus its display name,

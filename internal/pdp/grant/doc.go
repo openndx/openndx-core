@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package grant owns application access grants, stored in access_grants: an
 // application's plain or consent bypass grant for one field, with an expiry.
 // A field can hold both kinds of grant for the same application.

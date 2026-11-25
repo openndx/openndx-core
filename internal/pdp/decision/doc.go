@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package decision owns policy decisions. Decide decides access to one field
 // from two flags on the field, requiresAllowlist and requiresConsent, and the
 // requesting application's grant for it.

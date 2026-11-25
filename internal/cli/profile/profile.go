@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lanka Software Foundation
+
 // Package profile manages named, reusable sets of ndx CLI flag defaults
 // (identity provider issuer, client ID, scopes, callback port, Portal
 // Backend URL, TLS verification) cached at ~/.openndx/config.json. Profiles let

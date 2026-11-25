@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Lanka Software Foundation
+ */
+
 // Runtime configuration for the Consent Portal.
 //
 // Copy this file to `config.js` (which is gitignored) and adjust the values for

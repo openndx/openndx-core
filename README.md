@@ -77,7 +77,7 @@ Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker, Make, and a C co
 make help     # all commands
 make setup    # git hook, Go modules, golangci-lint, portal packages
 make test     # unit tests; make test PKG=./internal/pdp/... for some packages
-make check    # tidy go.mod, lint and test, as the pre-commit hook does
+make check    # tidy go.mod, license headers, lint and test, as the pre-commit hook does
 make up       # full stack in Docker; make down to stop
 make deps     # only the dependencies in Docker, to run the services natively
 ```
