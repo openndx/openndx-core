@@ -6,6 +6,7 @@ package schema
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 
@@ -35,8 +36,17 @@ func setupSQLiteTestDB(t *testing.T) *gorm.DB {
 // newTestHandler creates a schema Handler whose PDP client points at an
 // unreachable address, so PDP-dependent operations fail.
 func newTestHandler(db *gorm.DB) *Handler {
-	pdpClient := policy.NewClient("http://localhost:8082")
+	pdpClient := policy.NewClient(closedServerURL())
 	return NewHandler(NewService(db, pdpClient))
+}
+
+// closedServerURL returns the address of a test server that is already
+// closed. Nothing listens there, so a request to it fails whatever else is
+// running on the machine, such as a PDP on its usual port.
+func closedServerURL() string {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	srv.Close()
+	return srv.URL
 }
 
 // testHandlerEnv bundles a schema Handler with its test database
