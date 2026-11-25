@@ -29,7 +29,7 @@ curl http://localhost:8083/health
 
 This also starts PostgreSQL and ThunderID, and registers PB's own client (`PORTAL_BACKEND`) in ThunderID.
 
-Natively, while the rest of the stack runs in Docker. No container calls PB, so it can swap out on its own. Stop any other service you run natively first, since `make up` starts it in Docker on the same port (see [running the platform](../../docs/contributing/development.md#running-the-platform)):
+Natively, while the rest of the stack runs in Docker. No container calls PB, so it can swap out on its own. Stop any other service you run natively first, since `make up` starts it in Docker on the same port (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
 make up

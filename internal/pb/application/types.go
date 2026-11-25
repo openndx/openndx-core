@@ -55,7 +55,7 @@ func (sfr SelectedFieldRecords) GormValue(ctx context.Context, db *gorm.DB) clau
 
 	// Use dialect-appropriate syntax
 	// PostgreSQL uses ::jsonb cast, SQLite uses JSON() function or plain ?
-	dialector := db.Dialector.Name()
+	dialector := db.Name() // the Dialector's name: "postgres" or "sqlite"
 	var sql string
 	if dialector == "postgres" {
 		sql = "?::jsonb"

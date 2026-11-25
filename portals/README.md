@@ -83,7 +83,7 @@ Compose and CI both use `portals/` as the build context.
 
 ## Development
 
-`make setup` from the repo root installs the consent portal's packages; to run it against the other services, see [running the platform](../docs/contributing/development.md#running-the-platform). From `portals/`:
+`make setup` from the repo root installs the consent portal's packages; to run it against the other services, see [running the platform](../CONTRIBUTING.md#running-the-platform). From `portals/`:
 
 ```bash
 pnpm --filter consent-portal run dev       # dev server on localhost:5173

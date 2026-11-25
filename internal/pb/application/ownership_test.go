@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
 	"github.com/openndx/openndx-core/internal/pb/kernel"
@@ -20,12 +19,12 @@ import (
 // submissions.
 func TestApplicationEndpoints_MemberOwnership(t *testing.T) {
 	th := NewTestHandler(t)
-	ownMemberID := createTestMember(t, th.db, fmt.Sprintf("own-%d@example.com", time.Now().UnixNano()))
-	otherMemberID := createTestMember(t, th.db, fmt.Sprintf("other-%d@example.com", time.Now().UnixNano()))
+	ownMemberID := createTestMember(t, th.db, fmt.Sprintf("own-%d@example.com", uniqueID()))
+	otherMemberID := createTestMember(t, th.db, fmt.Sprintf("other-%d@example.com", uniqueID()))
 	ownApplicationID := createTestApplication(t, th.db, ownMemberID)
 	otherApplicationID := createTestApplication(t, th.db, otherMemberID)
 	otherSubmission := ApplicationSubmission{
-		SubmissionID:    "sub_other_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		SubmissionID:    "sub_other_" + fmt.Sprintf("%d", uniqueID()),
 		ApplicationName: "Other Submission",
 		SelectedFields:  SelectedFieldRecords{{FieldName: "field1", SchemaID: "schema-123"}},
 		MemberID:        otherMemberID,

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/openndx/openndx-core/internal/pb/caller/callertest"
 	"github.com/openndx/openndx-core/internal/pb/kernel"
@@ -19,12 +18,12 @@ import (
 // scopes only reaches its own member's schemas and schema submissions.
 func TestSchemaEndpoints_MemberOwnership(t *testing.T) {
 	env := newTestHandlerEnv(t)
-	ownMemberID := createTestMember(t, env.db, fmt.Sprintf("own-%d@example.com", time.Now().UnixNano()))
-	otherMemberID := createTestMember(t, env.db, fmt.Sprintf("other-%d@example.com", time.Now().UnixNano()))
+	ownMemberID := createTestMember(t, env.db, fmt.Sprintf("own-%d@example.com", uniqueID()))
+	otherMemberID := createTestMember(t, env.db, fmt.Sprintf("other-%d@example.com", uniqueID()))
 	ownSchemaID := createTestSchema(t, env.db, ownMemberID)
 	otherSchemaID := createTestSchema(t, env.db, otherMemberID)
 	otherSubmission := SchemaSubmission{
-		SubmissionID:   "sub_other_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		SubmissionID:   "sub_other_" + fmt.Sprintf("%d", uniqueID()),
 		SchemaName:     "Other Submission",
 		SDL:            "type Query { test: String }",
 		SchemaEndpoint: "http://example.com/graphql",

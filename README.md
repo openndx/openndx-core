@@ -71,7 +71,7 @@ The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock provi
 
 ## Working on the code
 
-Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker, Make, and on Linux and Windows a C compiler such as gcc (for the race detector). On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make and Git. Then:
+Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker, Make, and a C compiler such as gcc or clang (the unit tests use SQLite through cgo). On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang. Then:
 
 ```bash
 make help     # all commands
@@ -84,15 +84,15 @@ make deps     # only the dependencies in Docker, to run the services natively
 
 On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
 
-The [development guide](docs/contributing/development.md) covers every target and the ways to run the platform. [.env.example](.env.example) lists every variable `compose.yml` reads.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers every target and the ways to run the platform. [.env.example](.env.example) lists every variable `compose.yml` reads.
 
 To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
 
 ## Documentation
 
-- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` tutorial](docs/TUTORIAL-ondx-cli.md)
+- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` CLI](cmd/ondx/README.md)
 - **Components:** the table above
-- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md), [development guide](docs/contributing/development.md), [pull requests](docs/contributing/pull-requests.md), [reporting issues](docs/contributing/reporting-issues.md)
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
 - **Contributor and ops references (refresh pending):** [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
 

@@ -124,7 +124,7 @@ type fieldPolicyTestEnv struct {
 func newFieldPolicyTestEnv(t *testing.T) *fieldPolicyTestEnv {
 	db := setupSQLiteTestDB(t)
 
-	memberID := createTestMember(t, db, fmt.Sprintf("field-policy-%d@example.com", time.Now().UnixNano()))
+	memberID := createTestMember(t, db, fmt.Sprintf("field-policy-%d@example.com", uniqueID()))
 	schemaID := createTestSchema(t, db, memberID)
 
 	pdp := &fakePDP{
@@ -172,9 +172,9 @@ func newFieldPolicyTestEnv(t *testing.T) *fieldPolicyTestEnv {
 // test user. A fresh user is created per test so its organization unit is
 // unique to this test database.
 func (e *fieldPolicyTestEnv) makeMemberOwner(t *testing.T) callertest.TestUser {
-	owner := callertest.CreateCustomTestUser(fmt.Sprintf("owner-%d", time.Now().UnixNano()), "owner@test.com", fmt.Sprintf("owner-ou-%d", time.Now().UnixNano()), callertest.MemberScopes)
+	owner := callertest.CreateCustomTestUser(fmt.Sprintf("owner-%d", uniqueID()), "owner@test.com", fmt.Sprintf("owner-ou-%d", uniqueID()), callertest.MemberScopes)
 	m := member.Member{
-		MemberID:    "mem_owner_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		MemberID:    "mem_owner_" + fmt.Sprintf("%d", uniqueID()),
 		Name:        "Owner Member",
 		Email:       owner.Email,
 		PhoneNumber: "1234567890",
@@ -243,7 +243,7 @@ func TestSchemaFieldPolicyEndpoints_List(t *testing.T) {
 	t.Run("Member cannot list field policies of another member's schema", func(t *testing.T) {
 		env := newFieldPolicyTestEnv(t)
 		owner := env.makeMemberOwner(t)
-		otherMemberID := createTestMember(t, env.db, fmt.Sprintf("other-%d@example.com", time.Now().UnixNano()))
+		otherMemberID := createTestMember(t, env.db, fmt.Sprintf("other-%d@example.com", uniqueID()))
 		otherSchemaID := createTestSchema(t, env.db, otherMemberID)
 
 		w := env.serve(callertest.NewAuthenticatedRequest(http.MethodGet, fmt.Sprintf("/api/v1/schemas/%s/field-policies", otherSchemaID), nil, owner))
@@ -475,7 +475,7 @@ func TestSchemaFieldPolicyEndpoints_RevokeAllowListEntry(t *testing.T) {
 
 func TestSchemaFieldPolicyEndpoints_PDPUnreachable(t *testing.T) {
 	db := setupSQLiteTestDB(t)
-	memberID := createTestMember(t, db, fmt.Sprintf("policy-unreachable-%d@example.com", time.Now().UnixNano()))
+	memberID := createTestMember(t, db, fmt.Sprintf("policy-unreachable-%d@example.com", uniqueID()))
 	schemaID := createTestSchema(t, db, memberID)
 	handler := newTestHandler(db)
 

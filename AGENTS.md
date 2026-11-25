@@ -26,12 +26,11 @@ go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
 make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 ```
 
-- `make lint` and `make check` lint the whole module and fail on any issue, so they fail on `main` until the existing issues in #791 are fixed. Use `make lint LINT_FLAGS=--new-from-rev=HEAD` (or `--new-from-merge-base=main` for the whole branch) to see only what you introduced; the pre-commit hook can be skipped with `git commit --no-verify`.
+- `make lint` and `make check` lint the whole module and fail on any issue; CI reports only issues on changed lines. `make lint LINT_FLAGS=--new-from-merge-base=main` shows what CI will report. The pre-commit hook can be skipped with `git commit --no-verify`.
 - Unit tests need no database: PDP and PB tests use in-memory SQLite (PDP helpers in `internal/pdp/pdptest`, PB in `internal/pb/database/dbtest`).
 - OE federator golden tests pin end-to-end behaviour in `internal/oe/federator/testdata/golden`. After an intentional change: `go test ./internal/oe/federator -run TestFederateQueryGolden -update`.
 - PDP decision rules are plain Go in `internal/pdp/decision`, with a table-driven test covering every flag and grant combination.
 - Integration tests run against live services on fixed ports (PDP 8082, CE 8081, OE 4000; PDP database on 5433 as `policy_db`): `make test-integration`, or from `tests/integration` run `docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build` and then `go test ./...`. Tests skip rather than fail when a dependency is unreachable. Some PB unit tests expect nothing to be listening on `localhost:8082`.
-- `TestLooksLikeIDImprovedLogic` in `internal/monitoring` fails on `main`; it is not caused by your change.
 
 ## Architecture
 

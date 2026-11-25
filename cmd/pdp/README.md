@@ -29,7 +29,7 @@ docker compose up --build policy-decision-point
 curl http://localhost:8082/health
 ```
 
-Natively, with its dependencies in Docker (see [running the platform](../../docs/contributing/development.md#running-the-platform)):
+Natively, with its dependencies in Docker (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
 make deps                                             # PostgreSQL with schema.sql loaded, and the rest

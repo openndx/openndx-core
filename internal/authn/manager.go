@@ -35,7 +35,7 @@ func NewManager(authConfig Config) (*Manager, error) {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	if authConfig.InsecureSkipTLSVerify {
 		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // opt-in insecureSkipTLSVerify for local IdPs with self-signed certificates; off by default
 		}
 	}
 

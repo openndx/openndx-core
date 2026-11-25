@@ -278,9 +278,9 @@ func runProfileSet(args []string) error {
 	pbURL := fs.String("pb-url", "", "Portal Backend base URL")
 	insecure := fs.Bool("insecure", false, "Skip TLS certificate verification")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage of profile set <name>:")
+		_, _ = fmt.Fprintln(fs.Output(), "Usage of profile set <name>:")
 		fs.PrintDefaults()
-		fmt.Fprint(fs.Output(), "\nOnly flags actually passed are changed - existing values for any flag\n"+
+		_, _ = fmt.Fprint(fs.Output(), "\nOnly flags actually passed are changed - existing values for any flag\n"+
 			"you omit are left as they are.\n")
 	}
 	if err := fs.Parse(args[1:]); err != nil {
@@ -659,9 +659,9 @@ func runMembersCreate(ctx context.Context, args []string) error {
 	credentialsPath := fs.String("credentials-path", "", "Path to the cached token (default ~/.openndx/credentials.json, or credentials-<profile>.json for a non-default profile)")
 	insecure := fs.Bool("insecure", active.Insecure, "Skip TLS certificate verification (local dev only, e.g. against ThunderID's self-signed cert)")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage of members create:")
+		_, _ = fmt.Fprintln(fs.Output(), "Usage of members create:")
 		fs.PrintDefaults()
-		fmt.Fprint(fs.Output(), "\nA member is an organization linked to a ThunderID organization unit.\n"+
+		_, _ = fmt.Fprint(fs.Output(), "\nA member is an organization linked to a ThunderID organization unit.\n"+
 			"Create the organization unit and its users in ThunderID first, then pass\n"+
 			"the organization unit's id as -ou-id. Nothing is created in the IDP here.\n")
 	}
@@ -936,9 +936,9 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 	var fields stringSlice
 	fs.Var(&fields, "field", "Grantable field, as fieldName:requirements:source (repeatable, required). requirements is 'allowlist', 'consent', 'allowlist+consent' or 'none' (public); source is 'primary' or 'fallback'.")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage of schemas create:")
+		_, _ = fmt.Fprintln(fs.Output(), "Usage of schemas create:")
 		fs.PrintDefaults()
-		fmt.Fprint(fs.Output(), "\nEach -field declares one field policy directly, skipping GraphQL\n"+
+		_, _ = fmt.Fprint(fs.Output(), "\nEach -field declares one field policy directly, skipping GraphQL\n"+
 			"SDL parsing entirely - the fieldName is used as-is (no typename. prefix).\n"+
 			"Example: -field email:allowlist+consent:primary\n"+
 			"'allowlist' means the application needs an access grant for the field;\n"+
@@ -1059,9 +1059,9 @@ func runApplicationsCreate(ctx context.Context, args []string) error {
 	var fields stringSlice
 	fs.Var(&fields, "field", "Field to grant, as schemaId:fieldName (repeatable, required)")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage of applications create:")
+		_, _ = fmt.Fprintln(fs.Output(), "Usage of applications create:")
 		fs.PrintDefaults()
-		fmt.Fprint(fs.Output(), "\nIf -idp-application-id/-idp-client-id are both omitted, Portal Backend\n"+
+		_, _ = fmt.Fprint(fs.Output(), "\nIf -idp-application-id/-idp-client-id are both omitted, Portal Backend\n"+
 			"provisions the OAuth2 client itself, in the member's ThunderID organization\n"+
 			"unit, and prints its client secret once. Pass both to register a client you\n"+
 			"already onboarded in the IDP instead.\n")

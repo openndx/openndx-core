@@ -30,7 +30,7 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 				},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer providerServer.Close()
 
@@ -40,7 +40,7 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 			AppAuthorized:           true,
 			AppRequiresOwnerConsent: false,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer pdpServer.Close()
 
@@ -154,7 +154,7 @@ func TestFederateQuery_DataOwnerIdentification(t *testing.T) {
 					{FieldName: "fullName", SchemaID: "drp-schema"},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		}))
 		t.Cleanup(pdpServer.Close)
 
@@ -168,7 +168,7 @@ func TestFederateQuery_DataOwnerIdentification(t *testing.T) {
 				Status:    "pending",
 			}
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		}))
 		t.Cleanup(ceServer.Close)
 
@@ -230,7 +230,7 @@ func TestFederateQuery_PDPDeny(t *testing.T) {
 		resp := policy.PdpResponse{
 			AppAuthorized: false,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer pdpServer.Close()
 
