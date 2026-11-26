@@ -7,15 +7,26 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/LSFLK/argus/pkg/audit"
+	"github.com/openndx/openndx-core/internal/audit"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/pb/caller"
 )
 
-// LogAudit logs an audit event for portal-backend operations by extracting request info and creating an audit log
-func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID *string, status string) {
-	// Skip if audit client is not set or not enabled
-	if client == nil || !client.IsEnabled() {
+// auditSink receives the Portal Backend's audit records. main sets it once with
+// SetAuditSink before serving; while it is nil, nothing is recorded.
+var auditSink audit.Sink
+
+// SetAuditSink sets the sink LogAuditEvent writes to. Call it once at startup,
+// before the server handles requests.
+func SetAuditSink(sink audit.Sink) {
+	auditSink = sink
+}
+
+// LogAudit records a MANAGEMENT_EVENT for a portal-backend write request (POST,
+// PUT, PATCH or DELETE) in sink. Other methods and a nil sink record nothing.
+// status is AuditStatusSuccess or AuditStatusFailure.
+func LogAudit(sink audit.Sink, r *http.Request, resource string, resourceID *string, status string) {
+	if sink == nil {
 		return
 	}
 
@@ -31,7 +42,6 @@ func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID
 		slog.WarnContext(r.Context(), "Cannot log audit event: no actor ID found")
 		return
 	}
-	actorID := *actorIDPtr
 
 	// Determine event action from HTTP method (CREATE, UPDATE, DELETE)
 	eventAction := determineEventType(r.Method)
@@ -39,36 +49,25 @@ func LogAudit(client audit.Auditor, r *http.Request, resource string, resourceID
 		return
 	}
 
-	// Set event type to MANAGEMENT_EVENT for portal operations
-	managementEventType := "MANAGEMENT_EVENT"
+	var targetID string
+	if resourceID != nil {
+		targetID = *resourceID
+	}
 
-	// Set target type and ID
-	targetType := "RESOURCE"
-
-	// Create audit event using argus DTO
-	timestamp := audit.CurrentTimestamp()
-
-	auditRequest := &audit.AuditLogRequest{
-		TraceID:    nil, // No trace ID for standalone management events
-		Timestamp:  timestamp,
-		EventType:  managementEventType,
+	sink.Write(r.Context(), audit.Record{
+		EventType:  "MANAGEMENT_EVENT",
 		Action:     eventAction,
-		Status:     status,
+		Status:     audit.Status(status),
 		ActorType:  actorType,
-		ActorID:    actorID,
-		TargetType: targetType,
-		TargetID:   resourceID,
-		Metadata: map[string]interface{}{
+		ActorID:    *actorIDPtr,
+		TargetType: "RESOURCE",
+		TargetID:   targetID,
+		Metadata: map[string]any{
 			"resource": resource,
 			// The OAuth2 client the actor's token was issued to; "" when unauthenticated
 			"clientId": authn.GetAuthContext(r.Context()).ClientID(),
 		},
-	}
-
-	// Log asynchronously (fire-and-forget). Pass the request context so tracing
-	// metadata can propagate; the Auditor implementation is responsible for
-	// detaching from request cancellation as needed.
-	client.LogEvent(r.Context(), auditRequest)
+	})
 }
 
 // extractActorInfoFromRequest extracts actor information from the request
@@ -113,14 +112,10 @@ func extractActorInfoFromRequest(r *http.Request) (actorType string, actorID *st
 	return
 }
 
-// LogAuditEvent - global function for easy access from handlers
+// LogAuditEvent records an audit event for r in the sink set with SetAuditSink.
+// See LogAudit.
 func LogAuditEvent(r *http.Request, resource string, resourceID *string, status string) {
-	globalMiddleware := audit.GetGlobalAuditMiddleware()
-	if globalMiddleware != nil {
-		LogAudit(globalMiddleware.Client(), r, resource, resourceID, status)
-	} else {
-		slog.WarnContext(r.Context(), "Audit logging skipped: globalAuditMiddleware is not initialized")
-	}
+	LogAudit(auditSink, r, resource, resourceID, status)
 }
 
 // Helper functions

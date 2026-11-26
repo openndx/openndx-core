@@ -12,11 +12,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	remoteauth "github.com/OpenNSW/core/remote/auth"
+	"github.com/OpenNSW/core/telemetry"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/oe/auth"
@@ -45,6 +47,28 @@ func writeConfig(t *testing.T, content string) string {
 	return path
 }
 
+// withOtelExample returns the path of a config like the one at path with its
+// otel example turned on, so the documented block is checked as well. The
+// committed configs keep the example commented out; when it is already
+// uncommented, as CONTRIBUTING.md#viewing-audit-records has developers do
+// locally, the file is used as it is.
+func withOtelExample(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	lines := strings.Split(string(data), "\n")
+	start := slices.IndexFunc(lines, func(line string) bool {
+		return strings.TrimSuffix(line, "\r") == "# otel:"
+	})
+	if start == -1 {
+		return path
+	}
+	for i := start; i < len(lines) && strings.HasPrefix(lines[i], "# "); i++ {
+		lines[i] = strings.TrimPrefix(lines[i], "# ")
+	}
+	return writeConfig(t, strings.Join(lines, "\n"))
+}
+
 func TestLoadConfigAppliesDefaults(t *testing.T) {
 	path := writeConfig(t, minimalConfig)
 
@@ -63,13 +87,14 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	}, cfg.IDP)
 	assert.Empty(t, cfg.PDP.URL, "the PDP check is off by default")
 	assert.Equal(t, ConsentEngineConfig{}, cfg.ConsentEngine, "the consent check is off by default")
-	assert.Equal(t, AuditConfig{ActorType: "SERVICE", ActorID: "orchestration-engine"}, cfg.Audit, "auditing is off by default")
+	assert.Equal(t, AuditConfig{ActorType: "SERVICE", ActorID: "orchestration-engine"}, cfg.Audit)
+	assert.Equal(t, telemetry.Config{ServiceName: "orchestration-engine"}, cfg.Otel, "export, and so audit, is off by default")
 	assert.Empty(t, cfg.Providers)
 	assert.Empty(t, cfg.ArgMappings)
 }
 
 func TestLoadConfigReadsEverySetting(t *testing.T) {
-	t.Setenv("TEST_OE_ARGUS_API_KEY", "argus-key")
+	t.Setenv("TEST_OE_OTEL_AUTH", "Basic b3RlbA==")
 	t.Setenv("TEST_OE_RGD_SECRET", "rgd-secret")
 	// Absolute on every OS; on Windows that needs a drive letter.
 	absSchemaPath := filepath.Join(t.TempDir(), "schema.graphql")
@@ -94,8 +119,6 @@ consentEngine:
   url: http://ce.internal:8081/internal/api/v1
   ownerIdArgName: nic
 audit:
-  url: http://audit.internal:3001
-  apiKey: "{{env:TEST_OE_ARGUS_API_KEY}}"
   actorType: SERVICE
   actorId: oe-1
 providers:
@@ -120,6 +143,13 @@ argMappings:
     targetArgName: nic
     sourceArgPath: personInfo-nic
     targetArgPath: person
+otel:
+  endpoint: http://otel-collector:4318
+  logs:
+    endpoint: http://logs.internal:4318/v1/logs
+  serviceName: oe-staging
+  headers:
+    Authorization: "{{env:TEST_OE_OTEL_AUTH}}"
 `)})
 	require.NoError(t, err)
 
@@ -130,7 +160,13 @@ argMappings:
 	assert.True(t, cfg.IDP.InsecureSkipTLSVerify)
 	assert.Equal(t, "http://pdp.internal:8082", cfg.PDP.URL)
 	assert.Equal(t, ConsentEngineConfig{URL: "http://ce.internal:8081/internal/api/v1", OwnerIDArgName: "nic"}, cfg.ConsentEngine)
-	assert.Equal(t, AuditConfig{URL: "http://audit.internal:3001", APIKey: "argus-key", ActorType: "SERVICE", ActorID: "oe-1"}, cfg.Audit)
+	assert.Equal(t, AuditConfig{ActorType: "SERVICE", ActorID: "oe-1"}, cfg.Audit)
+	assert.Equal(t, telemetry.Config{
+		Endpoint:    "http://otel-collector:4318",
+		Logs:        telemetry.SignalConfig{Endpoint: "http://logs.internal:4318/v1/logs"},
+		ServiceName: "oe-staging",
+		Headers:     map[string]string{"Authorization": "Basic b3RlbA=="},
+	}, cfg.Otel)
 
 	require.Len(t, cfg.Providers, 2)
 	assert.Equal(t, provider.Config{
@@ -202,7 +238,6 @@ func TestLoadConfigErrors(t *testing.T) {
 		{name: "missing idp audience", replace: [2]string{"  audience: http://api.example", ""}, wantErr: "invalid idp configuration"},
 		{name: "invalid pdp url", extra: "pdp:\n  url: pdp.internal", wantErr: "pdp.url"},
 		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal\n  ownerIdArgName: nic", wantErr: "consentEngine.url must use http or https"},
-		{name: "invalid audit url", extra: "audit:\n  url: audit", wantErr: "audit.url"},
 		{name: "empty audit actor", extra: "audit:\n  actorId: \"\"", wantErr: "audit.actorType and audit.actorId"},
 		{name: "incomplete arg mapping", extra: "argMappings:\n  - schemaId: drp-person-v1\n    targetArgName: nic", wantErr: "argMappings[0] must set"},
 		{
@@ -210,7 +245,9 @@ func TestLoadConfigErrors(t *testing.T) {
 			extra:   "providers:\n  - id: drp-person-v1\n    url: http://drp.internal\nargMappings:\n  - schemaId: drp-persn-v1\n    targetArgName: nic\n    sourceArgPath: personInfo-nic\n    targetArgPath: person",
 			wantErr: `argMappings[0].schemaId "drp-persn-v1" matches no provider id`,
 		},
-		{name: "unset placeholder", extra: "audit:\n  apiKey: \"{{env:TEST_OE_UNSET_VARIABLE}}\"", wantErr: "TEST_OE_UNSET_VARIABLE"},
+		{name: "invalid otel endpoint", extra: "otel:\n  endpoint: otel-collector:4318", wantErr: "invalid otel configuration"},
+		{name: "otel export without a service name", extra: "otel:\n  endpoint: http://otel-collector:4318\n  serviceName: \"\"", wantErr: "ServiceName is required"},
+		{name: "unset placeholder", extra: "otel:\n  headers:\n    Authorization: \"{{env:TEST_OE_UNSET_VARIABLE}}\"", wantErr: "TEST_OE_UNSET_VARIABLE"},
 	}
 
 	for _, tt := range tests {
@@ -229,8 +266,6 @@ func TestLoadConfigErrors(t *testing.T) {
 func TestCommittedConfigsLoad(t *testing.T) {
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
-	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")
-	t.Setenv("ARGUS_API_KEY", "1234")
 
 	for _, path := range []string{"config.example.yaml", "config.docker.yaml", "../../tests/integration/oe-config.yaml"} {
 		t.Run(path, func(t *testing.T) {
@@ -249,8 +284,6 @@ func TestCommittedConfigsLoad(t *testing.T) {
 func TestCommittedConfigsFederate(t *testing.T) {
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
-	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")
-	t.Setenv("ARGUS_API_KEY", "1234")
 
 	for _, configFile := range []string{"config.docker.yaml", "config.example.yaml"} {
 		for _, tc := range []struct {
@@ -356,5 +389,19 @@ func TestCommittedConfigsFederate(t *testing.T) {
 				require.ElementsMatch(t, tc.providers, got)
 			})
 		}
+	}
+}
+
+func TestCommittedOtelExamplesLoad(t *testing.T) {
+	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
+	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
+
+	for _, path := range []string{"config.example.yaml", "config.docker.yaml"} {
+		t.Run(path, func(t *testing.T) {
+			cfg, err := loadConfig([]string{"-config", withOtelExample(t, path)})
+			require.NoError(t, err)
+			assert.True(t, cfg.Otel.Enabled(), "the example turns export on")
+			assert.Equal(t, "orchestration-engine", cfg.Otel.ServiceName)
+		})
 	}
 }

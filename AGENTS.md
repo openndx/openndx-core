@@ -21,6 +21,7 @@ make lint                               # golangci-lint with .golangci.yml
 make check                              # go mod tidy -diff, license-check, lint, test; the pre-commit hook runs it
 make up / make down                     # full stack in Docker, with the mock providers
 make deps                               # only the dependencies in Docker
+make up OTEL=1                          # (or deps) also start a local OpenObserve for audit records
 (cd cmd/oe && go run .)                 # run a service natively; reads cmd/oe/config.yaml
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
 make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
@@ -42,7 +43,9 @@ A consumer sends one GraphQL query to the **Orchestration Engine**. For every re
 
 **PB (`internal/pb`)**: one package per bounded context (`member`, `schema`, `application`, `consentbypass`), each with service and handler, and a model when it stores data in PB; `kernel` is the shared kernel, `caller` resolves scopes and the caller's member, `policy` is the PDP client and owns the PDP DTOs PB depends on, `idp/thunderid` the ThunderID client. Contexts expose handlers only: **every route is registered explicitly in `cmd/pb/main.go`**. Multi-system writes (DB, IdP, PDP) are sagas with compensation on failure. PDP access is keyed by the IdP `client_id`, the identity the OE reads from consumer tokens.
 
-**Shared code**: `internal/authn` (token validation), `internal/database` (connections, built on `OpenNSW/core/database`), `internal/logging`, `internal/monitoring`. Before writing a local helper, check whether an `OpenNSW/core` package (`configyaml`, `remote`, `secret`, `database`, `cors`, `authz`, `shared`) already covers it.
+**Shared code**: `internal/authn` (token validation), `internal/database` (connections, built on `OpenNSW/core/database`), `internal/logging`, `internal/monitoring`, `internal/audit` (audit records). Before writing a local helper, check whether an `OpenNSW/core` package (`configyaml`, `remote`, `secret`, `database`, `cors`, `authz`, `shared`, `telemetry`) already covers it.
+
+**Audit**: the OE and PB write audit records through `internal/audit` as slog records with `category=audit`, to a logger whose only handler is the OTLP log exporter from `OpenNSW/core/telemetry` (the `otel` config section). Records never reach stdout and are dropped when log export is off. The record shape matches `OpenNSW/core/platform/audit`'s, so keep the attribute names in step with it. Audit metadata never carries query text, arguments or provider data.
 
 **Configuration**: each service reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`), loaded with `OpenNSW/core/configyaml`. A value of `"{{env:NAME}}"` or `"{{file:/path}}"` is resolved at startup. Copy `cmd/<svc>/config.example.yaml` to the git-ignored `config.yaml`; Compose mounts `config.docker.yaml`. Each `cmd/<svc>/README.md` lists the keys.
 

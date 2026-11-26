@@ -8,11 +8,13 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/OpenNSW/core/cors"
+	"github.com/OpenNSW/core/telemetry"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/pb/idp/thunderid"
@@ -47,6 +49,28 @@ func writeConfig(t *testing.T, content string) string {
 	return path
 }
 
+// withOtelExample returns the path of a config like the one at path with its
+// otel example turned on, so the documented block is checked as well. The
+// committed configs keep the example commented out; when it is already
+// uncommented, as CONTRIBUTING.md#viewing-audit-records has developers do
+// locally, the file is used as it is.
+func withOtelExample(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	lines := strings.Split(string(data), "\n")
+	start := slices.IndexFunc(lines, func(line string) bool {
+		return strings.TrimSuffix(line, "\r") == "# otel:"
+	})
+	if start == -1 {
+		return path
+	}
+	for i := start; i < len(lines) && strings.HasPrefix(lines[i], "# "); i++ {
+		lines[i] = strings.TrimPrefix(lines[i], "# ")
+	}
+	return writeConfig(t, strings.Join(lines, "\n"))
+}
+
 func TestLoadConfigAppliesDefaults(t *testing.T) {
 	t.Setenv("TEST_PB_DB_PASSWORD", "p@ss word'")
 
@@ -68,7 +92,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	}, cfg.CORS)
 	assert.False(t, cfg.IDP.InsecureSkipTLSVerify)
 	assert.Empty(t, cfg.IDP.Management.Scopes)
-	assert.Equal(t, AuditConfig{}, cfg.Audit, "auditing is off by default")
+	assert.Equal(t, telemetry.Config{ServiceName: "portal-backend"}, cfg.Otel, "export, and so audit, is off by default")
 	assert.Equal(t, 30*time.Minute, cfg.Database.IdleTimeout)
 
 	pg := cfg.Database.Postgres
@@ -115,9 +139,6 @@ idp:
     dataConsumerRoleID: role-1
 pdp:
   url: https://pdp.example
-audit:
-  url: http://audit.internal:3001
-  apiKey: audit-key
 database:
   driver: postgres
   postgres:
@@ -132,6 +153,11 @@ database:
       maxIdleConns: 10
       maxConnLifetimeSeconds: 600
   idleTimeout: 5m
+otel:
+  endpoint: http://otel-collector:4318
+  serviceName: pb-staging
+  headers:
+    Authorization: Basic b3RlbA==
 `)
 
 	cfg, err := loadConfig([]string{"-config", path})
@@ -164,7 +190,11 @@ database:
 		},
 	}, cfg.IDP)
 	assert.Equal(t, PDPConfig{URL: "https://pdp.example"}, cfg.PDP)
-	assert.Equal(t, AuditConfig{URL: "http://audit.internal:3001", APIKey: "audit-key"}, cfg.Audit)
+	assert.Equal(t, telemetry.Config{
+		Endpoint:    "http://otel-collector:4318",
+		ServiceName: "pb-staging",
+		Headers:     map[string]string{"Authorization": "Basic b3RlbA=="},
+	}, cfg.Otel)
 	assert.Equal(t, 5*time.Minute, cfg.Database.IdleTimeout)
 
 	pg := cfg.Database.Postgres
@@ -318,10 +348,16 @@ func TestLoadConfigErrors(t *testing.T) {
 			wantErr: "pdp.url",
 		},
 		{
-			name:    "audit URL that is not http",
-			content: minimalConfig + "audit:\n  url: ftp://audit.internal\n",
+			name:    "otel endpoint that is not http",
+			content: minimalConfig + "otel:\n  endpoint: ftp://otel.internal\n",
 			env:     pw,
-			wantErr: "audit.url",
+			wantErr: "invalid otel configuration",
+		},
+		{
+			name:    "otel export without a service name",
+			content: minimalConfig + "otel:\n  endpoint: http://otel.internal:4318\n  serviceName: \"\"\n",
+			env:     pw,
+			wantErr: "ServiceName is required",
 		},
 		{
 			name:    "missing database host",
@@ -394,13 +430,29 @@ func TestCommittedConfigsLoad(t *testing.T) {
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("PB_AUDIENCE", "http://pb.openndx.local")
 	t.Setenv("PORTAL_BACKEND_CLIENT_SECRET", "1234")
-	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")
-	t.Setenv("ARGUS_API_KEY", "1234")
 
 	for _, path := range []string{"config.example.yaml", "config.docker.yaml", "config.test.yaml"} {
 		t.Run(path, func(t *testing.T) {
 			_, err := loadConfig([]string{"-config", path})
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestCommittedOtelExamplesLoad(t *testing.T) {
+	t.Setenv("DB_USER", "postgres")
+	t.Setenv("DB_PASSWORD", "pw")
+	t.Setenv("DB_NAME_PB", "portal_backend")
+	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
+	t.Setenv("PB_AUDIENCE", "http://pb.openndx.local")
+	t.Setenv("PORTAL_BACKEND_CLIENT_SECRET", "1234")
+
+	for _, path := range []string{"config.example.yaml", "config.docker.yaml"} {
+		t.Run(path, func(t *testing.T) {
+			cfg, err := loadConfig([]string{"-config", withOtelExample(t, path)})
+			require.NoError(t, err)
+			assert.True(t, cfg.Otel.Enabled(), "the example turns export on")
+			assert.Equal(t, "portal-backend", cfg.Otel.ServiceName)
 		})
 	}
 }

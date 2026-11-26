@@ -9,8 +9,11 @@
 # variable below has a working local-dev default, so a `.env` file is optional —
 # see `.env.example` for what each one controls.
 #
-# Note: Audit Service (https://github.com/LSFLK/argus) is optional. Services
-#       function normally when it is not running or unreachable.
+# Audit records leave the Orchestration Engine and Portal Backend only as
+# OpenTelemetry logs. `make up OTEL=1` also starts a local OpenObserve to
+# receive them (profile `otel`); uncomment the otel block in
+# cmd/oe/config.docker.yaml and cmd/pb/config.docker.yaml to send them there.
+# See CONTRIBUTING.md#viewing-audit-records.
 
 services:
   postgres:
@@ -229,8 +232,6 @@ services:
       # consumers request `resource=http://api.openndx.local` with client_credentials.
       - IDP_PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - IDP_AUDIENCE=${IDP_AUDIENCE:-http://api.openndx.local}
-      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     volumes:
       - ./cmd/oe/config.docker.yaml:/app/config/config.yaml:ro
       # The consumer schema, next to the config (its schemaPath).
@@ -269,8 +270,6 @@ services:
       - IDP_PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - PB_AUDIENCE=${PB_AUDIENCE:-http://pb.openndx.local}
       - PORTAL_BACKEND_CLIENT_SECRET=${PORTAL_BACKEND_CLIENT_SECRET:-1234}
-      - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     volumes:
       - ./cmd/pb/config.docker.yaml:/app/config/config.yaml:ro
     depends_on:
@@ -282,30 +281,24 @@ services:
     networks:
       - openndx-network
 
-  audit-service:
-    build:
-      context: https://github.com/LSFLK/argus.git#v1.0.1
-      dockerfile: Dockerfile
-    container_name: audit-service-${ENVIRONMENT:-local}
+  # Local OpenObserve to receive OpenTelemetry data, audit records included.
+  # Opt-in: started by `make up OTEL=1` or `make deps OTEL=1` (profile `otel`),
+  # never by default. Ephemeral (no volume) and published on loopback only. The root
+  # credentials are fixed local defaults, not secrets; the commented otel
+  # blocks in the services' configs send them as Basic auth.
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:v0.14.7
+    container_name: openobserve-${ENVIRONMENT:-local}
+    profiles:
+      - otel
     ports:
-      - "${AUDIT_PORT:-3001}:3001"
+      - "127.0.0.1:${OPENOBSERVE_PORT:-5080}:5080"
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-local}
-      - PORT=3001
-      # Database configuration
-      - DB_TYPE=postgres
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USERNAME=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-1234}
-      # init-db.sql creates this database.
-      - DB_NAME=audit
-      - DB_SSLMODE=${DB_SSLMODE:-disable}
-      - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+      ZO_ROOT_USER_EMAIL: root@example.com
+      ZO_ROOT_USER_PASSWORD: Complexpass#123
+      ZO_TELEMETRY: "false"
+    # No healthcheck: the image has no shell, curl or wget. From the host,
+    # http://127.0.0.1:5080/healthz returns {"status":"ok"} once it is up.
     networks:
       - openndx-network
 

@@ -66,8 +66,9 @@ A single service rarely runs on its own: the Orchestration Engine needs the Poli
 ### Full Stack in Docker
 
 ```bash
-make up      # build and start everything, plus the mock data providers
-make down    # stop it
+make up          # build and start everything, plus the mock data providers
+make up OTEL=1   # the same, plus a local OpenObserve to view audit records
+make down        # stop it
 ```
 
 This is the default for trying the platform; the [end-to-end walkthrough](dev/WALKTHROUGH.md) uses it. A bare `docker compose up --build`, as in the [README](README.md), starts the same stack without the [mock providers](dev/README.md).
@@ -77,7 +78,8 @@ This is the default for trying the platform; the [end-to-end walkthrough](dev/WA
 This is the development loop: fast rebuilds, a debugger and plain logs.
 
 ```bash
-make deps    # PostgreSQL (with every schema.sql loaded), ThunderID, the audit service, the mock providers
+make deps          # PostgreSQL (with every schema.sql loaded), ThunderID, the mock providers
+make deps OTEL=1   # the same, plus a local OpenObserve to view audit records
 ```
 
 PostgreSQL loads the schemas only when its volume is first created. After pulling a `schema.sql` change, load them again into the running database:
@@ -130,6 +132,19 @@ cd cmd/oe && go run .
 `make up` starts every service in Docker, on the same host ports that the native services use. Stop any service you run natively before you run `make up`, or Docker cannot publish that port and `make up` stops before it starts the mock providers.
 
 Running the Policy Decision Point or the Consent Engine natively means running their callers natively too, which is the previous mode.
+
+### Viewing Audit Records
+
+The Orchestration Engine and the Portal Backend send their audit records only to an OpenTelemetry endpoint, set in the `otel` section of their config, and never write them to their own logs. The committed configs leave that section commented out, so by default the records are dropped and each of the two services logs `otel log export is off: audit records (category=audit) are not retained` at startup. To see the records locally:
+
+1. Start a local [OpenObserve](https://github.com/openobserve/openobserve) with the stack: `make up OTEL=1` or `make deps OTEL=1`. It listens on <http://localhost:5080> and keeps no data once its container is removed. Without `OTEL=1` it isn't started.
+2. Uncomment the `otel` block at the end of the config each service reads:
+   - in Docker, `cmd/oe/config.docker.yaml` and `cmd/pb/config.docker.yaml`. These files are committed, so leave that change out of your commits;
+   - run natively, your `cmd/oe/config.yaml` and `cmd/pb/config.yaml`, copied from the examples.
+3. Restart the two services: `docker compose up -d --force-recreate --no-deps orchestration-engine portal-backend`, or stop and rerun `go run .`. The startup warning above is gone once export is on.
+4. Open <http://localhost:5080> and sign in as `root@example.com` with password `Complexpass#123`, fixed local defaults from `compose.yml` rather than secrets. Under **Logs**, choose the `default` stream and filter with `category='audit'`.
+
+`make down` stops OpenObserve as well. The records' attributes are listed in [cmd/oe/CONFIGURATION.md](cmd/oe/CONFIGURATION.md#otel) and [cmd/pb/CONFIGURATION.md](cmd/pb/CONFIGURATION.md#opentelemetry-and-audit).
 
 ## Running Tests and Quality Checks
 

@@ -16,7 +16,7 @@ All components are configured from [`values.yaml`](./values.yaml):
 
 > **Embedded identity provider:** OpenNDX requires ThunderID as its embedded IdP. It signs the tokens every service validates, and Portal Backend provisions application clients through its management API, so a generic OIDC provider is not a substitute. Install it from ThunderID's published chart before this one (see [Embedded identity provider (ThunderID)](#embedded-identity-provider-thunderid)).
 >
-> **External infrastructure:** PostgreSQL and the optional Audit Service (Argus) are outside the scope of this chart and should be deployed via their own Helm charts or managed cloud services. Each service's `config` points at them.
+> **External infrastructure:** PostgreSQL and the OpenTelemetry collector or backend that receives audit records are outside the scope of this chart and should be deployed via their own Helm charts or managed cloud services. Each service's `config` points at them.
 
 ### Service configuration
 
@@ -109,15 +109,22 @@ kubectl create secret generic openndx-secrets \
 rm db-password pb-client-secret data-consumer-client-secret
 ```
 
-To turn auditing on for the Orchestration Engine or Portal Backend, set its `config.audit.url` and `config.audit.apiKey: "{{env:ARGUS_API_KEY}}"`, and add `ARGUS_API_KEY` to its `env`:
+The Orchestration Engine and Portal Backend send audit records only as OpenTelemetry logs over OTLP/HTTP; while `config.otel.endpoint` is empty they drop them and log a warning at startup. To keep them, point each service's `config.otel` at your collector or backend, with any credentials taken from a Secret through its `env`:
 
 ```yaml
 portalBackend:
   env:
-    ARGUS_API_KEY:
+    OTEL_AUTH_HEADER:
       valueFrom:
-        secretKeyRef: {name: openndx-secrets, key: argusApiKey}
+        secretKeyRef: {name: openndx-secrets, key: otelAuthHeader}
+  config:
+    otel:
+      endpoint: http://otel-collector:4318
+      headers:
+        Authorization: "{{env:OTEL_AUTH_HEADER}}"
 ```
+
+The records carry `category=audit`, so the backend can route them to their own stream or index.
 
 ## Required values
 
@@ -224,7 +231,7 @@ orchestrationEngine:
 
 A service with an ingress accepts only the ingress controller and its `extraFrom`, so list its in-cluster clients there. The PDP's and Consent Engine's `extraFrom` open APIs that have no authentication; add to them only what must call those APIs.
 
-The policies only limit inbound traffic. Egress stays open, since PostgreSQL, ThunderID, the providers and Argus are all outside the chart. NetworkPolicies take effect only when the cluster's network plugin enforces them (Calico, Cilium and most managed Kubernetes do); otherwise they are ignored. Set `networkPolicy.enabled=false` when the cluster manages network policy another way.
+The policies only limit inbound traffic. Egress stays open, since PostgreSQL, ThunderID, the providers and the OpenTelemetry endpoint are all outside the chart. NetworkPolicies take effect only when the cluster's network plugin enforces them (Calico, Cilium and most managed Kubernetes do); otherwise they are ignored. Set `networkPolicy.enabled=false` when the cluster manages network policy another way.
 
 A NetworkPolicy works per port, not per URL path. Anything allowed to reach the Consent Engine, the ingress controller and its `extraFrom` included, can reach its `/internal` API, so keep both as narrow as they can be.
 

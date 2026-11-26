@@ -3,12 +3,14 @@
 
 package middleware
 
+import "github.com/openndx/openndx-core/internal/audit"
+
 // AuditStatus represents the status of audit events
 type AuditStatus string
 
 const (
-	AuditStatusSuccess AuditStatus = "SUCCESS"
-	AuditStatusFailure AuditStatus = "FAILURE"
+	AuditStatusSuccess = AuditStatus(audit.StatusSuccess)
+	AuditStatusFailure = AuditStatus(audit.StatusFailure)
 )
 
 // ActorType represents different actor types for auditing
@@ -18,14 +20,6 @@ const (
 	ActorTypeAdmin  ActorType = "ADMIN"
 	ActorTypeMember ActorType = "MEMBER"
 	ActorTypeSystem ActorType = "SYSTEM"
-)
-
-// TargetType represents different target types for auditing
-type TargetType string
-
-const (
-	TargetTypeService  TargetType = "SERVICE"
-	TargetTypeResource TargetType = "RESOURCE"
 )
 
 // ResourceType represents different resource types for auditing

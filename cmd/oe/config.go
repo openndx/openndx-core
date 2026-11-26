@@ -12,6 +12,7 @@ import (
 
 	"github.com/OpenNSW/core/configyaml"
 	"github.com/OpenNSW/core/shared/validation"
+	"github.com/OpenNSW/core/telemetry"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/oe/pkg/graphql"
@@ -39,6 +40,9 @@ type Config struct {
 	Providers     []provider.Config   `yaml:"providers"`
 	// ArgMappings map consumer query arguments to provider query arguments.
 	ArgMappings []*graphql.ArgMapping `yaml:"argMappings"`
+	// Otel configures OpenTelemetry export. Audit records are exported as OTLP
+	// logs and are dropped when log export is off.
+	Otel telemetry.Config `yaml:"otel"`
 }
 
 // ServerConfig holds the HTTP server settings.
@@ -65,10 +69,9 @@ type ConsentEngineConfig struct {
 	OwnerIDArgName string `yaml:"ownerIdArgName"`
 }
 
-// AuditConfig holds the Argus audit service settings. Auditing is off when URL is empty.
+// AuditConfig names the actor recorded on audit events the OE itself initiates
+// (its calls to the PDP, the Consent Engine and providers).
 type AuditConfig struct {
-	URL       string `yaml:"url"`
-	APIKey    string `yaml:"apiKey"`
 	ActorType string `yaml:"actorType"`
 	ActorID   string `yaml:"actorId"`
 }
@@ -80,6 +83,7 @@ func defaultConfig() Config {
 		Logging:    logging.DefaultConfig(),
 		SchemaPath: "schema.graphql",
 		Audit:      AuditConfig{ActorType: "SERVICE", ActorID: "orchestration-engine"},
+		Otel:       telemetry.Config{ServiceName: "orchestration-engine"},
 	}
 }
 
@@ -137,7 +141,6 @@ func (c *Config) Validate() error {
 	for _, service := range []struct{ name, url string }{
 		{"pdp.url", c.PDP.URL},
 		{"consentEngine.url", c.ConsentEngine.URL},
-		{"audit.url", c.Audit.URL},
 	} {
 		if service.url == "" {
 			continue
@@ -148,6 +151,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Audit.ActorType == "" || c.Audit.ActorID == "" {
 		return fmt.Errorf("audit.actorType and audit.actorId must not be empty")
+	}
+	if err := c.Otel.Validate(); err != nil {
+		return fmt.Errorf("invalid otel configuration: %w", err)
 	}
 	providerIDs := make(map[string]bool, len(c.Providers))
 	for _, p := range c.Providers {

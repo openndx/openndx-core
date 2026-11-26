@@ -6,8 +6,7 @@
 portals/
 **/node_modules/
 
-# Other service trees not (yet) part of this Go module
-audit-service/
+# Other trees not part of this Go module
 observability/
 
 # Test & coverage artifacts
