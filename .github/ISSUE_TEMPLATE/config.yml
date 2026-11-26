@@ -2,3 +2,10 @@
 # Copyright (c) 2026 Lanka Software Foundation
 
 blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/openndx/openndx-core/security/advisories/new
+    about: Report it privately, not in a public issue. See SECURITY.md for the other ways to report.
+  - name: 💬 Ask a question
+    url: https://github.com/openndx/openndx-core/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions.
