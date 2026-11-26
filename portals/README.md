@@ -91,7 +91,7 @@ pnpm --filter consent-portal run build     # type-check and production build
 pnpm --filter consent-portal run lint
 ```
 
-The Make targets and the pre-commit hook cover Go code only; the consent portal's validation workflow builds and lints it in CI. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. pnpm commands remain available for prototype exploration.
+Apart from the license headers, the Make targets and the pre-commit hook cover Go code only; the consent portal's validation workflow builds and lints it in CI. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. pnpm commands remain available for prototype exploration.
 
 `packages/` is empty, so each app carries its own copy of the `window.configs` typing, the audit log service, the schema and application types, the logo, and the nginx and entrypoint files. See [packages/README.md](packages/README.md).
 

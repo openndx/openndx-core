@@ -110,7 +110,7 @@ From the repository root:
 
 ```bash
 make test PKG="./cmd/ce/... ./internal/ce/... ./internal/database/..."    # tests with -race
-make check                                                                # tidy, lint and test the whole module
+make check                                                                # tidy, check license headers, lint and test the whole module
 ```
 
 Service tests use an in-memory SQLite database. The PostgreSQL connection and bootstrap tests are skipped unless `TEST_DATABASE_URL` points at a disposable database (the bootstrap test also needs `psql` and permission to create databases):

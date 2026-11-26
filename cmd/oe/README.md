@@ -111,7 +111,7 @@ From the repository root:
 
 ```bash
 make test PKG="./cmd/oe/... ./internal/oe/..."    # tests with -race
-make check                                        # tidy, lint and test the whole module
+make check                                        # tidy, check license headers, lint and test the whole module
 ```
 
 [HOW_TO_TEST.md](HOW_TO_TEST.md) covers unit and golden tests, changing the schema, and trying queries. The routes are registered in [main.go](main.go) and the config loader is [config.go](config.go). The rest is in [`internal/oe`](../../internal/oe): `federator` (query splitting and merging, and the `/public/graphql` handler; `federator/schema` loads the schema file), `auth`, `policy` and `consent` (clients), `provider`.

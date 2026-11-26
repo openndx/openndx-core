@@ -119,7 +119,7 @@ From the repository root:
 
 ```bash
 make test PKG="./cmd/pdp/... ./internal/pdp/..."    # tests with -race
-make check                                          # tidy, lint and test the whole module
+make check                                          # tidy, check license headers, lint and test the whole module
 ```
 
 Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp), one package per concern, each with its service and handler: `fieldpolicy` (field policies), `grant` (access grants) and `decision` (decisions, reading fields and grants through interfaces it declares); `pdptest` holds test helpers.

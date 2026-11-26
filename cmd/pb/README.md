@@ -109,7 +109,7 @@ From the repository root:
 
 ```bash
 make test PKG="./cmd/pb/... ./internal/pb/... ./internal/authn/..."    # tests with -race
-make check                                                            # tidy, lint and test the whole module
+make check                                                            # tidy, check license headers, lint and test the whole module
 ```
 
 Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
