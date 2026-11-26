@@ -47,7 +47,7 @@ services:
   # -------------------------------------------------------------------
   # Stage A: Seed static database schemas from container image layer
   thunderid-db-init:
-    image: ghcr.io/thunder-id/thunderid:1.0.1
+    image: ghcr.io/thunder-id/thunderid:1.1.1
     container_name: ndx-thunderid-db-init
     # Seed only when the volume is empty. An unconditional copy would overwrite
     # configdb.db on every `up`, silently reverting the bootstrap and seed.
@@ -59,7 +59,7 @@ services:
   # Stage B: generate key material, then import the declarative bootstrap resources
   # (the image's built-in defaults plus our own user/resource/application files below).
   thunderid-setup:
-    image: ghcr.io/thunder-id/thunderid:1.0.1
+    image: ghcr.io/thunder-id/thunderid:1.1.1
     container_name: ndx-thunderid-setup
     command: ./setup.sh
     networks:
@@ -87,7 +87,7 @@ services:
 
   # Stage C: Boot active server instances listening for authentication queries
   thunderid:
-    image: ghcr.io/thunder-id/thunderid:1.0.1
+    image: ghcr.io/thunder-id/thunderid:1.1.1
     container_name: ndx-thunderid
     networks:
       - openndx-network

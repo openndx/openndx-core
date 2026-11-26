@@ -47,7 +47,7 @@ kubectl create configmap openndx-thunderid-bootstrap \
   --from-file=05-cors.yaml=thunderid/bootstrap/cors.yaml
 
 helm upgrade --install thunderid oci://ghcr.io/thunder-id/helm-charts/thunderid \
-  --version 1.0.1 \
+  --version 1.1.1 \
   --namespace openndx \
   -f thunderid-values.yaml
 ```
@@ -76,7 +76,7 @@ setup:
     - {name: DATA_CONSUMER_CLIENT_SECRET, secretName: openndx-secrets, secretKey: dataConsumerClientSecret}
 ```
 
-ThunderID's database, ingress, admin credentials and other settings are configured through its own chart values: run `helm show values oci://ghcr.io/thunder-id/helm-charts/thunderid --version 1.0.1` for the full list.
+ThunderID's database, ingress, admin credentials and other settings are configured through its own chart values: run `helm show values oci://ghcr.io/thunder-id/helm-charts/thunderid --version 1.1.1` for the full list.
 
 ### Secrets
 
