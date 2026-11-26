@@ -28,18 +28,16 @@ docker compose up --build consent-engine
 curl http://localhost:8081/health
 ```
 
-Native, against a PostgreSQL with an empty database. The service does not create tables, so load the schema first:
+Natively, with its dependencies in Docker (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
-PGPASSWORD=<password> psql -h localhost -U postgres -d consent_engine \
-  -v ON_ERROR_STOP=1 -f cmd/ce/schema.sql
-
+make deps                                           # PostgreSQL with schema.sql loaded, ThunderID and the rest
 cp cmd/ce/config.example.yaml cmd/ce/config.yaml    # once; config.yaml is git-ignored
-export DB_PASSWORD=<password>
-make run consent-engine    # or: go run ./cmd/ce -config cmd/ce/config.yaml
+export DB_PASSWORD=1234                             # the Compose default
+cd cmd/ce && go run .
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
+The Orchestration Engine and the Consent Portal call the CE, so to use them with a native CE, run them natively too, each in another terminal (`cd cmd/oe && go run .`, `cd portals/apps/consent && pnpm dev`). [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, reads the password from `DB_PASSWORD`, and validates tokens from a ThunderID on `localhost:8090`. The service does not create tables; Compose's PostgreSQL loads `schema.sql` on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 
@@ -108,10 +106,11 @@ States, durations and the exact create rules: [CONSENT_LIFECYCLE.md](CONSENT_LIF
 
 ## Development
 
+From the repository root:
+
 ```bash
-make validate-test consent-engine
-go test ./cmd/ce/... ./internal/ce/... ./internal/database/... -count=1
-make quality-check consent-engine
+make test PKG="./cmd/ce/... ./internal/ce/... ./internal/database/..."    # tests with -race
+make check                                                                # tidy, check license headers, lint and test the whole module
 ```
 
 Service tests use an in-memory SQLite database. The PostgreSQL connection and bootstrap tests are skipped unless `TEST_DATABASE_URL` points at a disposable database (the bootstrap test also needs `psql` and permission to create databases):

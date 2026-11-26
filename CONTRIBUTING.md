@@ -20,79 +20,131 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 | Tool | Version | Used for |
 |---|---|---|
 | [Go](https://go.dev/dl/) | 1.26.4 or later, as set in [`go.mod`](go.mod) | Every service and the `ondx` CLI |
-| A C compiler, such as gcc or clang | Any recent version | The Go unit tests, which use SQLite through cgo, and the race detector that `make validate-test` enables |
-| Git, Make and a POSIX shell | Any recent version | The `make` commands and the pre-commit hook. On Windows, use WSL. |
-| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup-all`, which installs its dependencies |
-| [Docker](https://docs.docker.com/get-docker/) with Compose v2 | Any recent version | The full local stack and the integration tests. The unit tests do not need it. |
-| [golangci-lint](https://golangci-lint.run/welcome/install/) | v2.14.0, the version that CI uses | The lint and format checks that CI runs, configured in [`.golangci.yml`](.golangci.yml) |
+| A C compiler, such as gcc or clang | Any recent version | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables |
+| Git, GNU Make and curl | Any recent version | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl. |
+| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup`, which installs its dependencies |
+| [Docker](https://docs.docker.com/get-docker/) with Compose v2 | Any recent version | The local stack (`make up`, `make deps`) and the integration tests. The unit tests do not need it. |
+
+On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang.
+
+On Windows, install GNU Make (for example `choco install make`) and [Git for Windows](https://git-scm.com/download/win). The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
 
 If `go env CGO_ENABLED` prints `0`, Go did not find a C compiler, and the unit tests will not build.
 
-`make quality-check` also uses `gofumpt`, `goimports`, `staticcheck` and `gosec` when they are installed. Without `gofumpt`, it formats code with `gofmt`; each of the other tools is skipped with a notice. `make install-tools` installs the latest versions of `gofumpt`, `goimports` and `staticcheck`. It does not install `gosec`, which you can install with:
-
-```bash
-go install github.com/securego/gosec/v2/cmd/gosec@latest
-```
-
-`go install` places these tools in `$(go env GOPATH)/bin`, so make sure that directory is on your `PATH`.
+golangci-lint needs no installing. `GOLANGCI_LINT_VERSION` in the [`Makefile`](Makefile) pins its version. The first `make setup`, `make fmt` or `make lint` downloads that release's binary, the same one CI runs, into `bin/`, and checks it against the release's SHA-256 checksums. After a version bump, the next run downloads the new release. The CI validate workflows read the version from the Makefile, so a version bump changes only that line.
 
 ## Setting Up
 
 Fork the repository, clone your fork, and run the following command from the repository root:
 
 ```bash
-make setup-all
+make setup
 ```
 
-This command does three things:
+This command does four things:
 
-1. **It installs the pre-commit hook.** It copies `.githooks/pre-commit` into your clone's Git hooks directory. Because the hook is a copy, run `make install-hooks` again whenever `.githooks/pre-commit` changes.
-2. **It fetches the Go dependencies.** It runs `go mod tidy` and `go mod download` on the root module, once for each Go service. Note that `go mod tidy` rewrites `go.mod` and `go.sum` if they are out of step with the code. The separate `tests/integration` module is not set up.
-3. **It installs the Consent Portal's dependencies.** It runs `pnpm install --frozen-lockfile --filter consent-portal...` in the `portals` workspace, which fails rather than changes `portals/pnpm-lock.yaml`. The paused Admin and Member portals are skipped.
+1. **It installs the pre-commit hook.** It points Git at the `.githooks` directory (`git config core.hooksPath .githooks`), so a change to the hook takes effect without installing it again.
+2. **It fetches the Go dependencies.** It runs `go mod download`, which does not change `go.mod` or `go.sum`. The separate `tests/integration` module is not set up.
+3. **It downloads golangci-lint** at the pinned version.
+4. **It installs the Consent Portal's dependencies.** It runs `pnpm install --frozen-lockfile --filter consent-portal...` in the `portals` workspace, which fails rather than changes `portals/pnpm-lock.yaml`. The paused Admin and Member portals are skipped.
 
-It does not install the tools listed under [Prerequisites](#prerequisites), create a `config.yaml` for any service, or start a database.
-
-To set up a single component, run `make setup <service>`, where `<service>` is one of `portal-backend`, `orchestration-engine`, `consent-engine`, `policy-decision-point` or `consent-portal`.
-
-### Running the Services
-
-To run the full stack locally, run `docker compose up --build`, as described in the [README](README.md).
-
-To run a single Go service natively, copy its `cmd/<svc>/config.example.yaml` to `cmd/<svc>/config.yaml`, which Git ignores, and run `make run <service>`. The service runs in the foreground until you press Ctrl+C. For the Consent Portal, `make run consent-portal` starts the development server. Each component's README lists its configuration keys and the services it depends on.
+Run it again after pulling changes to the portal's dependencies. It does not create a `config.yaml` for any service or start a database.
 
 ### The Pre-commit Hook
 
-On each commit, the hook identifies the maintained services that have staged files in their directories: `cmd/<svc>` and `internal/<svc>` for the Go services (and `internal/database` for the Consent Engine), and `portals/apps/consent` for the Consent Portal. For each of these services, it runs `make quality-check`, `make validate-build` and `make validate-test`, and it blocks the commit if any of them fails.
+On every commit, the hook first adds the [license header](#license-headers) to staged files that lack it, and stages the result. Then, when the commit stages a `.go` file, `go.mod`, `go.sum` or `.golangci.yml`, it runs `make check` and blocks the commit if it fails. `make check` changes no files. It checks the working tree, so unstaged changes count too. Other commits, such as documentation changes, skip `make check`.
 
-A commit that touches none of those directories skips the checks. This includes documentation changes, edits to `go.mod`, and changes to shared packages such as `internal/authn`.
+To skip the hook for one commit, run `git commit --no-verify`.
 
-For the Go services, `make quality-check` formats the code in place, but the hook does not stage the files it changes. After each commit, run `git status` and commit any formatting changes that were left behind.
+## Running the Platform
+
+A single service rarely runs on its own: the Orchestration Engine needs the Policy Decision Point, the Consent Engine, ThunderID and data providers, and the Portal Backend needs PostgreSQL, ThunderID and the Policy Decision Point. There are two supported ways to run the platform.
+
+### Full Stack in Docker
+
+```bash
+make up      # build and start everything, plus the mock data providers
+make down    # stop it
+```
+
+This is the default for trying the platform; the [end-to-end walkthrough](dev/WALKTHROUGH.md) uses it. A bare `docker compose up --build`, as in the [README](README.md), starts the same stack without the [mock providers](dev/README.md).
+
+### Dependencies in Docker, Services Native
+
+This is the development loop: fast rebuilds, a debugger and plain logs.
+
+```bash
+make deps    # PostgreSQL (with every schema.sql loaded), ThunderID, the audit service, the mock providers
+```
+
+PostgreSQL loads the schemas only when its volume is first created. After pulling a `schema.sql` change, load them again into the running database:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -f /docker-entrypoint-initdb.d/init-db.sql'
+```
+
+Every `schema.sql` is safe to re-run: this adds missing tables and indexes, and skips those that exist. A change to an existing table therefore needs a fresh database: `docker compose down -v` deletes the stack's volumes, ThunderID's data included, and the next `make deps` starts from scratch.
+
+Then run each service in a terminal of its own, from its directory, where it reads `config.yaml`:
+
+```bash
+cd cmd/pdp && go run .
+cd cmd/ce && go run .
+cd cmd/oe && go run .
+cd cmd/pb && go run .
+cd portals/apps/consent && pnpm dev    # reads public/config.js
+```
+
+Before the first run, create the configuration files, which Git ignores, from the examples next to them:
+
+| Copy | To | Then |
+|---|---|---|
+| `cmd/pdp/config.example.yaml` | `cmd/pdp/config.yaml` | |
+| `cmd/ce/config.example.yaml` | `cmd/ce/config.yaml` | |
+| `cmd/oe/config.example.yaml` | `cmd/oe/config.yaml` | |
+| `cmd/pb/config.example.yaml` | `cmd/pb/config.yaml` | |
+| `portals/apps/consent/public/config.example.js` | `portals/apps/consent/public/config.js` | Set `idpClientId: 'CONSENT_PORTAL'` and `idpBaseUrl: 'http://localhost:8090'` |
+
+The example configurations point at the ports that `make deps` publishes on `localhost`, and read their secrets from the environment. An `export` lasts only for its terminal, so set them in each terminal you start a service from. With the Compose defaults:
+
+```bash
+export DB_PASSWORD=1234          # PowerShell: $env:DB_PASSWORD = "1234"
+export IDP_CLIENT_SECRET=1234    # the Portal Backend's ThunderID client secret
+```
+
+If something else on your machine already uses port 5432, such as a local PostgreSQL installation, set `DB_PORT` in `.env` to a free port before `make deps`, and use that port in the configurations. Each component's README lists its configuration keys.
+
+### One Service Native, the Rest in Docker
+
+Native services reach containers through ports on `localhost`, but containers reach each other by service name, never through the host. So this works only for a service that no container calls: the Orchestration Engine and the Portal Backend.
+
+```bash
+make up
+docker compose stop orchestration-engine
+cd cmd/oe && go run .
+```
+
+`make up` starts every service in Docker, on the same host ports that the native services use. Stop any service you run natively before you run `make up`, or Docker cannot publish that port and `make up` stops before it starts the mock providers.
+
+Running the Policy Decision Point or the Consent Engine natively means running their callers natively too, which is the previous mode.
 
 ## Running Tests and Quality Checks
 
-Run these commands for one component at a time, using the `<service>` names listed under [Setting Up](#setting-up). For the full list of commands, run `make help`.
+Every Go target works on the whole module. For the full list of commands, run `make help`.
 
-```bash
-make validate-test <service>    # unit tests
-make quality-check <service>    # formatting and static checks, then the unit tests
-make validate-build <service>   # build
-```
+| Command | What it does |
+|---|---|
+| `make build` | `go build ./...` |
+| `make test` | `go test -race ./...`. To test some packages, run for example `make test PKG=./internal/pdp/...`. |
+| `make test-integration` | Runs the [integration tests](#integration-tests) against services in Docker |
+| `make fmt` | Formats Go code with `gofumpt` and `goimports` |
+| `make lint` | Runs golangci-lint with [`.golangci.yml`](.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags. |
+| `make license` | Adds the [license header](#license-headers) to files that lack it |
+| `make license-check` | Lists the files without the license header, and fails if there are any, as CI does |
+| `make check` | Checks that `go.mod` and `go.sum` are tidy, then runs `make license-check`, `make lint` and `make test`. It changes no files. |
+| `make clean` | Removes `bin/` and the coverage files |
 
-For a Go service:
-
-- `make validate-test` runs `go mod tidy`, then `go test -race` with coverage over the service's `cmd/<svc>` and `internal/<svc>` packages. It writes `coverage-<service>.out` and `coverage-<service>.html` to the repository root. Git ignores both files.
-- `make quality-check` runs these steps in order:
-  1. `make format`, which rewrites files with `gofumpt` and `goimports`;
-  2. `go vet` and a `gofmt -l` check, either of which fails the command;
-  3. `staticcheck` and `gosec`, whose findings are printed but do not fail the command;
-  4. `make validate-test`.
-
-  Each of the first three steps is also available on its own, as `make format`, `make lint`, `make staticcheck` and `make security`.
-- `make validate-build` runs `go build` with `CGO_ENABLED=0` and writes the binary to `bin/<service>`.
-
-For the Consent Portal, `make validate-test` runs `tsc --noEmit` and `eslint .`, `make quality-check` runs `eslint .`, and `make validate-build` runs `pnpm run build`, which writes to `portals/apps/consent/dist/`.
-
-`make help` also lists batch commands, such as `validate-test-all` and `quality-check-all`. These can exit successfully even when a service fails, so read their output carefully, or use the per-service commands instead.
+Before you push, run `make fmt` and `make check`.
 
 ### Unit Tests
 
@@ -106,30 +158,28 @@ Keep the following in mind:
 
 - The unit tests do not need a running database. The Consent Engine, Policy Decision Point and Portal Backend tests use in-memory SQLite, with helpers in `internal/pdp/pdptest` and `internal/pb/database/dbtest`.
 - The PostgreSQL tests in `cmd/ce` and `internal/database` are skipped unless `TEST_DATABASE_URL` points to a disposable PostgreSQL database with `cmd/ce/schema.sql` applied.
-- Some Portal Backend tests expect nothing to be listening on `localhost:8082`, the Policy Decision Point's port.
 - The Orchestration Engine's golden tests compare its output with the files in `internal/oe/federator/testdata/golden`. After an intentional change, regenerate the files with `go test ./internal/oe/federator -run TestFederateQueryGolden -update`, and review the diff before committing it.
-- `TestLooksLikeIDImprovedLogic` in `internal/monitoring` currently fails on `main`.
 
 ### Linting the Way CI Does
 
-CI runs golangci-lint v2.14.0 with [`.golangci.yml`](.golangci.yml), and reports only the issues on lines that the pull request changes. Because `make quality-check` does not run golangci-lint, run it yourself before you push:
+CI runs golangci-lint at the version in the [`Makefile`](Makefile) with [`.golangci.yml`](.golangci.yml), and reports only the issues on lines that the pull request changes. `make lint` and `make check` report every issue in the module. To see only what CI will report:
 
 ```bash
 git fetch upstream
-golangci-lint run --new-from-merge-base=upstream/main ./internal/... ./cmd/...
+make lint LINT_FLAGS=--new-from-merge-base=upstream/main
 ```
 
-The `--new-from-merge-base=upstream/main` option limits the report to the lines your branch has changed since it left `main`, whether committed or not, which matches what CI checks. While you work, `--new-from-rev=HEAD` checks only your uncommitted changes.
+The `--new-from-merge-base=upstream/main` option limits the report to the lines your branch has changed since it left `main`, whether committed or not. While you work, `LINT_FLAGS=--new-from-rev=HEAD` checks only your uncommitted changes.
 
 ### Integration Tests
 
-The integration tests live in `tests/integration`, which is a separate Go module, so `go test ./...` from the repository root does not run them. To run them, start Docker and run:
+The integration tests live in `tests/integration`, which is a separate Go module, so `make test` does not run them. To run them, start Docker and run:
 
 ```bash
-cd tests/integration && ./run-local-tests.sh
+make test-integration
 ```
 
-The script starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
+This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
 
 Many of the tests are skipped, rather than failed, when a database or service they need is unreachable, so check the skip messages in the output.
 

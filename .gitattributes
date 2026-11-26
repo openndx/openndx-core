@@ -1,0 +1,5 @@
+# Check out text files with LF on every platform. Go tooling (gofmt,
+# gofumpt) always writes LF, and shell scripts copied into Linux images
+# break with CRLF, so a Windows checkout with core.autocrlf=true would
+# otherwise show every formatted file as modified and fail `gofmt -l`.
+* text=auto eol=lf

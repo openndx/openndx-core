@@ -29,18 +29,16 @@ docker compose up --build policy-decision-point
 curl http://localhost:8082/health
 ```
 
-Native, against a local PostgreSQL with an empty `pdp` database. The service does not create tables, so load the schema first:
+Natively, with its dependencies in Docker (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
-PGPASSWORD=<password> psql -h localhost -U postgres -d pdp \
-  -v ON_ERROR_STOP=1 -f cmd/pdp/schema.sql
-
+make deps                                             # PostgreSQL with schema.sql loaded, and the rest
 cp cmd/pdp/config.example.yaml cmd/pdp/config.yaml    # once; config.yaml is git-ignored
-export DB_PASSWORD=<password>
-make run policy-decision-point    # or: go run ./cmd/pdp -config cmd/pdp/config.yaml
+export DB_PASSWORD=1234                               # the Compose default
+cd cmd/pdp && go run .
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path.
+The Orchestration Engine and Portal Backend call the PDP, so to use them with a native PDP, run them natively too, each from its own directory in another terminal. [config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres` and reads the password from `DB_PASSWORD`. The service does not create tables; Compose's PostgreSQL loads [schema.sql](schema.sql) on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 
@@ -117,10 +115,11 @@ For each requested `(schemaId, fieldName)`, in order:
 
 ## Development
 
+From the repository root:
+
 ```bash
-make validate-test policy-decision-point    # tests with -race and coverage
-go test ./cmd/pdp/... ./internal/pdp/... -count=1
-make quality-check policy-decision-point    # format, vet, lint, security
+make test PKG="./cmd/pdp/... ./internal/pdp/..."    # tests with -race
+make check                                          # tidy, check license headers, lint and test the whole module
 ```
 
 Tests use an in-memory SQLite database, so no PostgreSQL is needed. The configuration is in [`config.go`](config.go). Code is in [`internal/pdp`](../../internal/pdp), one package per concern, each with its service and handler: `fieldpolicy` (field policies), `grant` (access grants) and `decision` (decisions, reading fields and grants through interfaces it declares); `pdptest` holds test helpers.

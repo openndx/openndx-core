@@ -5,8 +5,8 @@ Automated tests, and manual checks against a running OE. The service overview is
 ## Automated tests
 
 ```bash
-make validate-test orchestration-engine         # with -race and coverage
-go test ./cmd/oe/... ./internal/oe/... -count=1 # plain run
+make test PKG="./cmd/oe/... ./internal/oe/..."   # with -race
+go test ./cmd/oe/... ./internal/oe/... -count=1  # plain run
 ```
 
 All tests live under `internal/oe` and need no external database or service (they use local test servers). The federation tests in `internal/oe/federator` compare each result with a golden file in `testdata/golden/`. After an intended behavior change, regenerate them and review the diff:
