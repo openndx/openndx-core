@@ -68,7 +68,6 @@ services:
     networks:
       - openndx-network
     environment:
-      - PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
       - DATA_CONSUMER_CLIENT_SECRET=${DATA_CONSUMER_CLIENT_SECRET:-1234}
       - PORTAL_BACKEND_CLIENT_SECRET=${PORTAL_BACKEND_CLIENT_SECRET:-1234}
