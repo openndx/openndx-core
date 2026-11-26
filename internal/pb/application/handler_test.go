@@ -51,9 +51,12 @@ func NewTestHandler(t *testing.T) *TestHandler {
 
 // NewTestHandlerWithMockPDP creates a handler with mock PDP and IDP services for testing
 func NewTestHandlerWithMockPDP(t *testing.T, db *gorm.DB, idpMock *idptest.Mock) *Handler {
-	// For testing, we'll use a real policy.Client but skip actual HTTP calls
-	// In a real test, you'd use a test HTTP server
-	mockPDP := policy.NewClient("http://localhost:8082")
+	// A real policy.Client pointed at a test server that is already closed:
+	// nothing listens there, so every PDP call fails, whatever else is
+	// running on the machine.
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closed.Close()
+	mockPDP := policy.NewClient(closed.URL)
 
 	// Note: In a real scenario, you'd set up a test HTTP server to handle PDP requests
 	// For now, the tests will need to handle PDP failures gracefully or skip PDP-dependent operations
@@ -143,7 +146,7 @@ func createTestApplicationWithClientID(t *testing.T, db *gorm.DB, memberID, idpC
 
 // newTestHandlerWithWorkingPDP builds a Handler whose PDP service is backed by an
 // in-process mock transport (unlike NewTestHandlerWithMockPDP, which points at an
-// unreachable localhost address), so tests can exercise the full allow-list update path.
+// unreachable address), so tests can exercise the full allow-list update path.
 func newTestHandlerWithWorkingPDP(t *testing.T, db *gorm.DB, pdpStatusCode int, pdpBody string) *Handler {
 	mockTransport := &MockRoundTripper{
 		RoundTripFunc: func(req *http.Request) (*http.Response, error) {

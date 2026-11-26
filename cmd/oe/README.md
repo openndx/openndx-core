@@ -28,14 +28,16 @@ curl http://localhost:4000/health
 
 Compose mounts `cmd/oe/config.docker.yaml` and `cmd/oe/schema.graphql` into the container. The mock providers are described in [dev/](../../dev/README.md). `docker compose up --build orchestration-engine` rebuilds and starts only the OE, because the service declares no dependencies.
 
-Native, from the repo root, with ThunderID from `docker compose up thunderid` for consumer tokens:
+Natively, while the rest of the stack runs in Docker. No container calls the OE, so it can swap out on its own. Stop any other service you run natively first, since `make up` starts it in Docker on the same port (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
-cp cmd/oe/config.example.yaml cmd/oe/config.yaml     # git-ignored
-make run orchestration-engine
+make up                                             # full stack and the mock providers
+docker compose stop orchestration-engine
+cp cmd/oe/config.example.yaml cmd/oe/config.yaml    # once; config.yaml is git-ignored
+cd cmd/oe && go run .
 ```
 
-`make run` starts the service from `cmd/oe`, where it reads `config.yaml`; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
+Run from `cmd/oe`, the service reads `config.yaml` there; the schema is the `schema.graphql` next to it. To run from elsewhere, pass `-config path/to/config.yaml` or set `CONFIG_PATH`.
 
 To send a real query you need a consumer token, registered field policies and an application grant. Follow the [walkthrough](../../dev/WALKTHROUGH.md), or the token and curl example in [dev/README.md](../../dev/README.md).
 
@@ -106,10 +108,11 @@ sequenceDiagram
 
 ## Development
 
+From the repository root:
+
 ```bash
-make validate-test orchestration-engine        # tests with -race and coverage
-go test ./cmd/oe/... ./internal/oe/... -count=1
-make quality-check orchestration-engine
+make test PKG="./cmd/oe/... ./internal/oe/..."    # tests with -race
+make check                                        # tidy, check license headers, lint and test the whole module
 ```
 
 The tests are in `cmd/oe`, for configuration loading, and in `internal/oe`. They need no database or running service: the clients are tested against local test servers.
@@ -120,7 +123,7 @@ The federation tests in `internal/oe/federator` compare each result with a golde
 go test ./internal/oe/federator -run TestFederateQueryGolden -update
 ```
 
-The golden files are compared byte for byte, so the test needs a checkout with LF line endings. On Windows, a clone with `core.autocrlf=true` gets CRLF files, and every golden case fails.
+The golden files are compared byte for byte, so the test needs LF line endings. `.gitattributes` checks out every text file with LF, including on Windows.
 
 The cross-service suite, which runs the OE against the PDP and the Consent Engine, is a separate Go module in [tests/integration](../../tests/integration/README.md).
 

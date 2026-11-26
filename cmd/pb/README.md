@@ -29,18 +29,17 @@ curl http://localhost:8083/health
 
 This also starts PostgreSQL and ThunderID, and registers PB's own client (`PORTAL_BACKEND`) in ThunderID.
 
-Native, against your own PostgreSQL, PDP and identity provider. The service does not create tables, so load the schema into an empty `portal_backend` database first:
+Natively, while the rest of the stack runs in Docker. No container calls PB, so it can swap out on its own. Stop any other service you run natively first, since `make up` starts it in Docker on the same port (see [running the platform](../../CONTRIBUTING.md#running-the-platform)):
 
 ```bash
-PGPASSWORD=<password> psql -h localhost -U postgres -d portal_backend \
-  -v ON_ERROR_STOP=1 -f cmd/pb/schema.sql
-
+make up
+docker compose stop portal-backend
 cp cmd/pb/config.example.yaml cmd/pb/config.yaml    # once; config.yaml is git-ignored
-export DB_PASSWORD=<password> IDP_CLIENT_SECRET=<secret>
-make run portal-backend    # or: go run ./cmd/pb -config cmd/pb/config.yaml
+export DB_PASSWORD=1234 IDP_CLIENT_SECRET=1234      # the Compose defaults
+cd cmd/pb && go run .
 ```
 
-[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, a PDP on `localhost:8082` and a ThunderID on `localhost:8090`, and reads the two secrets from the environment. Schema changes go directly into [schema.sql](schema.sql); there is no versioned upgrade path.
+[config.example.yaml](config.example.yaml) points at `localhost:5432` as user `postgres`, a PDP on `localhost:8082` and a ThunderID on `localhost:8090`, and reads the two secrets from the environment. The service does not create tables; Compose's PostgreSQL loads [schema.sql](schema.sql) on a fresh database. Schema changes go directly into `schema.sql`; there is no versioned upgrade path.
 
 ## Configuration
 
@@ -106,13 +105,14 @@ sequenceDiagram
 
 ## Development
 
+From the repository root:
+
 ```bash
-make validate-test portal-backend      # tests with -race and coverage
-go test ./cmd/pb/... ./internal/pb/... -count=1
-make quality-check portal-backend
+make test PKG="./cmd/pb/... ./internal/pb/... ./internal/authn/..."    # tests with -race
+make check                                                            # tidy, check license headers, lint and test the whole module
 ```
 
-Tests run without external services. `make validate-test` does not cover `internal/authn`; run `go test ./internal/authn/...` for the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
+Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
 Code is in [`internal/pb`](../../internal/pb): `member`, `schema` and `application` (one package per resource: model, service, handler), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
 
