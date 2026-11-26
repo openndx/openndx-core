@@ -110,7 +110,7 @@ In production:
 
 ## Environment variables
 
-Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`. The audit client library also reads `ENABLE_AUDIT`: auditing is on when `audit.url` is set and `ENABLE_AUDIT` isn't `false`. The OE does not load `.env` files. Compose passes `SERVICE_NAME` and `OTEL_*` to every Go service, but the OE does not read them and does not serve `/metrics`.
+Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`. The audit client library also reads `ENABLE_AUDIT`: auditing is on when `audit.url` is set and `ENABLE_AUDIT` isn't `false`. The OE does not load `.env` files. It records no metrics and serves no `/metrics`.
 
 ## Schema
 

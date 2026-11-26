@@ -154,6 +154,6 @@ echo "View metrics in Grafana:"
 echo "  http://localhost:3002/d/go-services/go-services-metrics"
 echo ""
 echo "Or check Prometheus directly:"
-echo "  http://localhost:9091"
+echo "  http://localhost:9095"
 echo ""
 

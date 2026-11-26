@@ -34,6 +34,20 @@ All images are published to **ghcr.io/openndx/** (previously `ghcr.io/openndx/op
 |              | Orchestration Engine  | `orchestration-engine`  |
 | **Frontend** | Consent Portal        | `consent-portal`        |
 
+## CI and published images
+
+The checks that run on pull requests are described in [CONTRIBUTING.md](../CONTRIBUTING.md#checks).
+
+When a change to a service reaches `main`, that service's publish workflow builds its image and pushes it to `ghcr.io/openndx/<service>`, tagged `main` and `sha-<commit>`. Only a release adds the version tags and `latest`.
+
+Trivy scans the images in the validate workflows and in the Release workflow, and uploads what it finds to the repository's code scanning alerts. Its findings don't fail the build.
+
+For a tag push, GoReleaser also:
+
+- builds the `ondx` archives and publishes them on the GitHub Release, with build provenance attestations that `gh attestation verify <archive> --repo openndx/openndx-core` checks;
+- updates the Homebrew tap, `openndx/homebrew-tap`, when the `TAP_TOKEN` secret is set;
+- keeps any notes written in a draft release created before the tag, and appends the generated changelog and the image list below them.
+
 ## Paused portals
 
 Starting with the first release containing this change, Admin and Member Portals

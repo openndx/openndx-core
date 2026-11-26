@@ -9,16 +9,8 @@ global:
     environment: 'local'
 
 scrape_configs:
-  # Exchange Services
-  - job_name: orchestration-engine
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - orchestration-engine:4000
-        labels:
-          service: 'orchestration-engine'
-          port: '4000'
-
+  # Only the Consent Engine serves /metrics. Add a job here for any other
+  # service once it serves them (see ../README.md).
   - job_name: consent-engine
     metrics_path: /metrics
     static_configs:
@@ -27,23 +19,3 @@ scrape_configs:
         labels:
           service: 'consent-engine'
           port: '8081'
-
-  - job_name: policy-decision-point
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - policy-decision-point:8082
-        labels:
-          service: 'policy-decision-point'
-          port: '8082'
-
-  # Root Level Services
-  - job_name: portal-backend
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - portal-backend:8083
-        labels:
-          service: 'portal-backend'
-          port: '8083'
-
