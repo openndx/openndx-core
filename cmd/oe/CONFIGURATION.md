@@ -20,11 +20,10 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `logging.level` | `info` | `debug`, `info`, `warn` or `error`. |
 | `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. |
 | `schemaPath` | `schema.graphql` | The consumer schema file. A relative path is resolved against the directory of the config file. See [Schema](#schema). |
-| `idp.jwksURL`, `idp.issuer`, `idp.audience` | | **Required.** Consumer token validation. See [AUTHENTICATION.md](AUTHENTICATION.md#configuration). |
-| `idp.insecureSkipTLSVerify` | `false` | Skips TLS checks on the JWKS fetch. Local development only. |
+| `idp` | | Consumer token validation. `idp.jwksURL`, `idp.issuer` and `idp.audience` are **required**. See [idp](#idp). |
 | `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. |
 | `consentEngine.url` | | Consent Engine URL, which must end in `/internal/api/v1` because the OE appends `/consents`. If the PDP requires consent and this is empty, the request fails with `CE_ERROR`. |
-| `consentEngine.ownerIdArgName` | | **Required when `consentEngine.url` is set.** The query argument that carries the ID of the data owner whose consent is asked, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires consent, so a query that needs none can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no value the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
+| `consentEngine.ownerIdArgName` | | **Required when `consentEngine.url` is set.** The query argument that carries the ID of the data owner whose consent is asked, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires consent, so a query that needs none can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no non-empty string value for it, the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
 | `audit.url` | | Argus audit service URL. Auditing is off when this is empty. |
 | `audit.apiKey` | | Sent as `X-API-Key` to Argus. |
 | `audit.actorType`, `audit.actorId` | `SERVICE`, `orchestration-engine` | The actor recorded on audit events. |
@@ -75,6 +74,40 @@ The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https
 
 The variable is named after `targetArgName`, with a suffix such as `_2` when two mapped arguments in one query share a name. It is declared with `targetArgType` when set. Otherwise it is declared with the consumer argument's type, made non-null when the value isn't null. The provider rejects the query when that type doesn't fit its argument, so set `targetArgType` when the types differ. The example above is declared `ID!` because the DRP mapping sets `targetArgType: "ID!"`: the consumer schema declares `nic: String!`, and a `String!` variable can't be passed to the provider's `ID!` argument, even though an inlined string literal could.
 
+### idp
+
+How the OE authenticates data consumers on `POST /public/graphql`. The only other route, `/health`, is not authenticated. Tokens are validated by the shared [`internal/authn`](../../internal/authn) package, which the Portal Backend and the Consent Engine also use. Every token's signature is verified; no setting skips it.
+
+| Key | Default | Notes |
+|---|---|---|
+| `idp.jwksURL` | | **Required.** Where the signing keys are fetched. Must be an `http` or `https` URL. |
+| `idp.issuer` | | **Required.** The expected `iss`. Must be an `http` or `https` URL, equal to the `iss` the identity provider puts in its tokens. ThunderID's is its public URL (`http://localhost:8090` locally), not its `/oauth2/token` endpoint. |
+| `idp.audience` | | **Required.** The expected `aud`: the OE's resource server identifier. |
+| `idp.insecureSkipTLSVerify` | `false` | `true` skips TLS certificate checks when fetching the JWKS. Local development only. |
+
+The OE exits at startup if `jwksURL`, `issuer` or `audience` is missing or invalid. In Docker Compose, [config.docker.yaml](config.docker.yaml) reads them from `IDP_JWKS_URL` (ThunderID's address on the Compose network), `IDP_PUBLIC_URL` (its public URL) and `IDP_AUDIENCE` (default `http://api.openndx.local`).
+
+A consumer sends an access token in the `Authorization: Bearer <token>` header. In the bundled stack, consumers are machine clients that get a ThunderID `client_credentials` token requested with `resource=http://api.openndx.local`; see the example in [dev/README.md](../../dev/README.md). The token must pass these checks:
+
+| Check | Requirement |
+|---|---|
+| Signature | `RS256`, `RS384` or `RS512`, signed by a key in the JWKS at `idp.jwksURL`, with a `kid` header that names the key. |
+| `iss` | Equals `idp.issuer`. |
+| `aud` | Contains `idp.audience`. |
+| `exp` | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
+| `sub` | Present. |
+| `client_id` | Present. It becomes the application's identity (`applicationId`) for the PDP and the Consent Engine. |
+
+A request without a valid token gets `401` with a JSON body: `{"error":"unauthorized","message":"authentication required"}` when there is no token, and `{"error":"unauthorized","message":"invalid authentication token"}` when the token fails a check. The reason is logged at debug level, not returned.
+
+The signing keys are fetched on the first request, not at startup, so the OE starts even when the identity provider is not yet up. They are cached for 5 minutes. A token whose `kid` is not in the cached set triggers one refresh, so key rotation needs no restart.
+
+In production:
+
+- set `idp.jwksURL` and `idp.issuer` to the production identity provider over `https`, and `idp.audience` to the OE's resource server;
+- leave `idp.insecureSkipTLSVerify` unset;
+- terminate TLS in front of the OE, and expose only `POST /public/graphql`.
+
 ## Environment variables
 
 Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`. The audit client library also reads `ENABLE_AUDIT`: auditing is on when `audit.url` is set and `ENABLE_AUDIT` isn't `false`. The OE does not load `.env` files. Compose passes `SERVICE_NAME` and `OTEL_*` to every Go service, but the OE does not read them and does not serve `/metrics`.
@@ -115,7 +148,7 @@ GraphQL errors carry the code in `errors[].extensions.code`. Federation errors u
 | `CE_NOT_APPROVED` | Consent is pending or otherwise not approved. `consentPortalUrl` and `consentStatus` tell the consumer where and what. |
 | `CE_ERROR` | The Consent Engine call failed, or consent is needed and no Consent Engine is configured. |
 | `CE_NO_RESPONSE` | The Consent Engine returned nothing. |
-| `MISSING_IDENTIFIER` | The PDP requires the data owner's consent, and the query has no value for the `consentEngine.ownerIdArgName` argument. When the schema declares that argument as required (for example `nic: String!`), a query without it fails validation with `BAD_REQUEST` instead. |
+| `MISSING_IDENTIFIER` | The PDP requires the data owner's consent, and the query has no non-empty string value for the `consentEngine.ownerIdArgName` argument. When the schema declares that argument as required (for example `nic: String!`), a query without it fails validation with `BAD_REQUEST` instead. |
 | `AMBIGUOUS_IDENTIFIER` | The PDP requires the data owner's consent, and the query has that argument with different values, for example on two aliased fields. The Consent Engine isn't called. |
 | `BAD_REQUEST` | The query could not be parsed, failed validation against the schema, has invalid variables, or uses something the OE doesn't support (see [Queries](#queries)). Parse and validation errors carry `locations` in the query. |
 | `PROVIDER_ERROR` | A provider call failed: the provider was unreachable or not configured, answered with a non-2xx HTTP status, or sent a body that isn't a GraphQL response. Also used for errors a provider returned in its response, with the message prefixed by the provider's schema ID. |
