@@ -27,7 +27,9 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang.
 
-On Windows, install GNU Make (for example `choco install make`) and [Git for Windows](https://git-scm.com/download/win). The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
+On Debian and Ubuntu, `sudo apt install build-essential` provides gcc and Make. Other Linux distributions have an equivalent package.
+
+On Windows, install GNU Make (for example `choco install make`), [Git for Windows](https://git-scm.com/download/win), and a C compiler such as MinGW-w64 (for example `choco install mingw`). The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
 
 If `go env CGO_ENABLED` prints `0`, Go did not find a C compiler, and the unit tests will not build.
 
@@ -35,13 +37,14 @@ golangci-lint needs no installing. `GOLANGCI_LINT_VERSION` in the [`Makefile`](M
 
 ## Setting Up
 
-Fork the repository, clone your fork, and run the following command from the repository root:
+Fork the repository and clone your fork. Then, from the repository root, add the main repository as a remote named `upstream`, which later steps fetch from, and set up your clone:
 
 ```bash
+git remote add upstream https://github.com/openndx/openndx-core.git
 make setup
 ```
 
-This command does four things:
+`make setup` does four things:
 
 1. **It installs the pre-commit hook.** It points Git at the `.githooks` directory (`git config core.hooksPath .githooks`), so a change to the hook takes effect without installing it again.
 2. **It fetches the Go dependencies.** It runs `go mod download`, which does not change `go.mod` or `go.sum`. The separate `tests/integration` module is not set up.
@@ -229,14 +232,13 @@ The `main` branch accepts only squash merges, so each pull request lands on `mai
 Work on a fork, and open your pull request against the `main` branch of `openndx/openndx-core`:
 
 ```bash
-git remote add upstream https://github.com/openndx/openndx-core.git   # once, in your clone
 git fetch upstream
 git switch -c fix/501-validate-trace-id upstream/main
 # make and commit your changes
 git push -u origin fix/501-validate-trace-id
 ```
 
-If `main` moves on and your branch needs the new changes, or conflicts with them, rebase your branch with `git fetch upstream && git rebase upstream/main`, and push it with `git push --force-with-lease`.
+If `main` moves on and your branch needs the new changes, or conflicts with them, rebase your branch with `git fetch upstream && git rebase upstream/main`, and push it with `git push --force-with-lease`. Don't squash or amend commits you have already pushed: push further changes as new commits, so that reviewers can see what changed since they last looked. The squash merge combines them anyway.
 
 When you open the pull request:
 
@@ -250,6 +252,7 @@ Each component's validate workflow runs when a pull request changes that compone
 
 - For a Go service, the workflow checks that `go mod tidy` leaves `go.mod` and `go.sum` unchanged, runs golangci-lint on the changed lines, builds the service, runs the unit tests, and builds the Docker image and scans it with Trivy.
 - For the Consent Portal, the workflow runs `eslint`, and builds and scans the Docker image.
+- For the Consent Engine, a `database` job also runs the PostgreSQL tests in `cmd/ce` and `internal/database` against PostgreSQL 17. Locally, these tests are skipped unless `TEST_DATABASE_URL` is set; see [Unit Tests](#unit-tests).
 
 The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point, the Consent Engine, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
 
@@ -260,6 +263,8 @@ The `main` branch requires:
 - at least one approving review;
 - approval of the latest push by someone other than the person who pushed it, so a push made after an approval needs a new approval;
 - the resolution of every review conversation.
+
+After you push changes that address review comments, re-request review, since a push made after an approval needs a new approval.
 
 Once these requirements are met, the pull request is squash-merged into `main` as a single commit.
 
