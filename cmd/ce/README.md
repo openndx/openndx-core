@@ -123,7 +123,7 @@ The metrics are configured through the environment, read the first time the CE r
 | `SERVICE_NAME` | `openndx-service` | The `service_name` on `target_info`. |
 | `SERVICE_VERSION` | `dev` | The `service_version` on `target_info`. |
 
-Compose and the Helm chart set `SERVICE_NAME=consent-engine`, and Compose passes `OTEL_METRICS_EXPORTER` from `.env`.
+Compose and the Helm chart set `SERVICE_NAME=consent-engine` and leave the rest at their defaults.
 
 ## Security and deployment
 

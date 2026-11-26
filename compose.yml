@@ -163,7 +163,6 @@ services:
       - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-nic}
       # Read by the metrics the CE serves at /metrics (cmd/ce/README.md#metrics).
       - SERVICE_NAME=consent-engine
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
     volumes:
       - ./cmd/ce/config.docker.yaml:/app/config/config.yaml:ro
     depends_on:
