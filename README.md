@@ -4,12 +4,12 @@
 [![Latest release](https://img.shields.io/github/v/release/openndx/openndx-core)](https://github.com/openndx/openndx-core/releases/latest)
 [![Integration Tests](https://github.com/openndx/openndx-core/actions/workflows/integration-tests.yml/badge.svg?branch=main)](https://github.com/openndx/openndx-core/actions/workflows/integration-tests.yml)
 
-Open National Data Exchange (OpenNDX) is an open-source data exchange platform by Lanka Software Foundation. Data consumers ask for data about people through one GraphQL gateway. The platform checks each consumer's access, gets the data owner's consent where required, fetches the data from the organizations that hold it, and returns one merged answer.
+Open National Data Exchange (OpenNDX) is an open-source data exchange platform by Lanka Software Foundation. A data consumer sends one query, and OpenNDX checks the consumer's access, gets the data owner's consent where required, fetches the data from the organizations that hold it, and returns one merged answer.
 
 ## Who it's for
 
 - **Data consumers:** applications that need data held by other organizations. They send one GraphQL query instead of integrating with each organization.
-- **Data providers:** organizations that hold data and serve it through their own GraphQL APIs.
+- **Data providers:** organizations that hold the data. OpenNDX queries each provider over GraphQL, so a provider whose system has only a REST API puts a GraphQL adapter in front of it, as one of the [sample providers](dev/README.md) does.
 - **Data owners:** the people the data is about. They approve, reject or revoke consent in the Consent Portal.
 - **Operators and members:** the organization that runs an exchange, and the member organizations that register their providers' schemas and their consumers' applications with the `ondx` CLI or the management API.
 
@@ -38,23 +38,24 @@ flowchart LR
     CP --> CE
     Operator[Operators and member staff] --> CLI[ondx CLI]
     CLI --> PB[Portal Backend]
-    PB -->|field policies, allow-lists| PDP
+    PB -->|field policies, access grants| PDP
     PB -->|application clients| IDP[ThunderID]
     CP -.->|sign in| IDP
     CLI -.->|sign in| IDP
     Consumer -.->|client credentials| IDP
+    OE -.->|verify tokens| IDP
     CE -.->|verify tokens| IDP
     PB -.->|verify tokens| IDP
     OE -.->|audit events| AU[Argus audit service]
     PB -.->|audit events| AU
 ```
 
-Each core service keeps its own PostgreSQL database. Detail for every component is in its README, linked below.
+The Policy Decision Point, Consent Engine and Portal Backend each keep their own PostgreSQL database; the Orchestration Engine has none. Detail for every component is in its README, linked below.
 
 | Component | Role | Port | Docs |
 |---|---|---|---|
 | Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
-| Policy Decision Point (PDP) | Field policies, application allow-lists, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
+| Policy Decision Point (PDP) | Field policies, access grants, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
 | Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
 | Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
 | `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
@@ -73,7 +74,7 @@ The Consent Portal is actively maintained. Admin and Member Portal source is ret
 ### How a data request flows
 
 1. A consumer gets a token from the identity provider and sends a GraphQL query to the Orchestration Engine.
-2. The Orchestration Engine asks the Policy Decision Point whether the consumer may read each field, and which fields need the data owner's consent.
+2. The Orchestration Engine checks the token, then asks the Policy Decision Point whether the consumer may read each field, and which fields need the data owner's consent.
 3. If consent is needed, the Consent Engine records a pending request. The consumer receives a consent link, the citizen approves it in the Consent Portal, and the consumer repeats the query.
 4. The Orchestration Engine fetches the data from the providers in parallel and returns the merged result.
 
