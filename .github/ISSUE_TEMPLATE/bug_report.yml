@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Lanka Software Foundation
 
 name: "🐞 Report a Bug"
-description: "Create new issue in LSFLK/OpenNDX: 🐞 Report a Bug"
+description: "Create new issue in openndx/openndx-core: 🐞 Report a Bug"
 labels: ["Type/Bug"]
 body:
   - type: textarea
@@ -48,7 +48,7 @@ body:
     attributes:
       label: "Version"
       description: "Enter product version or commit."
-      placeholder: "e.g. v1.0.3 or commit hash"
+      placeholder: "e.g. v0.7.0 or a commit hash"
     validations:
       required: true
 

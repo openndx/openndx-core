@@ -9,7 +9,7 @@ All components are configured from [`values.yaml`](./values.yaml):
 | Component | Key | Default | Description |
 |---|---|---|---|
 | **Orchestration Engine** | `orchestrationEngine` | *Always deployed* | Core GraphQL federation engine (`POST /public/graphql`) |
-| **Policy Decision Point** | `policyDecisionPoint.enabled` | `true` | Field-level Rego policy evaluation (`internal/pdp`) |
+| **Policy Decision Point** | `policyDecisionPoint.enabled` | `true` | Field-level access decisions from field policies and access grants (`internal/pdp`) |
 | **Consent Engine** | `consentEngine.enabled` | `true` | Data-owner consent lifecycle service (`internal/ce`) |
 | **Consent Portal** | `consentPortal.enabled` | `true` | Citizen-facing React UI for approving/rejecting consents |
 | **Portal Backend** | `portalBackend.enabled` | `true` | Management API for members, schemas, applications, and submissions (`internal/pb`) |
@@ -209,7 +209,7 @@ Each service also accepts the peers in its own `<service>.networkPolicy.extraFro
 
 `networkPolicy.ingressFrom` is a list of NetworkPolicy `from` peers for the ingress controller, typically a `namespaceSelector` for its namespace. It is required while any ingress is enabled, and added only to the policies of the services whose ingress is enabled. Keep it to the ingress controller: whatever it lists can reach every exposed service, the Consent Engine's unauthenticated `/internal` API included.
 
-Any other caller, such as a monitoring scraper, an in-cluster consumer of a service that also has an ingress, or a `LoadBalancer` Service, goes in that service's `networkPolicy.extraFrom`, which lets it into that service alone. For example, to let Prometheus scrape the Orchestration Engine:
+Any other caller, such as a monitoring scraper, an in-cluster consumer of a service that also has an ingress, or a `LoadBalancer` Service, goes in that service's `networkPolicy.extraFrom`, which lets it into that service alone. For example, to let a consumer application in the cluster's `consumers` namespace call the Orchestration Engine:
 
 ```yaml
 orchestrationEngine:
@@ -217,7 +217,7 @@ orchestrationEngine:
     extraFrom:
       - namespaceSelector:
           matchLabels:
-            kubernetes.io/metadata.name: monitoring
+            kubernetes.io/metadata.name: consumers
 ```
 
 A service with an ingress accepts only the ingress controller and its `extraFrom`, so list its in-cluster clients there. The PDP's and Consent Engine's `extraFrom` open APIs that have no authentication; add to them only what must call those APIs.

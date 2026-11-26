@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Lanka Software Foundation
 
 name: "🚀 Improvement Request"
-description: "Create new issue in LSFLK/OpenNDX: 🚀 Improvement Request"
+description: "Create new issue in openndx/openndx-core: 🚀 Improvement Request"
 labels: ["Type/Improvement"]
 body:
   - type: textarea

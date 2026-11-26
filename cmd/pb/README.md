@@ -10,7 +10,7 @@ The management REST API of OpenNDX: members, provider schemas, consumer applicat
 flowchart LR
     CLI[ondx CLI] -->|REST, Bearer token| PB
     PB --> DB[(PostgreSQL: portal_backend)]
-    PB -->|metadata and allow-list| PDP[Policy Decision Point]
+    PB -->|field policies and access grants| PDP[Policy Decision Point]
     PB -->|create and delete app clients| IDP[ThunderID]
     PB -.->|verify tokens: JWKS| IDP
     PB -.->|audit events| A[Argus audit service]
@@ -100,7 +100,7 @@ sequenceDiagram
 
 > **Deployment security: network isolation.** `/health` is not authenticated. Expose only `/api/v1/*` beyond the internal network. PB also calls the PDP without authentication, so the PDP must be reachable only from PB and the Orchestration Engine.
 
-- CORS defaults to `http://localhost:5173`. Compose sets `*`; set explicit origins for any shared deployment.
+- CORS defaults to `http://localhost:5173`, which Compose also uses; set explicit origins for any shared deployment.
 - PB serves no `/metrics` endpoint and no `/openapi.yaml`; the spec is the file in this directory.
 
 ## Development
@@ -114,7 +114,7 @@ make check                                                            # tidy, ch
 
 Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
-Code is in [`internal/pb`](../../internal/pb): `member`, `schema` and `application` (one package per resource: model, service, handler), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
+Code is in [`internal/pb`](../../internal/pb): `member`, `schema`, `application` and `consentbypass` (one package per bounded context: a service and handler, and a model when it stores data in PB), `kernel` (types shared by those packages), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
 
 ## Rename note
 
