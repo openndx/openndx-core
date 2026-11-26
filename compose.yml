@@ -68,7 +68,6 @@ services:
     networks:
       - openndx-network
     environment:
-      - PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - CONSENT_PORTAL_URL=${CONSENT_PORTAL_URL:-http://localhost:5173}
       - DATA_CONSUMER_CLIENT_SECRET=${DATA_CONSUMER_CLIENT_SECRET:-1234}
       - PORTAL_BACKEND_CLIENT_SECRET=${PORTAL_BACKEND_CLIENT_SECRET:-1234}
@@ -161,9 +160,8 @@ services:
       - IDP_PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - CONSENT_ENGINE_AUDIENCE=${CONSENT_ENGINE_AUDIENCE:-CONSENT_PORTAL}
       - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-nic}
-      # Read by the metrics the CE serves at /metrics (observability/README.md).
+      # Read by the metrics the CE serves at /metrics (cmd/ce/README.md#metrics).
       - SERVICE_NAME=consent-engine
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
     volumes:
       - ./cmd/ce/config.docker.yaml:/app/config/config.yaml:ro
     depends_on:

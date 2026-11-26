@@ -6,9 +6,6 @@
 portals/
 **/node_modules/
 
-# Other trees not part of this Go module
-observability/
-
 # Test & coverage artifacts
 tests/
 coverage.out

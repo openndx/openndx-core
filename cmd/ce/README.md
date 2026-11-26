@@ -41,7 +41,7 @@ The Orchestration Engine and the Consent Portal call the CE, so to use them with
 
 ## Configuration
 
-The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), it reads only the metrics settings, such as `SERVICE_NAME` and `OTEL_METRICS_EXPORTER`, listed in [observability/README.md](../../observability/README.md#settings). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), it reads only the metrics settings, such as `SERVICE_NAME` and `OTEL_METRICS_EXPORTER`, listed under [Metrics](#metrics). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. The placeholder must be the whole value, and an unset or empty variable stops the service.
 
@@ -100,6 +100,30 @@ Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "..."
 - Expiry is applied lazily, when a consent is read or acted on.
 
 States, durations and the exact create rules: [CONSENT_LIFECYCLE.md](CONSENT_LIFECYCLE.md).
+
+## Metrics
+
+The CE is the only service that records metrics. It serves them at `GET /metrics` in the Prometheus text format, through the shared [`internal/monitoring`](../../internal/monitoring) package, which uses the OpenTelemetry SDK. Read them with any Prometheus-compatible scraper, or directly: `curl http://localhost:8081/metrics`. Every request is recorded:
+
+| Metric | Type | Labels |
+|---|---|---|
+| `http_requests_ratio_total` | Counter | `http_request_method`, `http_route`, `http_response_status_code` |
+| `http_request_duration_seconds` | Histogram | `http_request_method`, `http_route` |
+
+`http_route` is the route template, such as `/api/v1/consents/:id`, so IDs don't create new series. Every metric also has an `otel_scope_name` label, and the `target_info` metric gives the service's `service_name` and `service_version`.
+
+The metrics are configured through the environment, read the first time the CE records or serves a metric:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OTEL_METRICS_EXPORTER` | `prometheus` | `prometheus` serves the metrics at `/metrics`, `otlp` pushes them to an OTLP endpoint, and `none` turns metrics off. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | | The OTLP endpoint. Required for `otlp`, and it must use `https` unless `OTEL_EXPORTER_OTLP_INSECURE` is `true`. Only the host is used, so a backend that serves OTLP under a path, such as OpenObserve, can't receive them yet (#707). |
+| `OTEL_EXPORTER_OTLP_HEADERS` | | Extra headers for `otlp`, such as an API key, as `key1=value1,key2=value2`. |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `false` | `true` allows an `http` OTLP endpoint. For development only. |
+| `SERVICE_NAME` | `openndx-service` | The `service_name` on `target_info`. |
+| `SERVICE_VERSION` | `dev` | The `service_version` on `target_info`. |
+
+Compose and the Helm chart set `SERVICE_NAME=consent-engine` and leave the rest at their defaults.
 
 ## Security and deployment
 
