@@ -203,7 +203,7 @@ assignments:
 # Lets Portal Backend's own M2M client (thunderid/bootstrap/application.yaml,
 # id ...d0) call ThunderID's management API: it creates each data-consumer
 # application in its member's organization unit and assigns it the
-# DataConsumerGetData role above (id ...092). ThunderID 1.0.1 only has the one
+# DataConsumerGetData role above (id ...092). ThunderID 1.1.1 only has the one
 # coarse `system` permission on its built-in System resource server (id ...020),
 # so this is the same access the Administrator role has.
 resource_type: role
