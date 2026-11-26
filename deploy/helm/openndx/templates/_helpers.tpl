@@ -83,8 +83,6 @@ oe:
   values: orchestrationEngine
   component: orchestration-engine
   configMap: true
-  env:
-    - {name: SERVICE_NAME, value: orchestration-engine}
 pdp:
   values: policyDecisionPoint
   component: policy-decision-point
