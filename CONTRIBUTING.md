@@ -111,8 +111,8 @@ Before the first run, create the configuration files, which Git ignores, from th
 The example configurations point at the ports that `make deps` publishes on `localhost`, and read their secrets from the environment. An `export` lasts only for its terminal, so set them in each terminal you start a service from. With the Compose defaults:
 
 ```bash
-export DB_PASSWORD=1234          # PowerShell: $env:DB_PASSWORD = "1234"
-export IDP_CLIENT_SECRET=1234    # the Portal Backend's ThunderID client secret
+export DB_PASSWORD=1234                   # PowerShell: $env:DB_PASSWORD = "1234"
+export PORTAL_BACKEND_CLIENT_SECRET=1234  # the Portal Backend's ThunderID client secret
 ```
 
 If something else on your machine already uses port 5432, such as a local PostgreSQL installation, set `DB_PORT` in `.env` to a free port before `make deps`, and use that port in the configurations. Each component's README lists its configuration keys.

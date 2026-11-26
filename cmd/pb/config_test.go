@@ -393,7 +393,6 @@ func TestCommittedConfigsLoad(t *testing.T) {
 	t.Setenv("DB_NAME_PB", "portal_backend")
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("PB_AUDIENCE", "http://pb.openndx.local")
-	t.Setenv("IDP_CLIENT_SECRET", "1234")
 	t.Setenv("PORTAL_BACKEND_CLIENT_SECRET", "1234")
 	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")
 	t.Setenv("ARGUS_API_KEY", "1234")

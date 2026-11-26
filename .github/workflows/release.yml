@@ -161,7 +161,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            SERVICE_PATH=${{ matrix.service.name }}
             BUILD_VERSION=${{ needs.prepare.outputs.version }}
             BUILD_TIME=${{ needs.prepare.outputs.build_time }}
             GIT_COMMIT=${{ github.sha }}

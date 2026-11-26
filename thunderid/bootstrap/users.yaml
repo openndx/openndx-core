@@ -5,12 +5,11 @@
 # foundational-ID shape OE uses as its `consentEngine.ownerIdArgName`
 # (config.yaml) and seeds as the consent record's OwnerID (access.go's dataOwnerID, taken
 # verbatim from the query's `nic` argument). Consent-engine's owner-match is a
-# literal string compare against a JWT claim (IDP_SUBJECT_CLAIM, default "sub"
-# — see internal/ce/config/config.go), so for a citizen to be recognized as the
+# literal string compare against the JWT claim named by idp.subjectClaim
+# (default "sub" — see cmd/ce/config.go), so for a citizen to be recognized as the
 # owner of a given `nic`, that exact value has to come back in their token.
-# Point consent-engine's IDP_SUBJECT_CLAIM at "nic" (see .env.example) and add
-# `nic` to the Consent Portal's token attribute lists (application.yaml) for
-# this to actually take effect — a schema field alone doesn't put it in a token.
+# Compose sets IDP_SUBJECT_CLAIM=nic for consent-engine, and application.yaml
+# puts `nic` in the Consent Portal's tokens — a schema field alone doesn't.
 resource_type: user_type
 id: 01900000-0000-7000-8000-000000000032
 category: user

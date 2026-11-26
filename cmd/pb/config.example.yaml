@@ -39,7 +39,7 @@ idp:
   management:
     baseURL: http://localhost:8090
     clientID: PORTAL_BACKEND
-    clientSecret: "{{env:IDP_CLIENT_SECRET}}"
+    clientSecret: "{{env:PORTAL_BACKEND_CLIENT_SECRET}}"
     scopes: [system]
     # ThunderID's System resource server, which owns the `system` scope.
     resource: https://localhost:8090/mcp

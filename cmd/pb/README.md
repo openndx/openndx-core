@@ -35,7 +35,7 @@ Natively, while the rest of the stack runs in Docker. No container calls PB, so 
 make up
 docker compose stop portal-backend
 cp cmd/pb/config.example.yaml cmd/pb/config.yaml    # once; config.yaml is git-ignored
-export DB_PASSWORD=1234 IDP_CLIENT_SECRET=1234      # the Compose defaults
+export DB_PASSWORD=1234 PORTAL_BACKEND_CLIENT_SECRET=1234    # the Compose defaults
 cd cmd/pb && go run .
 ```
 
@@ -43,7 +43,7 @@ cd cmd/pb && go run .
 
 ## Configuration
 
-PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags or environment variables. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), the only environment variable read is the audit client library's `ENABLE_AUDIT`: `false` turns auditing off. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. Required keys:
 

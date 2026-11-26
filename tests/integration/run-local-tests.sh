@@ -109,8 +109,6 @@ echo ""
 # Run integration tests
 echo "🧪 Running integration tests..."
 echo "========================================"
-export GO_ENV=test
-export TEST_TIMEOUT=30m
 
 if go test -v -race -timeout 30m ./...; then
     echo ""
@@ -129,9 +127,6 @@ else
     echo ""
     echo "=== All Service Logs ==="
     docker compose -f docker-compose.db.yml -f docker-compose.test.yml logs
-    echo ""
-    echo "=== Shared Database Logs ==="
-    docker compose -f docker-compose.db.yml -f docker-compose.test.yml logs shared-db
     TEST_RESULT=1
 fi
 

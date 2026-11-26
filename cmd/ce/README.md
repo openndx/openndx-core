@@ -41,7 +41,7 @@ The Orchestration Engine and the Consent Portal call the CE, so to use them with
 
 ## Configuration
 
-The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags or environment variables. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), it reads only the metrics settings, such as `SERVICE_NAME` and `OTEL_METRICS_EXPORTER`, listed in [observability/README.md](../../observability/README.md#settings). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. The placeholder must be the whole value, and an unset or empty variable stops the service.
 
@@ -60,6 +60,7 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `idp.issuer`, `idp.audience`                                                      | none                       | **Required.** Expected token `iss` and `aud`. Compose uses ThunderID's base URL and `CONSENT_PORTAL`.                  |
 | `idp.subjectClaim`                                                                | `sub`                      | Token claim whose value must equal the consent's `ownerId`. Compose sets `nic`. A token without it gets `401`.         |
 | `idp.insecureSkipTLSVerify`                                                       | `false`                    | Skips TLS verification for the JWKS fetch. Development only.                                                           |
+| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required`               | `false`                    | `true` rejects a token whose claim is absent or blank.                                                                 |
 | `database.driver`                                                                 | `postgres`                 | Only `postgres` is supported.                                                                                          |
 | `database.postgres.host`, `.user`, `.password`                                    | none                       | **Required.**                                                                                                          |
 | `database.postgres.port`                                                          | `5432`                     |                                                                                                                        |

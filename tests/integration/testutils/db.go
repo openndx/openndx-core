@@ -26,10 +26,10 @@ func getEnvOrDefault(key, defaultValue string) string {
 // SECURITY NOTE: Database password must be provided via TEST_DB_PASSWORD environment variable.
 // The function will fail if password is not set to prevent using weak default credentials.
 func SetupPostgresTestDB(t *testing.T) *gorm.DB {
-	// Use environment variables that match docker-compose.test.yml
-	// These can be overridden for local testing
+	// WithTestDBEnv sets the port and database of pdp-db (5433) or ce-db
+	// (5434) from docker-compose.db.yml before this runs.
 	host := getEnvOrDefault("TEST_DB_HOST", "localhost")
-	port := getEnvOrDefault("TEST_DB_PORT", "5432") // Default matches docker-compose port mapping
+	port := getEnvOrDefault("TEST_DB_PORT", "5432")
 	user := getEnvOrDefault("TEST_DB_USERNAME", "postgres")
 
 	// Require password to be explicitly set - no weak default

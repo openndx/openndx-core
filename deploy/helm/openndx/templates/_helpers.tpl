@@ -91,6 +91,8 @@ ce:
   values: consentEngine
   component: consent-engine
   configMap: true
+  env:
+    - {name: SERVICE_NAME, value: consent-engine}
 consent-portal:
   values: consentPortal
   component: consent-portal

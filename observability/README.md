@@ -44,7 +44,7 @@ A service that uses the package reads these environment variables the first time
 | `SERVICE_NAME` | `openndx-service` | The `service_name` on `target_info`. |
 | `SERVICE_VERSION` | `dev` | The `service_version` on `target_info`. |
 
-Compose sets none of them for the Consent Engine, so its metrics report `service_name="openndx-service"`.
+Compose and the Helm chart set `SERVICE_NAME=consent-engine` for the Consent Engine, and Compose passes `OTEL_METRICS_EXPORTER` from `.env`.
 
 ## Adding metrics to a service
 

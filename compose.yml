@@ -112,8 +112,6 @@ services:
   # -------------------------------------------------------------------
   # OpenNDX services
   # -------------------------------------------------------------------
-  # IDP_ISSUER is ThunderID's public URL (the `iss` it stamps into tokens), while
-  # IDP_JWKS_URL uses its compose-network address to actually reach the endpoint.
   policy-decision-point:
     build:
       context: .
@@ -160,6 +158,9 @@ services:
       - IDP_PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
       - CONSENT_ENGINE_AUDIENCE=${CONSENT_ENGINE_AUDIENCE:-CONSENT_PORTAL}
       - IDP_SUBJECT_CLAIM=${IDP_SUBJECT_CLAIM:-nic}
+      # Read by the metrics the CE serves at /metrics (observability/README.md).
+      - SERVICE_NAME=consent-engine
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-prometheus}
     volumes:
       - ./cmd/ce/config.docker.yaml:/app/config/config.yaml:ro
     depends_on:
@@ -224,11 +225,9 @@ services:
     # Settings are in cmd/oe/config.docker.yaml; it reads these values, shared
     # with other services, from this environment.
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-local}
       # IDP_AUDIENCE is OE's resource server (thunderid/bootstrap/resource.yaml):
       # consumers request `resource=http://api.openndx.local` with client_credentials.
       - IDP_PUBLIC_URL=${IDP_PUBLIC_URL:-http://localhost:8090}
-      - IDP_JWKS_URL=${IDP_JWKS_URL:-http://thunderid:8090/oauth2/jwks}
       - IDP_AUDIENCE=${IDP_AUDIENCE:-http://api.openndx.local}
       - AUDIT_SERVICE_URL=${AUDIT_SERVICE_URL:-http://audit-service:3001}
       - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
@@ -299,7 +298,8 @@ services:
       - DB_PORT=5432
       - DB_USERNAME=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-1234}
-      - DB_NAME=${DB_NAME_AUDIT:-audit}
+      # init-db.sql creates this database.
+      - DB_NAME=audit
       - DB_SSLMODE=${DB_SSLMODE:-disable}
       - ARGUS_API_KEY=${ARGUS_API_KEY:-1234}
     depends_on:

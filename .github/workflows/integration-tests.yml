@@ -15,14 +15,12 @@ on:
       - "internal/database/**"
       - "cmd/oe/**"
       - "internal/oe/**"
-      - "internal/config/**"
-      - "internal/constants/**"
+      - "internal/authn/**"
+      - "internal/logging/**"
       - "internal/monitoring/**"
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
-      - "exchange/shared/**"
-      - "shared/**"
       - ".github/workflows/integration-tests.yml"
   # Run on pull requests to main or int-test-fail-paths
   pull_request:
@@ -36,14 +34,12 @@ on:
       - "internal/database/**"
       - "cmd/oe/**"
       - "internal/oe/**"
-      - "internal/config/**"
-      - "internal/constants/**"
+      - "internal/authn/**"
+      - "internal/logging/**"
       - "internal/monitoring/**"
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
-      - "exchange/shared/**"
-      - "shared/**"
       - ".github/workflows/integration-tests.yml"
   # Allow manual trigger
   workflow_dispatch:
@@ -140,19 +136,7 @@ jobs:
 
       - name: Start Services
         working-directory: tests/integration
-        env:
-          # PDP Config
-          PDP_PORT: 8082
-          PDP_DB_HOST: localhost
-          PDP_DB_PORT: 5433
-
-          # CE Config
-          CE_PORT: 8081
-          CE_DB_HOST: localhost
-          CE_DB_PORT: 5434
-
-          # OE Config
-          OE_PORT: 4000
+        # Each service reads only the config file it is given.
         run: |
           mkdir -p logs
 
@@ -173,7 +157,7 @@ jobs:
           echo "CE PID: $CE_PID"
 
           echo "🚀 Starting Mock Provider..."
-          PORT=8083 \
+          # Listens on 8083.
           ./bin/mock-provider > logs/mock-provider.log 2>&1 &
           MOCK_PID=$!
           echo "Mock Provider PID: $MOCK_PID"
@@ -225,8 +209,6 @@ jobs:
       - name: Run integration tests
         working-directory: tests/integration
         env:
-          GO_ENV: test
-          TEST_TIMEOUT: ${{ env.TEST_TIMEOUT }}
           SKIP_DOCKER_COMPOSE_CHECK: "true"
         run: |
           echo "🧪 Running integration tests..."
@@ -256,5 +238,5 @@ jobs:
           pkill -f mock-provider || true
           pkill -f orchestration-engine || true
           docker compose -f docker-compose.db.yml down -v
-          rm -rf bin logs ce-config.ci.yaml pdp-config.ci.yaml
+          rm -rf bin logs ce-config.ci.yaml pdp-config.ci.yaml oe-config.ci.yaml
           echo "✅ Cleanup complete"

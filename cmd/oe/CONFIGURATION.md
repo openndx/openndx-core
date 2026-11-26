@@ -45,6 +45,8 @@ Each entry is an [`OpenNSW/core/remote`](https://github.com/OpenNSW/core/tree/ma
 | `auth.apiKey.key`, `auth.apiKey.value` | For `apiKey`: the header name and value sent with each request. |
 | `auth.bearer.token` | For `bearer`: sent as `Authorization: Bearer <token>`. |
 | `auth.oauth2.tokenURL`, `auth.oauth2.clientID`, `auth.oauth2.clientSecret`, `auth.oauth2.scopes` | For `oauth2`: client-credentials flow, with the client credentials sent as HTTP Basic auth. `scopes` is a string list. |
+| `auth.oauth2.endpointParams` | Extra parameters for the token request, as a map of name to a string or a list of strings, for example `resource`. `grant_type`, `scope`, `client_id` and `client_secret` are rejected at startup: the flow sets them. |
+| `auth.oauth2.insecureSkipTLSVerify` | `true` skips TLS certificate checks on the token request. Local development only. |
 | `tls.clientCertFile`, `tls.clientKeyFile` | Client certificate for mutual TLS. Both are required when `tls` is set. |
 
 ### argMappings[]
@@ -84,8 +86,9 @@ How the OE authenticates data consumers on `POST /public/graphql`. The only othe
 | `idp.issuer` | | **Required.** The expected `iss`. Must be an `http` or `https` URL, equal to the `iss` the identity provider puts in its tokens. ThunderID's is its public URL (`http://localhost:8090` locally), not its `/oauth2/token` endpoint. |
 | `idp.audience` | | **Required.** The expected `aud`: the OE's resource server identifier. |
 | `idp.insecureSkipTLSVerify` | `false` | `true` skips TLS certificate checks when fetching the JWKS. Local development only. |
+| `idp.claims.email.required`, `idp.claims.ouId.required`, `idp.claims.ouHandle.required` | `false` | `true` rejects a token whose claim is absent or blank, client-credentials tokens included, which usually carry none of them. |
 
-The OE exits at startup if `jwksURL`, `issuer` or `audience` is missing or invalid. In Docker Compose, [config.docker.yaml](config.docker.yaml) reads them from `IDP_JWKS_URL` (ThunderID's address on the Compose network), `IDP_PUBLIC_URL` (its public URL) and `IDP_AUDIENCE` (default `http://api.openndx.local`).
+The OE exits at startup if `jwksURL`, `issuer` or `audience` is missing or invalid. In Docker Compose, [config.docker.yaml](config.docker.yaml) fetches the keys from ThunderID's address on the Compose network (`http://thunderid:8090/oauth2/jwks`), and reads the issuer from `IDP_PUBLIC_URL` (ThunderID's public URL) and the audience from `IDP_AUDIENCE` (default `http://api.openndx.local`).
 
 A consumer sends an access token in the `Authorization: Bearer <token>` header. In the bundled stack, consumers are machine clients that get a ThunderID `client_credentials` token requested with `resource=http://api.openndx.local`; see the example in [dev/README.md](../../dev/README.md). The token must pass these checks:
 

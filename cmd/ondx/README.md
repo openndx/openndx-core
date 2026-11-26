@@ -167,7 +167,7 @@ ondx login --profile local   # one-off use of another profile
 
 ### Callback port
 
-`ondx login` starts a short-lived local server on `127.0.0.1` to receive the redirect. By default it uses a random port. A provider that registers an exact redirect URI needs a fixed `--callback-port`. ThunderID's `NDX_CLI` client is registered for `http://127.0.0.1:8765/callback`, so with `--client-id NDX_CLI` the CLI rejects any other port, including the random default, rather than attempt a login ThunderID would refuse.
+`ondx login` starts a short-lived local server on `127.0.0.1` to receive the redirect. By default it uses the active profile's callback port: 8765 for the built-in `local` profile, and a random port for a profile that sets none. A provider that registers an exact redirect URI needs a fixed `--callback-port`. ThunderID's `NDX_CLI` client is registered for `http://127.0.0.1:8765/callback`, so with `--client-id NDX_CLI` the CLI rejects any other port, a random one included, rather than attempt a login ThunderID would refuse.
 
 ### Resource binding
 
