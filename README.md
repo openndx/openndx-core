@@ -128,7 +128,7 @@ OpenNDX doesn't keep the data that consumers request: the Orchestration Engine h
 - **Tutorial:** the [end-to-end walkthrough](dev/WALKTHROUGH.md), which runs the platform with the [mock providers](dev/README.md).
 - **How-to guides:** [add a data provider](cmd/oe/PROVIDER_CONFIGURATION.md), [deploy with Helm](deploy/helm/openndx/README.md), [make a release](docs/RELEASE.md).
 - **Reference:** each component's README, linked from the [table above](#architecture), with its configuration and `openapi.yaml`; the [policy model](cmd/pdp/POLICY_MODEL.md), the [consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md) and the [Portal Backend's authorization](cmd/pb/AUTHORIZATION.md); the [`ondx` CLI](cmd/ondx/README.md).
-- **Contributor and ops references (refresh pending):** [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
+- **Contributor and ops references:** [integration tests](tests/integration/README.md), [observability stack](observability/README.md)
 
 ## Get help
 

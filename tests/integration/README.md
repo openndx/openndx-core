@@ -1,277 +1,85 @@
 # Integration Tests
 
-End-to-end integration tests for the Data Exchange Platform covering GraphQL workflows, consent management, and policy decisions.
+These tests run the Policy Decision Point, the Consent Engine and the Orchestration Engine together in Docker, and call them over HTTP. They are a separate Go module, so `make test` doesn't run them.
 
----
+## Running the tests
 
-## Quick Start
-
-### Option 1: Automated Script (Recommended)
-
-Run the automated test script that mimics the CI/CD workflow:
+From the repository root:
 
 ```bash
-cd tests/integration
-./run-local-tests.sh
+make test-integration
 ```
 
-This script:
-- Checks Docker and Go are available
-- Installs dependencies
-- Starts all services
-- Waits for services to be healthy
-- Runs tests with race detection
-- Cleans up automatically
+This runs [`run-local-tests.sh`](run-local-tests.sh), which:
 
-**Skip go.mod check for local development:**
-```bash
-SKIP_GO_MOD_CHECK=1 ./run-local-tests.sh
-```
+1. checks that Docker is running, and that this module's `go.mod` and `go.sum` have no uncommitted changes (`SKIP_GO_MOD_CHECK=1` skips that check);
+2. starts the test stack with `docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build`, and waits until each service is healthy;
+3. runs `go test -v -race -timeout 30m ./...`;
+4. removes the containers and their volumes.
 
-### Option 2: Manual Steps
+To run the steps yourself, from `tests/integration`:
 
 ```bash
-cd tests/integration
-docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build
 go test -v ./...
-docker compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml down -v
 ```
 
-**Prerequisites:** Docker and Docker Compose installed.
+`docker-compose.test.yml` isn't a valid project on its own: its services depend on the databases in `docker-compose.db.yml`.
 
----
+Many tests skip, rather than fail, when a service they need doesn't answer, so check the skip messages.
 
-## Test Structure
+## The test stack
 
-### Directory Structure
+| Service | Host port | Notes |
+|---|---|---|
+| Policy Decision Point | 8082 | Configured by [`pdp-config.yaml`](pdp-config.yaml) |
+| Consent Engine | 8081 | Configured by [`ce-config.yaml`](ce-config.yaml) |
+| Orchestration Engine | 4000 | Configured by [`oe-config.yaml`](oe-config.yaml), with the consumer schema [`schema.graphql`](schema.graphql) |
+| Mock provider | 8083 | [`mock-provider/`](mock-provider): a GraphQL provider, and the issuer of the tests' consumer tokens (`POST /token`, `GET /jwks`) |
+| `pdp-db` | 5433 | PostgreSQL database `policy_db`, user `postgres`, password `password` |
+| `ce-db` | 5434 | PostgreSQL database `consent_db`, user `postgres`, password `password` |
 
-```
-tests/integration/
-├── README.md                    # This file
-├── docker-compose.test.yml     # Docker Compose configuration for tests
-├── docker-compose.db.yml       # Database-only Docker Compose configuration
-├── go.mod                      # Go module definition
-├── go.sum                      # Go module checksums
-├── run-local-tests.sh          # Automated test script
-├── schema.graphql              # GraphQL schema for tests
-├── oe-config.yaml              # Orchestration Engine config
-├── init-stats.sh               # Statistics initialization script
-├── graphql_flow_test.go        # GraphQL workflow tests
-├── services_integration_test.go # Service health checks
-├── audit_flow_integration_test.go # Audit flow integration tests
-├── audit_traceid_test.go       # Audit trace ID tests
-├── consent/                    # Consent Engine integration tests
-│   └── consent_test.go
-├── policy/                     # Policy Decision Point integration tests
-│   └── policy_test.go
-├── database/                  # Database connection integration tests
-│   ├── consent_database_test.go # Consent Engine database tests
-│   └── pdp_database_test.go    # Policy Decision Point database tests
-├── testutils/                  # Test utilities
-│   ├── db.go                   # Database helpers
-│   └── http.go                 # HTTP client helpers
-├── bin/                        # Compiled binaries (not committed)
-│   └── consent-engine
-└── mock-provider/              # Mock provider service and consumer token issuer
-    ├── Dockerfile
-    └── main.go
-```
+The databases load [`cmd/pdp/schema.sql`](../../cmd/pdp/schema.sql) and [`cmd/ce/schema.sql`](../../cmd/ce/schema.sql), the same files as the main stack. The Orchestration Engine verifies consumer tokens against the mock provider's keys, with issuer `http://mock-idp.test` and audience `http://api.openndx.local`. The Portal Backend isn't part of the stack, so `TestPortalBackend_Health` skips.
 
----
+The stack uses some of the main stack's host ports, so stop that first with `make down`.
 
-## Test Scenarios
+## Layout
 
-The PDP and CE database containers initialize their schemas from
-`../../cmd/pdp/schema.sql` and `../../cmd/ce/schema.sql`, the same files used by
-the root development stack.
+- [`graphql_flow_test.go`](graphql_flow_test.go) and [`failure_paths_test.go`](failure_paths_test.go): queries through the Orchestration Engine, on the success path and when a field policy, grant, consent, token, service or provider is missing, expired, rejected or down.
+- [`policy/`](policy) and [`consent/`](consent): the Policy Decision Point's and the Consent Engine's APIs, including their error paths.
+- [`database/`](database): connections to the two test databases.
+- [`services_integration_test.go`](services_integration_test.go): the Portal Backend health check.
+- [`testutils/`](testutils): HTTP and database helpers.
 
-### GraphQL Flow Tests
+## Settings
 
-**`TestGraphQLFlow_SuccessPath`** - Complete success path:
-- Creates a field policy in PDP
-- Adds application to allowlist
-- Creates consent record
-- Executes GraphQL query
-- Verifies PDP and Consent Engine integration
+The tests find the services through these environment variables:
 
-**`TestGraphQLFlow_MissingFieldPolicy`** - Tests behavior when field lacks a field policy (expects authorization error)
+| Variable | Default |
+|---|---|
+| `ORCHESTRATION_ENGINE_URL` | `http://127.0.0.1:4000/public/graphql` |
+| `PDP_URL` | `http://127.0.0.1:8082/api/v1/policy` |
+| `CONSENT_ENGINE_BASE_URL` | `http://127.0.0.1:8081` |
+| `MOCK_IDP_URL` | `http://127.0.0.1:8083` |
+| `PORTAL_BACKEND_URL` | `http://127.0.0.1:3000` |
 
-**`TestGraphQLFlow_UnauthorizedApp`** - Tests behavior when app has no consent (expects consent error)
+The tests in `database/` connect to `pdp-db` and `ce-db` themselves. The database helper in [`testutils/db.go`](testutils/db.go) otherwise reads `TEST_DB_HOST`, `TEST_DB_PORT`, `TEST_DB_USERNAME`, `TEST_DB_DATABASE` and `TEST_DB_SSLMODE`, and the password from `TEST_DB_PASSWORD` or `POSTGRES_PASSWORD`.
 
-**`TestGraphQLFlow_ServiceTimeout`** - Tests resilience when PDP is unavailable
-
-**`TestGraphQLFlow_InvalidQuery`** - Tests malformed GraphQL query handling
-
-**`TestGraphQLFlow_MissingToken`** - Tests authentication failure (missing JWT)
-
-**`TestGraphQLFlow_RejectedTokens`** - Tests that the Orchestration Engine rejects unsigned, expired, wrong-issuer and wrong-audience tokens with `401`
-
-Consumer tokens are signed by the mock provider (`POST /token`), which also serves the JWKS the Orchestration Engine verifies them against (`GET /jwks`). The Orchestration Engine's `idp` settings in `oe-config.yaml` point `jwksURL` at it, with issuer `http://mock-idp.test` and audience `http://api.openndx.local`.
-
-### Service Health Tests
-
-**`TestPortalBackend_Health`** - Verifies Portal Backend health endpoint
-
----
-
-## Configuration
-
-### Environment Variables
-
-**Database Credentials:**
-- `POSTGRES_PASSWORD` - Database password (default: `test-password-change-in-production` in `docker-compose.test.yml`; **override for security**)
-- `POSTGRES_USER` - Database username (default: `postgres`)
-- `POSTGRES_DB` - Database name (default: `postgres`)
-
-> **Note:** The default `POSTGRES_PASSWORD` is for convenience in local testing only. Always set a strong password for production or CI environments.
-
-**Service URLs (Optional):**
-- `ORCHESTRATION_ENGINE_URL` - Default: `http://127.0.0.1:4000/public/graphql`
-- `PDP_URL` - Default: `http://127.0.0.1:8082/api/v1/policy`
-- `CONSENT_ENGINE_URL` - Default: `http://127.0.0.1:8081/consents`
-- `PORTAL_BACKEND_URL` - Default: `http://127.0.0.1:3000`
-
-**Setting Variables:**
-```bash
-# Export before running
-export POSTGRES_PASSWORD=your-password
-go test ./...
-
-# Or inline
-POSTGRES_PASSWORD=your-password go test ./...
-```
-
-**Security Notes:**
-- Never commit `.env` files or credentials
-- Test credentials should differ from production
-- `docker-compose.test.yml` uses environment variable substitution
-
----
-
-## Running Tests
-
-### Run All Tests
-```bash
-docker compose -f docker-compose.test.yml up -d
-go test -v ./...
-docker compose -f docker-compose.test.yml down -v
-```
-
-### Run Specific Test
-```bash
-go test -v -run TestGraphQLFlow_SuccessPath
-go test -v -run TestGraphQLFlow_MissingFieldPolicy
-```
-
-### Run with Verbose Output
-```bash
-go test -v ./...
-```
-
----
-
-## Test Services
-
-The `docker-compose.test.yml` starts:
-
-- **PostgreSQL** (5432) - Shared database for all services
-- **Policy Decision Point** (8082) - Policy evaluation service
-- **Consent Engine** (8081) - Consent management service
-- **Orchestration Engine** (4000) - GraphQL orchestration service
-- **Portal Backend** (8083) - Admin portal backend
-
-All services run on `test-network` Docker network.
-
----
-
-## Test Data
-
-Tests use unique identifiers (timestamp-based) for isolation:
-- Schema IDs: `test-schema-123` (matches `schema.graphql`)
-- App IDs: `test-consumer-app-{timestamp}`
-- Test constants: `testNIC`, `testEmail`, `testOwnerID`
-
-Tests automatically clean up created resources using `t.Cleanup()`.
-
----
+Set `TEST_VERIFY_DB=true` to run `TestConsent_DatabaseVerification`, and `SKIP_DOCKER_COMPOSE_CHECK=true` to skip the Docker Compose check before the query tests.
 
 ## Troubleshooting
 
-**Services not starting:**
 ```bash
-# Check logs
-docker compose -f docker-compose.test.yml logs
-
-# Verify services are healthy
-docker compose -f docker-compose.test.yml ps
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml ps
+docker compose -f docker-compose.db.yml -f docker-compose.test.yml logs <service>
 ```
 
-**Database connection errors:**
-- Verify `POSTGRES_PASSWORD` is set
-- Check database is healthy: `docker compose -f docker-compose.test.yml ps shared-db`
+If a port is taken, find what holds it with `lsof -i :<port>`, for 4000, 8081, 8082, 8083, 5433 and 5434.
 
-**Port conflicts:**
-```bash
-# Check what's using ports
-lsof -i :4000  # Orchestration Engine
-lsof -i :8081  # Consent Engine
-lsof -i :8082  # Policy Decision Point
-lsof -i :5432  # PostgreSQL
-```
+## Writing tests
 
-**Test failures:**
-- Ensure all services are healthy before running tests
-- Check service logs for errors
-- Verify GraphQL schema matches test expectations (`schema.graphql`)
-
----
-
-## Test Coverage
-
-Tests cover:
-- ✅ Complete GraphQL request/response flow
-- ✅ Field policy and allowlist management
-- ✅ Consent creation and validation
-- ✅ Authorization failures (missing metadata, unauthorized app)
-- ✅ Service resilience (timeout scenarios)
-- ✅ Invalid query handling
-- ✅ Authentication (missing tokens)
-- ✅ Service health checks
-
----
-
-## Architecture
-
-```
-Test Runner (go test)
-    ↓
-Docker Compose Services
-    ├── PostgreSQL (shared-db)
-    ├── Policy Decision Point
-    ├── Consent Engine
-    ├── Orchestration Engine
-    └── Portal Backend
-    ↓
-Test Utilities (testutils/)
-    ├── HTTP client helpers
-    └── Database helpers
-```
-
----
-
-## Contributing
-
-When adding new tests:
-
-1. **Use unique IDs** - Prevents test data conflicts
-2. **Add cleanup** - Use `t.Cleanup()` for resource cleanup
-3. **Use helpers** - Leverage `testutils` functions
-4. **Document** - Add godoc comments to test functions
-5. **Isolate** - Each test should be independent
-
----
-
-## Resources
-
-- [Go Testing Documentation](https://pkg.go.dev/testing)
-- [Testify Documentation](https://github.com/stretchr/testify)
+- Give test data unique IDs, so that tests don't collide.
+- Clean up what a test creates with `t.Cleanup()`.
+- Use the helpers in `testutils`.
+- Keep each test independent of the others, and document it with a Go doc comment.

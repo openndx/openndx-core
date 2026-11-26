@@ -153,51 +153,6 @@ Normalization preserves the previous identity behavior:
 
 Signature, issuer, audience, expiry, not-before, required-claim and standard-claim type checks still run before any claims view is returned.
 
-## Migrating to Claims()
-
-`ExtraClaims` and `ExtraClaims()` have been removed. This is an internal package, so all repository callers migrate together to `Claims()` without a deprecation period.
-
-| Before | After |
-|--------|-------|
-| `authCtx.ExtraClaims().String(name)` | `authCtx.Claims().String(name)` for any claim, including `email` and `sub` |
-| `authCtx.ExtraClaims()[name]` | `value, present := authCtx.Claims().Lookup(name)` |
-| `authCtx.ExtraClaims().Strings(name)` | `authCtx.Claims().Strings(name)` for an array; explicitly use `strings.Fields(claims.String(name))` if a custom string deliberately encodes a list |
-| `principal.Subject`, `principal.Email`, etc. | `principal.Subject()`, `principal.Email()`, etc., or the existing `AuthContext` methods |
-| `Principal{Subject: ..., Scopes: ...}` in tests | `authntest.MustPrincipal(map[string]any{"sub": ..., "scope": ...})` from `internal/authn/authntest`; it signs and validates fixtures in memory |
-
-Do not use `Lookup` presence alone to validate an owner ID: null and blank claims are now distinguishable from missing claims. For an identifier, use `String(name)` and reject `""`. A custom free-text claim is no longer split by `Strings`; only `scope` has that behavior.
-
-`Principal` no longer exports mutable identity fields. It is created by `TokenExtractor`, and its accessors read the private claim set. The old principal JSON representation, including `extraClaims`, has been removed. Callers needing a serialized representation should build an explicit response from the accessors.
-
-## Migrating from user and client principals
-
-Earlier versions split every caller into a user or a client principal by the token's `grant_type` claim. There is now one `Principal`.
-
-| Before                                                                                                 | After                                                                                                                                                               |
-|--------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `NewManager(userProfileSvc, cfg)`                                                                      | `NewManager(cfg)`                                                                                                                                                   |
-| `Middleware(userProfileSvc, extractor)` / `RequireAuth(userProfileSvc, extractor)`                     | `Middleware(extractor)` / `RequireAuth(extractor)`                                                                                                                  |
-| `UserProfileService.GetOrCreateUser`                                                                   | Your own middleware chained after `authn` — see "Middleware"                                                                                                        |
-| `authCtx.User.ID` (persisted ID)                                                                       | Whatever your provisioning middleware puts on the context                                                                                                           |
-| `authCtx.User.IDPUserID`                                                                               | `authCtx.Subject()`                                                                                                                                                 |
-| `authCtx.Client.ClientID`                                                                              | `authCtx.ClientID()`                                                                                                                                                |
-| `authCtx.User.Roles` / `authCtx.Client.Roles` (and `Scopes`, `ExtraClaims`)                            | `authCtx.Roles()` (and `Scopes()`, `Claims()`)                                                                                                                 |
-| `authCtx.Type()`, `UserPrincipalType`, `ClientPrincipalType`                                           | Removed — branch on roles, scopes or claims instead                                                                                                                 |
-| `authCtx.User.ExtraClaims.String("email")` (and `"ouId"`, `"ouHandle"`)                                | `authCtx.Email()` (and `OUID()`, `OUHandle()`)                                                                                                                      |
-| `UserClaims` / `ClientClaims` (`ClaimSpec{Optional, Required}`), `WithUserClaims` / `WithClientClaims` | `email` / `ouId` / `ouHandle`: `Claims` (`ClaimsConfig`) / `WithClaims`. Any other claim: `Claims()`, no declaration; check required ones in your own middleware |
-| `RolesClaim` / `WithRolesClaim`                                                                        | Removed — roles are always read from `roles`; map a differently-named roles claim to `roles` on the IdP side                                                        |
-
-Behaviour changes the compiler will not catch:
-
-- **`Subject()` now returns the JWT `sub` claim.** For user tokens it used to return the persisted user ID from `UserProfileService` (falling back to `sub`), and for client tokens it returned the `client_id`. Anything keyed by `Subject()` — stored records, audit entries, cache keys — must be checked.
-- **`sub` is required on every token.** Client-credentials tokens without `sub` used to be accepted; they are now rejected.
-- **`grant_type` is ignored.** Tokens without it, or with any value, are accepted. It is available through `Claims()` like any other claim.
-- **Only `email`, `ouId` and `ouHandle` can be required.** A token missing any other claim you previously listed as `Required` is now accepted; move that check into your own middleware. Requirements now apply to every token, not just user or client tokens.
-- **Use `Claims()` for generic lookups**, including `email`, `ouId` and `ouHandle`, which were excluded by the removed `ExtraClaims()` API.
-- **Custom claims need no declaration.** Code that treats claim presence as "declared in config" must be checked.
-- **A leftover `rolesClaim` key in a yaml config is silently ignored**, so roles are read from `roles` instead. If your IdP emits roles under another name, every caller now has no roles until the IdP maps them to `roles`.
-- **The JSON shape of `AuthContext` changed**, for anything that serializes it.
-
 ## Health check
 
 ```go
