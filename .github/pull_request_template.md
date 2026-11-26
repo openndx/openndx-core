@@ -36,9 +36,9 @@ Provide a brief description of what this PR accomplishes and why these changes a
 
 ## Related Issues
 
-Closes #123 <!-- Replace 123 with the relevant issue number -->
-Fixes #123 <!-- Replace 123 with the relevant issue number -->
-Related to #123 <!-- Replace 123 with the relevant issue number -->
+Closes #ISSUE <!-- Replace ISSUE with the relevant issue number -->
+Fixes #ISSUE <!-- Replace ISSUE with the relevant issue number -->
+Related to #ISSUE <!-- Replace ISSUE with the relevant issue number -->
 
 ## Screenshots/Demo
 

@@ -31,7 +31,7 @@ A partial unique index on `(owner_id, app_id)` for `pending` and `approved` rows
 
 Required in the request: `appId`, `consentRequirement.ownerId` and at least one entry in `consentRequirement.fields`, each with `fieldName` and `schemaId`. The fields are the `consentRequiredFields` that the Policy Decision Point returned.
 
-The response is `{consentId, status, consentPortalUrl, fields}`. `consentPortalUrl` is present only while the consent is `pending`, and has the form `<CONSENT_PORTAL_URL>?consentId=<uuid>`.
+The response is `{consentId, status, consentPortalUrl, fields}`. `consentPortalUrl` is present only while the consent is `pending`, and has the form `<consentPortalURL>?consentId=<uuid>`.
 
 ## Durations
 
@@ -67,11 +67,11 @@ Any other combination returns `409` with `CONSENT_NOT_PENDING` or `CONSENT_NOT_R
 
 ## Who may decide
 
-The portal API verifies the bearer token with the shared `internal/authn` package, the same one Portal Backend and the Orchestration Engine use. The token must be signed with RS256, RS384 or RS512 by a key in `IDP_JWKS_URL`, carry a `kid` header, match `IDP_ISSUER` and `IDP_AUDIENCE`, be unexpired (30 seconds of clock skew are allowed), and have `sub` and `client_id` claims. Anything else returns `401` with `{"error":"unauthorized","message":"..."}`.
+The portal API verifies the bearer token with the shared `internal/authn` package, the same one Portal Backend and the Orchestration Engine use. The token must be signed with RS256, RS384 or RS512 by a key in the JWKS at `idp.jwksURL`, carry a `kid` header, match `idp.issuer` and `idp.audience`, be unexpired (30 seconds of clock skew are allowed), and have `sub` and `client_id` claims. Anything else returns `401` with `{"error":"unauthorized","message":"..."}`.
 
-The CE then takes the value of the claim named by `IDP_SUBJECT_CLAIM` (default `sub`) as the owner; a token without that claim also returns `401`. That value must equal the consent's `ownerId`; otherwise the call returns `403`. So `ownerId`, which the Orchestration Engine takes from the data-owner identifier argument of the GraphQL query, must be the same identifier the identity provider puts in that claim. In the bundled stack that is the citizen's `nic`.
+The CE then takes the value of the claim named by `idp.subjectClaim` (default `sub`) as the owner; a token without that claim also returns `401`. That value must equal the consent's `ownerId`; otherwise the call returns `403`. So `ownerId`, which the Orchestration Engine takes from the data-owner identifier argument of the GraphQL query, must be the same identifier the identity provider puts in that claim. In the bundled stack that is the citizen's `nic`.
 
-Signing keys are fetched from `IDP_JWKS_URL` on the first portal call and cached for 5 minutes. A token that names a key ID not in the cache forces one re-fetch, so rotated keys are picked up immediately. The CE exits at startup if `IDP_JWKS_URL`, `IDP_ISSUER` or `IDP_AUDIENCE` is missing, or if the JWKS URL or issuer is not a valid URL; an unreachable JWKS URL only makes portal calls fail with `401`.
+Signing keys are fetched from `idp.jwksURL` on the first portal call and cached for 5 minutes. A token that names a key ID not in the cache forces one re-fetch, so rotated keys are picked up immediately. The CE exits at startup if `idp.jwksURL`, `idp.issuer` or `idp.audience` is missing, or if the JWKS URL or issuer is not a valid URL; an unreachable JWKS URL only makes portal calls fail with `401`.
 
 ## Database
 

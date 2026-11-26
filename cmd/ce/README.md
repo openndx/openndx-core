@@ -120,7 +120,7 @@ TEST_DATABASE_URL='postgres://postgres:password@localhost:5432/consent_test?sslm
   go test ./cmd/ce/... ./internal/database -count=1 -v
 ```
 
-Docker image: `docker build -t consent-engine -f cmd/ce/Dockerfile .` from the repo root. The configuration is in [`config.go`](config.go). Routes are registered in [`main.go`](main.go); the code is in [`internal/ce`](../../internal/ce): `middleware`, `handlers`, `services`, `models`. CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors).
+Docker image: `docker build -t consent-engine -f cmd/ce/Dockerfile .` from the repo root. The configuration is in [`config.go`](config.go). Routes are registered in [`main.go`](main.go); the code is in [`internal/ce`](../../internal/ce): `middleware`, `handlers`, `services`, `models`, `utils`. CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors).
 
 ## More docs
 

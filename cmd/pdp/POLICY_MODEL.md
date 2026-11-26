@@ -78,6 +78,8 @@ The PDP doesn't authenticate callers or decide who may grant a bypass. That is a
 | 5 | `requiresConsent`                                                  | `consent_required` |                    |
 | 6 | Otherwise                                                          | `allow`            |                    |
 
+Rule 1 is a safeguard in the code: the endpoint rejects a request without `applicationId` with HTTP 400 before any rule runs.
+
 A grant is valid up to and including its `expiresAt`. A field that doesn't require the allow-list ignores the grant's expiry: an expired grant neither denies it nor marks it `expired`.
 
 A requested field without a field policy fails the whole request with HTTP 500 and `field policy not found for schema_id ... and field_name ...`.

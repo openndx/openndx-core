@@ -98,14 +98,13 @@ A decision request and response:
 
 ## How it works
 
-For each requested `(schemaId, fieldName)`, in order:
+A request without `applicationId`, or with no `requiredFields`, is rejected with **HTTP 400** before any field is checked. Then, for each requested `(schemaId, fieldName)`, in order:
 
 1. No field policy: the whole request fails with **HTTP 500**.
-2. No application ID: the field is *unauthorized*.
-3. The field requires the allow-list and the application holds no active grant for it: the field is *unauthorized*.
-4. The field requires the allow-list and the grant has expired: the field is *expired*.
-5. The field requires consent: it needs owner consent, unless the application holds an unexpired consent bypass grant, which allows it.
-6. Otherwise the field is allowed.
+2. The field requires the allow-list and the application holds no active grant for it: the field is *unauthorized*.
+3. The field requires the allow-list and the grant has expired: the field is *expired*.
+4. The field requires consent: it needs owner consent, unless the application holds an unexpired consent bypass grant, which allows it.
+5. Otherwise the field is allowed.
 
 `appAuthorized` is true when no field is unauthorized. A field allowed through a consent bypass carries the `audit.consent_bypassed` obligation, which the Orchestration Engine records in its audit event. Field semantics, the consent bypass workflow and the table schema are in [POLICY_MODEL.md](POLICY_MODEL.md).
 

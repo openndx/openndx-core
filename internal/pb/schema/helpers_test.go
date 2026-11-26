@@ -94,7 +94,7 @@ func createTestSchema(t *testing.T, db *gorm.DB, memberID string) string {
 var testIDs atomic.Int64
 
 // uniqueID returns a number no other call in this test binary returns, for
-// building unique test IDs and emails. uniqueID() isn't unique:
+// building unique test IDs and emails. time.Now().UnixNano() isn't unique:
 // on Windows, consecutive calls can return the same value.
 func uniqueID() int64 {
 	return testIDs.Add(1)

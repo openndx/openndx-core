@@ -79,12 +79,12 @@ A `401` shows a "session expired, sign in again" message, a `403` goes to an una
 
 - The `consentId` from the link is kept in `localStorage` across the sign-in redirect and removed after a decision.
 - After a decision the portal shows a confirmation, tells the opening window (`postMessage("consentGranted")`), and tries to close itself. The Consent Engine returns no return URL, so there is no redirect back to the consumer; the consumer repeats its request.
-- A consent is bound to the data owner: the token's subject claim must equal the consent's `ownerId`. Which claim that is, is set in the Consent Engine (`IDP_SUBJECT_CLAIM`). The bundled stack uses `nic`, so the access token must carry it. See [CONSENT_LIFECYCLE.md](../../../cmd/ce/CONSENT_LIFECYCLE.md#who-may-decide).
+- A consent is bound to the data owner: the token's subject claim must equal the consent's `ownerId`. Which claim that is, is set in the Consent Engine (`idp.subjectClaim`). The bundled stack uses `nic`, so the access token must carry it. See [CONSENT_LIFECYCLE.md](../../../cmd/ce/CONSENT_LIFECYCLE.md#who-may-decide).
 
 ## Security and deployment
 
 - **Identity provider client.** A public client with authorization-code and PKCE, and exact redirect URIs for the sign-in and sign-out URLs. In the bundled stack that is the ThunderID `CONSENT_PORTAL` client, which registers `<portal URL>` and `<portal URL>/callback` ([thunderid/bootstrap/application.yaml](../../../thunderid/bootstrap/application.yaml)). The same origin must be in ThunderID's CORS list ([cors.yaml](../../../thunderid/bootstrap/cors.yaml), currently `http://localhost:5173`).
-- **Consent Engine.** It must allow the portal's origin (`CONSENT_PORTAL_URL` is always allowed) and check tokens against the same issuer. Its `IDP_AUDIENCE` must match the token's `aud`; Compose uses `CONSENT_PORTAL`.
+- **Consent Engine.** It must allow the portal's origin (the origin of its `consentPortalURL` is always allowed) and check tokens against the same issuer. Its `idp.audience` must match the token's `aud`; Compose sets it to `CONSENT_PORTAL` through `CONSENT_ENGINE_AUDIENCE`.
 - **Content security.** The nginx image allows connections to `self`, `http:` and `https:` origins, so the browser can reach the Consent Engine and the identity provider.
 
 ## Development

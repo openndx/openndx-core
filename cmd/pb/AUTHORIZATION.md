@@ -4,13 +4,13 @@ How the Portal Backend decides who a caller is and what they may do. The overvie
 
 ## Authentication
 
-Every `/api/v1/*` request needs `Authorization: Bearer <access token>`. The token is validated by [`internal/authn`](../../internal/authn/README.md) against the identity provider's signing keys (`IDP_JWKS_URL`, cached for 5 minutes):
+Every `/api/v1/*` request needs `Authorization: Bearer <access token>`. The token is validated by [`internal/authn`](../../internal/authn/README.md) against the identity provider's signing keys (`idp.jwksURL`, cached for 5 minutes):
 
 | Check | Requirement |
 |---|---|
 | Signature | Valid for a key in the JWKS. |
-| `iss` | Equals `IDP_ISSUER`. |
-| `aud` | Contains `IDP_AUDIENCE`, PB's resource-server identifier. A token for any other audience is rejected, whichever client it was issued to. Clients request the audience as `resource=<IDP_AUDIENCE>` when they log in. |
+| `iss` | Equals `idp.issuer`. |
+| `aud` | Contains `idp.audience`, PB's resource-server identifier. A token for any other audience is rejected, whichever client it was issued to. Clients request the audience as `resource=<idp.audience>` when they log in. |
 | `sub`, `client_id` | Both present. |
 | `scope` | Space-separated scopes; see below. |
 | `ouId` | Optional. The caller's organization unit, which links the caller to a member. `email` is read when present. |
@@ -60,7 +60,7 @@ PB never reads role names. ThunderID grants scopes through roles on PB's resourc
 | `OpenNDX_Admin` | All twenty-two scopes, including `consent-bypass:read` and `consent-bypass:write` |
 | `OpenNDX_Member` | `read` and `write` on members, schemas, schema submissions, applications and application submissions (no `-all`) |
 
-ThunderID issues only the scopes a client requests and the user's roles allow, so clients must request the scopes they need, together with `resource=<IDP_AUDIENCE>`. The `ondx` `local` profile requests all of them; the portals take theirs from their scope setting.
+ThunderID issues only the scopes a client requests and the user's roles allow, so clients must request the scopes they need, together with `resource=<idp.audience>`. The `ondx` `local` profile requests all of them; the portals take theirs from their scope setting.
 
 ## Submission approval
 
