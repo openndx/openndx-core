@@ -50,14 +50,6 @@ const (
 	DurationDefault     GrantDuration = DurationOneHour // default duration
 )
 
-// DefaultPendingTimeoutDuration represents the default duration for pending status expiry
-// based on consent type. Pending consents will expire after this duration if not approved or rejected
-// Format: ISO 8601 duration (e.g., "P1D" for 1 day, "PT24H" for 24 hours)
-const (
-	DefaultPendingTimeoutRealtimeDuration = "PT1H" // 1 hour for realtime consent
-	DefaultPendingTimeoutOfflineDuration  = "P1D"  // 1 day for offline consent
-)
-
 // OwnerType represents the owner enum (matches PolicyDecisionPoint Owner type)
 type OwnerType string
 
@@ -72,7 +64,6 @@ var (
 	ErrConsentCreateFailed = errors.New("failed to create consent record")
 	ErrConsentUpdateFailed = errors.New("failed to update consent record")
 	ErrConsentGetFailed    = errors.New("failed to get consent records")
-	ErrConsentExpiryFailed = errors.New("failed to check consent expiry")
 	ErrPortalRequestFailed = errors.New("failed to process consent portal request")
 	ErrConsentNotPending   = errors.New("consent is not pending")
 	ErrConsentNotRevocable = errors.New("consent is not approved and cannot be revoked")
@@ -98,21 +89,6 @@ const (
 const (
 	DefaultConsentListLimit = 20
 	MaxConsentListLimit     = 100
-)
-
-// ConsentEngineOperation represents the operation
-type ConsentEngineOperation string
-
-// ConsentEngineOperation constants
-const (
-	OpCreateConsent         ConsentEngineOperation = "create consent"
-	OpUpdateConsent         ConsentEngineOperation = "update consent"
-	OpRevokeConsent         ConsentEngineOperation = "revoke consent"
-	OpGetConsentStatus      ConsentEngineOperation = "get consent status"
-	OpGetConsentsByOwner    ConsentEngineOperation = "get consents by data owner"
-	OpGetConsentsByConsumer ConsentEngineOperation = "get consents by consumer"
-	OpCheckConsentExpiry    ConsentEngineOperation = "check consent expiry"
-	OpProcessPortalRequest  ConsentEngineOperation = "process consent portal"
 )
 
 // UpdateByMessage represents who updated the consent with specific message

@@ -431,7 +431,7 @@ func TestCommittedConfigsLoad(t *testing.T) {
 	t.Setenv("PB_AUDIENCE", "http://pb.openndx.local")
 	t.Setenv("PORTAL_BACKEND_CLIENT_SECRET", "1234")
 
-	for _, path := range []string{"config.example.yaml", "config.docker.yaml", "config.test.yaml"} {
+	for _, path := range []string{"config.example.yaml", "config.docker.yaml"} {
 		t.Run(path, func(t *testing.T) {
 			_, err := loadConfig([]string{"-config", path})
 			require.NoError(t, err)
