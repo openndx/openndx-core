@@ -2,25 +2,28 @@
 
 ## Supported Versions
 
-**Note**: We do not currently have versioning implemented. Versioning support will be added in the future. For now, all security updates will be applied to the main branch.
+OpenNDX is before version 1.0. Security fixes are made on `main` and released in the next version. Earlier releases don't receive backported fixes.
 
-Once versioning is implemented, we will update this section with supported versions and their security update policies.
+| Version | Supported |
+|---|---|
+| The [latest release](https://github.com/openndx/openndx-core/releases/latest) | Yes |
+| Earlier releases | No |
 
 ## Reporting a Vulnerability
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**Please do not report security vulnerabilities through public GitHub issues, discussions or pull requests.**
 
-If you discover a security vulnerability, please report it privately using one of the following methods:
+Report them privately, in either of these ways:
 
-- **GitHub Private Vulnerability Reporting**: Use the "Report a vulnerability" button on the Security tab of this repository
+- **GitHub private vulnerability reporting:** use the [report form](https://github.com/openndx/openndx-core/security/advisories/new), also reachable through **Report a vulnerability** on the repository's Security tab.
+- **Email:** write to [security@opensource.lk](mailto:security@opensource.lk).
 
 ### What to Include
 
-When reporting a vulnerability, please include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+- A description of the vulnerability and the component it affects
+- Steps to reproduce it, and the release or commit you tested
+- Its potential impact
+- A suggested fix, if you have one
 
 ### Response Timeline
 
@@ -29,6 +32,16 @@ When reporting a vulnerability, please include:
 - **Resolution**: Depends on severity and complexity
 
 We appreciate your responsible disclosure and will acknowledge your contribution once the vulnerability is confirmed and addressed.
+
+## Scope
+
+This policy covers what OpenNDX releases from this repository: the Orchestration Engine, Policy Decision Point, Consent Engine and Portal Backend, the Consent Portal, the `ondx` CLI, the Helm chart and the published container images.
+
+It doesn't cover:
+
+- the Admin and Member portals, which are paused, unsupported prototypes and aren't released;
+- the mock providers in [dev/](dev/README.md), and the local defaults in `compose.yml` and `.env.example`, such as the `1234` secrets, which are for local development only;
+- the third-party projects OpenNDX uses, such as ThunderID, Argus and PostgreSQL. Please report those to the project concerned.
 
 ## Disclosure Policy
 
