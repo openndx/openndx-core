@@ -54,15 +54,28 @@ PB creates and deletes each application's OAuth2 client through ThunderID's mana
 | `idp.management.resource` | empty | Resource server the `system` scope belongs to. ThunderID needs it for that scope. | `IDP_TOKEN_RESOURCE` |
 | `idp.management.dataConsumerRoleID` | empty | Role assigned to every created application client, which grants it `getdata`. If empty, role assignment is skipped. | `IDP_DATA_CONSUMER_ROLE_ID` |
 
-## Policy Decision Point and audit
+## Policy Decision Point
 
 | Key | Default | Notes | Replaces |
 |---|---|---|---|
 | `pdp.url` | none | **Required.** `http` or `https` URL. PB calls the PDP without authentication. | `PDP_SERVICE_URL` |
-| `audit.url` | empty | Argus URL. Auditing is off when empty. | `AUDIT_SERVICE_URL` |
-| `audit.apiKey` | empty | | `ARGUS_API_KEY`, `ARGUS_AUTH_TOKEN` |
 
-The audit client library still reads `ENABLE_AUDIT` itself; `false` disables auditing.
+## OpenTelemetry and audit
+
+PB writes an audit record for every create, update and delete (see [AUTHORIZATION.md](AUTHORIZATION.md#audit)) as an OpenTelemetry log record, and sends it over OTLP/HTTP with [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). Records go only to this endpoint, never to stdout.
+
+| Key | Default | Notes | Replaces |
+|---|---|---|---|
+| `otel.endpoint` | empty | OTLP/HTTP base URL, for example `http://otel-collector:4318`. `/v1/logs` (and `/v1/traces`, `/v1/metrics`) is appended. Empty turns export off. | |
+| `otel.logs.endpoint` | empty | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; PB produces no traces or metrics yet. | |
+| `otel.serviceName` | `portal-backend` | The `service.name` resource attribute. | |
+| `otel.headers` | empty | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. | |
+
+With export off, PB logs `otel log export is off: audit records (category=audit) are not retained` at startup and drops every audit record. Records are batched in memory and flushed when PB shuts down; any still unsent when the process is killed, or while the endpoint is unreachable, are lost.
+
+Each record has the message `audit` and the attributes `category` (`audit`), `eventType` (`MANAGEMENT_EVENT`), `action` (`CREATE`, `UPDATE` or `DELETE`), `status`, `actorType`, `actorID`, `targetType` (`RESOURCE`), `targetID` when known, and `metadata` with `resource` and `clientId`. That is the same shape the NSW's `OpenNSW/core/platform/audit` writes, so one query finds both.
+
+The OpenTelemetry SDK also reads the `OTEL_*` variables `otel` has no key for, such as `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_EXPORTER_OTLP_TIMEOUT`. `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` are ignored. For a local backend, `make up OTEL=1` or `make deps OTEL=1` also starts OpenObserve on `http://localhost:5080`, and the commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at it. They stay commented by default; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
 
 ## Database
 

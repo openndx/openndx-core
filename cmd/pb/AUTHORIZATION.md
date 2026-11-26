@@ -86,7 +86,7 @@ A consent bypass grant lets one application read fields that ask for the owner's
 
 ## Audit
 
-Create, update and delete requests are sent to the Argus audit service (when configured) with the token's `sub` as actor and its `client_id` in the event metadata. The actor type is `ADMIN` for callers holding `member:write-all`, `MEMBER` for other callers whose token has an `ouId`, and `SYSTEM` otherwise.
+Each create, update and delete request is recorded as an audit record, with the token's `sub` as actor and its `client_id` in the record's metadata. Records are sent as OpenTelemetry logs to the `otel` endpoint and are dropped when none is set ([CONFIGURATION.md](CONFIGURATION.md#opentelemetry-and-audit)). The actor type is `ADMIN` for callers holding `member:write-all`, `MEMBER` for other callers whose token has an `ouId`, and `SYSTEM` otherwise.
 
 ## Unauthenticated routes
 

@@ -6,8 +6,8 @@ package middleware
 import (
 	"context"
 
-	auditpkg "github.com/LSFLK/argus/pkg/audit"
 	"github.com/google/uuid"
+	"github.com/openndx/openndx-core/internal/audit"
 	"github.com/openndx/openndx-core/internal/monitoring"
 	"github.com/openndx/openndx-core/internal/oe/consent"
 	"github.com/openndx/openndx-core/internal/oe/federator"
@@ -15,33 +15,33 @@ import (
 	"github.com/openndx/openndx-core/internal/oe/policy"
 )
 
-// Auditor sends the orchestration engine's audit events to an argus audit client.
+// Auditor writes the orchestration engine's audit events to an audit.Sink.
 // It implements federator.Auditor.
 type Auditor struct {
-	client    auditpkg.Auditor
+	sink      audit.Sink
 	actorType string
 	actorID   string
 }
 
 var _ federator.Auditor = (*Auditor)(nil)
 
-// NewAuditor returns an Auditor that logs through client and attributes service-initiated
-// events to actorType and actorID (from config.AuditConfig). A nil client records nothing.
+// NewAuditor returns an Auditor that writes to sink and attributes service-initiated
+// events to actorType and actorID (from config.AuditConfig). A nil sink records nothing.
 // Note: targetType is not stored here as it varies per API call
-func NewAuditor(client auditpkg.Auditor, actorType, actorID string) *Auditor {
+func NewAuditor(sink audit.Sink, actorType, actorID string) *Auditor {
 	return &Auditor{
-		client:    client,
+		sink:      sink,
 		actorType: actorType,
 		actorID:   actorID,
 	}
 }
 
-// logEvent hands the event to the audit client, which sends it asynchronously.
-func (a *Auditor) logEvent(ctx context.Context, auditRequest *auditpkg.AuditLogRequest) {
-	if a.client == nil {
+// logEvent hands the record to the sink.
+func (a *Auditor) logEvent(ctx context.Context, record audit.Record) {
+	if a.sink == nil {
 		return
 	}
-	a.client.LogEvent(ctx, auditRequest)
+	a.sink.Write(ctx, record)
 }
 
 // maxAuditErrorsToLog is the maximum number of errors to include in audit log metadata
@@ -59,37 +59,34 @@ func withTraceID(ctx context.Context) (context.Context, string) {
 }
 
 // RequestReceived logs a DATA_REQUEST event for a consumer query entering the orchestration engine.
+// The query text is not recorded: its arguments can identify a citizen. The later
+// POLICY_CHECK and PROVIDER_FETCH events record which fields were asked for.
 // Returns the updated context with traceID to ensure trace correlation
-func (a *Auditor) RequestReceived(ctx context.Context, appID, query string) context.Context {
+func (a *Auditor) RequestReceived(ctx context.Context, appID, _ string) context.Context {
 	ctx, traceID := withTraceID(ctx)
 
 	// The consumer application is the actor; there is no target for the entry point
-	targetID := "SERVICE"
-	auditRequest := &auditpkg.AuditLogRequest{
-		TraceID:    &traceID,
-		Timestamp:  auditpkg.CurrentTimestamp(),
+	a.logEvent(ctx, audit.Record{
+		TraceID:    traceID,
 		EventType:  "DATA_REQUEST",
-		Status:     auditpkg.StatusSuccess,
+		Status:     audit.StatusSuccess,
 		ActorType:  "APPLICATION",
 		ActorID:    appID,
 		TargetType: "SERVICE",
-		TargetID:   &targetID,
-		Metadata: map[string]interface{}{
-			"requestMetadata": map[string]interface{}{
+		TargetID:   "SERVICE",
+		Metadata: map[string]any{
+			"requestMetadata": map[string]any{
 				"applicationId": appID,
-				"query":         query,
 			},
 		},
-	}
-
-	a.logEvent(ctx, auditRequest)
+	})
 	return ctx
 }
 
 // PolicyCheck logs a POLICY_CHECK event after a request to the Policy Decision Point.
 // Returns the updated context with traceID to ensure trace correlation
 func (a *Auditor) PolicyCheck(ctx context.Context, appID string, req *policy.PdpRequest, resp *policy.PdpResponse, err error) context.Context {
-	status := auditpkg.StatusSuccess
+	status := audit.StatusSuccess
 	requestMetadata := map[string]interface{}{"applicationId": appID}
 	responseMetadata := make(map[string]interface{})
 
@@ -98,7 +95,7 @@ func (a *Auditor) PolicyCheck(ctx context.Context, appID string, req *policy.Pdp
 	}
 
 	if err != nil {
-		status = auditpkg.StatusFailure
+		status = audit.StatusFailure
 		responseMetadata["error"] = err.Error()
 	} else if resp != nil {
 		responseMetadata["authorized"] = resp.AppAuthorized
@@ -110,11 +107,11 @@ func (a *Auditor) PolicyCheck(ctx context.Context, appID string, req *policy.Pdp
 			responseMetadata["fields"] = resp.Fields
 		}
 		if !resp.AppAuthorized {
-			status = auditpkg.StatusFailure
+			status = audit.StatusFailure
 			responseMetadata["unauthorizedFields"] = resp.UnauthorizedFields
 		}
 		if resp.AppAccessExpired {
-			status = auditpkg.StatusFailure
+			status = audit.StatusFailure
 			responseMetadata["expiredFields"] = resp.ExpiredFields
 		}
 		if resp.AppRequiresOwnerConsent {
@@ -129,7 +126,7 @@ func (a *Auditor) PolicyCheck(ctx context.Context, appID string, req *policy.Pdp
 // ConsentCheck logs a CONSENT_CHECK event after a request to the Consent Engine.
 // Returns the updated context with traceID to ensure trace correlation
 func (a *Auditor) ConsentCheck(ctx context.Context, appID, ownerID string, req *consent.CreateConsentRequest, resp *consent.ConsentResponseInternalView, err error) context.Context {
-	status := auditpkg.StatusSuccess
+	status := audit.StatusSuccess
 	requestMetadata := map[string]interface{}{"applicationId": appID}
 	responseMetadata := make(map[string]interface{})
 
@@ -141,7 +138,7 @@ func (a *Auditor) ConsentCheck(ctx context.Context, appID, ownerID string, req *
 	}
 
 	if err != nil {
-		status = auditpkg.StatusFailure
+		status = audit.StatusFailure
 		responseMetadata["error"] = err.Error()
 	} else if resp != nil {
 		responseMetadata["consentId"] = resp.ConsentID
@@ -163,12 +160,12 @@ func (a *Auditor) ProviderFetch(ctx context.Context, fetch federator.ProviderFet
 	}
 
 	// Combine requested data and additional info into response metadata
-	// (since we're logging after receiving the response)
+	// (since we're logging after receiving the response). The sub-query text is
+	// left out, as in RequestReceived: its arguments can identify a citizen.
 	responseMetadata := map[string]interface{}{
 		"applicationId":   fetch.ApplicationID,
 		"schemaId":        fetch.SchemaID,
 		"requestedFields": requestedFields,
-		"query":           fetch.Query,
 	}
 	if err != nil {
 		responseMetadata["error"] = err.Error()
@@ -197,9 +194,9 @@ func (a *Auditor) ProviderFetch(ctx context.Context, fetch federator.ProviderFet
 		}
 	}
 
-	auditStatus := auditpkg.StatusSuccess
+	auditStatus := audit.StatusSuccess
 	if err != nil || (response != nil && len(response.Errors) > 0) {
-		auditStatus = auditpkg.StatusFailure
+		auditStatus = audit.StatusFailure
 	}
 
 	// Providers are services, so targetType is "SERVICE"
@@ -209,7 +206,7 @@ func (a *Auditor) ProviderFetch(ctx context.Context, fetch federator.ProviderFet
 // logServiceEvent logs an event in which the orchestration engine (the configured actor)
 // calls the service targetID. Returns the updated context with traceID (if one was generated)
 // to ensure trace correlation.
-func (a *Auditor) logServiceEvent(ctx context.Context, eventType, targetID string, requestMetadata, responseMetadata map[string]interface{}, status string) context.Context {
+func (a *Auditor) logServiceEvent(ctx context.Context, eventType, targetID string, requestMetadata, responseMetadata map[string]interface{}, status audit.Status) context.Context {
 	ctx, traceID := withTraceID(ctx)
 
 	meta := make(map[string]interface{})
@@ -220,19 +217,16 @@ func (a *Auditor) logServiceEvent(ctx context.Context, eventType, targetID strin
 		meta["responseMetadata"] = responseMetadata
 	}
 
-	auditRequest := &auditpkg.AuditLogRequest{
-		TraceID:    &traceID,
-		Timestamp:  auditpkg.CurrentTimestamp(),
+	a.logEvent(ctx, audit.Record{
+		TraceID:    traceID,
 		EventType:  eventType,
 		Status:     status,
 		ActorType:  a.actorType,
 		ActorID:    a.actorID,
 		TargetType: "SERVICE",
-		TargetID:   &targetID,
+		TargetID:   targetID,
 		Metadata:   meta,
-	}
-
-	a.logEvent(ctx, auditRequest)
+	})
 
 	// Return the updated context to ensure traceID correlation across the request flow
 	return ctx

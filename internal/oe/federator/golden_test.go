@@ -19,7 +19,6 @@ package federator_test
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"flag"
 	"net/http"
@@ -31,7 +30,7 @@ import (
 	"sync"
 	"testing"
 
-	auditpkg "github.com/LSFLK/argus/pkg/audit"
+	"github.com/openndx/openndx-core/internal/audit"
 	"github.com/openndx/openndx-core/internal/oe/auth"
 	"github.com/openndx/openndx-core/internal/oe/consent"
 	"github.com/openndx/openndx-core/internal/oe/federator"
@@ -414,7 +413,7 @@ type goldenEnv struct {
 	consentURL string
 	pdpURL     string
 	providers  []provider.Config
-	audit      *recordingAuditor
+	audit      *audit.CaptureSink
 
 	mu         sync.Mutex
 	transcript transcript
@@ -424,7 +423,7 @@ func newGoldenEnv(t *testing.T, tc goldenCase) *goldenEnv {
 	t.Helper()
 
 	env := &goldenEnv{
-		audit: &recordingAuditor{},
+		audit: &audit.CaptureSink{},
 		transcript: transcript{
 			PolicyRequests:   []policy.PdpRequest{},
 			ConsentRequests:  []consent.CreateConsentRequest{},
@@ -554,7 +553,7 @@ func (e *goldenEnv) run(t *testing.T, f *federator.Federator, req graphql.Reques
 			return fields[a].FieldName < fields[b].FieldName
 		})
 	}
-	e.transcript.AuditEvents = e.audit.sortedEvents()
+	e.transcript.AuditEvents = sortedAuditEvents(e.audit.Records())
 
 	out, err := json.MarshalIndent(e.transcript, "", "  ")
 	require.NoError(t, err)
@@ -622,12 +621,6 @@ func canonicalQuery(q string) string {
 	return strings.Join(tokens, " ")
 }
 
-// recordingAuditor is an argus audit client that captures the events it is given.
-type recordingAuditor struct {
-	mu     sync.Mutex
-	events []auditEvent
-}
-
 // auditStageOrder gives provider fetches, which run concurrently, a stable
 // position after the sequential pipeline stages.
 var auditStageOrder = map[string]int{
@@ -637,11 +630,20 @@ var auditStageOrder = map[string]int{
 	"PROVIDER_FETCH": 3,
 }
 
-func (a *recordingAuditor) sortedEvents() []auditEvent {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	events := append([]auditEvent{}, a.events...)
+// sortedAuditEvents reduces records to the transcript's audit events, in
+// pipeline order.
+func sortedAuditEvents(records []audit.Record) []auditEvent {
+	events := make([]auditEvent, 0, len(records))
+	for _, r := range records {
+		events = append(events, auditEvent{
+			EventType:  r.EventType,
+			Status:     string(r.Status),
+			ActorType:  r.ActorType,
+			ActorID:    r.ActorID,
+			TargetType: r.TargetType,
+			TargetID:   r.TargetID,
+		})
+	}
 	sort.SliceStable(events, func(i, j int) bool {
 		si, sj := auditStageOrder[events[i].EventType], auditStageOrder[events[j].EventType]
 		if si != sj {
@@ -651,34 +653,3 @@ func (a *recordingAuditor) sortedEvents() []auditEvent {
 	})
 	return events
 }
-
-func (a *recordingAuditor) LogEvent(_ context.Context, event *auditpkg.AuditLogRequest) bool {
-	rec := auditEvent{
-		EventType:  event.EventType,
-		Status:     event.Status,
-		ActorType:  event.ActorType,
-		ActorID:    event.ActorID,
-		TargetType: event.TargetType,
-	}
-	if event.TargetID != nil {
-		rec.TargetID = *event.TargetID
-	}
-	a.mu.Lock()
-	a.events = append(a.events, rec)
-	a.mu.Unlock()
-	return true
-}
-
-func (a *recordingAuditor) SignEvent(context.Context, *auditpkg.AuditLogRequest) error { return nil }
-
-func (a *recordingAuditor) SignMessageBytes(context.Context, []byte) (string, error) { return "", nil }
-
-func (a *recordingAuditor) LogSignedEvent(context.Context, *auditpkg.AuditLogRequest) {}
-
-func (a *recordingAuditor) VerifyIntegrity(*auditpkg.AuditLogRequest, crypto.PublicKey) (bool, error) {
-	return true, nil
-}
-
-func (a *recordingAuditor) IsEnabled() bool { return true }
-
-func (a *recordingAuditor) Close(context.Context) error { return nil }

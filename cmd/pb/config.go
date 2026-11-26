@@ -13,6 +13,7 @@ import (
 	"github.com/OpenNSW/core/cors"
 	"github.com/OpenNSW/core/database"
 	"github.com/OpenNSW/core/shared/validation"
+	"github.com/OpenNSW/core/telemetry"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/pb/idp/thunderid"
@@ -31,8 +32,10 @@ type Config struct {
 	CORS        cors.Config    `yaml:"cors"`
 	IDP         IDPConfig      `yaml:"idp"`
 	PDP         PDPConfig      `yaml:"pdp"`
-	Audit       AuditConfig    `yaml:"audit"`
 	Database    DatabaseConfig `yaml:"database"`
+	// Otel configures OpenTelemetry export. Audit records are exported as OTLP
+	// logs and are dropped when log export is off.
+	Otel telemetry.Config `yaml:"otel"`
 }
 
 // ServerConfig holds the HTTP server settings.
@@ -54,12 +57,6 @@ type IDPConfig struct {
 // PDPConfig holds the Policy Decision Point settings.
 type PDPConfig struct {
 	URL string `yaml:"url"`
-}
-
-// AuditConfig holds the Argus audit service settings. Auditing is off when URL is empty.
-type AuditConfig struct {
-	URL    string `yaml:"url"`
-	APIKey string `yaml:"apiKey"`
 }
 
 // DatabaseConfig is the shared database configuration plus PB's own settings.
@@ -96,6 +93,7 @@ func defaultConfig() Config {
 			},
 			IdleTimeout: 30 * time.Minute,
 		},
+		Otel: telemetry.Config{ServiceName: "portal-backend"},
 	}
 }
 
@@ -155,11 +153,6 @@ func (c *Config) Validate() error {
 	if err := validation.HTTPURL("pdp.url", c.PDP.URL); err != nil {
 		return err
 	}
-	if c.Audit.URL != "" {
-		if err := validation.HTTPURL("audit.url", c.Audit.URL); err != nil {
-			return err
-		}
-	}
 	if c.Database.Driver != database.Postgres {
 		return fmt.Errorf("database.driver must be postgres")
 	}
@@ -178,6 +171,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Database.IdleTimeout <= 0 {
 		return fmt.Errorf("database.idleTimeout must be positive")
+	}
+	if err := c.Otel.Validate(); err != nil {
+		return fmt.Errorf("invalid otel configuration: %w", err)
 	}
 	return nil
 }

@@ -15,9 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/LSFLK/argus/pkg/audit"
 	"github.com/OpenNSW/core/authz"
 	"github.com/OpenNSW/core/cors"
+	"github.com/OpenNSW/core/telemetry"
+	"github.com/openndx/openndx-core/internal/audit"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/database"
 	"github.com/openndx/openndx-core/internal/logging"
@@ -26,6 +27,7 @@ import (
 	"github.com/openndx/openndx-core/internal/pb/consentbypass"
 	"github.com/openndx/openndx-core/internal/pb/idp/thunderid"
 	"github.com/openndx/openndx-core/internal/pb/member"
+	"github.com/openndx/openndx-core/internal/pb/middleware"
 	"github.com/openndx/openndx-core/internal/pb/policy"
 	"github.com/openndx/openndx-core/internal/pb/schema"
 	"github.com/openndx/openndx-core/internal/utils"
@@ -70,14 +72,14 @@ func main() {
 	slog.Info("PDP Service URL", "url", cfg.PDP.URL)
 	pdpClient := policy.NewClient(cfg.PDP.URL)
 
-	// Initialize Audit system
-	// Services will work without auditing - gracefully degrades if audit.url is
-	// empty (or the audit library's ENABLE_AUDIT=false is set)
-	auditClient := audit.NewClient(audit.Config{
-		BaseURL: cfg.Audit.URL,
-		APIKey:  cfg.Audit.APIKey,
-	})
-	audit.InitializeGlobalAudit(auditClient)
+	// Audit records are exported as OTLP logs; with log export off they are
+	// dropped and NewExportSink says so.
+	tel, err := telemetry.Start(context.Background(), cfg.Otel)
+	if err != nil {
+		slog.Error("Failed to start telemetry (check otel in the config file)", "error", err)
+		os.Exit(1)
+	}
+	middleware.SetAuditSink(audit.NewExportSink(tel.SlogHandler()))
 
 	// Initialize services and handlers
 	memberService := member.NewService(gormDB)
@@ -203,6 +205,11 @@ func main() {
 
 	if err := sqlDB.Close(); err != nil {
 		slog.Error("Failed to close database connection", "error", err)
+	}
+
+	// Last, so the final audit records are flushed.
+	if err := tel.Shutdown(ctx); err != nil {
+		slog.Error("Failed to shut down telemetry", "error", err)
 	}
 
 	slog.Info("Portal Backend exited")

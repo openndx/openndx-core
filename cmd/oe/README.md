@@ -10,7 +10,7 @@ flowchart LR
     OE -->|decide| PDP[Policy Decision Point]
     OE -->|create consent| CE[Consent Engine]
     OE -->|sub-queries| P[Data providers]
-    OE -.->|audit events| A[Argus audit service]
+    OE -.->|audit records, OTLP| A[OpenTelemetry backend]
     S[/schema.graphql/] -->|read at startup| OE
 ```
 
@@ -53,9 +53,10 @@ The OE reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`) a
 | `pdp.url` | PDP base URL. If empty, the OE skips authorization and consent checks (see Security). |
 | `consentEngine.url` | Consent Engine URL **including** `/internal/api/v1`. |
 | `consentEngine.ownerIdArgName` | **Required when `consentEngine.url` is set.** Name of the query argument that identifies the data owner whose consent is asked, for example `nic`. Read only when a field requires consent. |
-| `audit` | Argus audit service URL, API key and actor identity. |
+| `audit` | The actor recorded on the audit events the OE initiates; default `SERVICE` / `orchestration-engine`. |
 | `providers[]` | Data providers: `id` (the schema ID), `url`, optional `timeout`, `auth` and `tls`. See [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md). |
 | `argMappings[]` | How consumer arguments map to each provider's arguments. |
+| `otel` | OpenTelemetry export over OTLP/HTTP: `endpoint`, `serviceName` (default `orchestration-engine`), `headers`. Audit records go only here. See [CONFIGURATION.md](CONFIGURATION.md#otel). |
 
 Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATION.md).
 
@@ -102,9 +103,9 @@ sequenceDiagram
 
 - Consumer tokens are always verified against the IdP's keys (`idp.jwksURL`), issuer and audience ([CONFIGURATION.md](CONFIGURATION.md#idp)).
 - With `pdp.url` empty, the OE returns provider data without any authorization or consent check. Always set it.
-- Keep provider and audit secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
+- Keep provider and OTLP secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
 - The OE sends no CORS headers, so browsers can't call it directly. Its callers are machine clients.
-- Audit events (`DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH`) go to Argus. If Argus is down, batches are lost.
+- Audit events (`DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH`) are written as OpenTelemetry log records with `category=audit` and sent only to the `otel` endpoint, never to stdout. With no endpoint they are dropped, and startup logs a warning. Records are batched in memory and flushed at shutdown, so records not yet sent are lost if the process is killed or the endpoint stays unreachable. They name the application, the fields asked for and the outcome, not the query text, its arguments or provider data.
 
 ## Development
 

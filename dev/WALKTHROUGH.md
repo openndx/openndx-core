@@ -51,8 +51,9 @@ docker compose ps -a
 
 The provider images are published separately; their configuration and mock data
 are mounted from `dev/providers/`. The root stack builds OpenNDX from this
-checkout and initializes PostgreSQL and ThunderID. Audit is optional and is
-omitted from these commands.
+checkout and initializes PostgreSQL and ThunderID. Audit records are dropped
+unless an OpenTelemetry endpoint is set; to follow them through the
+walkthrough, see [Viewing audit records](../CONTRIBUTING.md#viewing-audit-records).
 
 Wait for startup, especially the one-time `thunderid-setup` service. It must exit
 successfully. Check the endpoints before continuing:

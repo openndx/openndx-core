@@ -35,7 +35,18 @@ LINT_FLAGS ?=
 # Containers `make deps` starts: everything the services need, not the
 # services themselves. Compose also starts what these depend on (the
 # ThunderID init and setup steps).
-DEPS := postgres thunderid audit-service
+DEPS := postgres thunderid
+
+# OTEL=1 with `make deps` or `make up` also starts a local OpenObserve on
+# http://localhost:5080 (Compose profile `otel`) to receive the Orchestration
+# Engine's and Portal Backend's audit records. They send records to it only
+# once the otel block in their config is uncommented; see
+# CONTRIBUTING.md#viewing-audit-records.
+OTEL ?=
+ifeq ($(OTEL),1)
+DEPS += openobserve
+COMPOSE_PROFILE := --profile otel
+endif
 
 # Mock data providers OE federates to (see dev/README.md).
 PROVIDERS := docker compose -f dev/compose.yml
@@ -81,17 +92,17 @@ check: ## Check go.mod is tidy and the license headers, lint and test, changing 
 	$(MAKE) --no-print-directory lint LINT_FLAGS=
 	$(MAKE) --no-print-directory test PKG=./...
 
-deps: ## Start only the dependencies in Docker, to run the services natively
-	docker compose up -d $(DEPS)
+deps: ## Start only the dependencies in Docker, to run the services natively (OTEL=1 adds OpenObserve)
+	docker compose $(COMPOSE_PROFILE) up -d $(DEPS)
 	$(PROVIDERS) up -d
 
-up: ## Build and start the full stack in Docker
-	docker compose up -d --build
+up: ## Build and start the full stack in Docker (OTEL=1 adds OpenObserve)
+	docker compose $(COMPOSE_PROFILE) up -d --build
 	$(PROVIDERS) up -d
 
 down: ## Stop everything `deps` or `up` started
 	$(PROVIDERS) down
-	docker compose down
+	docker compose --profile otel down
 
 clean: ## Remove bin/ and coverage files
 	rm -rf bin

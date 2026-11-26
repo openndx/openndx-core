@@ -41,7 +41,7 @@ It doesn't cover:
 
 - the Admin and Member portals, which are paused, unsupported prototypes and aren't released;
 - the mock providers in [dev/](dev/README.md), and the local defaults in `compose.yml` and `.env.example`, such as the `1234` secrets, which are for local development only;
-- the third-party projects OpenNDX uses, such as ThunderID, Argus and PostgreSQL. Please report those to the project concerned.
+- the third-party projects OpenNDX uses, such as ThunderID, OpenTelemetry and PostgreSQL. Please report those to the project concerned.
 
 ## Disclosure Policy
 

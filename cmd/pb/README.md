@@ -13,7 +13,7 @@ flowchart LR
     PB -->|field policies and access grants| PDP[Policy Decision Point]
     PB -->|create and delete app clients| IDP[ThunderID]
     PB -.->|verify tokens: JWKS| IDP
-    PB -.->|audit events| A[Argus audit service]
+    PB -.->|audit records, OTLP| A[OpenTelemetry backend]
 ```
 
 PB remains an actively maintained management API, used through the [`ondx` CLI](../ondx/README.md) or direct authenticated API calls. The [Admin and Member Portals](../../portals/README.md) are paused, unsupported prototypes and do not provide a supported management interface. The Consent Portal does not use it. PB never calls the Orchestration Engine or Consent Engine.
@@ -43,7 +43,7 @@ cd cmd/pb && go run .
 
 ## Configuration
 
-PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), the only environment variable read is the audit client library's `ENABLE_AUDIT`: `false` turns auditing off. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), PB reads only the OpenTelemetry SDK's `OTEL_*` variables that the `otel` section has no key for ([CONFIGURATION.md](CONFIGURATION.md#opentelemetry-and-audit)). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. Required keys:
 
@@ -114,7 +114,7 @@ make check                                                            # tidy, ch
 
 Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
-Code is in [`internal/pb`](../../internal/pb): `member`, `schema`, `application` and `consentbypass` (one package per bounded context: a service and handler, and a model when it stores data in PB), `kernel` (types shared by those packages), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
+Code is in [`internal/pb`](../../internal/pb): `member`, `schema`, `application` and `consentbypass` (one package per bounded context: a service and handler, and a model when it stores data in PB), `kernel` (types shared by those packages), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit records, written through the shared [`internal/audit`](../../internal/audit)), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
 
 ## Rename note
 

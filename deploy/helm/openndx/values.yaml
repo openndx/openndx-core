@@ -16,9 +16,9 @@
 # release named `thunderid`, which serves at http://thunderid-service:8090.
 # The idp URLs below assume that; see README.md#embedded-identity-provider-thunderid.
 #
-# Other infrastructure (PostgreSQL, the Argus Audit Service) is provisioned
-# separately via its own Helm chart or a managed cloud service; each service's
-# `config` points at it.
+# Other infrastructure (PostgreSQL, and the OpenTelemetry collector or backend
+# that receives audit records) is provisioned separately via its own Helm
+# chart or a managed cloud service; each service's `config` points at it.
 #
 # Each Go service's `config` block IS its config.yaml, with the same schema as
 # cmd/<svc>/config.example.yaml (keys are listed in cmd/<svc>/README.md). The
@@ -165,10 +165,11 @@ orchestrationEngine:
   affinity: {}
   # Environment variables, as a map of name to a plain value or a map such as
   # {valueFrom: {secretKeyRef: {name, key}}}: the secrets config references as
-  # "{{env:NAME}}". None by default; to turn auditing on, add e.g.
-  #   ARGUS_API_KEY:
+  # "{{env:NAME}}". None by default; for an otel endpoint that needs
+  # credentials, add e.g.
+  #   OTEL_AUTH_HEADER:
   #     valueFrom:
-  #       secretKeyRef: {name: openndx-secrets, key: argusApiKey}
+  #       secretKeyRef: {name: openndx-secrets, key: otelAuthHeader}
   env: {}
   # Load environment from existing ConfigMaps or Secrets
   envFrom: []
@@ -204,11 +205,9 @@ orchestrationEngine:
       # The query argument that identifies the data owner whose consent is
       # asked. Required while consentEngine.url is set.
       ownerIdArgName: nic
-    # Auditing is off while url is empty. To turn it on, set url and
-    # apiKey: "{{env:ARGUS_API_KEY}}".
+    # The actor recorded on the audit events the OE initiates (its calls to
+    # the PDP, the Consent Engine and providers).
     audit:
-      url: ""
-      apiKey: ""
       actorType: SERVICE
       actorId: orchestration-engine
     # Data providers federated by the Orchestration Engine. The chart deploys
@@ -226,6 +225,12 @@ orchestrationEngine:
     # e.g. {schemaId: drp-person-v1, targetArgName: nic,
     # sourceArgPath: personInfo-nic, targetArgPath: person, targetArgType: "ID!"}
     argMappings: []
+    # OpenTelemetry export over OTLP/HTTP. Audit records are sent only as OTLP
+    # logs, so they are dropped while no endpoint is set. For example:
+    #   otel:
+    #     endpoint: http://otel-collector:4318
+    #     headers:
+    #       Authorization: "{{env:OTEL_AUTH_HEADER}}"
 
   # Extra files mounted next to config.yaml in /app/config, keyed by file name.
   # Required: the consumer GraphQL schema named by config.schemaPath, e.g.
@@ -629,7 +634,8 @@ portalBackend:
   affinity: {}
   # Environment variables: a plain value or a valueFrom map per name. Supplies
   # the secrets config references as "{{env:NAME}}"; point them at your own
-  # Secret. To turn auditing on, also add ARGUS_API_KEY.
+  # Secret. For an otel endpoint that needs credentials, also add
+  # OTEL_AUTH_HEADER.
   env:
     DB_USER:
       valueFrom:
@@ -677,11 +683,6 @@ portalBackend:
         # its public URL; it is not a URL to reach.
         resource: https://localhost:8090/mcp
         dataConsumerRoleID: "01900000-0000-7000-8000-000000000092"
-    # Auditing is off while url is empty. To turn it on, set url and
-    # apiKey: "{{env:ARGUS_API_KEY}}".
-    audit:
-      url: ""
-      apiKey: ""
     database:
       driver: postgres
       postgres:
@@ -692,3 +693,9 @@ portalBackend:
         name: portal_backend
         sslMode: require
       idleTimeout: 30m
+    # OpenTelemetry export over OTLP/HTTP. Audit records are sent only as OTLP
+    # logs, so they are dropped while no endpoint is set. For example:
+    #   otel:
+    #     endpoint: http://otel-collector:4318
+    #     headers:
+    #       Authorization: "{{env:OTEL_AUTH_HEADER}}"

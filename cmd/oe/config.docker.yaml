@@ -30,11 +30,6 @@ consentEngine:
   url: http://consent-engine:8081/internal/api/v1
   ownerIdArgName: nic
 
-# Optional: the OE degrades gracefully if the audit service is unreachable.
-audit:
-  url: "{{env:AUDIT_SERVICE_URL}}"
-  apiKey: "{{env:ARGUS_API_KEY}}"
-
 # The mock providers from dev/compose.yml, running on the host.
 providers:
   - id: drp-person-v1
@@ -65,3 +60,18 @@ argMappings:
     sourceArgPath: personInfo-nic
     targetArgPath: getPersonInfo
     targetArgType: "ID!"
+
+# OpenTelemetry export over OTLP/HTTP. Audit records go only to the OTLP log
+# endpoint, never to stdout: with no endpoint, export is off and audit records
+# are dropped (startup logs a warning). endpoint is the OTLP/HTTP base URL;
+# /v1/traces, /v1/metrics and /v1/logs are appended. serviceName defaults to
+# orchestration-engine. Put credentials in headers, from "{{env:NAME}}" or "{{file:/path}}".
+#
+# Local OpenObserve (`make up OTEL=1`): uncomment, restart, and open
+# http://localhost:5080 (root@example.com / Complexpass#123). The header is the
+# fixed local root user from compose.yml, not a secret. Steps:
+# CONTRIBUTING.md#viewing-audit-records.
+# otel:
+#   endpoint: http://openobserve:5080/api/default
+#   headers:
+#     Authorization: "Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM="

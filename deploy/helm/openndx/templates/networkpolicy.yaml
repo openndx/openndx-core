@@ -5,7 +5,7 @@ Copyright (c) 2026 Lanka Software Foundation
 {{- /*
 One NetworkPolicy per enabled service, limiting inbound traffic to its
 container port. Egress is left open: PostgreSQL, ThunderID, the providers and
-Argus are all outside the chart. Each service accepts:
+the OpenTelemetry endpoint are all outside the chart. Each service accepts:
   the chart's own callers  PDP: the OE and Portal Backend; Consent Engine: the OE
   the ingress controller   networkPolicy.ingressFrom, while its own ingress is on
   other callers            <service>.networkPolicy.extraFrom, for it alone

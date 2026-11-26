@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +14,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/LSFLK/argus/pkg/audit"
+	"github.com/OpenNSW/core/telemetry"
+	"github.com/openndx/openndx-core/internal/audit"
 	"github.com/openndx/openndx-core/internal/authn"
 	"github.com/openndx/openndx-core/internal/logging"
 	"github.com/openndx/openndx-core/internal/oe/consent"
@@ -56,10 +58,19 @@ func run() error {
 		"build_time", BuildTime,
 		"git_commit", GitCommit)
 
-	auditClient := audit.NewClient(audit.Config{
-		BaseURL: config.Audit.URL,
-		APIKey:  config.Audit.APIKey,
-	})
+	tel, err := telemetry.Start(context.Background(), config.Otel)
+	if err != nil {
+		return fmt.Errorf("start telemetry (check otel in the config file): %w", err)
+	}
+	// Runs after the server has stopped, so the last audit records are flushed.
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tel.Shutdown(ctx); err != nil {
+			slog.Error("Failed to shut down telemetry", "error", err)
+		}
+	}()
+	auditSink := audit.NewExportSink(tel.SlogHandler())
 
 	// The consumer schema is read once at startup. To change it, deploy a new
 	// schema file and restart, so every OE instance serves the same schema.
@@ -84,7 +95,7 @@ func run() error {
 	deps := federator.Deps{
 		Providers: federator.ProviderLookup(providers.Get),
 		Schemas:   consumerSchema,
-		Auditor:   middleware.NewAuditor(auditClient, config.Audit.ActorType, config.Audit.ActorID),
+		Auditor:   middleware.NewAuditor(auditSink, config.Audit.ActorType, config.Audit.ActorID),
 	}
 	if config.PDP.URL != "" {
 		deps.Policy = policy.NewPdpClient(config.PDP.URL)

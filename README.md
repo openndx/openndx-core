@@ -46,8 +46,8 @@ flowchart LR
     OE -.->|verify tokens| IDP
     CE -.->|verify tokens| IDP
     PB -.->|verify tokens| IDP
-    OE -.->|audit events| AU[Argus audit service]
-    PB -.->|audit events| AU
+    OE -.->|audit records, OTLP| OT[OpenTelemetry backend]
+    PB -.->|audit records, OTLP| OT
 ```
 
 The Policy Decision Point, Consent Engine and Portal Backend each keep their own PostgreSQL database; the Orchestration Engine has none. Detail for every component is in its README, linked below.
@@ -63,7 +63,7 @@ The Policy Decision Point, Consent Engine and Portal Backend each keep their own
 | Admin Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/admin](portals/apps/admin/README.md) |
 | Member Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/member](portals/apps/member/README.md) |
 | ThunderID | Identity provider bundled for local use | 8090 | [thunderid/](thunderid) |
-| Audit service | [Argus](https://github.com/LSFLK/argus), optional audit log | 3001 | external |
+| OpenObserve | Optional local receiver for the OE's and PB's audit records, started by `make up OTEL=1` or `make deps OTEL=1` | 5080 | [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) |
 | PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
 | Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
 
@@ -90,13 +90,13 @@ cd openndx-core
 docker compose up --build
 ```
 
-This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend, the Consent Portal and the audit service. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. The audit service is built from its GitHub source, so the first build needs network access.
+This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend and the Consent Portal. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. Audit records are dropped until an OpenTelemetry endpoint is set; [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) shows how to send them to a local OpenObserve.
 
 The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data.
 
 ## Deploy
 
-The [Helm chart](deploy/helm/openndx/README.md) installs the four services and the Consent Portal on Kubernetes, from the container images that each release publishes as `ghcr.io/openndx/<service>`. PostgreSQL, ThunderID, the data providers and the optional audit service run outside the chart; its README lists what each needs. The [releases page](https://github.com/openndx/openndx-core/releases) lists each release's images, and the `ondx` CLI [installs](cmd/ondx/README.md#install) with Homebrew, an install script or `go install`.
+The [Helm chart](deploy/helm/openndx/README.md) installs the four services and the Consent Portal on Kubernetes, from the container images that each release publishes as `ghcr.io/openndx/<service>`. PostgreSQL, ThunderID, the data providers and the OpenTelemetry endpoint that receives audit records run outside the chart; its README lists what each needs. The [releases page](https://github.com/openndx/openndx-core/releases) lists each release's images, and the `ondx` CLI [installs](cmd/ondx/README.md#install) with Homebrew, an install script or `go install`.
 
 ## Dependencies
 
@@ -105,7 +105,8 @@ The [Helm chart](deploy/helm/openndx/README.md) installs the four services and t
 | [PostgreSQL](https://www.postgresql.org/) | The databases of the Policy Decision Point, Consent Engine and Portal Backend | PostgreSQL License |
 | [ThunderID](https://github.com/thunder-id/thunderid) | Identity provider. It issues the tokens that the Orchestration Engine, Consent Engine and Portal Backend check, and the Portal Backend creates application clients in it. | Apache-2.0 |
 | [OpenNSW/core](https://github.com/OpenNSW/core) | Shared Go libraries, for example for configuration, databases and CORS | Apache-2.0 |
-| [Argus](https://github.com/LSFLK/argus) (optional) | Audit log | Apache-2.0 |
+| [OpenTelemetry](https://opentelemetry.io/) | Exporting the Orchestration Engine's and Portal Backend's audit records over OTLP, through `OpenNSW/core/telemetry` | Apache-2.0 |
+| [OpenObserve](https://github.com/openobserve/openobserve) (optional, local only) | Receives audit records and other telemetry under `make up OTEL=1` or `make deps OTEL=1` | AGPL-3.0 |
 
 The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/consent/package.json](portals/apps/consent/package.json).
 
@@ -118,7 +119,7 @@ The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/co
 
 ## Exporting data
 
-OpenNDX doesn't keep the data that consumers request: the Orchestration Engine has no database, and its audit events record the queries, not the data that providers return. The platform's own records can be exported as JSON:
+OpenNDX doesn't keep the data that consumers request: the Orchestration Engine has no database, and its audit records name the fields requested, not the query text or the data that providers return. The platform's own records can be exported as JSON:
 
 - members, schemas and applications, with the `--json` option of the `ondx` `list` and `get` commands, or through the [Portal Backend API](cmd/pb/README.md);
 - field policies and access grants, from the Policy Decision Point at `GET /api/v1/policy/fields` and `GET /api/v1/policy/grants` ([API](cmd/pdp/README.md)).

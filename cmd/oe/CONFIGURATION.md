@@ -8,7 +8,7 @@ All settings are in one YAML file, read once at startup. The OE looks for it at 
 
 Run natively from `cmd/oe` (`cd cmd/oe && go run .`), the default is `cmd/oe/config.yaml`. The image sets `CONFIG_PATH=/app/config/config.yaml`, and Compose mounts [config.docker.yaml](config.docker.yaml) there.
 
-A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, and an unset variable stops the OE. Use it for secrets, such as `apiKey: "{{env:ARGUS_API_KEY}}"`. The whole value must be the placeholder.
+A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, and an unset variable stops the OE. Use it for secrets, such as `Authorization: "{{env:OTEL_AUTH_HEADER}}"` under `otel.headers`. The whole value must be the placeholder.
 
 ## config.yaml
 
@@ -24,11 +24,10 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. |
 | `consentEngine.url` | | Consent Engine URL, which must end in `/internal/api/v1` because the OE appends `/consents`. If the PDP requires consent and this is empty, the request fails with `CE_ERROR`. |
 | `consentEngine.ownerIdArgName` | | **Required when `consentEngine.url` is set.** The query argument that carries the ID of the data owner whose consent is asked, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires consent, so a query that needs none can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no non-empty string value for it, the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
-| `audit.url` | | Argus audit service URL. Auditing is off when this is empty. |
-| `audit.apiKey` | | Sent as `X-API-Key` to Argus. |
-| `audit.actorType`, `audit.actorId` | `SERVICE`, `orchestration-engine` | The actor recorded on audit events. |
+| `audit.actorType`, `audit.actorId` | `SERVICE`, `orchestration-engine` | The actor recorded on the audit events the OE initiates: `POLICY_CHECK`, `CONSENT_CHECK` and `PROVIDER_FETCH`. On `DATA_REQUEST` the actor is the consumer application. |
 | `providers` | | Data providers; see below and [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md). |
 | `argMappings` | | Argument mappings; see below. |
+| `otel` | export off | OpenTelemetry export, which carries the audit records. See [otel](#otel). |
 
 Unknown keys are ignored, so check the spelling of a key whose setting doesn't seem to take effect.
 
@@ -111,9 +110,26 @@ In production:
 - leave `idp.insecureSkipTLSVerify` unset;
 - terminate TLS in front of the OE, and expose only `POST /public/graphql`.
 
+## otel
+
+The OE writes its audit events as OpenTelemetry log records and sends them over OTLP/HTTP with [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). They go only to this endpoint, never to stdout.
+
+| Key | Default | Notes |
+|---|---|---|
+| `otel.endpoint` | | OTLP/HTTP base URL, for example `http://otel-collector:4318`. `/v1/logs` (and `/v1/traces`, `/v1/metrics`) is appended. Empty turns export off. |
+| `otel.logs.endpoint` | | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; the OE produces no traces or metrics yet. |
+| `otel.serviceName` | `orchestration-engine` | The `service.name` resource attribute. |
+| `otel.headers` | | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. |
+
+With export off, the OE logs `otel log export is off: audit records (category=audit) are not retained` at startup and drops every audit record. Records are batched in memory and flushed when the OE shuts down; any still unsent when the process is killed, or while the endpoint is unreachable, are lost.
+
+Each record has the message `audit` and these attributes, the same shape the NSW's `OpenNSW/core/platform/audit` writes, so one query finds both: `category` (`audit`), `eventType`, `status` (`SUCCESS` or `FAILURE`), `actorType`, `actorID`, `targetType`, and when set `targetID`, `traceID` and `metadata`. The metadata names the application, the fields asked for and the outcome; it never holds the query text, its arguments or provider data.
+
+For a local backend, `make up OTEL=1` or `make deps OTEL=1` also starts OpenObserve on `http://localhost:5080`, and the commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at it. They stay commented by default; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
+
 ## Environment variables
 
-Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`. The audit client library also reads `ENABLE_AUDIT`: auditing is on when `audit.url` is set and `ENABLE_AUDIT` isn't `false`. The OE does not load `.env` files. It records no metrics and serves no `/metrics`.
+Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`, and the OpenTelemetry SDK reads the `OTEL_*` variables `otel` has no key for, such as `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_EXPORTER_OTLP_TIMEOUT`. `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` are ignored; reference them from the config file if needed. The OE does not load `.env` files. It records no metrics and serves no `/metrics`.
 
 ## Schema
 
