@@ -345,3 +345,13 @@ For a completely fresh run, **only on a disposable local stack**, replace
 stack's PostgreSQL and ThunderID data, including application clients and key
 material. Start again at step 2 and run `ondx login` again; cached tokens from
 the previous identity database are no longer valid.
+
+## Next steps
+
+- Connect a provider of your own: [add a data provider](../cmd/oe/PROVIDER_CONFIGURATION.md).
+- Learn the rules behind each answer: the [policy model](../cmd/pdp/POLICY_MODEL.md)
+  and the [consent lifecycle](../cmd/ce/CONSENT_LIFECYCLE.md).
+- Read about each component in its README, linked from the
+  [component table](../README.md#architecture).
+- Run OpenNDX on Kubernetes with the [Helm chart](../deploy/helm/openndx/README.md).
+- Change the code: start with [CONTRIBUTING.md](../CONTRIBUTING.md).

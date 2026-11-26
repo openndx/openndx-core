@@ -1,6 +1,30 @@
 # OpenNDX
 
-An open-source data exchange platform. Data consumers ask for citizens' data through one GraphQL gateway; the platform checks the consumer's access, gets the citizen's consent where required, fetches the data from the organizations that hold it, and returns one merged answer.
+[![License](https://img.shields.io/github/license/openndx/openndx-core)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/openndx/openndx-core)](https://github.com/openndx/openndx-core/releases/latest)
+[![Integration Tests](https://github.com/openndx/openndx-core/actions/workflows/integration-tests.yml/badge.svg?branch=main)](https://github.com/openndx/openndx-core/actions/workflows/integration-tests.yml)
+
+Open National Data Exchange (OpenNDX) is an open-source data exchange platform by Lanka Software Foundation. A data consumer sends one query, and OpenNDX checks the consumer's access, gets the data owner's consent where required, fetches the data from the organizations that hold it, and returns one merged answer.
+
+## Who it's for
+
+- **Data consumers:** applications that need data held by other organizations. They send one GraphQL query instead of integrating with each organization.
+- **Data providers:** organizations that hold the data. OpenNDX queries each provider over GraphQL, so a provider whose system has only a REST API puts a GraphQL adapter in front of it, as one of the [sample providers](dev/README.md) does.
+- **Data owners:** the people the data is about. They approve, reject or revoke consent in the Consent Portal.
+- **Operators and members:** the organization that runs an exchange, and the member organizations that register their providers' schemas and their consumers' applications with the `ondx` CLI or the management API.
+
+## Key features
+
+- **One query, many providers.** The [Orchestration Engine](cmd/oe/README.md) splits a GraphQL query into one sub-query per provider, runs them in parallel and merges the results.
+- **Field-level access control.** Each field can require an access grant, the data owner's consent, both or neither, and every request is checked field by field ([policy model](cmd/pdp/POLICY_MODEL.md)).
+- **Consent that data owners control.** Owners approve, reject or revoke each request in the [Consent Portal](portals/apps/consent/README.md), and approved consent expires ([consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md)).
+- **Audited exceptions.** An administrator can let an application read a field without consent, with a legal basis and an expiry. The Orchestration Engine flags each such read in its audit events ([consent bypass](cmd/pdp/POLICY_MODEL.md#consent-bypass)).
+- **Managed from a CLI or an API.** Members, schemas, applications and their access are registered with the [`ondx` CLI](cmd/ondx/README.md) or the [Portal Backend](cmd/pb/README.md) API.
+- **Ready to deploy.** Every release publishes container images and `ondx` binaries, and the [Helm chart](deploy/helm/openndx/README.md) installs the services on Kubernetes.
+
+## Status
+
+OpenNDX is in initial development, before version 1.0, so a release can include breaking changes. Commit titles mark them with `!`, and the notes for each [release](https://github.com/openndx/openndx-core/releases) list the pull requests it includes.
 
 ## Architecture
 
@@ -14,23 +38,24 @@ flowchart LR
     CP --> CE
     Operator[Operators and member staff] --> CLI[ondx CLI]
     CLI --> PB[Portal Backend]
-    PB -->|field policies, allow-lists| PDP
+    PB -->|field policies, access grants| PDP
     PB -->|application clients| IDP[ThunderID]
     CP -.->|sign in| IDP
     CLI -.->|sign in| IDP
     Consumer -.->|client credentials| IDP
+    OE -.->|verify tokens| IDP
     CE -.->|verify tokens| IDP
     PB -.->|verify tokens| IDP
     OE -.->|audit events| AU[Argus audit service]
     PB -.->|audit events| AU
 ```
 
-Each core service keeps its own PostgreSQL database. Detail for every component is in its README, linked below.
+The Policy Decision Point, Consent Engine and Portal Backend each keep their own PostgreSQL database; the Orchestration Engine has none. Detail for every component is in its README, linked below.
 
 | Component | Role | Port | Docs |
 |---|---|---|---|
 | Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
-| Policy Decision Point (PDP) | Field policies, application allow-lists, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
+| Policy Decision Point (PDP) | Field policies, access grants, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
 | Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
 | Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
 | `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
@@ -42,14 +67,14 @@ Each core service keeps its own PostgreSQL database. Detail for every component 
 | PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
 | Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
 
-Ports are the Docker Compose defaults, and each can be changed in `.env`.
+Ports are the Docker Compose defaults. ThunderID's and the mock providers' ports are fixed; the others can be changed in `.env`, and [.env.example](.env.example) lists every variable that `compose.yml` reads.
 
-The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees. Manage the platform through `ondx` or the Portal Backend API.
+The Consent Portal is actively maintained. Admin and Member Portal source is retained for reference, with no committed fixes or compatibility guarantees, and both portals are excluded from release images and Compose. Manage the platform through `ondx` or the Portal Backend API.
 
 ### How a data request flows
 
 1. A consumer gets a token from the identity provider and sends a GraphQL query to the Orchestration Engine.
-2. The Orchestration Engine asks the Policy Decision Point whether the consumer may read each field, and which fields need the data owner's consent.
+2. The Orchestration Engine checks the token, then asks the Policy Decision Point whether the consumer may read each field, and which fields need the data owner's consent.
 3. If consent is needed, the Consent Engine records a pending request. The consumer receives a consent link, the citizen approves it in the Consent Portal, and the consumer repeats the query.
 4. The Orchestration Engine fetches the data from the providers in parallel and returns the merged result.
 
@@ -67,35 +92,54 @@ docker compose up --build
 
 This starts PostgreSQL, ThunderID, the Policy Decision Point, Consent Engine, Orchestration Engine, Portal Backend, the Consent Portal and the audit service. Every setting has a local default, so no `.env` is needed; to override any, copy `.env.example` to `.env`. The local secrets all default to `1234`; never reuse them outside local development. The audit service is built from its GitHub source, so the first build needs network access.
 
-The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data. The Admin and Member Portals are paused, unsupported prototypes and are excluded from release images and Compose.
+The [end-to-end walkthrough](dev/WALKTHROUGH.md) takes it from there: mock providers, registering members and schemas with `ondx`, granting an application access, citizen consent, and a query that returns data.
 
-## Working on the code
+## Deploy
 
-Install Go 1.26+, Node 24+ with pnpm (for the portals), Docker, Make, and a C compiler such as gcc or clang (the unit tests use SQLite through cgo). On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang. Then:
+The [Helm chart](deploy/helm/openndx/README.md) installs the four services and the Consent Portal on Kubernetes, from the container images that each release publishes as `ghcr.io/openndx/<service>`. PostgreSQL, ThunderID, the data providers and the optional audit service run outside the chart; its README lists what each needs. The [releases page](https://github.com/openndx/openndx-core/releases) lists each release's images, and the `ondx` CLI [installs](cmd/ondx/README.md#install) with Homebrew, an install script or `go install`.
 
-```bash
-make help     # all commands
-make setup    # git hook, Go modules, golangci-lint, portal packages
-make test     # unit tests; make test PKG=./internal/pdp/... for some packages
-make check    # tidy go.mod, license headers, lint and test, as the pre-commit hook does
-make up       # full stack in Docker; make down to stop
-make deps     # only the dependencies in Docker, to run the services natively
-```
+## Dependencies
 
-On Windows, install GNU Make (for example `choco install make`) and Git for Windows. The Makefile runs its recipes with the `sh` that ships with Git, so `make` works from PowerShell, cmd or Git Bash.
+| Dependency | Used for | License |
+|---|---|---|
+| [PostgreSQL](https://www.postgresql.org/) | The databases of the Policy Decision Point, Consent Engine and Portal Backend | PostgreSQL License |
+| [ThunderID](https://github.com/thunder-id/thunderid) | Identity provider. It issues the tokens that the Orchestration Engine, Consent Engine and Portal Backend check, and the Portal Backend creates application clients in it. | Apache-2.0 |
+| [OpenNSW/core](https://github.com/OpenNSW/core) | Shared Go libraries, for example for configuration, databases and CORS | Apache-2.0 |
+| [Argus](https://github.com/LSFLK/argus) (optional) | Audit log | Apache-2.0 |
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers every target and the ways to run the platform. [.env.example](.env.example) lists every variable `compose.yml` reads.
+The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/consent/package.json](portals/apps/consent/package.json).
 
-To install the `ondx` CLI, see [its README](cmd/ondx/README.md#install).
+## Standards
+
+- [GraphQL](https://spec.graphql.org/) for consumer queries, and [GraphQL over HTTP](https://graphql.github.io/graphql-over-http/draft/) for the calls to providers.
+- [OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749) access tokens: the client credentials grant for data consumers, and the authorization code grant with [PKCE](https://www.rfc-editor.org/rfc/rfc7636) for the Consent Portal and `ondx`.
+- [JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc7519), verified with the identity provider's [JSON Web Key Set](https://www.rfc-editor.org/rfc/rfc7517).
+- [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.3) descriptions of the services' HTTP APIs, in each `cmd/<service>/openapi.yaml`.
+
+## Exporting data
+
+OpenNDX doesn't keep the data that consumers request: the Orchestration Engine has no database, and its audit events record the queries, not the data that providers return. The platform's own records can be exported as JSON:
+
+- members, schemas and applications, with the `--json` option of the `ondx` `list` and `get` commands, or through the [Portal Backend API](cmd/pb/README.md);
+- field policies and access grants, from the Policy Decision Point at `GET /api/v1/policy/fields` and `GET /api/v1/policy/grants` ([API](cmd/pdp/README.md)).
 
 ## Documentation
 
-- **Start here:** [end-to-end walkthrough](dev/WALKTHROUGH.md), [mock providers](dev/README.md), [`ondx` CLI](cmd/ondx/README.md)
-- **Components:** the table above
-- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Releases:** [docs/RELEASE.md](docs/RELEASE.md)
+- **Tutorial:** the [end-to-end walkthrough](dev/WALKTHROUGH.md), which runs the platform with the [mock providers](dev/README.md).
+- **How-to guides:** [add a data provider](cmd/oe/PROVIDER_CONFIGURATION.md), [deploy with Helm](deploy/helm/openndx/README.md), [make a release](docs/RELEASE.md).
+- **Reference:** each component's README, linked from the [table above](#architecture), with its configuration and `openapi.yaml`; the [policy model](cmd/pdp/POLICY_MODEL.md), the [consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md) and the [Portal Backend's authorization](cmd/pb/AUTHORIZATION.md); the [`ondx` CLI](cmd/ondx/README.md).
 - **Contributor and ops references (refresh pending):** [integration tests](tests/integration/README.md), [CI workflows](.github/workflows/README.md), [observability stack](observability/README.md)
 
-## Security and license
+## Get help
 
-Report vulnerabilities as described in [SECURITY.md](SECURITY.md), not in public issues. Licensed under the [Apache License 2.0](LICENSE). Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+- Ask questions and discuss ideas in [GitHub Discussions](https://github.com/openndx/openndx-core/discussions).
+- Report bugs and suggest improvements with the [issue forms](https://github.com/openndx/openndx-core/issues/new/choose).
+- Report security vulnerabilities as described in [SECURITY.md](SECURITY.md), not in public issues.
+
+## Contributing
+
+To build, test or run the services from source, see [CONTRIBUTING.md](CONTRIBUTING.md). It covers the prerequisites on each operating system, every `make` target, the ways to run the platform and how to submit a pull request. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Copyright Lanka Software Foundation. Licensed under the [Apache License 2.0](LICENSE).
