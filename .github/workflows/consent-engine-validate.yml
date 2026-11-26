@@ -9,9 +9,9 @@ on:
     paths:
       - "cmd/ce/**"
       - "internal/ce/**"
+      - "internal/authn/**"
       - "internal/database/**"
-      - "internal/config/**"
-      - "internal/constants/**"
+      - "internal/logging/**"
       - "internal/monitoring/**"
       - "internal/utils/**"
       # init-db.sql loads every service's schema; the bootstrap test applies it
@@ -145,7 +145,6 @@ jobs:
           load: true
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}/consent-engine:pr-${{ github.event.pull_request.number || 'manual' }}
           build-args: |
-            SERVICE_PATH=${{ env.SERVICE_PATH }}
             BUILD_VERSION=${{ github.sha }}
             BUILD_TIME=${{ github.event.pull_request.updated_at || github.run_id || '2025-01-01T00:00:00Z' }}
             GIT_COMMIT=${{ github.sha }}

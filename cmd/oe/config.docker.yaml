@@ -20,7 +20,7 @@ schemaPath: schema.graphql
 
 idp:
   # Reached over the compose network; the issuer is ThunderID's public URL.
-  jwksURL: "{{env:IDP_JWKS_URL}}"
+  jwksURL: http://thunderid:8090/oauth2/jwks
   issuer: "{{env:IDP_PUBLIC_URL}}"
   audience: "{{env:IDP_AUDIENCE}}"
 

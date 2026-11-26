@@ -36,8 +36,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total[5m])) by (method, route)",
-          "legendFormat": "{{method}} {{route}}",
+          "expr": "sum(rate(http_requests_ratio_total[5m])) by (http_request_method, http_route)",
+          "legendFormat": "{{http_request_method}} {{http_route}}",
           "refId": "A"
         }
       ],
@@ -61,89 +61,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (route, le))",
-          "legendFormat": "{{route}}",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (http_route, le))",
+          "legendFormat": "{{http_route}}",
           "refId": "A"
         }
       ],
       "title": "HTTP Latency (P95)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
-      "id": 3,
-      "options": {
-        "legend": { "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(external_calls_total[5m])) by (external_target, external_operation)",
-          "legendFormat": "{{external_target}}/{{external_operation}}",
-          "refId": "A"
-        }
-      ],
-      "title": "External Calls per Second",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
-      "id": 4,
-      "options": {
-        "legend": { "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "100 * sum(rate(external_call_errors_total[5m])) by (external_target) / sum(rate(external_calls_total[5m])) by (external_target)",
-          "legendFormat": "{{external_target}} error %",
-          "refId": "A"
-        }
-      ],
-      "title": "External Call Error %",
-      "type": "timeseries"
-    },
-    {
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
-      "id": 5,
-      "options": {
-        "legend": { "displayMode": "table", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(business_events_total{business_outcome=\"success\"}[5m])) by (business_action)",
-          "legendFormat": "{{business_action}} success",
-          "refId": "A"
-        },
-        {
-          "expr": "sum(rate(business_events_total{business_outcome=\"failure\"}[5m])) by (business_action)",
-          "legendFormat": "{{business_action}} failure",
-          "refId": "B"
-        }
-      ],
-      "title": "Business Events",
       "type": "timeseries"
     },
     {
@@ -161,7 +84,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "id": 6,
       "options": {
         "displayMode": "gradient",
@@ -169,7 +92,7 @@
       },
       "targets": [
         {
-          "expr": "up{job=~\"orchestration-engine|consent-engine|policy-decision-point|portal-backend\"}",
+          "expr": "up{job=\"consent-engine\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }

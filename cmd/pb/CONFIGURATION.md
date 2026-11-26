@@ -38,6 +38,7 @@ Applies to `/api/v1/`. Uses [`OpenNSW/core/cors`](https://github.com/OpenNSW/cor
 | `idp.issuer` | none | **Required.** Must equal the tokens' `iss`: ThunderID's public URL, not `/oauth2/token`. | `IDP_ISSUER`, `IDP_TOKEN_URL` |
 | `idp.audience` | none | **Required.** PB's resource-server identifier (`http://pb.openndx.local` in the bundled stack). | `IDP_AUDIENCE` |
 | `idp.insecureSkipTLSVerify` | `false` | Skip TLS verification when fetching the JWKS. Development only. | `IDP_JWKS_INSECURE_SKIP_VERIFY` |
+| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required` | `false` | `true` rejects a token whose claim is absent or blank, client-credentials tokens included. | |
 
 The JWKS URL and issuer are no longer derived from a base URL; set both.
 

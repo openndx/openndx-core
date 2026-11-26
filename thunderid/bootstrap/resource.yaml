@@ -32,37 +32,17 @@ assignments:
   - id: 01900000-0000-7000-8000-000000000091
     type: app
 ---
-# Consent Engine's own resource server. ThunderID binds an access token's `aud` to
-# whatever resource server the caller requests, regardless of role/permission — a
-# resource identifier alone is enough to get a token audienced for it (verified: a
-# client with no role on this resource server can still mint one). So this MUST be
-# a distinct identifier from the OE resource server above: sharing one audience
-# between the citizen-facing Consent Portal and the M2M data-consumer flow would let
-# either token be replayed against the other service. The Consent Portal must
-# request `resource=http://consent.openndx.local` when it authenticates citizens,
-# and consent-engine validates against this same value (CONSENT_ENGINE_AUDIENCE).
-resource_type: resource_server
-id: 01900000-0000-7000-8000-000000000093
-name: Consent Engine Resource Server
-description: Consent Engine resource server for citizen-facing portal endpoints
-identifier: http://consent.openndx.local
-ouHandle: default
-resources:
-  - name: Portal
-    handle: access
-    description: Consent Portal citizen access
----
 # Portal Backend's resource server. Its identifier is PB's API audience: PB
 # only accepts access tokens whose `aud` is http://pb.openndx.local
-# (IDP_AUDIENCE in compose.yml), whichever client requested them, so clients
+# (PB_AUDIENCE in compose.yml), whichever client requested them, so clients
 # must request `resource=http://pb.openndx.local` (ondx's built-in `local`
 # profile does).
 #
 # Each resource's actions are PB's OAuth2 scopes, named <resource>:<action>
-# (internal/pb/auth/scopes.go): read and write cover the caller's own
+# (internal/pb/caller/scopes.go): read and write cover the caller's own
 # organization unit, read-all and write-all every organization unit. PB checks
 # these scopes on each route, so a token only gets the ones the client requests
-# AND the user's roles below grant. See "Authorization" in cmd/pb/README.md.
+# AND the user's roles below grant. See cmd/pb/AUTHORIZATION.md.
 resource_type: resource_server
 id: 01900000-0000-7000-8000-0000000000b3
 name: Portal Backend Resource Server

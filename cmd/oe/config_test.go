@@ -227,7 +227,6 @@ func TestLoadConfigErrors(t *testing.T) {
 }
 
 func TestCommittedConfigsLoad(t *testing.T) {
-	t.Setenv("IDP_JWKS_URL", "http://thunderid:8090/oauth2/jwks")
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
 	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")
@@ -248,7 +247,6 @@ func TestCommittedConfigsLoad(t *testing.T) {
 // TestCommittedConfigsFederate exercises the committed configs and schema so the
 // walkthrough's NIC reaches each selected provider.
 func TestCommittedConfigsFederate(t *testing.T) {
-	t.Setenv("IDP_JWKS_URL", "http://thunderid:8090/oauth2/jwks")
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
 	t.Setenv("AUDIT_SERVICE_URL", "http://audit-service:3001")

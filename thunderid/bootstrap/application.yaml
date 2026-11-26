@@ -2,10 +2,9 @@
 # Copyright (c) 2026 Lanka Software Foundation
 
 # LOCAL-DEV ONLY: a sample data-consumer M2M client so the OE `getdata` API can be
-# exercised end-to-end without registering a real provider through the portal first.
-# Do not mount into a shared or production deployment — production consumers are
-# provisioned via the portal's WSO2 Identity Server integration, not ThunderID
-# (see docs/DESIGN-esignet-citizen-authentication.md, §3.1).
+# exercised end-to-end without creating an application through the Portal Backend
+# first. Remove it for a shared or production deployment, where each consumer is an
+# application the Portal Backend creates, with its own ThunderID client.
 #
 # clientSecret is resolved from DATA_CONSUMER_CLIENT_SECRET at bootstrap time
 # (SubstituteEnvironmentVariables); the thunderid-setup service sets it. The
@@ -33,22 +32,15 @@ inboundAuthConfig:
           clientConfig:
             validityPeriod: 3600
 ---
-# LOCAL-DEV ONLY: the React Consent Portal's browser OAuth2 client, so citizens can
-# log in against a local ThunderID instance while the eSignet integration described
-# in docs/DESIGN-esignet-citizen-authentication.md is still being built. Do not mount
-# into a shared or production deployment.
+# The React Consent Portal's browser OAuth2 client, which citizens log in with.
 #
 # clientId matches CONSENT_PORTAL_CLIENT_ID in .env, which the consent portal logs in
-# with. Its tokens are audienced to the client ID, which consent-engine checks as
-# IDP_AUDIENCE (CONSENT_ENGINE_AUDIENCE in .env). redirectUris are built from
-# CONSENT_PORTAL_URL, resolved at bootstrap time (SubstituteEnvironmentVariables);
-# the thunderid-setup service sets it.
-#
-# IMPORTANT: the authorize/token requests this app makes MUST include
-# `resource=http://consent.openndx.local` (the Consent Engine resource server
-# declared in thunderid/bootstrap/resource.yaml) so citizen tokens are audienced
-# for consent-engine, not the OE resource server — see that file's comment for why
-# sharing an audience across services would let tokens be replayed cross-API.
+# with. The portal requests no `resource`, so ThunderID audiences its tokens to the
+# client ID, which consent-engine checks as CONSENT_ENGINE_AUDIENCE. That audience
+# differs from the OE's (http://api.openndx.local), so a citizen token can't be
+# replayed against the OE. redirectUris are built from CONSENT_PORTAL_URL, resolved
+# at bootstrap time (SubstituteEnvironmentVariables); the thunderid-setup service
+# sets it.
 resource_type: application
 id: 01900000-0000-7000-8000-0000000000a0
 name: Consent Portal
@@ -72,7 +64,6 @@ inboundAuthConfig:
       clientId: CONSENT_PORTAL
       redirectUris:
         - "{{ .CONSENT_PORTAL_URL }}"
-        - "{{ .CONSENT_PORTAL_URL }}/callback"
       postLogoutRedirectUris:
         - "{{ .CONSENT_PORTAL_URL }}"
       grantTypes:

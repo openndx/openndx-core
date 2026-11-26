@@ -10,9 +10,9 @@ on:
     paths:
       - "cmd/ce/**"
       - "internal/ce/**"
+      - "internal/authn/**"
       - "internal/database/**"
-      - "internal/config/**"
-      - "internal/constants/**"
+      - "internal/logging/**"
       - "internal/monitoring/**"
       - "internal/utils/**"
       - "go.mod"
@@ -74,7 +74,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            SERVICE_PATH=${{ env.SERVICE_PATH }}
             BUILD_VERSION=${{ github.sha }}
             BUILD_TIME=${{ github.event.head_commit.timestamp || github.event.repository.pushed_at || '2025-01-01T00:00:00Z' }}
             GIT_COMMIT=${{ github.sha }}

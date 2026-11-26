@@ -9,9 +9,9 @@ on:
     paths:
       - "cmd/pb/**"
       - "internal/pb/**"
-      - "internal/config/**"
-      - "internal/constants/**"
-      - "internal/monitoring/**"
+      - "internal/authn/**"
+      - "internal/database/**"
+      - "internal/logging/**"
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
@@ -110,7 +110,6 @@ jobs:
           load: true
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}/portal-backend:pr-${{ github.event.pull_request.number || 'manual' }}
           build-args: |
-            SERVICE_PATH=${{ env.SERVICE_PATH }}
             BUILD_VERSION=${{ github.sha }}
             BUILD_TIME=${{ github.event.pull_request.updated_at || github.run_id || '2025-01-01T00:00:00Z' }}
             GIT_COMMIT=${{ github.sha }}

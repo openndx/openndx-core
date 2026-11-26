@@ -9,9 +9,8 @@ on:
     paths:
       - "cmd/pdp/**"
       - "internal/pdp/**"
-      - "internal/config/**"
-      - "internal/constants/**"
-      - "internal/monitoring/**"
+      - "internal/database/**"
+      - "internal/logging/**"
       - "internal/utils/**"
       - "go.mod"
       - "go.sum"
@@ -110,7 +109,6 @@ jobs:
           load: true
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}/policy-decision-point:pr-${{ github.event.pull_request.number || 'manual' }}
           build-args: |
-            SERVICE_PATH=${{ env.SERVICE_PATH }}
             BUILD_VERSION=${{ github.sha }}
             BUILD_TIME=${{ github.event.pull_request.updated_at || github.run_id || '2025-01-01T00:00:00Z' }}
             GIT_COMMIT=${{ github.sha }}

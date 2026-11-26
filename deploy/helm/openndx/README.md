@@ -96,15 +96,17 @@ Read the credentials from files rather than passing them on the command line, wh
 ```bash
 read -rs DB_PASSWORD && printf '%s' "$DB_PASSWORD" > db-password
 read -rs PB_CLIENT_SECRET && printf '%s' "$PB_CLIENT_SECRET" > pb-client-secret
+read -rs DATA_CONSUMER_CLIENT_SECRET && printf '%s' "$DATA_CONSUMER_CLIENT_SECRET" > data-consumer-client-secret
 
 kubectl create namespace openndx
 kubectl create secret generic openndx-secrets \
   --namespace openndx \
   --from-literal=dbUser=postgres \
   --from-file=dbPassword=db-password \
-  --from-file=pbClientSecret=pb-client-secret
+  --from-file=pbClientSecret=pb-client-secret \
+  --from-file=dataConsumerClientSecret=data-consumer-client-secret
 
-rm db-password pb-client-secret
+rm db-password pb-client-secret data-consumer-client-secret
 ```
 
 To turn auditing on for the Orchestration Engine or Portal Backend, set its `config.audit.url` and `config.audit.apiKey: "{{env:ARGUS_API_KEY}}"`, and add `ARGUS_API_KEY` to its `env`:

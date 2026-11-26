@@ -34,7 +34,6 @@ echo ""
 build_service() {
     local service_name=$1
     local dockerfile_path=$2
-    local service_path=$3
     
     echo "----------------------------------------"
     echo -e "${YELLOW}Building: $service_name${NC}"
@@ -44,7 +43,6 @@ build_service() {
     
     if docker build \
         --file "$dockerfile_path" \
-        --build-arg SERVICE_PATH="$service_path" \
         --build-arg BUILD_VERSION="$BUILD_VERSION" \
         --build-arg BUILD_TIME="$BUILD_TIME" \
         --build-arg GIT_COMMIT="$GIT_COMMIT" \
@@ -68,25 +66,25 @@ echo ""
 OVERALL_STATUS=0
 
 # Build orchestration-engine
-if ! build_service "orchestration-engine" "cmd/oe/Dockerfile" "cmd/oe"; then
+if ! build_service "orchestration-engine" "cmd/oe/Dockerfile"; then
     OVERALL_STATUS=1
 fi
 echo ""
 
 # Build consent-engine
-if ! build_service "consent-engine" "cmd/ce/Dockerfile" "cmd/ce"; then
+if ! build_service "consent-engine" "cmd/ce/Dockerfile"; then
     OVERALL_STATUS=1
 fi
 echo ""
 
 # Build policy-decision-point
-if ! build_service "policy-decision-point" "cmd/pdp/Dockerfile" "cmd/pdp"; then
+if ! build_service "policy-decision-point" "cmd/pdp/Dockerfile"; then
     OVERALL_STATUS=1
 fi
 echo ""
 
 # Build portal-backend
-if ! build_service "portal-backend" "cmd/pb/Dockerfile" "cmd/pb"; then
+if ! build_service "portal-backend" "cmd/pb/Dockerfile"; then
     OVERALL_STATUS=1
 fi
 echo ""
