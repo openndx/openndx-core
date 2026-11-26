@@ -47,15 +47,22 @@ func writeConfig(t *testing.T, content string) string {
 	return path
 }
 
-// withOtelExample returns a copy of the config at path with its commented otel
-// example uncommented, so the documented block is checked as well.
+// withOtelExample returns the path of a config like the one at path with its
+// otel example turned on, so the documented block is checked as well. The
+// committed configs keep the example commented out; when it is already
+// uncommented, as CONTRIBUTING.md#viewing-audit-records has developers do
+// locally, the file is used as it is.
 func withOtelExample(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	lines := strings.Split(string(data), "\n")
-	start := slices.Index(lines, "# otel:")
-	require.NotEqual(t, -1, start, "%s has a commented otel example", path)
+	start := slices.IndexFunc(lines, func(line string) bool {
+		return strings.TrimSuffix(line, "\r") == "# otel:"
+	})
+	if start == -1 {
+		return path
+	}
 	for i := start; i < len(lines) && strings.HasPrefix(lines[i], "# "); i++ {
 		lines[i] = strings.TrimPrefix(lines[i], "# ")
 	}

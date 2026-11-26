@@ -297,8 +297,8 @@ services:
       ZO_ROOT_USER_EMAIL: root@example.com
       ZO_ROOT_USER_PASSWORD: Complexpass#123
       ZO_TELEMETRY: "false"
-    # No healthcheck: the image has no shell, curl or wget. From the host:
-    # curl -sf http://127.0.0.1:5080/healthz
+    # No healthcheck: the image has no shell, curl or wget. From the host,
+    # http://127.0.0.1:5080/healthz returns {"status":"ok"} once it is up.
     networks:
       - openndx-network
 
