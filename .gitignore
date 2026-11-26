@@ -16,10 +16,6 @@ portals/apps/consent/public/config.js
 **/coverage-*.out
 **/coverage-*.html
 
-# Ballerina build output
-**/target/
-**/*.balx
-
 # VSCode settings
 .vscode/
 
@@ -30,17 +26,11 @@ Thumbs.db
 # Logs
 *.log
 
-mocks/mock-dmt/Config.toml
-
 ## Environment Variables
 **/.env
 
 # Intellij Configs
 **/.idea/**
-
-# Go binaries (compiled executables)
-**/policy-decision-point/policy-decision-point
-**/portal-backend/portal-backend
 
 # Database files
 **/*.db

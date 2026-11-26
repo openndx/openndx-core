@@ -4,7 +4,6 @@ The Portal Backend reads one YAML file: the `-config` flag, else `CONFIG_PATH`, 
 
 - [config.example.yaml](config.example.yaml): native runs. Copy it to the git-ignored `config.yaml`.
 - [config.docker.yaml](config.docker.yaml): mounted by [compose.yml](../../compose.yml), which passes in the shared values from [.env.example](../../.env.example).
-- [config.test.yaml](config.test.yaml): mounted by [docker-compose.test.yml](docker-compose.test.yml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup. The placeholder must be the whole value, and an unset or empty variable stops the service. Keys left out keep the defaults below; keys PB does not know are ignored.
 
