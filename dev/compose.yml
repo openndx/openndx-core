@@ -1,60 +1,46 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Lanka Software Foundation
 
-# Local dev/demo data providers for the Orchestration Engine.
-#
-# This brings up the mock member services published by the openndx-farajaland
-# reference implementation (https://github.com/openndx/openndx-farajaland) so
-# `oe` has real providers to federate against. It depends only on their
-# published images, not on that repo being checked out locally.
+# Sample data providers for the Orchestration Engine: the mock member services
+# of openndx-farajaland (https://github.com/openndx/openndx-farajaland), run
+# from its published images. Their sample data is built into the images; the
+# Identity Registry's two services read their settings from dev/providers/.
 #
 # Usage:
 #   docker compose -f dev/compose.yml up -d
 #   docker compose -f dev/compose.yml down
 #
-# See dev/README.md for the full walkthrough.
-#
-# The images are published for linux/arm64 only, so each service pins that
-# platform (PROVIDER_PLATFORM overrides it, e.g. for your own amd64 images).
-# Docker Desktop emulates it on Intel and AMD machines; Docker Engine
-# on Intel or AMD Linux needs emulation installed once:
-#   docker run --privileged --rm tonistiigi/binfmt --install arm64
-# Remove the pins once linux/amd64 images are published.
+# See dev/README.md.
 
 services:
-  drp-api:
-    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api:${IMAGE_TAG:-v0.1.0}
-    platform: ${PROVIDER_PLATFORM:-linux/arm64}
-    container_name: dev-drp-api
+  identity-registry-api:
+    image: ghcr.io/openndx/identity-registry-api:v0.1.0
+    container_name: dev-identity-registry-api
     ports:
       - "9090:9090"
     volumes:
-      - ./providers/drp-api/Config.toml:/home/ballerina/Config.toml:ro
-      - ./providers/drp-api/mock_data.json:/home/ballerina/mock_data.json:ro
+      - ./providers/identity-registry-api/Config.toml:/home/ballerina/Config.toml:ro
     restart: unless-stopped
 
-  # GraphQL subgraph in front of drp-api. This is what oe's "drp" provider
-  # entry (cmd/oe/config.docker.yaml / config.example.yaml) points at.
-  drp-api-adapter:
-    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/drp-api-adapter:${IMAGE_TAG:-v0.1.0}
-    platform: ${PROVIDER_PLATFORM:-linux/arm64}
-    container_name: dev-drp-adapter
+  # GraphQL service in front of identity-registry-api. The OE's
+  # identity-registry-v1 provider (cmd/oe/config.docker.yaml and
+  # config.example.yaml) points at it.
+  identity-registry-adapter:
+    image: ghcr.io/openndx/identity-registry-adapter:v0.1.0
+    container_name: dev-identity-registry-adapter
     ports:
       - "9091:9091"
     volumes:
-      - ./providers/drp-api-adapter/Config.toml:/home/ballerina/Config.toml:ro
+      - ./providers/identity-registry-adapter/Config.toml:/home/ballerina/Config.toml:ro
     depends_on:
-      - drp-api
+      - identity-registry-api
     restart: unless-stopped
 
-  rgd-api:
-    image: ${DOCKER_REGISTRY:-docker.io}/${IMAGE_PREFIX:-mushrafmim}/rgd-api:${IMAGE_TAG:-v0.1.0}
-    platform: ${PROVIDER_PLATFORM:-linux/arm64}
-    container_name: dev-rgd-api
+  # GraphQL service for the OE's civil-registry-v1 provider, with an OAuth2
+  # client-credentials token endpoint at /oauth/token.
+  civil-registry-api:
+    image: ghcr.io/openndx/civil-registry-api:v0.1.0
+    container_name: dev-civil-registry-api
     ports:
       - "8080:8080"
-    volumes:
-      # Overrides the image's baked-in mock_data.json with the generic dataset
-      # below, keeping NICs in sync with drp-api's mock data.
-      - ./providers/rgd-api/mock_data.json:/app/mock_data.json:ro
     restart: unless-stopped

@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Lanka Software Foundation
 
+# The Identity Registry API's configuration. It answers only requests whose
+# X-API-KEY header equals MOCK_API_KEY.
 PORT=9090
 MOCK_API_KEY="your-api-key"

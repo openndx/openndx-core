@@ -1,9 +1,9 @@
 # Local end-to-end walkthrough with `ondx`
 
-Use the checked-in DRP/RGD mocks to register members and schemas, grant an
-application access through `ondx`, approve citizen consent, and retrieve data
-through OE. Management calls go through Portal Backend; no SQL edits or direct
-PDP writes are needed.
+Use the sample Identity Registry and Civil Registry providers to register
+members and schemas, grant an application access through `ondx`, approve citizen
+consent, and retrieve data through OE. Management calls go through Portal
+Backend; no SQL edits or direct PDP writes are needed.
 
 This is an interactive walkthrough: operator login and citizen approval use a
 browser. The final checks require actual provider data and reject GraphQL errors.
@@ -29,10 +29,10 @@ same time; several ports overlap.
 
 The seeded accounts below all use password `1234` in this local sandbox:
 
-| Account     | Purpose                                                            |
-| ----------- | ------------------------------------------------------------------ |
-| `ndx-admin` | Operator who registers members, schemas, and application policies  |
-| `suresh`    | Citizen whose NIC is `748213`; approves sharing their mock records |
+| Account     | Purpose                                                                |
+| ----------- | ---------------------------------------------------------------------- |
+| `ndx-admin` | Operator who registers members, schemas, and application policies      |
+| `suresh`    | Citizen whose email is `suresh@ndx.fl`; approves sharing their records |
 
 Use separate browser profiles or a private window for the citizen. An existing
 operator login at ThunderID can otherwise be reused when the portal needs a
@@ -49,11 +49,12 @@ docker compose -f dev/compose.yml ps
 docker compose ps -a
 ```
 
-The provider images are published separately; their configuration and mock data
-are mounted from `dev/providers/`. The root stack builds OpenNDX from this
-checkout and initializes PostgreSQL and ThunderID. Audit records are dropped
-unless an OpenTelemetry endpoint is set; to follow them through the
-walkthrough, see [Viewing audit records](../CONTRIBUTING.md#viewing-audit-records).
+The provider images come from openndx-farajaland with their sample data built
+in; the Identity Registry's settings are mounted from `dev/providers/`. The root
+stack builds OpenNDX from this checkout and initializes PostgreSQL and
+ThunderID. Audit records are dropped unless an OpenTelemetry endpoint is set; to
+follow them through the walkthrough, see
+[Viewing audit records](../CONTRIBUTING.md#viewing-audit-records).
 
 Wait for startup, especially the one-time `thunderid-setup` service. It must exit
 successfully. Check the endpoints before continuing:
@@ -86,16 +87,17 @@ the local profile previously, compare `./ondx profile list` with these values.
 
 ## 4. Register members and both provider schemas
 
-The bootstrap already creates the DRP and DIE organization units in ThunderID.
-Register the corresponding members in Portal Backend:
+The bootstrap already creates the Identity Registry and Immigration Department
+organization units in ThunderID. Register the corresponding members in Portal
+Backend:
 
 ```bash
 ./ondx members create --profile local \
-  --name "DRP Demo Provider" --email drp@openndx.local \
+  --name "Identity Registry" --email identity-registry@openndx.local \
   --ou-id 01900000-0000-7000-8000-0000000000c0
 
 ./ondx members create --profile local \
-  --name "DIE Demo Consumer" --email die@openndx.local \
+  --name "Immigration Department" --email immigration@openndx.local \
   --ou-id 01900000-0000-7000-8000-0000000000c1
 ```
 
@@ -103,27 +105,27 @@ Each command prints `Created member <id> (...)`. Copy those two IDs into shell
 variables, replacing the placeholder text:
 
 ```bash
-DRP_MEMBER_ID='paste-the-DRP-member-id'
-DIE_MEMBER_ID='paste-the-DIE-member-id'
+IDENTITY_REGISTRY_MEMBER_ID='paste-the-Identity-Registry-member-id'
+IMMIGRATION_MEMBER_ID='paste-the-Immigration-Department-member-id'
 ```
 
-For this sandbox, register both schemas under the DRP demo member. The seeded
-organization units include DRP and DIE; a separate RGD member is not needed to
-exercise the two providers. Schema ownership in Portal Backend and provider
-routing in OE are separate: OE still calls DRP and RGD independently.
+For this sandbox, register both schemas under the Identity Registry member. A
+separate Civil Registry member is not needed to exercise the two providers.
+Schema ownership in Portal Backend and provider routing in OE are separate: OE
+still calls each provider independently.
 
 ```bash
 ./ondx schemas create --profile local \
-  --schema-id drp-person-v1 --name "DRP Person Registry" \
+  --schema-id identity-registry-v1 --name "Identity Registry" \
   --endpoint http://host.docker.internal:9091 \
-  --member-id "$DRP_MEMBER_ID" \
+  --member-id "$IDENTITY_REGISTRY_MEMBER_ID" \
   --field person.fullName:allowlist:primary \
   --field person.profession:allowlist+consent:primary
 
 ./ondx schemas create --profile local \
-  --schema-id rgd-person-v1 --name "RGD Birth Registry" \
+  --schema-id civil-registry-v1 --name "Civil Registry" \
   --endpoint http://host.docker.internal:8080/graphql \
-  --member-id "$DRP_MEMBER_ID" \
+  --member-id "$IDENTITY_REGISTRY_MEMBER_ID" \
   --field getPersonInfo.birthPlace:allowlist+consent:primary \
   --field getPersonInfo.district:allowlist+consent:primary
 ```
@@ -145,8 +147,8 @@ Start with permission for only the full name:
 
 ```bash
 ./ondx applications create --profile local \
-  --name "Local Passport Demo" --member-id "$DIE_MEMBER_ID" \
-  --field drp-person-v1:person.fullName
+  --name "Local Passport Demo" --member-id "$IMMIGRATION_MEMBER_ID" \
+  --field identity-registry-v1:person.fullName
 ```
 
 This provisions an M2M client in ThunderID and grants it the data-consumer role.
@@ -191,24 +193,25 @@ oe_query() {
     --data-binary "$1"
 }
 
-PUBLIC_REQUEST='{"query":"query { personInfo(nic: \"748213\") { fullName } }"}'
+PUBLIC_REQUEST='{"query":"query { personInfo(nic: \"suresh@ndx.fl\") { fullName } }"}'
 PUBLIC_RESPONSE=$(oe_query "$PUBLIC_REQUEST")
 printf '%s\n' "$PUBLIC_RESPONSE" | jq .
 printf '%s' "$PUBLIC_RESPONSE" | jq -e '
   ((.errors // []) | length == 0) and
-  .data.personInfo.fullName == "Suresh"
+  .data.personInfo.fullName == "Suresh Fernando"
 '
 ```
 
 The assertion must print `true` and exit successfully. This proves the token,
-PDP grant, OE mapping, and DRP provider are working before adding consent.
+PDP grant, OE mapping, and Identity Registry provider are working before adding
+consent.
 
 ## 7. Grant the consent fields with `ondx policy update`
 
-Prepare a query spanning DRP and RGD:
+Prepare a query spanning both providers:
 
 ```bash
-FULL_REQUEST='{"query":"query { personInfo(nic: \"748213\") { fullName profession birthInfo { birthPlace district } } }"}'
+FULL_REQUEST='{"query":"query { personInfo(nic: \"suresh@ndx.fl\") { fullName profession birthInfo { birthPlace district } } }"}'
 DENIED_RESPONSE=$(oe_query "$FULL_REQUEST")
 printf '%s\n' "$DENIED_RESPONSE" | jq .
 printf '%s' "$DENIED_RESPONSE" | jq -e '
@@ -222,10 +225,10 @@ consent fields yet. Add them through the CLI:
 ```bash
 ./ondx policy update --profile local --app-id "$APP_ID" \
   --grant-duration 30d \
-  --field drp-person-v1:person.fullName \
-  --field drp-person-v1:person.profession \
-  --field rgd-person-v1:getPersonInfo.birthPlace \
-  --field rgd-person-v1:getPersonInfo.district
+  --field identity-registry-v1:person.fullName \
+  --field identity-registry-v1:person.profession \
+  --field civil-registry-v1:getPersonInfo.birthPlace \
+  --field civil-registry-v1:getPersonInfo.district
 
 ./ondx applications get --profile local --app-id "$APP_ID"
 ```
@@ -265,8 +268,9 @@ do not treat it as a pending consent.
 4. Click **Approve** and wait for the success page.
 
 Use the returned URL, including `consentId`; opening the bare portal does not
-select a request. The citizen's token contains `nic: "748213"`, which CE matches
-to the request's owner ID using the stack's `IDP_SUBJECT_CLAIM=nic` setting.
+select a request. The citizen's token contains `email: "suresh@ndx.fl"`, which CE
+matches to the request's owner ID using the stack's `IDP_SUBJECT_CLAIM=email`
+setting.
 `ndx-admin` is the management operator and cannot approve Suresh's consent.
 
 ## 9. Retry and verify the complete response
@@ -276,10 +280,10 @@ APPROVED_RESPONSE=$(oe_query "$FULL_REQUEST")
 printf '%s\n' "$APPROVED_RESPONSE" | jq .
 printf '%s' "$APPROVED_RESPONSE" | jq -e '
   ((.errors // []) | length == 0) and
-  .data.personInfo.fullName == "Suresh" and
+  .data.personInfo.fullName == "Suresh Fernando" and
   .data.personInfo.profession == "Software Engineer" and
-  .data.personInfo.birthInfo.birthPlace == "Rivertown General Hospital" and
-  .data.personInfo.birthInfo.district == "Rivertown"
+  .data.personInfo.birthInfo.birthPlace == "Central General Hospital" and
+  .data.personInfo.birthInfo.district == "Central"
 '
 ```
 
@@ -289,11 +293,11 @@ Expected data:
 {
   "data": {
     "personInfo": {
-      "fullName": "Suresh",
+      "fullName": "Suresh Fernando",
       "profession": "Software Engineer",
       "birthInfo": {
-        "birthPlace": "Rivertown General Hospital",
-        "district": "Rivertown"
+        "birthPlace": "Central General Hospital",
+        "district": "Central"
       }
     }
   }
@@ -301,8 +305,9 @@ Expected data:
 ```
 
 Only count the walkthrough as successful when the assertion exits successfully.
-It checks DRP data, RGD data, and absence of GraphQL errors. HTTP 200 alone is
-insufficient. If the consumer token expires, repeat the token request in step 5.
+It checks both providers' data and the absence of GraphQL errors. HTTP 200 alone
+is insufficient. If the consumer token expires, repeat the token request in
+step 5.
 
 ## Troubleshooting
 
@@ -316,10 +321,10 @@ insufficient. If the consumer token expires, repeat the token request in step 5.
 | Unexpected `PDP_NOT_ALLOWED`                        | Check all four grants with `applications get`. Use `APP_ID` for CLI updates and the token for `CLIENT_ID` from that same application.                                                                                                                                                                                                                                                         |
 | `MISSING_IDENTIFIER` despite passing `nic`          | The OE reads the owner from the argument named by its `consentEngine.ownerIdArgName`, which must be `nic`, and the query must pass it a non-empty string. Restart OE after changing its config; it loads config at startup.                                                                                                                                                                   |
 | `CE_ERROR`                                          | Check `docker compose logs orchestration-engine consent-engine`. OE's `consentEngine.url` must include `/internal/api/v1`; its client appends `/consents`. A fresh database must contain `cmd/ce/schema.sql`.                                                                                                                                                                                 |
-| Consent portal returns 401                          | Check CE's issuer, JWKS URL, `CONSENT_ENGINE_AUDIENCE=CONSENT_PORTAL`, and that the token carries the `IDP_SUBJECT_CLAIM` claim (`nic`). The current portal does not request an OAuth `resource`, so ThunderID audiences its token to the client ID.                                                                                                                                          |
-| Consent portal returns 403                          | The logged-in citizen's NIC must match the requested NIC. Use `suresh` for `748213`, not the operator or another citizen.                                                                                                                                                                                                                                                                     |
+| Consent portal returns 401                          | Check CE's issuer, JWKS URL, `CONSENT_ENGINE_AUDIENCE=CONSENT_PORTAL`, and that the token carries the `IDP_SUBJECT_CLAIM` claim (`email`). The current portal does not request an OAuth `resource`, so ThunderID audiences its token to the client ID.                                                                                                                                        |
+| Consent portal returns 403                          | The logged-in citizen's email must match the requested `nic` value. Use `suresh` for `suresh@ndx.fl`, not the operator or another citizen.                                                                                                                                                                                                                                                    |
 | Consent remains pending or expired                  | Open the newest returned consent URL and approve it. Pending realtime requests expire after one hour. Changing the requested restricted fields can replace an existing consent.                                                                                                                                                                                                               |
-| Provider errors / missing data                      | Check `docker compose -f dev/compose.yml logs drp-api drp-api-adapter rgd-api`. OE uses `host.docker.internal:9091` and `:8080`, with a host-gateway entry on Linux. Verify both provider images are running.                                                                                                                                                                                 |
+| Provider errors / missing data                      | Check `docker compose -f dev/compose.yml logs identity-registry-api identity-registry-adapter civil-registry-api`. OE uses `host.docker.internal:9091` and `:8080`, with a host-gateway entry on Linux. Verify both provider images are running.                                                                                                                                              |
 
 For service logs and configuration details:
 

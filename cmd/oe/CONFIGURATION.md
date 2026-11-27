@@ -64,16 +64,16 @@ The first four keys are required.
 
 A mapped argument is sent with every provider field under its `targetArgPath` that is selected below the consumer field carrying the argument. When aliases give the same mapped argument different values, the OE sends a separate provider query for each value.
 
-The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https://http-spec.graphql.org/draft/) `variables` member, not written into the query text. The value is the consumer's, after variable defaults and schema defaults are applied, and it may be a list or an input object. For example, with the mapping above, the DRP provider receives:
+The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https://http-spec.graphql.org/draft/) `variables` member, not written into the query text. The value is the consumer's, after variable defaults and schema defaults are applied, and it may be a list or an input object. For example, with the mapping above, the Identity Registry provider receives:
 
 ```json
 {
-  "query": "query Querydrp_person_v1($nic: ID!) { person(nic: $nic) { fullName } }",
-  "variables": {"nic": "748213"}
+  "query": "query Queryidentity_registry_v1($nic: ID!) { person(nic: $nic) { fullName } }",
+  "variables": {"nic": "suresh@ndx.fl"}
 }
 ```
 
-The variable is named after `targetArgName`, with a suffix such as `_2` when two mapped arguments in one query share a name. It is declared with `targetArgType` when set. Otherwise it is declared with the consumer argument's type, made non-null when the value isn't null. The provider rejects the query when that type doesn't fit its argument, so set `targetArgType` when the types differ. The example above is declared `ID!` because the DRP mapping sets `targetArgType: "ID!"`: the consumer schema declares `nic: String!`, and a `String!` variable can't be passed to the provider's `ID!` argument, even though an inlined string literal could.
+The variable is named after `targetArgName`, with a suffix such as `_2` when two mapped arguments in one query share a name. It is declared with `targetArgType` when set. Otherwise it is declared with the consumer argument's type, made non-null when the value isn't null. The provider rejects the query when that type doesn't fit its argument, so set `targetArgType` when the types differ. The example above is declared `ID!` because the Identity Registry mapping sets `targetArgType: "ID!"`: the consumer schema declares `nic: String!`, and a `String!` variable can't be passed to the provider's `ID!` argument, even though an inlined string literal could.
 
 ### idp
 

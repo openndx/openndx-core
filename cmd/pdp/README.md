@@ -84,11 +84,11 @@ A decision request and response:
 
 ```json
 { "applicationId": "passport-app",
-  "requiredFields": [{ "schemaId": "drp-v1", "fieldName": "person.fullName" }] }
+  "requiredFields": [{ "schemaId": "identity-registry-v1", "fieldName": "person.fullName" }] }
 ```
 
 ```json
-{ "fields": [{ "schemaId": "drp-v1", "fieldName": "person.fullName", "outcome": "allow" }],
+{ "fields": [{ "schemaId": "identity-registry-v1", "fieldName": "person.fullName", "outcome": "allow" }],
   "appAuthorized": true, "unauthorizedFields": [],
   "appAccessExpired": false, "expiredFields": [],
   "appRequiresOwnerConsent": false, "consentRequiredFields": [] }

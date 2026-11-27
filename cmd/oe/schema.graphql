@@ -15,18 +15,18 @@ type Query {
 }
 
 type PersonInfo {
-    fullName: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.fullName")
-    name: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.name")
-    otherNames: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.otherNames")
-    address: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.permanentAddress")
-    profession: String @sourceInfo(schemaId: "drp-person-v1", providerField: "person.profession")
-    dateOfBirth: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.birthDate")
-    sex: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.sex")
+    fullName: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.fullName")
+    name: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.name")
+    otherNames: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.otherNames")
+    address: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.permanentAddress")
+    profession: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.profession")
+    dateOfBirth: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthDate")
+    sex: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.sex")
     birthInfo: BirthInfo
 }
 
 type BirthInfo {
-    birthRegistrationNumber: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.brNo")
-    birthPlace: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.birthPlace")
-    district: String @sourceInfo(schemaId: "rgd-person-v1", providerField: "getPersonInfo.district")
+    birthRegistrationNumber: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.brNo")
+    birthPlace: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthPlace")
+    district: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.district")
 }

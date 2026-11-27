@@ -81,12 +81,10 @@ inboundAuthConfig:
             attributes:
               - given_name
               - family_name
+              # consent-engine matches this claim against a consent's owner ID
+              # (IDP_SUBJECT_CLAIM=email in compose.yml).
               - email
               - name
-              # Citizen-only attribute (thunderid/bootstrap/users.yaml). Needed
-              # in the access token so consent-engine's owner-id match
-              # (IDP_SUBJECT_CLAIM=nic) has something to compare against.
-              - nic
         idToken:
           validityPeriod: 3600
           userAttributes:
@@ -94,7 +92,6 @@ inboundAuthConfig:
             - family_name
             - email
             - name
-            - nic
       scopeClaims:
         profile:
           - name
@@ -108,26 +105,19 @@ inboundAuthConfig:
           - phone_number
           - phone_number_verified
 ---
-# LOCAL-DEV ONLY: the `ndx` management CLI's OAuth2 client, so it can log admin
-# operators in against a local ThunderID instance and call Portal Backend's
-# management API. Do not mount into a shared or production deployment.
+# LOCAL-DEV ONLY: the OAuth2 client of the `ondx` management CLI's built-in
+# `local` profile, which operators log in with to call Portal Backend's
+# management API. Do not mount it into a shared or production deployment;
+# there, register a client for `ondx` and save it in a profile
+# (cmd/ondx/README.md#configuration).
 #
-# type/pkceRequired/tokenEndpointAuthMethod/publicClient mirror CONSENT_PORTAL
-# above — the only other confirmed-working public-client config in this repo.
-# "native" isn't used here since it's not a documented type in this repo; if
-# ThunderID does support it, prefer it over reusing "browser".
-#
-# redirectUris is a single literal loopback URI, not a wildcard/regex, because
-# nothing in this repo's bootstrap config demonstrates ThunderID accepting a
-# pattern here (contrast thunderid/bootstrap/cors.yaml's allowedOrigins, which
-# does support a `regex:` entry — untested whether redirectUris shares that).
-# `ndx login` must be run with --callback-port 8765 to match. If ThunderID
-# does support a wildcard/regex loopback redirect URI (per RFC 8252 §7.3),
-# this can be relaxed and --callback-port dropped in favor of a random port.
+# Like CONSENT_PORTAL above, it is a public browser client with PKCE.
+# redirectUris holds one exact loopback URI, so `ondx login` must use callback
+# port 8765, which the `local` profile sets.
 resource_type: application
 id: 01900000-0000-7000-8000-0000000000b0
 name: NDX CLI
-description: ndx management CLI — admin operator login for Portal Backend
+description: ondx management CLI — operator login for Portal Backend
 type: browser
 ouId: 01900000-0000-7000-8000-000000000001
 authFlowId: 01900000-0000-7000-8000-000000000061
@@ -172,7 +162,7 @@ inboundAuthConfig:
           - email
           - ouId
 ---
-# LOCAL-DEV ONLY: Portal Backend's own confidential M2M client, for its calls to
+# Portal Backend's own confidential M2M client, for its calls to
 # ThunderID's management API (provisioning data-consumer applications, see
 # internal/pb/idp/thunderid). It gets the `system` scope from the
 # PortalBackendSystem role in thunderid/bootstrap/resource.yaml (id ...d1).

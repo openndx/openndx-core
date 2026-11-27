@@ -79,7 +79,7 @@ A `401` shows a "session expired, sign in again" message, a `403` goes to an una
 
 - The `consentId` from the link is kept in `localStorage` across the sign-in redirect and removed after a decision.
 - After a decision the portal shows a confirmation, tells the opening window (`postMessage("consentGranted")`), and tries to close itself. The Consent Engine returns no return URL, so there is no redirect back to the consumer; the consumer repeats its request.
-- A consent is bound to the data owner: the token's subject claim must equal the consent's `ownerId`. Which claim that is, is set in the Consent Engine (`idp.subjectClaim`). The bundled stack uses `nic`, so the access token must carry it. See [CONSENT_LIFECYCLE.md](../../../cmd/ce/CONSENT_LIFECYCLE.md#who-may-decide).
+- A consent is bound to the data owner: the token's subject claim must equal the consent's `ownerId`. Which claim that is, is set in the Consent Engine (`idp.subjectClaim`). The bundled stack uses `email`, so the access token must carry it. See [CONSENT_LIFECYCLE.md](../../../cmd/ce/CONSENT_LIFECYCLE.md#who-may-decide).
 
 ## Security and deployment
 

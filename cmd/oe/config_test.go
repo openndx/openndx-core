@@ -280,7 +280,7 @@ func TestCommittedConfigsLoad(t *testing.T) {
 }
 
 // TestCommittedConfigsFederate exercises the committed configs and schema so the
-// walkthrough's NIC reaches each selected provider.
+// walkthrough's owner ID reaches each selected provider.
 func TestCommittedConfigsFederate(t *testing.T) {
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("IDP_AUDIENCE", "http://api.openndx.local")
@@ -293,36 +293,36 @@ func TestCommittedConfigsFederate(t *testing.T) {
 			want      map[string]interface{}
 		}{
 			{
-				name:      "public DRP literal",
-				request:   graphql.Request{Query: `query { personInfo(nic: "748213") { fullName } }`},
-				providers: []string{"drp-person-v1"},
-				want:      map[string]interface{}{"fullName": "Suresh"},
+				name:      "public Identity Registry literal",
+				request:   graphql.Request{Query: `query { personInfo(nic: "suresh@ndx.fl") { fullName } }`},
+				providers: []string{"identity-registry-v1"},
+				want:      map[string]interface{}{"fullName": "Suresh Fernando"},
 			},
 			{
-				name: "public DRP variable",
+				name: "public Identity Registry variable",
 				request: graphql.Request{
 					Query:     `query Person($nic: String!) { personInfo(nic: $nic) { fullName } }`,
-					Variables: map[string]interface{}{"nic": "748213"},
+					Variables: map[string]interface{}{"nic": "suresh@ndx.fl"},
 				},
-				providers: []string{"drp-person-v1"},
-				want:      map[string]interface{}{"fullName": "Suresh"},
+				providers: []string{"identity-registry-v1"},
+				want:      map[string]interface{}{"fullName": "Suresh Fernando"},
 			},
 			{
-				name: "RGD variable",
+				name: "Civil Registry variable",
 				request: graphql.Request{
 					Query:     `query Person($nic: String!) { personInfo(nic: $nic) { birthInfo { district } } }`,
-					Variables: map[string]interface{}{"nic": "748213"},
+					Variables: map[string]interface{}{"nic": "suresh@ndx.fl"},
 				},
-				providers: []string{"rgd-person-v1"},
-				want:      map[string]interface{}{"birthInfo": map[string]interface{}{"district": "Rivertown"}},
+				providers: []string{"civil-registry-v1"},
+				want:      map[string]interface{}{"birthInfo": map[string]interface{}{"district": "Central"}},
 			},
 			{
 				name:      "both providers",
-				request:   graphql.Request{Query: `query { personInfo(nic: "748213") { fullName profession birthInfo { birthPlace district } } }`},
-				providers: []string{"drp-person-v1", "rgd-person-v1"},
+				request:   graphql.Request{Query: `query { personInfo(nic: "suresh@ndx.fl") { fullName profession birthInfo { birthPlace district } } }`},
+				providers: []string{"identity-registry-v1", "civil-registry-v1"},
 				want: map[string]interface{}{
-					"fullName": "Suresh", "profession": "Software Engineer",
-					"birthInfo": map[string]interface{}{"birthPlace": "Rivertown General Hospital", "district": "Rivertown"},
+					"fullName": "Suresh Fernando", "profession": "Software Engineer",
+					"birthInfo": map[string]interface{}{"birthPlace": "Central General Hospital", "district": "Central"},
 				},
 			},
 		} {
@@ -348,16 +348,16 @@ func TestCommittedConfigsFederate(t *testing.T) {
 							http.Error(w, "invalid request", http.StatusBadRequest)
 							return
 						}
-						if !assert.Contains(t, request.Query, `(nic: $nic)`) || !assert.Equal(t, "748213", request.Variables["nic"]) {
-							http.Error(w, "missing NIC", http.StatusBadRequest)
+						if !assert.Contains(t, request.Query, `(nic: $nic)`) || !assert.Equal(t, "suresh@ndx.fl", request.Variables["nic"]) {
+							http.Error(w, "missing nic", http.StatusBadRequest)
 							return
 						}
 						calls <- id
 						var data map[string]interface{}
-						if id == "drp-person-v1" {
-							data = map[string]interface{}{"person": map[string]interface{}{"fullName": "Suresh", "profession": "Software Engineer"}}
+						if id == "identity-registry-v1" {
+							data = map[string]interface{}{"person": map[string]interface{}{"fullName": "Suresh Fernando", "profession": "Software Engineer"}}
 						} else {
-							data = map[string]interface{}{"getPersonInfo": map[string]interface{}{"birthPlace": "Rivertown General Hospital", "district": "Rivertown"}}
+							data = map[string]interface{}{"getPersonInfo": map[string]interface{}{"birthPlace": "Central General Hospital", "district": "Central"}}
 						}
 						_ = json.NewEncoder(w).Encode(graphql.Response{Data: data})
 					}))

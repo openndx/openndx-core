@@ -28,7 +28,7 @@ const SubjectClaim = "sub"
 // OwnerSubject returns middleware that adds the data owner's UID to the request
 // context. It must run after internal/authn's RequireAuthMiddleware, which has
 // already validated the token. The UID is read from claim: "sub" is the token's
-// subject, and any other claim (e.g. "email" or "nic") uses the same claims view. A
+// subject, and any other claim (e.g. "email") uses the same claims view. A
 // token without the claim is rejected with 401.
 func OwnerSubject(claim string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -41,7 +41,7 @@ func OwnerSubject(claim string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// The subject identifies the data owner (e.g. a NIC), so it stays out of logs.
+			// The subject identifies the data owner (e.g. an email address), so it stays out of logs.
 			slog.DebugContext(r.Context(), "Data owner authenticated", "claim", claim)
 			next.ServeHTTP(w, r.WithContext(WithOwnerSubject(r.Context(), subject)))
 		})

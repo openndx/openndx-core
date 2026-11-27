@@ -100,7 +100,7 @@ idp:
   jwksURL: https://idp.example/oauth2/jwks
   issuer: https://idp.example
   audience: CONSENT_PORTAL
-  subjectClaim: nic
+  subjectClaim: email
   insecureSkipTLSVerify: true
 database:
   driver: postgres
@@ -139,7 +139,7 @@ database:
 			Audience:              "CONSENT_PORTAL",
 			InsecureSkipTLSVerify: true,
 		},
-		SubjectClaim: "nic",
+		SubjectClaim: "email",
 	}, cfg.IDP)
 	assert.Equal(t, 5*time.Minute, cfg.Database.IdleTimeout)
 
@@ -373,7 +373,7 @@ func TestCommittedConfigsLoad(t *testing.T) {
 	t.Setenv("CONSENT_PORTAL_URL", "http://localhost:5173")
 	t.Setenv("IDP_PUBLIC_URL", "http://localhost:8090")
 	t.Setenv("CONSENT_ENGINE_AUDIENCE", "CONSENT_PORTAL")
-	t.Setenv("IDP_SUBJECT_CLAIM", "nic")
+	t.Setenv("IDP_SUBJECT_CLAIM", "email")
 
 	for _, path := range []string{"config.example.yaml", "config.docker.yaml", "../../tests/integration/ce-config.yaml"} {
 		t.Run(path, func(t *testing.T) {

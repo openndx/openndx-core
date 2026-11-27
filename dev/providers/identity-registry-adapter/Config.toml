@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
+# The Identity Registry adapter's configuration. identity-registry-api resolves
+# on the Compose network of dev/compose.yml.
+port = 9091
+serviceURL = "http://identity-registry-api:9090"
+# Must equal MOCK_API_KEY in ../identity-registry-api/Config.toml.
+choreoApiKey = "your-api-key"

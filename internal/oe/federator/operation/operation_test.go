@@ -355,39 +355,39 @@ func TestBuild_SampleSchema(t *testing.T) {
 					district
 				}
 			}
-			other: personInfo(nic: "512346") { fullName }
+			other: personInfo(nic: "ramesh@ndx.fl") { fullName }
 		}
 		fragment identity on PersonInfo { fullName sex dateOfBirth }`})
 	require.NoError(t, err)
 	require.Empty(t, validator.ValidateWithRules(compiled.Schema, doc, nil))
 
-	op, err := Build(compiled, doc, "Person", map[string]any{"nic": "748213", "withBirth": true})
+	op, err := Build(compiled, doc, "Person", map[string]any{"nic": "suresh@ndx.fl", "withBirth": true})
 	require.NoError(t, err)
 
 	assert.Equal(t, strings.TrimLeft(`
-citizen (personInfo) nic=748213
-  fullName <- drp-person-v1 person.fullName
-  sex <- rgd-person-v1 getPersonInfo.sex
-  dateOfBirth <- rgd-person-v1 getPersonInfo.birthDate
-  profession <- drp-person-v1 person.profession
+citizen (personInfo) nic=suresh@ndx.fl
+  fullName <- identity-registry-v1 person.fullName
+  sex <- civil-registry-v1 getPersonInfo.sex
+  dateOfBirth <- civil-registry-v1 getPersonInfo.birthDate
+  profession <- identity-registry-v1 person.profession
   birthInfo
-    place (birthPlace) <- rgd-person-v1 getPersonInfo.birthPlace
-    district <- rgd-person-v1 getPersonInfo.district
-other (personInfo) nic=512346
-  fullName <- drp-person-v1 person.fullName
+    place (birthPlace) <- civil-registry-v1 getPersonInfo.birthPlace
+    district <- civil-registry-v1 getPersonInfo.district
+other (personInfo) nic=ramesh@ndx.fl
+  fullName <- identity-registry-v1 person.fullName
 `, "\n"), render(op.Fields))
 
 	_, err = op.DataOwnerID("nic")
 	assert.ErrorIs(t, err, ErrAmbiguousIdentifier, "the query asks about two data owners")
 
 	// The argument mappings in cmd/oe/config.example.yaml.
-	drp := &graphql.ArgMapping{SchemaID: "drp-person-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"}
-	rgd := &graphql.ArgMapping{SchemaID: "rgd-person-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "getPersonInfo", TargetArgName: "nic"}
+	identityRegistry := &graphql.ArgMapping{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"}
+	civilRegistry := &graphql.ArgMapping{SchemaID: "civil-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "getPersonInfo", TargetArgName: "nic"}
 	var bound []string
-	for _, binding := range op.BindArguments([]*graphql.ArgMapping{drp, rgd}) {
+	for _, binding := range op.BindArguments([]*graphql.ArgMapping{identityRegistry, civilRegistry}) {
 		bound = append(bound, fmt.Sprintf("%s %s=%v", binding.Mapping.SchemaID, strings.Join(binding.Field.Path, "."), binding.Value))
 	}
-	assert.Equal(t, []string{"drp-person-v1 citizen=748213", "drp-person-v1 other=512346", "rgd-person-v1 citizen=748213", "rgd-person-v1 other=512346"}, bound)
+	assert.Equal(t, []string{"identity-registry-v1 citizen=suresh@ndx.fl", "identity-registry-v1 other=ramesh@ndx.fl", "civil-registry-v1 citizen=suresh@ndx.fl", "civil-registry-v1 other=ramesh@ndx.fl"}, bound)
 }
 
 // render prints fields one per line, indented by depth: the response key, the

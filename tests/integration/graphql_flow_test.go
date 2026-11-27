@@ -69,7 +69,7 @@ func (r *testCleanupRegistry) cleanup(t *testing.T) {
 }
 
 const (
-	testNIC       = "123456789V"
+	testNIC       = "suresh@ndx.fl"
 	testEmail     = "test@example.com"
 	testOwnerID   = "test-owner-123"
 	testRequestID = "test-req-123"

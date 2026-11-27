@@ -32,14 +32,14 @@ consentEngine:
 
 # The mock providers from dev/compose.yml, running on the host.
 providers:
-  - id: drp-person-v1
+  - id: identity-registry-v1
     url: http://host.docker.internal:9091
     auth:
       type: apiKey
       apiKey:
         key: Test-Key
         value: eyJraWQiOiJn
-  - id: rgd-person-v1
+  - id: civil-registry-v1
     url: http://host.docker.internal:8080/graphql
     auth:
       type: oauth2
@@ -50,12 +50,12 @@ providers:
 
 argMappings:
   # Both providers declare nic as ID!; the consumer schema has String!.
-  - schemaId: drp-person-v1
+  - schemaId: identity-registry-v1
     targetArgName: nic
     sourceArgPath: personInfo-nic
     targetArgPath: person
     targetArgType: "ID!"
-  - schemaId: rgd-person-v1
+  - schemaId: civil-registry-v1
     targetArgName: nic
     sourceArgPath: personInfo-nic
     targetArgPath: getPersonInfo

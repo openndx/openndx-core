@@ -89,7 +89,7 @@ A requested field without a field policy fails the whole request with HTTP 500 a
 `fields` in the response holds one entry per requested field, in request order:
 
 ```json
-{"schemaId": "drp", "fieldName": "person.fullName", "outcome": "deny", "reason": "not_allowlisted"}
+{"schemaId": "identity-registry-v1", "fieldName": "person.fullName", "outcome": "deny", "reason": "not_allowlisted"}
 ```
 
 | Property      | Notes                                                                                                 |

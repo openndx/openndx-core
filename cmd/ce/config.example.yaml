@@ -35,7 +35,7 @@ idp:
   issuer: http://localhost:8090
   audience: CONSENT_PORTAL
   # Token claim matched against a consent's ownerId.
-  subjectClaim: nic
+  subjectClaim: email
   # Skips TLS verification of the JWKS fetch. Development only.
   insecureSkipTLSVerify: false
 
