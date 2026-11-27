@@ -39,14 +39,14 @@ A token is accepted when it passes the [token checks](#token-checks). How the to
 
 A request sends the token as `Authorization: Bearer <token>`. The token must pass these checks:
 
-| Check | Requirement |
-|---|---|
-| Signature | `RS256`, `RS384` or `RS512`, by a key in the JWKS at `jwksURL`. The token's `kid` header names the key. |
-| `iss` | Equals `issuer`. |
-| `aud` | Contains `audience`. |
-| `exp` | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
-| `sub`, `client_id` | Present and not empty. |
-| `email`, `ouId`, `ouHandle` | Present and not blank, when [configured as required](#standard-identity-claims). |
+| Check                       | Requirement                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Signature                   | `RS256`, `RS384` or `RS512`, by a key in the JWKS at `jwksURL`. The token's `kid` header names the key.                     |
+| `iss`                       | Equals `issuer`.                                                                                                            |
+| `aud`                       | Contains `audience`.                                                                                                        |
+| `exp`                       | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
+| `sub`, `client_id`          | Present and not empty.                                                                                                      |
+| `email`, `ouId`, `ouHandle` | Present and not blank, when [configured as required](#standard-identity-claims).                                            |
 
 A request without a valid token gets `401` with a JSON body: `{"error":"unauthorized","message":"authentication required"}` when it has no token, and `{"error":"unauthorized","message":"invalid authentication token"}` when the token fails a check. The reason is logged at debug level, not returned.
 
@@ -153,11 +153,11 @@ value, present := claims.Lookup("department")
 
 The view and all typed accessors are nil-safe. `Claims` has no public map or mutators. `Lookup`, `Strings`, `Roles` and `Scopes` return detached copies, including nested maps and slices. Mutating a returned collection cannot change authenticated identity.
 
-| Accessor | Behavior |
-|----------|----------|
-| `String(name)` | Returns only a JSON string; missing, null and other types return `""`. Numbers, arrays and objects are never coerced into identifiers. |
+| Accessor        | Behavior                                                                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `String(name)`  | Returns only a JSON string; missing, null and other types return `""`. Numbers, arrays and objects are never coerced into identifiers.                                                                                    |
 | `Strings(name)` | Returns a JSON array of strings, or nil for a missing, null or wrong-type claim. An empty array returns a non-nil empty slice. Only `scope` also accepts a whitespace-delimited string and treats null as an empty slice. |
-| `Lookup(name)` | Returns `(value, present)` using JSON-decoded types: `string`, `float64`, `bool`, `[]any`, `map[string]any`, or nil. Missing is `(nil, false)`; JSON null is `(nil, true)`. |
+| `Lookup(name)`  | Returns `(value, present)` using JSON-decoded types: `string`, `float64`, `bool`, `[]any`, `map[string]any`, or nil. Missing is `(nil, false)`; JSON null is `(nil, true)`.                                               |
 
 Lookup names are exact top-level keys, with no dotted-path or nested expansion. Custom names are case-sensitive, including namespaced names such as `https://app.example.com/department`; `nic` and `NIC` can coexist. Case variants of standard names are canonicalized at decode time (`EMAIL` → `email`, `SUB` → `sub`, `OUID` → `ouId`). Access them using the canonical names above. Names are never whitespace-trimmed. Duplicate keys and multiple spellings of the same standard claim reject the token, preventing ambiguous identity or grants.
 

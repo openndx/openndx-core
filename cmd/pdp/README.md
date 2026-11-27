@@ -1,6 +1,6 @@
 # Policy Decision Point (PDP)
 
-Stores field policies and per-application access grants, and answers one question for the Orchestration Engine: *may this application read these fields, and does the data owner need to consent?*
+Stores field policies and per-application access grants, and answers one question for the Orchestration Engine: _may this application read these fields, and does the data owner need to consent?_
 
 ## Overview
 
@@ -13,10 +13,10 @@ flowchart LR
     PDP --> DB[(PostgreSQL: pdp)]
 ```
 
-| Caller | Uses |
-|---|---|
-| Orchestration Engine | `POST /api/v1/policy/decide` before every federated query |
-| Portal Backend | field policy and access grant endpoints, when schemas and applications are approved or edited |
+| Caller               | Uses                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| Orchestration Engine | `POST /api/v1/policy/decide` before every federated query                                     |
+| Portal Backend       | field policy and access grant endpoints, when schemas and applications are approved or edited |
 
 Each field's `field_policies` record has two flags, `requiresAllowlist` and `requiresConsent`. The decision comes from those flags and the application's grant in `access_grants` (see [POLICY_MODEL.md](POLICY_MODEL.md)).
 
@@ -46,20 +46,20 @@ The PDP reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `confi
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. The placeholder must be the whole value, and an unset or empty variable stops the service.
 
-| Key | Default | Notes |
-|---|---|---|
-| `server.port` | `8082` | Listen port. The server binds on all interfaces. |
-| `server.timeout` | `10s` | Read and write timeout. |
-| `environment` | none | Deployment name (for example `local`, `staging`), added to every log line. Left out of log lines when empty. |
-| `logging.level` | `info` | `debug`, `info`, `warn` or `error`. |
-| `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. |
-| `database.driver` | `postgres` | Only `postgres` is supported. |
-| `database.postgres.host`, `.user`, `.password` | none | **Required.** |
-| `database.postgres.port` | `5432` | |
-| `database.postgres.name` | `pdp` | |
-| `database.postgres.sslMode` | `require` | Use `disable` for a local PostgreSQL without TLS. |
-| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool. |
-| `database.idleTimeout` | `30m` | Closes connections idle this long. |
+| Key                                                                               | Default           | Notes                                                                                                        |
+| --------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `server.port`                                                                     | `8082`            | Listen port. The server binds on all interfaces.                                                             |
+| `server.timeout`                                                                  | `10s`             | Read and write timeout.                                                                                      |
+| `environment`                                                                     | none              | Deployment name (for example `local`, `staging`), added to every log line. Left out of log lines when empty. |
+| `logging.level`                                                                   | `info`            | `debug`, `info`, `warn` or `error`.                                                                          |
+| `logging.format`                                                                  | `json`            | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`.                      |
+| `database.driver`                                                                 | `postgres`        | Only `postgres` is supported.                                                                                |
+| `database.postgres.host`, `.user`, `.password`                                    | none              | **Required.**                                                                                                |
+| `database.postgres.port`                                                          | `5432`            |                                                                                                              |
+| `database.postgres.name`                                                          | `pdp`             |                                                                                                              |
+| `database.postgres.sslMode`                                                       | `require`         | Use `disable` for a local PostgreSQL without TLS.                                                            |
+| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool.                                                                                             |
+| `database.idleTimeout`                                                            | `30m`             | Closes connections idle this long.                                                                           |
 
 The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect. It also exits if it can't connect to the database within 10 seconds.
 
@@ -67,18 +67,18 @@ The service checks the file at startup and exits with an error naming the bad ke
 
 Full request and response schemas: [openapi.yaml](openapi.yaml). Success bodies are the bare resource and errors are `{"error": "<message>"}`.
 
-| Method and path                                                 | Purpose                                                            |
-|-----------------------------------------------------------------|--------------------------------------------------------------------|
-| `POST /api/v1/policy/decide`                                    | Authorization decision for an application and a list of fields     |
-| `GET /api/v1/policy/fields?schemaId=`                           | List field policies, optionally for one schema                     |
-| `POST /api/v1/policy/fields`                                    | Sync a schema's field policies (`201`)                             |
-| `PATCH /api/v1/policy/fields/{id}`                              | Edit `displayName`, `description`, `requiresAllowlist` or `requiresConsent` |
-| `DELETE /api/v1/policy/fields/{id}`                             | Delete a field policy and its grants (`204`)                       |
-| `GET /api/v1/policy/grants?applicationId=&schemaId=&status=&consentBypass=` | List access grants, optionally filtered                |
-| `POST /api/v1/policy/grants`                                    | Grant an application access to fields for `30d` or `365d`; with `consentBypass` and `legalBasis`, a consent bypass |
-| `GET /api/v1/policy/grants/{id}`                                | Read one grant                                                     |
-| `POST /api/v1/policy/grants/{id}/revoke`                        | Revoke one grant; it is kept with status `revoked`                 |
-| `GET /health`                                                   | `{"service": "policy-decision-point", "status": "healthy"}`        |
+| Method and path                                                             | Purpose                                                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `POST /api/v1/policy/decide`                                                | Authorization decision for an application and a list of fields                                                     |
+| `GET /api/v1/policy/fields?schemaId=`                                       | List field policies, optionally for one schema                                                                     |
+| `POST /api/v1/policy/fields`                                                | Sync a schema's field policies (`201`)                                                                             |
+| `PATCH /api/v1/policy/fields/{id}`                                          | Edit `displayName`, `description`, `requiresAllowlist` or `requiresConsent`                                        |
+| `DELETE /api/v1/policy/fields/{id}`                                         | Delete a field policy and its grants (`204`)                                                                       |
+| `GET /api/v1/policy/grants?applicationId=&schemaId=&status=&consentBypass=` | List access grants, optionally filtered                                                                            |
+| `POST /api/v1/policy/grants`                                                | Grant an application access to fields for `30d` or `365d`; with `consentBypass` and `legalBasis`, a consent bypass |
+| `GET /api/v1/policy/grants/{id}`                                            | Read one grant                                                                                                     |
+| `POST /api/v1/policy/grants/{id}/revoke`                                    | Revoke one grant; it is kept with status `revoked`                                                                 |
+| `GET /health`                                                               | `{"service": "policy-decision-point", "status": "healthy"}`                                                        |
 
 A decision request and response:
 
@@ -101,8 +101,8 @@ A decision request and response:
 A request without `applicationId`, or with no `requiredFields`, is rejected with **HTTP 400** before any field is checked. Then, for each requested `(schemaId, fieldName)`, in order:
 
 1. No field policy: the whole request fails with **HTTP 500**.
-2. The field requires the allow-list and the application holds no active grant for it: the field is *unauthorized*.
-3. The field requires the allow-list and the grant has expired: the field is *expired*.
+2. The field requires the allow-list and the application holds no active grant for it: the field is _unauthorized_.
+3. The field requires the allow-list and the grant has expired: the field is _expired_.
 4. The field requires consent: it needs owner consent, unless the application holds an unexpired consent bypass grant, which allows it.
 5. Otherwise the field is allowed.
 

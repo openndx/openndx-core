@@ -12,10 +12,10 @@ flowchart LR
     CE -.->|fetch signing keys| IDP[ThunderID]
 ```
 
-| Caller | Uses |
-|---|---|
-| Orchestration Engine | Internal API: creates a consent when the PDP says the owner must consent, and reads its status from the response |
-| Consent Portal ([portals/apps/consent](../../portals/apps/consent/README.md)) | Portal API with the citizen's access token: list, view, approve, reject, revoke |
+| Caller                                                                        | Uses                                                                                                             |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Orchestration Engine                                                          | Internal API: creates a consent when the PDP says the owner must consent, and reads its status from the response |
+| Consent Portal ([portals/apps/consent](../../portals/apps/consent/README.md)) | Portal API with the citizen's access token: list, view, approve, reject, revoke                                  |
 
 The only outbound call is the identity provider's JWKS endpoint, used to verify portal tokens. The CE does not emit audit events.
 
@@ -45,29 +45,29 @@ The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. The placeholder must be the whole value, and an unset or empty variable stops the service.
 
-| Key                                                                               | Default                    | Notes                                                                                                                  |
-|-----------------------------------------------------------------------------------|----------------------------|------------------------------------------------------------------------------------------------------------------------|
-| `server.port`                                                                     | `8081`                     | Listen port. The server binds on all interfaces.                                                                       |
-| `server.timeout`                                                                  | `10s`                      | Read and write timeout.                                                                                                |
-| `environment`                                                                     | none                       | Deployment name (for example `local`, `staging`), added to every log line. Left out of log lines when empty.           |
-| `logging.level`                                                                   | `info`                     | `debug`, `info`, `warn` or `error`.                                                                                    |
-| `logging.format`                                                                  | `json`                     | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`.                                |
-| `consentPortalURL`                                                                | none                       | **Required.** Must include scheme and host. Consent links are `<url>?consentId=<uuid>`. Its origin is always allowed.  |
-| `cors.allowedOrigins`                                                             | empty                      | Origins allowed besides `consentPortalURL`. `*` stops the service at startup while `allowCredentials` is true.         |
-| `cors.allowedMethods`, `cors.allowedHeaders`                                      | see [config.go](config.go) | A list in the file replaces the default list.                                                                          |
-| `cors.allowCredentials`, `cors.maxAge`                                            | `true`, `86400`            |                                                                                                                        |
-| `idp.jwksURL`                                                                     | none                       | **Required.** Signing keys for portal tokens. If unreachable, every portal call returns 401.                           |
-| `idp.issuer`, `idp.audience`                                                      | none                       | **Required.** Expected token `iss` and `aud`. Compose uses ThunderID's base URL and `CONSENT_PORTAL`.                  |
-| `idp.subjectClaim`                                                                | `sub`                      | Token claim whose value must equal the consent's `ownerId`. Compose sets `nic`. A token without it gets `401`.         |
-| `idp.insecureSkipTLSVerify`                                                       | `false`                    | Skips TLS verification for the JWKS fetch. Development only.                                                           |
-| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required`               | `false`                    | `true` rejects a token whose claim is absent or blank.                                                                 |
-| `database.driver`                                                                 | `postgres`                 | Only `postgres` is supported.                                                                                          |
-| `database.postgres.host`, `.user`, `.password`                                    | none                       | **Required.**                                                                                                          |
-| `database.postgres.port`                                                          | `5432`                     |                                                                                                                        |
-| `database.postgres.name`                                                          | `consent_engine`           |                                                                                                                        |
-| `database.postgres.sslMode`                                                       | `require`                  | Use `disable` for a local PostgreSQL without TLS.                                                                      |
-| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600`          | Connection pool.                                                                                                       |
-| `database.idleTimeout`                                                            | `30m`                      | Closes connections idle this long.                                                                                     |
+| Key                                                                               | Default                    | Notes                                                                                                                 |
+| --------------------------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `server.port`                                                                     | `8081`                     | Listen port. The server binds on all interfaces.                                                                      |
+| `server.timeout`                                                                  | `10s`                      | Read and write timeout.                                                                                               |
+| `environment`                                                                     | none                       | Deployment name (for example `local`, `staging`), added to every log line. Left out of log lines when empty.          |
+| `logging.level`                                                                   | `info`                     | `debug`, `info`, `warn` or `error`.                                                                                   |
+| `logging.format`                                                                  | `json`                     | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`.                               |
+| `consentPortalURL`                                                                | none                       | **Required.** Must include scheme and host. Consent links are `<url>?consentId=<uuid>`. Its origin is always allowed. |
+| `cors.allowedOrigins`                                                             | empty                      | Origins allowed besides `consentPortalURL`. `*` stops the service at startup while `allowCredentials` is true.        |
+| `cors.allowedMethods`, `cors.allowedHeaders`                                      | see [config.go](config.go) | A list in the file replaces the default list.                                                                         |
+| `cors.allowCredentials`, `cors.maxAge`                                            | `true`, `86400`            |                                                                                                                       |
+| `idp.jwksURL`                                                                     | none                       | **Required.** Signing keys for portal tokens. If unreachable, every portal call returns 401.                          |
+| `idp.issuer`, `idp.audience`                                                      | none                       | **Required.** Expected token `iss` and `aud`. Compose uses ThunderID's base URL and `CONSENT_PORTAL`.                 |
+| `idp.subjectClaim`                                                                | `sub`                      | Token claim whose value must equal the consent's `ownerId`. Compose sets `nic`. A token without it gets `401`.        |
+| `idp.insecureSkipTLSVerify`                                                       | `false`                    | Skips TLS verification for the JWKS fetch. Development only.                                                          |
+| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required`               | `false`                    | `true` rejects a token whose claim is absent or blank.                                                                |
+| `database.driver`                                                                 | `postgres`                 | Only `postgres` is supported.                                                                                         |
+| `database.postgres.host`, `.user`, `.password`                                    | none                       | **Required.**                                                                                                         |
+| `database.postgres.port`                                                          | `5432`                     |                                                                                                                       |
+| `database.postgres.name`                                                          | `consent_engine`           |                                                                                                                       |
+| `database.postgres.sslMode`                                                       | `require`                  | Use `disable` for a local PostgreSQL without TLS.                                                                     |
+| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600`          | Connection pool.                                                                                                      |
+| `database.idleTimeout`                                                            | `30m`                      | Closes connections idle this long.                                                                                    |
 
 The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect. It also exits if it can't connect to the database within 10 seconds.
 
@@ -78,14 +78,14 @@ Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "..."
 **Internal API** (no authentication; the Orchestration Engine calls `POST /internal/api/v1/consents`):
 
 | Method and path                                 | Purpose                                                                                                                                       |
-|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /internal/api/v1/consents`                | Create a consent (`201`). Body: `appId`, `consentRequirement {owner, ownerId, fields[]}`, optional `appName`, `grantDuration`, `consentType`. |
 | `GET /internal/api/v1/consents?ownerId=&appId=` | Latest consent for the pair. Both parameters are required (`400`); `404` if none.                                                             |
 
 **Portal API** (Bearer access token; the token's subject claim must equal the consent's `ownerId`):
 
 | Method and path                    | Purpose                                                                                                               |
-|------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/consents`             | The caller's consents, newest first. `status` (repeatable or comma-separated), `limit` (1-100, default 20), `offset`. |
 | `GET /api/v1/consents/{consentId}` | One consent. `403` if it belongs to someone else.                                                                     |
 | `PUT /api/v1/consents/{consentId}` | Body `{"action": "approve" \| "reject" \| "revoke"}`. `409` if the consent is not in a state that allows the action.  |
@@ -105,23 +105,23 @@ States, durations and the exact create rules: [CONSENT_LIFECYCLE.md](CONSENT_LIF
 
 The CE is the only service that records metrics. It serves them at `GET /metrics` in the Prometheus text format, through the shared [`internal/monitoring`](../../internal/monitoring) package, which uses the OpenTelemetry SDK. Read them with any Prometheus-compatible scraper, or directly: `curl http://localhost:8081/metrics`. Every request is recorded:
 
-| Metric | Type | Labels |
-|---|---|---|
-| `http_requests_ratio_total` | Counter | `http_request_method`, `http_route`, `http_response_status_code` |
-| `http_request_duration_seconds` | Histogram | `http_request_method`, `http_route` |
+| Metric                          | Type      | Labels                                                           |
+| ------------------------------- | --------- | ---------------------------------------------------------------- |
+| `http_requests_ratio_total`     | Counter   | `http_request_method`, `http_route`, `http_response_status_code` |
+| `http_request_duration_seconds` | Histogram | `http_request_method`, `http_route`                              |
 
 `http_route` comes from the request path: a segment that looks like an ID becomes `:id`, as in `/api/v1/consents/:id`, so IDs don't create new series. A path without such a segment, such as `/api/v1/consents` or `/health`, and any request answered with `404`, is recorded as `unknown`. The word `internal` also looks like an ID, so `/internal/api/v1/consents` is recorded as `/:id/api/v1/consents`. Every metric also has `otel_scope_name` and `otel_scope_version` labels, and the `target_info` metric gives the service's `service_name` and `service_version`.
 
 The metrics are configured through these environment variables, read at startup:
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `OTEL_METRICS_EXPORTER` | `prometheus` | `prometheus` serves the metrics at `/metrics`, `otlp` pushes them to an OTLP endpoint, and `none` turns metrics off. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | | The OTLP endpoint. Required for `otlp`, and it must use `https` unless `OTEL_EXPORTER_OTLP_INSECURE` is `true`. The metrics go to its path plus `/v1/metrics`. |
-| `OTEL_EXPORTER_OTLP_HEADERS` | | Extra headers for `otlp`, such as an API key, as `key1=value1,key2=value2`. |
-| `OTEL_EXPORTER_OTLP_INSECURE` | `false` | `true` allows an `http` endpoint, and sends the metrics over plain HTTP whatever the endpoint's scheme. For development only. |
-| `SERVICE_NAME` | `openndx-service` | The `service_name` on `target_info`. |
-| `SERVICE_VERSION` | `dev` | The `service_version` on `target_info`. |
+| Variable                      | Default           | Meaning                                                                                                                                                        |
+| ----------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OTEL_METRICS_EXPORTER`       | `prometheus`      | `prometheus` serves the metrics at `/metrics`, `otlp` pushes them to an OTLP endpoint, and `none` turns metrics off.                                           |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` |                   | The OTLP endpoint. Required for `otlp`, and it must use `https` unless `OTEL_EXPORTER_OTLP_INSECURE` is `true`. The metrics go to its path plus `/v1/metrics`. |
+| `OTEL_EXPORTER_OTLP_HEADERS`  |                   | Extra headers for `otlp`, such as an API key, as `key1=value1,key2=value2`.                                                                                    |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `false`           | `true` allows an `http` endpoint, and sends the metrics over plain HTTP whatever the endpoint's scheme. For development only.                                  |
+| `SERVICE_NAME`                | `openndx-service` | The `service_name` on `target_info`.                                                                                                                           |
+| `SERVICE_VERSION`             | `dev`             | The `service_version` on `target_info`.                                                                                                                        |
 
 Compose and the Helm chart set `SERVICE_NAME=consent-engine` and leave the rest at their defaults.
 

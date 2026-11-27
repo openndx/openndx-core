@@ -6,13 +6,13 @@ This file provides guidance to AI coding agents working with code in this reposi
 
 One Go module at the repo root (`github.com/openndx/openndx-core`) holds every service; `tests/integration` is a **separate module**. Make targets work on the whole module. Each service's entrypoint is `cmd/<svc>` and its code is `internal/<svc>`, so test both paths:
 
-| Service | Go packages |
-|---|---|
-| Orchestration Engine | `./cmd/oe/... ./internal/oe/...` |
-| Policy Decision Point | `./cmd/pdp/... ./internal/pdp/...` |
-| Consent Engine | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
-| Portal Backend | `./cmd/pb/... ./internal/pb/...` |
-| `ondx` CLI | `./cmd/ondx/... ./internal/cli/...` |
+| Service               | Go packages                                              |
+| --------------------- | -------------------------------------------------------- |
+| Orchestration Engine  | `./cmd/oe/... ./internal/oe/...`                         |
+| Policy Decision Point | `./cmd/pdp/... ./internal/pdp/...`                       |
+| Consent Engine        | `./cmd/ce/... ./internal/ce/... ./internal/database/...` |
+| Portal Backend        | `./cmd/pb/... ./internal/pb/...`                         |
+| `ondx` CLI            | `./cmd/ondx/... ./internal/cli/...`                      |
 
 The shared packages (`internal/authn`, `internal/audit`, `internal/database`, `internal/logging`, `internal/monitoring`, `internal/utils`) serve several services; `make test` covers them.
 

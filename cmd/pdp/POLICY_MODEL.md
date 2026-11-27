@@ -6,15 +6,15 @@ How the Policy Decision Point represents field policy and turns it into a decisi
 
 One field policy describes one field of one schema. `(schemaId, fieldName)` is unique.
 
-| Field                        | Values                 | Meaning                                                                                                                                  |
-|------------------------------|------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `schemaId`                   | string                 | The provider schema the field belongs to.                                                                                                |
-| `fieldName`                  | string                 | The field path, for example `person.fullName`. The Orchestration Engine sends its `@sourceInfo` `providerField` here.                    |
-| `displayName`, `description` | optional text          | Shown to the data owner on the consent screen.                                                                                           |
-| `source`                     | `primary`, `fallback`  | Whether the provider is the primary or a fallback source for the field.                                                                  |
-| `requiresAllowlist`          | boolean                | The application needs an unexpired [access grant](#access-grants) for the field. Required.                                               |
-| `requiresConsent`            | boolean                | The owner must consent, unless the application holds a [consent bypass](#consent-bypass) grant. Required.                                |
-| `owner`                      | `citizen`, optional    | Whose consent is asked for the field. Shown on the consent screen.                                                                       |
+| Field                        | Values                | Meaning                                                                                                               |
+| ---------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `schemaId`                   | string                | The provider schema the field belongs to.                                                                             |
+| `fieldName`                  | string                | The field path, for example `person.fullName`. The Orchestration Engine sends its `@sourceInfo` `providerField` here. |
+| `displayName`, `description` | optional text         | Shown to the data owner on the consent screen.                                                                        |
+| `source`                     | `primary`, `fallback` | Whether the provider is the primary or a fallback source for the field.                                               |
+| `requiresAllowlist`          | boolean               | The application needs an unexpired [access grant](#access-grants) for the field. Required.                            |
+| `requiresConsent`            | boolean               | The owner must consent, unless the application holds a [consent bypass](#consent-bypass) grant. Required.             |
+| `owner`                      | `citizen`, optional   | Whose consent is asked for the field. Shown on the consent screen.                                                    |
 
 `POST /api/v1/policy/fields` is a sync for one schema. It upserts the field policies you send and deletes the schema's field policies that you omit, together with their [access grants](#access-grants). Field policies it updates keep their grants. If any record leaves out `requiresAllowlist` or `requiresConsent`, nothing is written and the request fails with HTTP 400. A missing flag is never read as `false`, which would open the field.
 
@@ -22,10 +22,10 @@ One field policy describes one field of one schema. `(schemaId, fieldName)` is u
 
 Two flags describe who may read a field:
 
-|                               | **`requiresConsent: true`**           | **`requiresConsent: false`**   |
-|-------------------------------|---------------------------------------|--------------------------------|
-| **`requiresAllowlist: true`** | Allow-listed applications, with owner consent | Allow-listed applications, no consent |
-| **`requiresAllowlist: false`**| Any authenticated application, with owner consent | Any authenticated application (public) |
+|                                | **`requiresConsent: true`**                       | **`requiresConsent: false`**           |
+| ------------------------------ | ------------------------------------------------- | -------------------------------------- |
+| **`requiresAllowlist: true`**  | Allow-listed applications, with owner consent     | Allow-listed applications, no consent  |
+| **`requiresAllowlist: false`** | Any authenticated application, with owner consent | Any authenticated application (public) |
 
 A field that requires consent but not the allow-list lets any authenticated application ask the owner, for data the owner alone should control. An admin doesn't have to put the application on the allow-list first, and an expired allow-list entry makes no difference.
 
@@ -35,23 +35,23 @@ A field that requires neither is public. Any authenticated application reads it 
 
 An access grant gives one application access to one field until it expires. A grant is either **plain** or a **consent bypass** grant. A field's allow-list is the set of applications that hold an `active` plain grant for it. The application is identified by its OIDC `client_id`.
 
-| Property        | Meaning                                                                                              |
-|-----------------|------------------------------------------------------------------------------------------------------|
-| `id`            | Grant ID, used to revoke it.                                                                         |
-| `schemaId`, `fieldName` | The field. It must have a field policy.                                                      |
-| `applicationId` | The application's OIDC `client_id`.                                                                  |
-| `expiresAt`     | After this time the field is `expired` for the application until the grant is renewed.              |
-| `status`        | `active` or `revoked`. A field has at most one `active` plain grant and one `active` bypass grant per application. |
-| `consentBypass` | `true` for a consent bypass grant.                                                                   |
-| `legalBasis`    | Set for consent bypass grants: why the application may skip consent.                                 |
-| `createdAt`, `updatedAt` | `updatedAt` changes when the grant is renewed or revoked.                                   |
+| Property                 | Meaning                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `id`                     | Grant ID, used to revoke it.                                                                                       |
+| `schemaId`, `fieldName`  | The field. It must have a field policy.                                                                            |
+| `applicationId`          | The application's OIDC `client_id`.                                                                                |
+| `expiresAt`              | After this time the field is `expired` for the application until the grant is renewed.                             |
+| `status`                 | `active` or `revoked`. A field has at most one `active` plain grant and one `active` bypass grant per application. |
+| `consentBypass`          | `true` for a consent bypass grant.                                                                                 |
+| `legalBasis`             | Set for consent bypass grants: why the application may skip consent.                                               |
+| `createdAt`, `updatedAt` | `updatedAt` changes when the grant is renewed or revoked.                                                          |
 
-| Endpoint                                   | Behavior                                                                                                                                                                               |
-|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `POST /api/v1/policy/grants`               | Takes `applicationId`, `records` and `grantDuration` of `30d` or `365d`, and sets the expiry from the time of the call. Renews the application's active grant of the same kind for a field, or creates one. With `consentBypass: true` and a `legalBasis` it grants consent bypass; see [Consent bypass](#consent-bypass). A field without a field policy fails with HTTP 404 and nothing is written. |
-| `GET /api/v1/policy/grants`                | Lists grants, filtered by any of `applicationId`, `schemaId`, `status` and `consentBypass`.                                                                                            |
-| `GET /api/v1/policy/grants/{id}`           | Reads one grant.                                                                                                                                                                       |
-| `POST /api/v1/policy/grants/{id}/revoke`   | Sets an active grant's status to `revoked`. The grant is kept as a record. Revoking a grant that is not active fails with HTTP 404. Granting the field again creates a new grant.       |
+| Endpoint                                 | Behavior                                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/policy/grants`             | Takes `applicationId`, `records` and `grantDuration` of `30d` or `365d`, and sets the expiry from the time of the call. Renews the application's active grant of the same kind for a field, or creates one. With `consentBypass: true` and a `legalBasis` it grants consent bypass; see [Consent bypass](#consent-bypass). A field without a field policy fails with HTTP 404 and nothing is written. |
+| `GET /api/v1/policy/grants`              | Lists grants, filtered by any of `applicationId`, `schemaId`, `status` and `consentBypass`.                                                                                                                                                                                                                                                                                                           |
+| `GET /api/v1/policy/grants/{id}`         | Reads one grant.                                                                                                                                                                                                                                                                                                                                                                                      |
+| `POST /api/v1/policy/grants/{id}/revoke` | Sets an active grant's status to `revoked`. The grant is kept as a record. Revoking a grant that is not active fails with HTTP 404. Granting the field again creates a new grant.                                                                                                                                                                                                                     |
 
 Deleting a field's policy deletes its grants. An expired grant stays `active`: the decision reports the field as `expired`, which tells the application to renew access rather than ask for it.
 
@@ -69,14 +69,14 @@ The PDP doesn't authenticate callers or decide who may grant a bypass. That is a
 
 `POST /api/v1/policy/decide` evaluates each requested field independently, from the field's two flags and the application's active grant for it, if any. When the application holds both kinds of grant, the bypass grant is used while it is unexpired, otherwise the plain one. The rules are in [`internal/pdp/decision`](../../internal/pdp/decision) and apply in order:
 
-| # | Check                                                              | Outcome            | Reason             |
-|---|--------------------------------------------------------------------|--------------------|--------------------|
-| 1 | No application ID                                                  | `deny`             | `no_application`   |
-| 2 | `requiresAllowlist` and no active grant                            | `deny`             | `not_allowlisted`  |
-| 3 | `requiresAllowlist` and the grant is past its `expiresAt`          | `expired`          | `grant_expired`    |
-| 4 | `requiresConsent` and an unexpired consent bypass grant            | `allow`, with the `audit.consent_bypassed` obligation | `consent_bypassed` |
-| 5 | `requiresConsent`                                                  | `consent_required` |                    |
-| 6 | Otherwise                                                          | `allow`            |                    |
+| #   | Check                                                     | Outcome                                               | Reason             |
+| --- | --------------------------------------------------------- | ----------------------------------------------------- | ------------------ |
+| 1   | No application ID                                         | `deny`                                                | `no_application`   |
+| 2   | `requiresAllowlist` and no active grant                   | `deny`                                                | `not_allowlisted`  |
+| 3   | `requiresAllowlist` and the grant is past its `expiresAt` | `expired`                                             | `grant_expired`    |
+| 4   | `requiresConsent` and an unexpired consent bypass grant   | `allow`, with the `audit.consent_bypassed` obligation | `consent_bypassed` |
+| 5   | `requiresConsent`                                         | `consent_required`                                    |                    |
+| 6   | Otherwise                                                 | `allow`                                               |                    |
 
 Rule 1 is a safeguard in the code: the endpoint rejects a request without `applicationId` with HTTP 400 before any rule runs.
 
@@ -92,11 +92,11 @@ A requested field without a field policy fails the whole request with HTTP 500 a
 {"schemaId": "drp", "fieldName": "person.fullName", "outcome": "deny", "reason": "not_allowlisted"}
 ```
 
-| Property      | Notes                                                                                                                         |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `outcome`     | One of `allow`, `deny`, `expired`, `consent_required`.                                                                        |
-| `reason`      | Optional. Why the PDP chose the outcome: one of the reasons in [Decision rules](#decision-rules).                             |
-| `obligations` | Optional. Extra actions the Orchestration Engine must take. The only one is `audit.consent_bypassed`.                         |
+| Property      | Notes                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| `outcome`     | One of `allow`, `deny`, `expired`, `consent_required`.                                                |
+| `reason`      | Optional. Why the PDP chose the outcome: one of the reasons in [Decision rules](#decision-rules).     |
+| `obligations` | Optional. Extra actions the Orchestration Engine must take. The only one is `audit.consent_bypassed`. |
 
 The Orchestration Engine records every field's outcome, reason and obligations in its `POLICY_CHECK` audit event, under `responseMetadata.fields`. The `audit.consent_bypassed` obligation is set when a bypass grant lets the application skip consent.
 
@@ -112,30 +112,30 @@ Only a field with both flags `false` lets every authenticated application read i
 
 `field_policies` (PostgreSQL, created by [schema.sql](schema.sql)):
 
-| Column                        | Type          | Notes                                         |
-|-------------------------------|---------------|-----------------------------------------------|
-| `id`                          | uuid          | Primary key, generated.                       |
-| `schema_id`                   | varchar(255)  | Part of the unique index.                     |
-| `field_name`                  | text          | Part of the unique index.                     |
-| `display_name`, `description` | text          | Optional.                                     |
-| `source`                      | `source_enum` | Default `fallback`.                           |
-| `requires_allowlist`          | boolean       | Required, no default.                         |
-| `requires_consent`            | boolean       | Required, no default.                         |
-| `owner`                       | `owner_enum`  | `citizen`, or null.                           |
-| `created_at`, `updated_at`    | timestamp     |                                               |
+| Column                        | Type          | Notes                     |
+| ----------------------------- | ------------- | ------------------------- |
+| `id`                          | uuid          | Primary key, generated.   |
+| `schema_id`                   | varchar(255)  | Part of the unique index. |
+| `field_name`                  | text          | Part of the unique index. |
+| `display_name`, `description` | text          | Optional.                 |
+| `source`                      | `source_enum` | Default `fallback`.       |
+| `requires_allowlist`          | boolean       | Required, no default.     |
+| `requires_consent`            | boolean       | Required, no default.     |
+| `owner`                       | `owner_enum`  | `citizen`, or null.       |
+| `created_at`, `updated_at`    | timestamp     |                           |
 
 `access_grants`:
 
-| Column                          | Type         | Notes                                                                                     |
-|---------------------------------|--------------|-------------------------------------------------------------------------------------------|
-| `id`                            | uuid         | Primary key, generated.                                                                   |
-| `schema_id`, `field_name`       | varchar(255), text | Foreign key to `field_policies`, `ON DELETE CASCADE`.                               |
-| `application_id`                | text         | OIDC `client_id`.                                                                         |
-| `expires_at`                    | timestamptz  | Required.                                                                                 |
-| `status`                        | text         | `active` (default) or `revoked`, enforced by `access_grants_status_check`.               |
-| `consent_bypass`                | boolean      | Default `false`.                                                                          |
-| `legal_basis`                   | text         | Required for bypass grants, by `access_grants_bypass_check`.                             |
-| `created_at`, `updated_at`      | timestamptz  |                                                                                           |
+| Column                     | Type               | Notes                                                                      |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------- |
+| `id`                       | uuid               | Primary key, generated.                                                    |
+| `schema_id`, `field_name`  | varchar(255), text | Foreign key to `field_policies`, `ON DELETE CASCADE`.                      |
+| `application_id`           | text               | OIDC `client_id`.                                                          |
+| `expires_at`               | timestamptz        | Required.                                                                  |
+| `status`                   | text               | `active` (default) or `revoked`, enforced by `access_grants_status_check`. |
+| `consent_bypass`           | boolean            | Default `false`.                                                           |
+| `legal_basis`              | text               | Required for bypass grants, by `access_grants_bypass_check`.               |
+| `created_at`, `updated_at` | timestamptz        |                                                                            |
 
 A partial unique index on `(schema_id, field_name, application_id, consent_bypass) WHERE status = 'active'` keeps one active grant of each kind per application and field.
 

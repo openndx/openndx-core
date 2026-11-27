@@ -4,10 +4,10 @@
 
 OpenNDX is before version 1.0. Security fixes are made on `main` and released in the next version. Earlier releases don't receive backported fixes.
 
-| Version | Supported |
-|---|---|
-| The [latest release](https://github.com/openndx/openndx-core/releases/latest) | Yes |
-| Earlier releases | No |
+| Version                                                                       | Supported |
+| ----------------------------------------------------------------------------- | --------- |
+| The [latest release](https://github.com/openndx/openndx-core/releases/latest) | Yes       |
+| Earlier releases                                                              | No        |
 
 ## Reporting a Vulnerability
 

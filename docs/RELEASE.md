@@ -14,12 +14,14 @@ git push origin v1.0.0
 ```
 
 This triggers the **Release** workflow which:
-1.  Builds Docker images for the **5 maintained components** listed below.
-2.  Pushes version tags (for example `1.0.0`, `1.0`, `1`), `sha-<commit>`, and `latest` for versions without a pre-release suffix.
-3.  Scans images with Trivy.
-4.  Builds the `ondx` CLI binaries and creates a GitHub Release with changelogs and download artifacts.
+
+1. Builds Docker images for the **5 maintained components** listed below.
+2. Pushes version tags (for example `1.0.0`, `1.0`, `1`), `sha-<commit>`, and `latest` for versions without a pre-release suffix.
+3. Scans images with Trivy.
+4. Builds the `ondx` CLI binaries and creates a GitHub Release with changelogs and download artifacts.
 
 ## Manual Release
+
 Go to **Actions** → **Release - Build and Publish Maintained Components** → **Run workflow** → Enter version (e.g., `v1.0.0`). A manual run on `main` publishes images; the CLI and GitHub Release job runs only for tag pushes.
 
 ## Artifacts
@@ -27,7 +29,7 @@ Go to **Actions** → **Release - Build and Publish Maintained Components** → 
 All images are published to **ghcr.io/openndx/**:
 
 | Category     | Service               | Image Name              |
-|:-------------|:----------------------|:------------------------|
+| :----------- | :-------------------- | :---------------------- |
 | **Backend**  | Portal Backend        | `portal-backend`        |
 |              | Policy Decision Point | `policy-decision-point` |
 |              | Consent Engine        | `consent-engine`        |
@@ -60,6 +62,7 @@ and Portal Backend are maintained and released. The GoReleaser release footer
 repeats this notice in each release's notes.
 
 ## Verification
+
 ```bash
 docker pull ghcr.io/openndx/portal-backend:1.0.0
 ```

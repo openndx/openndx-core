@@ -45,27 +45,27 @@ To send a real query you need a consumer token, registered field policies and an
 
 The OE reads one YAML file (`-config`, else `CONFIG_PATH`, else `config.yaml`) and the consumer schema file it names (`schemaPath`, default the `schema.graphql` next to it). Both are read once at startup; to change either, deploy the new file and restart. A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from the environment or a file, which is how secrets get in.
 
-| `config.yaml` key | Meaning |
-|---|---|
-| `server`, `environment`, `logging` | Port (default `4000`) and request timeout; deployment name on log lines; log level and format. |
-| `schemaPath` | The consumer schema file; default `schema.graphql`, resolved against the directory of the config file. |
-| `idp` | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [CONFIGURATION.md](CONFIGURATION.md#idp). |
-| `pdp.url` | PDP base URL. If empty, the OE skips authorization and consent checks (see Security). |
-| `consentEngine.url` | Consent Engine URL **including** `/internal/api/v1`. |
-| `consentEngine.ownerIdArgName` | **Required when `consentEngine.url` is set.** Name of the query argument that identifies the data owner whose consent is asked, for example `nic`. Read only when a field requires consent. |
-| `audit` | The actor recorded on the audit events the OE initiates; default `SERVICE` / `orchestration-engine`. |
-| `providers[]` | Data providers: `id` (the schema ID), `url`, optional `timeout`, `auth` and `tls`. See [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md). |
-| `argMappings[]` | How consumer arguments map to each provider's arguments. |
-| `otel` | OpenTelemetry export over OTLP/HTTP: `endpoint`, `serviceName` (default `orchestration-engine`), `headers`. Audit records go only here. See [CONFIGURATION.md](CONFIGURATION.md#otel). |
+| `config.yaml` key                  | Meaning                                                                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server`, `environment`, `logging` | Port (default `4000`) and request timeout; deployment name on log lines; log level and format.                                                                                              |
+| `schemaPath`                       | The consumer schema file; default `schema.graphql`, resolved against the directory of the config file.                                                                                      |
+| `idp`                              | **Required.** Consumer token validation: `jwksURL`, `issuer`, `audience`. See [CONFIGURATION.md](CONFIGURATION.md#idp).                                                                     |
+| `pdp.url`                          | PDP base URL. If empty, the OE skips authorization and consent checks (see Security).                                                                                                       |
+| `consentEngine.url`                | Consent Engine URL **including** `/internal/api/v1`.                                                                                                                                        |
+| `consentEngine.ownerIdArgName`     | **Required when `consentEngine.url` is set.** Name of the query argument that identifies the data owner whose consent is asked, for example `nic`. Read only when a field requires consent. |
+| `audit`                            | The actor recorded on the audit events the OE initiates; default `SERVICE` / `orchestration-engine`.                                                                                        |
+| `providers[]`                      | Data providers: `id` (the schema ID), `url`, optional `timeout`, `auth` and `tls`. See [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md).                                              |
+| `argMappings[]`                    | How consumer arguments map to each provider's arguments.                                                                                                                                    |
+| `otel`                             | OpenTelemetry export over OTLP/HTTP: `endpoint`, `serviceName` (default `orchestration-engine`), `headers`. Audit records go only here. See [CONFIGURATION.md](CONFIGURATION.md#otel).      |
 
 Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATION.md).
 
 ## API
 
-| Method and path | Auth | Purpose |
-|---|---|---|
+| Method and path        | Auth         | Purpose                                                                                                                       |
+| ---------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
-| `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
+| `GET /health`          | none         | `{"service": "orchestration-engine", "status": "healthy"}`                                                                    |
 
 [openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here, and its token checks in [internal/authn](../../internal/authn/README.md#token-checks).
 
@@ -136,12 +136,12 @@ The OE reads the consumer schema from `schemaPath` once, at startup ([CONFIGURAT
 
 Start the OE and the rest of the stack (see [Quick start](#quick-start)). `POST /public/graphql` needs a consumer token, field policies, an application grant and, for restricted fields, the citizen's consent. The token and a curl example are in [dev/README.md](../../dev/README.md), and the full setup is in the [walkthrough](../../dev/WALKTHROUGH.md). What to expect:
 
-| Situation | Response |
-|---|---|
-| No token | HTTP `401`, `{"error":"unauthorized","message":"authentication required"}` |
-| An invalid token | HTTP `401`, `{"error":"unauthorized","message":"invalid authentication token"}` |
-| Consent is still pending | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending`. Open `consentPortalUrl` as the citizen, approve, and repeat the query. |
-| Everything is granted and approved | `data` holds the merged fields from every provider |
+| Situation                          | Response                                                                                                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No token                           | HTTP `401`, `{"error":"unauthorized","message":"authentication required"}`                                                                                                    |
+| An invalid token                   | HTTP `401`, `{"error":"unauthorized","message":"invalid authentication token"}`                                                                                               |
+| Consent is still pending           | `CE_NOT_APPROVED`, with `consentPortalUrl` (`<portal>?consentId=<uuid>`) and `consentStatus: pending`. Open `consentPortalUrl` as the citizen, approve, and repeat the query. |
+| Everything is granted and approved | `data` holds the merged fields from every provider                                                                                                                            |
 
 Any other problem with a query, such as a missing grant or a provider that is down, comes back with HTTP 200 and a code in `errors[].extensions.code`. [CONFIGURATION.md](CONFIGURATION.md#error-codes) lists every code. The `401` responses are not among those codes: they are HTTP errors, returned before the query is read.
 
