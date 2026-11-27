@@ -43,8 +43,8 @@ func postSchema(t *testing.T, h *Handler, schemaID, memberID string) *httptest.R
 	t.Helper()
 	body, err := json.Marshal(CreateSchemaRequest{
 		SchemaID:   schemaID,
-		SchemaName: "DRP Person Registry",
-		Endpoint:   "http://drp.example/graphql",
+		SchemaName: "Identity Registry Person",
+		Endpoint:   "http://identity-registry.example/graphql",
 		MemberID:   memberID,
 		Fields: []policy.FieldPolicyCreateRequestRecord{
 			{FieldName: "person.fullName", Source: policy.SourcePrimary, RequiresAllowlist: new(true), RequiresConsent: new(false)},
@@ -60,24 +60,24 @@ func postSchema(t *testing.T, h *Handler, schemaID, memberID string) *httptest.R
 func TestCreateSchema_SchemaID(t *testing.T) {
 	t.Run("uses a caller-supplied schemaId", func(t *testing.T) {
 		h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
+		memberID := createTestMember(t, db, fmt.Sprintf("identity-registry-%d@example.com", uniqueID()))
 
-		w := postSchema(t, h, "drp-person-v1", memberID)
+		w := postSchema(t, h, "identity-registry-v1", memberID)
 
 		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 		var resp SchemaResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.Equal(t, "drp-person-v1", resp.SchemaID)
+		assert.Equal(t, "identity-registry-v1", resp.SchemaID)
 		// The PDP's field policies are keyed by the same ID.
-		assert.Equal(t, []string{"drp-person-v1"}, *pdpSchemaIDs)
+		assert.Equal(t, []string{"identity-registry-v1"}, *pdpSchemaIDs)
 
 		var stored Schema
-		assert.NoError(t, db.First(&stored, "schema_id = ?", "drp-person-v1").Error)
+		assert.NoError(t, db.First(&stored, "schema_id = ?", "identity-registry-v1").Error)
 	})
 
 	t.Run("generates a UUID when schemaId is omitted", func(t *testing.T) {
 		h, db, _ := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
+		memberID := createTestMember(t, db, fmt.Sprintf("identity-registry-%d@example.com", uniqueID()))
 
 		w := postSchema(t, h, "", memberID)
 
@@ -90,10 +90,10 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 
 	t.Run("rejects a duplicate schemaId with 409", func(t *testing.T) {
 		h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-		memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
+		memberID := createTestMember(t, db, fmt.Sprintf("identity-registry-%d@example.com", uniqueID()))
 
-		require.Equal(t, http.StatusCreated, postSchema(t, h, "drp-person-v1", memberID).Code)
-		w := postSchema(t, h, "drp-person-v1", memberID)
+		require.Equal(t, http.StatusCreated, postSchema(t, h, "identity-registry-v1", memberID).Code)
+		w := postSchema(t, h, "identity-registry-v1", memberID)
 
 		assert.Equal(t, http.StatusConflict, w.Code)
 		assert.Contains(t, w.Body.String(), ErrSchemaAlreadyExists.Error())
@@ -102,10 +102,10 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 	})
 
 	t.Run("rejects an invalid schemaId with 400", func(t *testing.T) {
-		for _, id := range []string{"ab", "DRP-Schema", "drp:schema", "drp/schema", "-drp", "drp schema", strings.Repeat("a", 65)} {
+		for _, id := range []string{"ab", "IR-Schema", "registry:schema", "registry/schema", "-registry", "registry schema", strings.Repeat("a", 65)} {
 			t.Run(fmt.Sprintf("%q", id), func(t *testing.T) {
 				h, db, pdpSchemaIDs := newSchemaIDTestHandler(t)
-				memberID := createTestMember(t, db, fmt.Sprintf("drp-%d@example.com", uniqueID()))
+				memberID := createTestMember(t, db, fmt.Sprintf("identity-registry-%d@example.com", uniqueID()))
 
 				w := postSchema(t, h, id, memberID)
 
@@ -117,7 +117,7 @@ func TestCreateSchema_SchemaID(t *testing.T) {
 	})
 
 	t.Run("accepts the documented character set", func(t *testing.T) {
-		for _, id := range []string{"abc", "drp-person-v1", "rgd.person_v2", "2024-registry", strings.Repeat("a", 64)} {
+		for _, id := range []string{"abc", "identity-registry-v1", "civil.registry_v2", "2024-registry", strings.Repeat("a", 64)} {
 			assert.True(t, schemaIDPattern.MatchString(id), id)
 		}
 	})

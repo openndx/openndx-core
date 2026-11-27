@@ -17,8 +17,8 @@ type Query {
 }
 
 type PersonInfo {
-	fullName: String @sourceInfo(schemaId: "drp-v1", providerField: "person.fullName")
-	birthDate: String @sourceInfo(schemaId: "rgd-v1", providerField: "getPersonInfo.birthDate")
+	fullName: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.fullName")
+	birthDate: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthDate")
 }
 `
 
@@ -29,11 +29,11 @@ func TestCompile(t *testing.T) {
 
 		info, ok := compiled.SourceInfo("PersonInfo", "fullName")
 		require.True(t, ok)
-		assert.Equal(t, SourceInfo{SchemaID: "drp-v1", ProviderField: "person.fullName"}, info)
+		assert.Equal(t, SourceInfo{SchemaID: "identity-registry-v1", ProviderField: "person.fullName"}, info)
 
 		info, ok = compiled.SourceInfo("PersonInfo", "birthDate")
 		require.True(t, ok)
-		assert.Equal(t, SourceInfo{SchemaID: "rgd-v1", ProviderField: "getPersonInfo.birthDate"}, info)
+		assert.Equal(t, SourceInfo{SchemaID: "civil-registry-v1", ProviderField: "getPersonInfo.birthDate"}, info)
 
 		_, ok = compiled.SourceInfo("Query", "personInfo")
 		assert.False(t, ok, "fields without @sourceInfo are not indexed")

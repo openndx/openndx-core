@@ -8,7 +8,7 @@
           "unauthorizedFields": [
             {
               "fieldName": "person.permanentAddress",
-              "schemaId": "drp-v1"
+              "schemaId": "identity-registry-v1"
             }
           ]
         },
@@ -22,11 +22,11 @@
       "requiredFields": [
         {
           "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         },
         {
           "fieldName": "person.permanentAddress",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         }
       ]
     }

@@ -22,21 +22,21 @@ import (
 
 func TestNewRegistry_AndGet(t *testing.T) {
 	registry, err := NewRegistry(
-		Config{ID: "drp-v1", URL: "http://example1.com"},
-		Config{ID: "drp-v2", URL: "http://example1.com", Timeout: "5s"},
-		Config{ID: "rgd-v1", URL: "http://example3.com/graphql"},
+		Config{ID: "identity-registry-v1", URL: "http://example1.com"},
+		Config{ID: "identity-registry-v2", URL: "http://example1.com", Timeout: "5s"},
+		Config{ID: "civil-registry-v1", URL: "http://example3.com/graphql"},
 	)
 	require.NoError(t, err)
 
-	p1, ok := registry.Get("drp-v1")
+	p1, ok := registry.Get("identity-registry-v1")
 	require.True(t, ok)
 	assert.Equal(t, "http://example1.com", p1.url)
 
-	p2, ok := registry.Get("drp-v2")
+	p2, ok := registry.Get("identity-registry-v2")
 	require.True(t, ok, "two schemas may share an endpoint")
 	assert.Equal(t, "http://example1.com", p2.url)
 
-	p3, ok := registry.Get("rgd-v1")
+	p3, ok := registry.Get("civil-registry-v1")
 	require.True(t, ok)
 	assert.Equal(t, "http://example3.com/graphql", p3.url)
 
@@ -44,7 +44,7 @@ func TestNewRegistry_AndGet(t *testing.T) {
 	assert.False(t, ok)
 
 	var nilRegistry *Registry
-	_, ok = nilRegistry.Get("drp-v1")
+	_, ok = nilRegistry.Get("identity-registry-v1")
 	assert.False(t, ok)
 }
 
@@ -61,31 +61,31 @@ func TestNewRegistry_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:    "missing url",
-			configs: []Config{{ID: "drp-v1"}},
+			configs: []Config{{ID: "identity-registry-v1"}},
 			wantErr: "providers[0].url",
 		},
 		{
 			name:    "non-http url",
-			configs: []Config{{ID: "drp-v1", URL: "ftp://example.com"}},
+			configs: []Config{{ID: "identity-registry-v1", URL: "ftp://example.com"}},
 			wantErr: "providers[0].url",
 		},
 		{
 			name: "duplicate id",
 			configs: []Config{
-				{ID: "drp-v1", URL: "http://example1.com"},
-				{ID: "drp-v1", URL: "http://example2.com"},
+				{ID: "identity-registry-v1", URL: "http://example1.com"},
+				{ID: "identity-registry-v1", URL: "http://example2.com"},
 			},
-			wantErr: `duplicate provider for schema "drp-v1"`,
+			wantErr: `duplicate provider for schema "identity-registry-v1"`,
 		},
 		{
 			name:    "invalid timeout",
-			configs: []Config{{ID: "drp-v1", URL: "http://example.com", Timeout: "not-a-duration"}},
-			wantErr: `providers[0] (drp-v1): invalid timeout "not-a-duration"`,
+			configs: []Config{{ID: "identity-registry-v1", URL: "http://example.com", Timeout: "not-a-duration"}},
+			wantErr: `providers[0] (identity-registry-v1): invalid timeout "not-a-duration"`,
 		},
 		{
 			name: "invalid auth config",
 			configs: []Config{{
-				ID:   "drp-v1",
+				ID:   "identity-registry-v1",
 				URL:  "http://example.com",
 				Auth: &remoteauth.Config{Type: remoteauth.TypeOAuth2},
 			}},
@@ -94,7 +94,7 @@ func TestNewRegistry_ValidationErrors(t *testing.T) {
 		{
 			name: "incomplete tls config",
 			configs: []Config{{
-				ID:  "drp-v1",
+				ID:  "identity-registry-v1",
 				URL: "http://example.com",
 				TLS: &remote.TLSSettings{ClientCertFile: "/etc/cert.pem"},
 			}},
@@ -120,16 +120,16 @@ func TestNewRegistry_WarnsAboutCredentialsOverPlainHTTP(t *testing.T) {
 	_, err := NewRegistry(
 		Config{ID: "open-v1", URL: "http://open.example"},
 		Config{
-			ID:   "drp-v1",
-			URL:  "https://drp.example",
+			ID:   "identity-registry-v1",
+			URL:  "https://identity-registry.example",
 			Auth: &remoteauth.Config{Type: remoteauth.TypeAPIKey, APIKey: &remoteauth.APIKeyConfig{Key: "X-API-Key", Value: "k"}},
 		},
 		Config{
-			ID:  "rgd-v1",
-			URL: "http://rgd.example/graphql",
+			ID:  "civil-registry-v1",
+			URL: "http://civil-registry.example/graphql",
 			Auth: &remoteauth.Config{
 				Type:   remoteauth.TypeOAuth2,
-				OAuth2: &remoteauth.OAuth2Config{TokenURL: "http://rgd.example/oauth/token", ClientID: "c", ClientSecret: "s"},
+				OAuth2: &remoteauth.OAuth2Config{TokenURL: "http://civil-registry.example/oauth/token", ClientID: "c", ClientSecret: "s"},
 			},
 		},
 	)
@@ -137,7 +137,7 @@ func TestNewRegistry_WarnsAboutCredentialsOverPlainHTTP(t *testing.T) {
 
 	out := logs.String()
 	assert.NotContains(t, out, "open-v1", "a provider without credentials isn't warned about")
-	assert.NotContains(t, out, "drp-v1", "credentials over https aren't warned about")
+	assert.NotContains(t, out, "identity-registry-v1", "credentials over https aren't warned about")
 	assert.Contains(t, out, "key=providers[2].url")
 	assert.Contains(t, out, "key=providers[2].auth.oauth2.tokenURL")
 }
@@ -157,9 +157,9 @@ func TestProvider_Execute(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		registry, err := NewRegistry(Config{ID: "drp-v1", URL: server.URL + "/graphql"})
+		registry, err := NewRegistry(Config{ID: "identity-registry-v1", URL: server.URL + "/graphql"})
 		require.NoError(t, err)
-		p, ok := registry.Get("drp-v1")
+		p, ok := registry.Get("identity-registry-v1")
 		require.True(t, ok)
 
 		resp, err := p.Execute(context.Background(), graphql.Request{Query: "query { person { name } }"})
@@ -180,7 +180,7 @@ func TestProvider_Execute(t *testing.T) {
 		t.Cleanup(server.Close)
 
 		registry, err := NewRegistry(Config{
-			ID:  "drp-v1",
+			ID:  "identity-registry-v1",
 			URL: server.URL,
 			Auth: &remoteauth.Config{
 				Type:   remoteauth.TypeAPIKey,
@@ -188,7 +188,7 @@ func TestProvider_Execute(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		p, _ := registry.Get("drp-v1")
+		p, _ := registry.Get("identity-registry-v1")
 
 		_, err = p.Execute(context.Background(), graphql.Request{Query: "{ ok }"})
 		require.NoError(t, err)
@@ -210,7 +210,7 @@ func TestProvider_Execute(t *testing.T) {
 		t.Cleanup(resourceServer.Close)
 
 		registry, err := NewRegistry(Config{
-			ID:  "rgd-v1",
+			ID:  "civil-registry-v1",
 			URL: resourceServer.URL + "/graphql",
 			Auth: &remoteauth.Config{
 				Type: remoteauth.TypeOAuth2,
@@ -223,7 +223,7 @@ func TestProvider_Execute(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		p, _ := registry.Get("rgd-v1")
+		p, _ := registry.Get("civil-registry-v1")
 
 		_, err = p.Execute(context.Background(), graphql.Request{Query: "{ ok }"})
 		require.NoError(t, err)
@@ -236,9 +236,9 @@ func TestProvider_Execute(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		registry, err := NewRegistry(Config{ID: "drp-v1", URL: server.URL})
+		registry, err := NewRegistry(Config{ID: "identity-registry-v1", URL: server.URL})
 		require.NoError(t, err)
-		p, _ := registry.Get("drp-v1")
+		p, _ := registry.Get("identity-registry-v1")
 
 		_, err = p.Execute(context.Background(), graphql.Request{Query: "query { a }"})
 		require.Error(t, err)
@@ -252,13 +252,13 @@ func TestProvider_Execute(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		registry, err := NewRegistry(Config{ID: "drp-v1", URL: server.URL})
+		registry, err := NewRegistry(Config{ID: "identity-registry-v1", URL: server.URL})
 		require.NoError(t, err)
-		p, _ := registry.Get("drp-v1")
+		p, _ := registry.Get("identity-registry-v1")
 
 		_, err = p.Execute(context.Background(), graphql.Request{Query: "query { a }"})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "provider for schema drp-v1 returned HTTP status 503")
+		assert.Contains(t, err.Error(), "provider for schema identity-registry-v1 returned HTTP status 503")
 	})
 
 	t.Run("returns an error when the context is cancelled", func(t *testing.T) {
@@ -268,9 +268,9 @@ func TestProvider_Execute(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		registry, err := NewRegistry(Config{ID: "drp-v1", URL: server.URL})
+		registry, err := NewRegistry(Config{ID: "identity-registry-v1", URL: server.URL})
 		require.NoError(t, err)
-		p, _ := registry.Get("drp-v1")
+		p, _ := registry.Get("identity-registry-v1")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -280,9 +280,9 @@ func TestProvider_Execute(t *testing.T) {
 	})
 
 	t.Run("returns an error when the provider is unreachable", func(t *testing.T) {
-		registry, err := NewRegistry(Config{ID: "drp-v1", URL: "http://127.0.0.1:0"})
+		registry, err := NewRegistry(Config{ID: "identity-registry-v1", URL: "http://127.0.0.1:0"})
 		require.NoError(t, err)
-		p, _ := registry.Get("drp-v1")
+		p, _ := registry.Get("identity-registry-v1")
 
 		_, err = p.Execute(context.Background(), graphql.Request{Query: "query { a }"})
 		require.Error(t, err)

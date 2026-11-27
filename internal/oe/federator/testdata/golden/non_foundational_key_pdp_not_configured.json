@@ -9,11 +9,11 @@
   "policyRequests": [],
   "consentRequests": [],
   "providerRequests": {
-    "dmt-v1": [
+    "vehicle-registry-v1": [
       {
-        "query": "query Querydmt_v1 ( $registrationNumber : String ! ) { vehicle { getVehicleByRegNo ( registrationNumber : $registrationNumber ) { make } } }",
+        "query": "query Queryvehicle_registry_v1 ( $registrationNumber : String ! ) { vehicle { getVehicleByRegNo ( registrationNumber : $registrationNumber ) { make } } }",
         "variables": {
-          "registrationNumber": "CAB-1234"
+          "registrationNumber": "ABC-1234"
         }
       }
     ]
@@ -33,7 +33,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "dmt-v1"
+      "targetId": "vehicle-registry-v1"
     }
   ]
 }

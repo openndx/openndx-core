@@ -95,7 +95,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 
 func TestLoadConfigReadsEverySetting(t *testing.T) {
 	t.Setenv("TEST_OE_OTEL_AUTH", "Basic b3RlbA==")
-	t.Setenv("TEST_OE_RGD_SECRET", "rgd-secret")
+	t.Setenv("TEST_OE_CIVIL_REGISTRY_SECRET", "civil-registry-secret")
 	// Absolute on every OS; on Windows that needs a drive letter.
 	absSchemaPath := filepath.Join(t.TempDir(), "schema.graphql")
 
@@ -122,24 +122,24 @@ audit:
   actorType: SERVICE
   actorId: oe-1
 providers:
-  - id: drp-person-v1
-    url: http://drp.internal/graphql
+  - id: identity-registry-v1
+    url: http://identity-registry.internal/graphql
     timeout: 5s
     auth:
       type: apiKey
       apiKey:
         key: X-API-Key
-        value: drp-key
-  - id: rgd-person-v1
-    url: http://rgd.internal/graphql
+        value: identity-registry-key
+  - id: civil-registry-v1
+    url: http://civil-registry.internal/graphql
     auth:
       type: oauth2
       oauth2:
-        tokenURL: http://rgd.internal/oauth/token
+        tokenURL: http://civil-registry.internal/oauth/token
         clientID: oe
-        clientSecret: "{{env:TEST_OE_RGD_SECRET}}"
+        clientSecret: "{{env:TEST_OE_CIVIL_REGISTRY_SECRET}}"
 argMappings:
-  - schemaId: drp-person-v1
+  - schemaId: identity-registry-v1
     targetArgName: nic
     sourceArgPath: personInfo-nic
     targetArgPath: person
@@ -170,20 +170,20 @@ otel:
 
 	require.Len(t, cfg.Providers, 2)
 	assert.Equal(t, provider.Config{
-		ID:      "drp-person-v1",
-		URL:     "http://drp.internal/graphql",
+		ID:      "identity-registry-v1",
+		URL:     "http://identity-registry.internal/graphql",
 		Timeout: "5s",
 		Auth: &remoteauth.Config{
 			Type:   remoteauth.TypeAPIKey,
-			APIKey: &remoteauth.APIKeyConfig{Key: "X-API-Key", Value: "drp-key"},
+			APIKey: &remoteauth.APIKeyConfig{Key: "X-API-Key", Value: "identity-registry-key"},
 		},
 	}, cfg.Providers[0])
 	require.NotNil(t, cfg.Providers[1].Auth)
 	require.NotNil(t, cfg.Providers[1].Auth.OAuth2)
-	assert.Equal(t, "rgd-secret", cfg.Providers[1].Auth.OAuth2.ClientSecret, "the secret placeholder is read from the environment")
+	assert.Equal(t, "civil-registry-secret", cfg.Providers[1].Auth.OAuth2.ClientSecret, "the secret placeholder is read from the environment")
 
 	assert.Equal(t, []*graphql.ArgMapping{{
-		SchemaID:      "drp-person-v1",
+		SchemaID:      "identity-registry-v1",
 		TargetArgName: "nic",
 		SourceArgPath: "personInfo-nic",
 		TargetArgPath: "person",
@@ -239,11 +239,11 @@ func TestLoadConfigErrors(t *testing.T) {
 		{name: "invalid pdp url", extra: "pdp:\n  url: pdp.internal", wantErr: "pdp.url"},
 		{name: "invalid consent engine url", extra: "consentEngine:\n  url: ftp://ce.internal\n  ownerIdArgName: nic", wantErr: "consentEngine.url must use http or https"},
 		{name: "empty audit actor", extra: "audit:\n  actorId: \"\"", wantErr: "audit.actorType and audit.actorId"},
-		{name: "incomplete arg mapping", extra: "argMappings:\n  - schemaId: drp-person-v1\n    targetArgName: nic", wantErr: "argMappings[0] must set"},
+		{name: "incomplete arg mapping", extra: "argMappings:\n  - schemaId: identity-registry-v1\n    targetArgName: nic", wantErr: "argMappings[0] must set"},
 		{
 			name:    "arg mapping for an unknown provider",
-			extra:   "providers:\n  - id: drp-person-v1\n    url: http://drp.internal\nargMappings:\n  - schemaId: drp-persn-v1\n    targetArgName: nic\n    sourceArgPath: personInfo-nic\n    targetArgPath: person",
-			wantErr: `argMappings[0].schemaId "drp-persn-v1" matches no provider id`,
+			extra:   "providers:\n  - id: identity-registry-v1\n    url: http://identity-registry.internal\nargMappings:\n  - schemaId: identity-registy-v1\n    targetArgName: nic\n    sourceArgPath: personInfo-nic\n    targetArgPath: person",
+			wantErr: `argMappings[0].schemaId "identity-registy-v1" matches no provider id`,
 		},
 		{name: "invalid otel endpoint", extra: "otel:\n  endpoint: otel-collector:4318", wantErr: "invalid otel configuration"},
 		{name: "otel export without a service name", extra: "otel:\n  endpoint: http://otel-collector:4318\n  serviceName: \"\"", wantErr: "ServiceName is required"},

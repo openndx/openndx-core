@@ -2,17 +2,17 @@
   "response": {
     "data": {
       "personInfo": {
-        "address": "12 Galle Road, Colombo",
+        "address": "105 Main Street, Central City",
         "birthInfo": {
           "date": "1990-01-01"
         },
-        "fullName": "Nimal Perera",
+        "fullName": "Suresh Fernando",
         "ownedVehicles": [
           {
-            "regNo": "CAB-1234"
+            "regNo": "ABC-1234"
           },
           {
-            "regNo": "WP-5678"
+            "regNo": "XYZ-5678"
           }
         ]
       }
@@ -23,47 +23,47 @@
       "applicationId": "app-golden",
       "requiredFields": [
         {
-          "fieldName": "vehicle.getVehicleInfos.data.registrationNumber",
-          "schemaId": "dmt-v1"
+          "fieldName": "getPersonInfo.birthDate",
+          "schemaId": "civil-registry-v1"
         },
         {
           "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         },
         {
           "fieldName": "person.permanentAddress",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         },
         {
-          "fieldName": "getPersonInfo.birthDate",
-          "schemaId": "rgd-v1"
+          "fieldName": "vehicle.getVehicleInfos.data.registrationNumber",
+          "schemaId": "vehicle-registry-v1"
         }
       ]
     }
   ],
   "consentRequests": [],
   "providerRequests": {
-    "dmt-v1": [
+    "civil-registry-v1": [
       {
-        "query": "query Querydmt_v1 ( $ownerNic : String ! ) { vehicle { getVehicleInfos ( ownerNic : $ownerNic ) { data { registrationNumber } } } }",
+        "query": "query Querycivil_registry_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthDate } }",
         "variables": {
-          "ownerNic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ],
-    "drp-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ],
-    "rgd-v1": [
+    "vehicle-registry-v1": [
       {
-        "query": "query Queryrgd_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthDate } }",
+        "query": "query Queryvehicle_registry_v1 ( $ownerNic : String ! ) { vehicle { getVehicleInfos ( ownerNic : $ownerNic ) { data { registrationNumber } } } }",
         "variables": {
-          "nic": "199012345678"
+          "ownerNic": "naresh@ndx.fl"
         }
       }
     ]
@@ -91,7 +91,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "dmt-v1"
+      "targetId": "civil-registry-v1"
     },
     {
       "eventType": "PROVIDER_FETCH",
@@ -99,7 +99,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "identity-registry-v1"
     },
     {
       "eventType": "PROVIDER_FETCH",
@@ -107,7 +107,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "rgd-v1"
+      "targetId": "vehicle-registry-v1"
     }
   ]
 }
