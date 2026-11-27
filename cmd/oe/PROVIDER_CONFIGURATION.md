@@ -96,9 +96,9 @@ The checked-in sample is [schema.graphql](schema.graphql). To change the schema 
 
 Providers are read once at startup, so restart the OE after editing `config.yaml`. Then run a query as in [dev/README.md](../../dev/README.md). If it fails:
 
-| Error | Likely cause |
-|---|---|
-| `PDP_ERROR` | A queried field has no field policy for that `schemaId` (step 1). |
-| `PDP_NOT_ALLOWED` | The consumer application has no grant for the field. |
-| `CE_NOT_APPROVED` | The owner has not approved consent yet. |
+| Error                                                 | Likely cause                                                                                                                                                                                                     |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PDP_ERROR`                                           | A queried field has no field policy for that `schemaId` (step 1).                                                                                                                                                |
+| `PDP_NOT_ALLOWED`                                     | The consumer application has no grant for the field.                                                                                                                                                             |
+| `CE_NOT_APPROVED`                                     | The owner has not approved consent yet.                                                                                                                                                                          |
 | Field is `null` with a `PROVIDER_ERROR` at its `path` | The provider call failed: the provider was unreachable or not configured, answered with a non-2xx status, or sent a body that isn't a GraphQL response. Check the OE log and the provider's URL and credentials. |

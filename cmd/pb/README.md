@@ -2,8 +2,6 @@
 
 The management REST API of OpenNDX: members, provider schemas, consumer applications, and the submissions that create them. It validates callers' tokens, enforces scope-based access, and keeps the Policy Decision Point and the identity provider in step with what it stores.
 
-> **Naming.** PB is planned to be renamed **Management Server**. Until then the code, image, service and environment names all say `portal-backend` or `pb`; the [rename checklist](#rename-note) lists every place the name appears.
-
 ## Overview
 
 ```mermaid
@@ -43,16 +41,16 @@ cd cmd/pb && go run .
 
 ## Configuration
 
-PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), PB reads only the OpenTelemetry SDK's `OTEL_*` variables that the `otel` section has no key for ([CONFIGURATION.md](CONFIGURATION.md#opentelemetry-and-audit)). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), the libraries PB uses read their standard variables, such as the OpenTelemetry SDK's `OTEL_*` variables that `otel` has no key for ([internal/audit](../../internal/audit/README.md#export)) and PostgreSQL's `PG*`. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. Required keys:
 
-| Key | Notes |
-|---|---|
-| `idp.jwksURL`, `idp.issuer`, `idp.audience` | Validate incoming tokens. `audience` is PB's resource-server identifier. |
-| `idp.management.baseURL`, `.clientID`, `.clientSecret` | PB's own client for ThunderID's management API. |
-| `pdp.url` | Policy Decision Point. |
-| `database.postgres.host`, `.user`, `.password` | |
+| Key                                                    | Notes                                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `idp.jwksURL`, `idp.issuer`, `idp.audience`            | Validate incoming tokens. `audience` is PB's resource-server identifier. |
+| `idp.management.baseURL`, `.clientID`, `.clientSecret` | PB's own client for ThunderID's management API.                          |
+| `pdp.url`                                              | Policy Decision Point.                                                   |
+| `database.postgres.host`, `.user`, `.password`         |                                                                          |
 
 Every key, its default and the environment variable it replaces: [CONFIGURATION.md](CONFIGURATION.md).
 
@@ -60,15 +58,23 @@ Every key, its default and the environment variable it replaces: [CONFIGURATION.
 
 All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full schemas: [openapi.yaml](openapi.yaml). Success responses are the bare resource, lists are `{items, count}`, and errors are `{"error": "<message>"}`.
 
-| Resource | Endpoints | Scope |
-|---|---|---|
-| Members | `GET /members`, `GET /members/{memberId}`<br>`POST /members`<br>`PUT /members/{memberId}` | `member:read`<br>`member:write-all`<br>`member:write` |
-| Schemas | `GET /schemas`, `GET /schemas/{schemaId}`<br>`POST /schemas`, `PUT /schemas/{schemaId}` | `schema:read`<br>`schema:write` |
-| Schema field policies | `GET /schemas/{schemaId}/field-policies`<br>`PATCH`, `DELETE` on `.../field-policies/{id}`<br>`DELETE .../field-policies/{id}/allowlist/{applicationId}` | `schema:read`<br>`schema:write` |
-| Schema submissions | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}` | `schema-submission:read`<br>`schema-submission:write` |
-| Applications | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write` |
-| Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
-| Consent bypass grants | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke` | `consent-bypass:read`<br>`consent-bypass:write` |
+| Resource                | Endpoints                                                                                                     | Scope                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Members                 | `GET /members`, `GET /members/{memberId}`                                                                     | `member:read`                  |
+|                         | `POST /members`                                                                                               | `member:write-all`             |
+|                         | `PUT /members/{memberId}`                                                                                     | `member:write`                 |
+| Schemas                 | `GET /schemas`, `GET /schemas/{schemaId}`                                                                     | `schema:read`                  |
+|                         | `POST /schemas`, `PUT /schemas/{schemaId}`                                                                    | `schema:write`                 |
+| Schema field policies   | `GET /schemas/{schemaId}/field-policies`                                                                      | `schema:read`                  |
+|                         | `PATCH` and `DELETE` on `.../field-policies/{id}`, `DELETE .../field-policies/{id}/allowlist/{applicationId}` | `schema:write`                 |
+| Schema submissions      | `GET /schema-submissions`, `GET .../{submissionId}`                                                           | `schema-submission:read`       |
+|                         | `POST /schema-submissions`, `PUT .../{submissionId}`                                                          | `schema-submission:write`      |
+| Applications            | `GET /applications`, `GET /applications/{applicationId}`                                                      | `application:read`             |
+|                         | `POST /applications`, `PUT /applications/{applicationId}`, `PUT /applications/{applicationId}/policy`         | `application:write`            |
+| Application submissions | `GET /application-submissions`, `GET .../{submissionId}`                                                      | `application-submission:read`  |
+|                         | `POST /application-submissions`, `PUT .../{submissionId}`                                                     | `application-submission:write` |
+| Consent bypass grants   | `GET /consent-bypass-grants`                                                                                  | `consent-bypass:read`          |
+|                         | `POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke`    | `consent-bypass:write`         |
 
 Outside `/api/v1`, with no authentication: `GET /health` (liveness only, it does not check the database). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
 
@@ -115,16 +121,6 @@ make check                                                            # tidy, ch
 Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
 Code is in [`internal/pb`](../../internal/pb): `member`, `schema`, `application` and `consentbypass` (one package per bounded context: a service and handler, and a model when it stores data in PB), `kernel` (types shared by those packages), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit records, written through the shared [`internal/audit`](../../internal/audit)), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
-
-## Rename note
-
-When PB becomes Management Server, these identifiers embed the current name:
-
-- Compose service, container and image: `portal-backend`, `pb-${ENVIRONMENT}`, `ghcr.io/openndx/portal-backend`; Makefile service name and CI workflows (`portal-backend-validate`, `portal-backend-publish`)
-- Go packages `internal/pb` and `internal/cli/pbclient`; the `"portal-backend"` string in `/health`
-- Environment variables `PB_PORT`, `DB_NAME_PB`, `PB_AUDIENCE`, and the `ondx` flag and variable `--pb-url` / `NDX_PB_URL`
-- The token audience `http://pb.openndx.local`, which clients request as `resource=`
-- ThunderID seed data in `thunderid/bootstrap`: the `PORTAL_BACKEND` client, the `PortalBackendSystem` role and the "Portal Backend Resource Server"
 
 ## More docs
 

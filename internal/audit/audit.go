@@ -10,8 +10,9 @@
 // configured under otel and never to the process log. When log export is off,
 // the services pass a nil logger and records are dropped.
 //
-// The record shape matches the LogSink in github.com/OpenNSW/core/platform/audit,
-// so one query finds audit records from OpenNDX and from the NSW.
+// Records use the attribute names of the LogSink in
+// github.com/OpenNSW/core/platform/audit, so one query finds audit records from
+// OpenNDX and from the NSW.
 package audit
 
 import (

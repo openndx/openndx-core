@@ -7,94 +7,80 @@ The Portal Backend reads one YAML file: the `-config` flag, else `CONFIG_PATH`, 
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup. The placeholder must be the whole value, and an unset or empty variable stops the service. Keys left out keep the defaults below; keys PB does not know are ignored.
 
-The last column is the environment variable each key replaces, for upgrading from releases that configured PB through the environment.
-
 ## Server and logging
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `server.port` | `8083` | Listen port. The server binds on all interfaces. | `PORT` |
-| `server.timeout` | `15s` | Read and write timeout. | |
-| `environment` | none | Deployment name (for example `local`, `staging`), added to every log line as `environment`. Left out of log lines when empty. | |
-| `logging.level` | `info` | `debug`, `info`, `warn` or `error`. | |
-| `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. | |
+| Key              | Default | Notes                                                                                                                         |
+| ---------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `server.port`    | `8083`  | Listen port. The server binds on all interfaces.                                                                              |
+| `server.timeout` | `15s`   | Read and write timeout.                                                                                                       |
+| `environment`    | none    | Deployment name (for example `local`, `staging`), added to every log line as `environment`. Left out of log lines when empty. |
+| `logging.level`  | `info`  | `debug`, `info`, `warn` or `error`.                                                                                           |
+| `logging.format` | `json`  | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`.                                       |
 
 ## CORS
 
 Applies to `/api/v1/`. Uses [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors).
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `cors.allowedOrigins` | `[http://localhost:5173]` | Browser origins of the member and admin portals. `*` stops the service at startup while `allowCredentials` is true. | `CORS_ALLOWED_ORIGINS` |
-| `cors.allowedMethods`, `cors.allowedHeaders` | see [config.go](config.go) | A list in the file replaces the default list. | |
-| `cors.allowCredentials`, `cors.maxAge` | `true`, `86400` | | |
+| Key                                          | Default                    | Notes                                                                                                               |
+| -------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `cors.allowedOrigins`                        | `[http://localhost:5173]`  | Browser origins of the member and admin portals. `*` stops the service at startup while `allowCredentials` is true. |
+| `cors.allowedMethods`, `cors.allowedHeaders` | see [config.go](config.go) | A list in the file replaces the default list.                                                                       |
+| `cors.allowCredentials`, `cors.maxAge`       | `true`, `86400`            |                                                                                                                     |
 
 ## Token validation
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `idp.jwksURL` | none | **Required.** Signing keys. | `IDP_JWKS_URL` |
-| `idp.issuer` | none | **Required.** Must equal the tokens' `iss`: ThunderID's public URL, not `/oauth2/token`. | `IDP_ISSUER`, `IDP_TOKEN_URL` |
-| `idp.audience` | none | **Required.** PB's resource-server identifier (`http://pb.openndx.local` in the bundled stack). | `IDP_AUDIENCE` |
-| `idp.insecureSkipTLSVerify` | `false` | Skip TLS verification when fetching the JWKS. Development only. | `IDP_JWKS_INSECURE_SKIP_VERIFY` |
-| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required` | `false` | `true` rejects a token whose claim is absent or blank, client-credentials tokens included. | |
-
-The JWKS URL and issuer are no longer derived from a base URL; set both.
+| Key                                                                 | Default | Notes                                                                                           |
+| ------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `idp.jwksURL`                                                       | none    | **Required.** Signing keys.                                                                     |
+| `idp.issuer`                                                        | none    | **Required.** Must equal the tokens' `iss`: ThunderID's public URL, not `/oauth2/token`.        |
+| `idp.audience`                                                      | none    | **Required.** PB's resource-server identifier (`http://pb.openndx.local` in the bundled stack). |
+| `idp.insecureSkipTLSVerify`                                         | `false` | Skip TLS verification when fetching the JWKS. Development only.                                 |
+| `idp.claims.email.required`, `.ouId.required`, `.ouHandle.required` | `false` | `true` rejects a token whose claim is absent or blank, client-credentials tokens included.      |
 
 ## Identity provider management client
 
 PB creates and deletes each application's OAuth2 client through ThunderID's management API.
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `idp.management.baseURL` | none | **Required.** ThunderID base URL for management calls. | `IDP_BASE_URL` |
-| `idp.management.clientID`, `.clientSecret` | none | **Required.** PB's own client (`PORTAL_BACKEND` in the bundled stack). | `IDP_CLIENT_ID`, `IDP_CLIENT_SECRET` |
-| `idp.management.scopes` | empty | Scopes for the management token (`[system]`). | `IDP_SCOPE` (space-separated) |
-| `idp.management.resource` | empty | Resource server the `system` scope belongs to. ThunderID needs it for that scope. | `IDP_TOKEN_RESOURCE` |
-| `idp.management.dataConsumerRoleID` | empty | Role assigned to every created application client, which grants it `getdata`. If empty, role assignment is skipped. | `IDP_DATA_CONSUMER_ROLE_ID` |
+| Key                                        | Default | Notes                                                                                                                                                                                                                                            |
+| ------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `idp.management.baseURL`                   | none    | **Required.** ThunderID base URL for management calls. PB waits up to 15 seconds for each call.                                                                                                                                                  |
+| `idp.management.clientID`, `.clientSecret` | none    | **Required.** PB's own client (`PORTAL_BACKEND` in the bundled stack).                                                                                                                                                                           |
+| `idp.management.scopes`                    | empty   | Scopes for the management token (`[system]`).                                                                                                                                                                                                    |
+| `idp.management.resource`                  | empty   | Resource server the `system` scope belongs to. ThunderID needs it for that scope. The bundled stack sets `https://localhost:8090/mcp`, the fixed identifier of ThunderID's built-in System resource server.                                      |
+| `idp.management.dataConsumerRoleID`        | empty   | Role assigned to every created application client, which grants it `getdata`. If empty, role assignment is skipped. The bundled stack sets the ID of the `DataConsumerGetData` role in [resource.yaml](../../thunderid/bootstrap/resource.yaml). |
 
 ## Policy Decision Point
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `pdp.url` | none | **Required.** `http` or `https` URL. PB calls the PDP without authentication. | `PDP_SERVICE_URL` |
+| Key       | Default | Notes                                                                                                                   |
+| --------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `pdp.url` | none    | **Required.** `http` or `https` URL. PB calls the PDP without authentication, and waits up to 10 seconds for each call. |
 
 ## OpenTelemetry and audit
 
-PB writes an audit record for every create, update and delete (see [AUTHORIZATION.md](AUTHORIZATION.md#audit)) as an OpenTelemetry log record, and sends it over OTLP/HTTP with [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). Records go only to this endpoint, never to stdout.
+OpenTelemetry export over OTLP/HTTP, through [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). It carries PB's audit records, which go nowhere else. What the records hold, and what happens when export is off or fails, is in [internal/audit](../../internal/audit/README.md).
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `otel.endpoint` | empty | OTLP/HTTP base URL, for example `http://otel-collector:4318`. `/v1/logs` (and `/v1/traces`, `/v1/metrics`) is appended. Empty turns export off. | |
-| `otel.logs.endpoint` | empty | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; PB produces no traces or metrics yet. | |
-| `otel.serviceName` | `portal-backend` | The `service.name` resource attribute. | |
-| `otel.headers` | empty | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. | |
+| Key                  | Default          | Notes                                                                                                                                                                       |
+| -------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `otel.endpoint`      | empty            | OTLP/HTTP base URL, for example `http://otel-collector:4318`. `/v1/logs` (and `/v1/traces`, `/v1/metrics`) is appended. Empty turns export off.                             |
+| `otel.logs.endpoint` | empty            | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; PB produces no traces or metrics. |
+| `otel.serviceName`   | `portal-backend` | The `service.name` resource attribute.                                                                                                                                      |
+| `otel.headers`       | empty            | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`.                                                                                            |
 
-With export off, PB logs `otel log export is off: audit records (category=audit) are not retained` at startup and drops every audit record. Records are batched in memory and flushed when PB shuts down; any still unsent when the process is killed, or while the endpoint is unreachable, are lost.
-
-Each record has the message `audit` and the attributes `category` (`audit`), `eventType` (`MANAGEMENT_EVENT`), `action` (`CREATE`, `UPDATE` or `DELETE`), `status`, `actorType`, `actorID`, `targetType` (`RESOURCE`), `targetID` when known, and `metadata` with `resource` and `clientId`. That is the same shape the NSW's `OpenNSW/core/platform/audit` writes, so one query finds both.
-
-The OpenTelemetry SDK also reads the `OTEL_*` variables `otel` has no key for, such as `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_EXPORTER_OTLP_TIMEOUT`. `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` are ignored. For a local backend, `make up OTEL=1` or `make deps OTEL=1` also starts OpenObserve on `http://localhost:5080`, and the commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at it. They stay commented by default; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
+The commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at the local OpenObserve that `make up OTEL=1` and `make deps OTEL=1` start; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
 
 ## Database
 
-| Key | Default | Notes | Replaces |
-|---|---|---|---|
-| `database.driver` | `postgres` | Only `postgres` is supported. | |
-| `database.postgres.host`, `.user`, `.password` | none | **Required.** | `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD` |
-| `database.postgres.port` | `5432` | | `DB_PORT` |
-| `database.postgres.name` | `portal_backend` | | `DB_NAME` |
-| `database.postgres.sslMode` | `require` | Use `disable` for a local PostgreSQL without TLS. | `DB_SSLMODE` |
-| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool. | |
-| `database.idleTimeout` | `30m` | Closes connections idle this long. | |
+| Key                                                                               | Default           | Notes                                             |
+| --------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------- |
+| `database.driver`                                                                 | `postgres`        | Only `postgres` is supported.                     |
+| `database.postgres.host`, `.user`, `.password`                                    | none              | **Required.**                                     |
+| `database.postgres.port`                                                          | `5432`            |                                                   |
+| `database.postgres.name`                                                          | `portal_backend`  |                                                   |
+| `database.postgres.sslMode`                                                       | `require`         | Use `disable` for a local PostgreSQL without TLS. |
+| `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool.                                  |
+| `database.idleTimeout`                                                            | `30m`             | Closes connections idle this long.                |
 
-PB does not create or migrate tables. Load [schema.sql](schema.sql) into the database before the first start; Compose does this through [init-db.sql](../../init-db.sql). The v0.6 `database.runMigration` key is no longer read.
-
-A database that v0.6 migrated already matches `schema.sql` and needs no change. A database created before v0.5 keeps the legacy `members.idp_user_id` column unless v0.5 or v0.6 ran with `runMigration` on, and `schema.sql` does not remove it. Drop it once:
-
-```sql
-ALTER TABLE members DROP COLUMN IF EXISTS idp_user_id;
-```
+PB does not create or migrate tables. Load [schema.sql](schema.sql) into the database before the first start; Compose does this through [init-db.sql](../../init-db.sql).
 
 ## Build metadata
 

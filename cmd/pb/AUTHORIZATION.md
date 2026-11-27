@@ -4,18 +4,13 @@ How the Portal Backend decides who a caller is and what they may do. The overvie
 
 ## Authentication
 
-Every `/api/v1/*` request needs `Authorization: Bearer <access token>`. The token is validated by [`internal/authn`](../../internal/authn/README.md) against the identity provider's signing keys (`idp.jwksURL`, cached for 5 minutes):
+Every `/api/v1/*` request needs `Authorization: Bearer <access token>`, which must pass the [token checks](../../internal/authn/README.md#token-checks) of `internal/authn` against the identity provider's signing keys (`idp.jwksURL`). A token that fails them gets `401`. For PB:
 
-| Check | Requirement |
-|---|---|
-| Signature | Valid for a key in the JWKS. |
-| `iss` | Equals `idp.issuer`. |
-| `aud` | Contains `idp.audience`, PB's resource-server identifier. A token for any other audience is rejected, whichever client it was issued to. Clients request the audience as `resource=<idp.audience>` when they log in. |
-| `sub`, `client_id` | Both present. |
-| `scope` | Space-separated scopes; see below. |
-| `ouId` | Optional. The caller's organization unit, which links the caller to a member. `email` is read when present. |
-
-A missing or invalid token returns `401` with `{"error": "unauthorized", "message": "..."}`.
+| Claim   | Requirement                                                                                                                                                                                                          |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aud`   | Contains `idp.audience`, PB's resource-server identifier. A token for any other audience is rejected, whichever client it was issued to. Clients request the audience as `resource=<idp.audience>` when they log in. |
+| `scope` | Space-separated scopes; see below.                                                                                                                                                                                   |
+| `ouId`  | Optional. The caller's organization unit, which links the caller to a member. `email` is read when present.                                                                                                          |
 
 ## Scopes
 
@@ -23,14 +18,14 @@ Each `/api/v1` route requires exactly one scope from the token's `scope` claim; 
 
 A scope is `<resource>:<action>`:
 
-| Resource | Own member | Every member |
-|---|---|---|
-| Members | `member:read`, `member:write` | `member:read-all`, `member:write-all` |
-| Schemas | `schema:read`, `schema:write` | `schema:read-all`, `schema:write-all` |
-| Schema submissions | `schema-submission:read`, `schema-submission:write` | `schema-submission:read-all`, `schema-submission:write-all` |
-| Applications | `application:read`, `application:write` | `application:read-all`, `application:write-all` |
+| Resource                | Own member                                                    | Every member                                                          |
+| ----------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Members                 | `member:read`, `member:write`                                 | `member:read-all`, `member:write-all`                                 |
+| Schemas                 | `schema:read`, `schema:write`                                 | `schema:read-all`, `schema:write-all`                                 |
+| Schema submissions      | `schema-submission:read`, `schema-submission:write`           | `schema-submission:read-all`, `schema-submission:write-all`           |
+| Applications            | `application:read`, `application:write`                       | `application:read-all`, `application:write-all`                       |
 | Application submissions | `application-submission:read`, `application-submission:write` | `application-submission:read-all`, `application-submission:write-all` |
-| Consent bypass grants | | `consent-bypass:read`, `consent-bypass:write` |
+| Consent bypass grants   |                                                               | `consent-bypass:read`, `consent-bypass:write`                         |
 
 - `GET` routes require `<resource>:read`. `POST`, `PUT`, `PATCH` and `DELETE` routes require `<resource>:write`.
 - The exception is `POST /api/v1/members`, which requires `member:write-all`.
@@ -55,9 +50,9 @@ For creating records, a caller without the matching `-all` write scope always cr
 
 PB never reads role names. ThunderID grants scopes through roles on PB's resource server ([thunderid/bootstrap/resource.yaml](../../thunderid/bootstrap/resource.yaml)), so changing what a role may do is a ThunderID change.
 
-| Role | Scopes |
-|---|---|
-| `OpenNDX_Admin` | All twenty-two scopes, including `consent-bypass:read` and `consent-bypass:write` |
+| Role             | Scopes                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `OpenNDX_Admin`  | All twenty-two scopes, including `consent-bypass:read` and `consent-bypass:write`                                |
 | `OpenNDX_Member` | `read` and `write` on members, schemas, schema submissions, applications and application submissions (no `-all`) |
 
 ThunderID issues only the scopes a client requests and the user's roles allow, so clients must request the scopes they need, together with `resource=<idp.audience>`. The `ondx` `local` profile requests all of them; the portals take theirs from their scope setting.
@@ -74,11 +69,11 @@ A schema or application submission becomes a schema or application when its stat
 
 A consent bypass grant lets one application read fields that ask for the owner's consent without asking, for example a legally authorized police system. Granting one is a single admin action.
 
-| Route | Needs |
-|---|---|
+| Route                                                                     | Needs                  |
+| ------------------------------------------------------------------------- | ---------------------- |
 | `POST /api/v1/applications/{applicationId}/consent-bypass-grants` (grant) | `consent-bypass:write` |
-| `GET /api/v1/consent-bypass-grants` (list) | `consent-bypass:read` |
-| `POST /api/v1/consent-bypass-grants/{grantId}/revoke` | `consent-bypass:write` |
+| `GET /api/v1/consent-bypass-grants` (list)                                | `consent-bypass:read`  |
+| `POST /api/v1/consent-bypass-grants/{grantId}/revoke`                     | `consent-bypass:write` |
 
 - A grant needs a legal basis and a duration, and takes effect at once. Granting a field again renews the application's grant with the new duration and legal basis. Revoking takes effect immediately.
 - The audit event for each grant and revoke records the caller's token `sub` as actor, so the audit trail shows who granted or revoked a bypass. The PDP stores only the grant.
@@ -86,7 +81,7 @@ A consent bypass grant lets one application read fields that ask for the owner's
 
 ## Audit
 
-Each create, update and delete request is recorded as an audit record, with the token's `sub` as actor and its `client_id` in the record's metadata. Records are sent as OpenTelemetry logs to the `otel` endpoint and are dropped when none is set ([CONFIGURATION.md](CONFIGURATION.md#opentelemetry-and-audit)). The actor type is `ADMIN` for callers holding `member:write-all`, `MEMBER` for other callers whose token has an `ouId`, and `SYSTEM` otherwise.
+Each create, update and delete that reaches its service call is recorded as an audit record, with the token's `sub` as actor and its `client_id` in the record's metadata. The actor type is `ADMIN` for callers holding `member:write-all`, `MEMBER` for other callers whose token has an `ouId`, and `SYSTEM` otherwise. What else a record holds, and where records go: [internal/audit](../../internal/audit/README.md#portal-backend).
 
 ## Unauthenticated routes
 

@@ -32,7 +32,7 @@ Run `brew upgrade ondx` to update it.
 curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
 ```
 
-The script downloads the archive for your operating system and CPU from the latest release, checks it against the release's `checksums.txt`, and installs `ondx` to `/usr/local/bin` if that directory is writable, or to `~/.local/bin` otherwise. Set `ONDX_VERSION` to install a specific release, for example `ONDX_VERSION=v0.7.0`, or `ONDX_INSTALL_DIR` to choose the directory.
+The script downloads the archive for your operating system and CPU from the latest release, checks it against the release's `checksums.txt`, and installs `ondx` to `/usr/local/bin` if that directory is writable, or to `~/.local/bin` otherwise. Set `ONDX_VERSION` to install a specific release, for example `ONDX_VERSION=v0.7.0`, `ONDX_INSTALL_DIR` to choose the directory, or `ONDX_REPO` to download from a fork or mirror instead of `openndx/openndx-core`.
 
 ### Install script (Windows)
 
@@ -40,11 +40,11 @@ The script downloads the archive for your operating system and CPU from the late
 irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
 ```
 
-The script downloads the amd64 or arm64 build, checks it against the release's `checksums.txt`, installs `ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that directory to your user `PATH`. Open a new terminal afterwards. Set `$env:ONDX_VERSION` to install a specific release, or `$env:ONDX_INSTALL_DIR` to choose the directory. Run the script again to upgrade.
+The script downloads the amd64 or arm64 build, checks it against the release's `checksums.txt`, installs `ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that directory to your user `PATH`. Open a new terminal afterwards. Set `$env:ONDX_VERSION` to install a specific release, `$env:ONDX_INSTALL_DIR` to choose the directory, or `$env:ONDX_REPO` to download from a fork or mirror. Run the script again to upgrade.
 
 ### Manual download
 
-Download `ondx_<os>_<arch>.tar.gz`, or `ondx_windows_<arch>.zip` on Windows, from the release page. Each archive from v0.4.0 onward has a build provenance attestation, which you can verify with the GitHub CLI:
+Download `ondx_<os>_<arch>.tar.gz`, or `ondx_windows_<arch>.zip` on Windows, from the release page. Each archive has a build provenance attestation, which you can verify with the GitHub CLI:
 
 ```bash
 gh attestation verify ondx_linux_amd64.tar.gz --repo openndx/openndx-core
@@ -64,8 +64,6 @@ This needs Go 1.26.4 or later. It installs `ondx` to `GOBIN`, or to `$(go env GO
 
 From a checkout of this repository, `go build -o ondx ./cmd/ondx` writes `ondx` to the current directory. To run it without building, use `go run ./cmd/ondx <command>`.
 
-> **Version note.** `members list`, `members get`, `schemas list`, `schemas get` and `profile set --resource` need v0.5.0 or later. Run `ondx version` to check which build you have.
-
 ## Quick start
 
 ```bash
@@ -79,34 +77,35 @@ For a complete first run against a local stack, including providers, a consumer 
 
 Every Portal Backend route checks an OAuth2 scope (see [authorization](https://github.com/openndx/openndx-core/blob/main/cmd/pb/AUTHORIZATION.md)). The login must request the scopes a command needs; the `local` profile requests all of them, and the identity provider grants only those your roles hold. Where a command shows a second scope, it is needed to act on other members' records and not only your own.
 
-| Command | Purpose | Scope | `--json` |
-|---|---|---|---|
-| `ondx login` | Browser login; caches a token | none | |
-| `ondx profile list`, `use <name>`, `set <name>` | Manage named profiles | none | |
-| `ondx members create` | Register a member organization | `member:write-all` | |
-| `ondx members list` | List members | `member:read` (+ `member:read-all` for all) | yes |
-| `ondx members get` | Show one member | `member:read` (+ `member:read-all`) | yes |
-| `ondx schemas create` | Register a schema and its fields | `schema:write` (+ `schema:write-all`) | |
-| `ondx schemas list` | List schemas | `schema:read` (+ `schema:read-all`) | yes |
-| `ondx schemas get` | Show a schema and its fields | `schema:read` (+ `schema:read-all`) | yes |
-| `ondx applications create` | Register an application and its client | `application:write` (+ `application:write-all`) | |
-| `ondx applications list`, `get` | List or show applications | `application:read` (+ `application:read-all`) | yes |
-| `ondx policy update` | Replace an application's granted fields | `application:write` (+ `application:write-all`) | |
-| `ondx version` | Print version and build info | none | |
+| Command                                         | Purpose                                 | Scope                                           | `--json` |
+| ----------------------------------------------- | --------------------------------------- | ----------------------------------------------- | -------- |
+| `ondx login`                                    | Browser login; caches a token           | none                                            |          |
+| `ondx profile list`, `use <name>`, `set <name>` | Manage named profiles                   | none                                            |          |
+| `ondx members create`                           | Register a member organization          | `member:write-all`                              |          |
+| `ondx members list`                             | List members                            | `member:read` (+ `member:read-all` for all)     | yes      |
+| `ondx members get`                              | Show one member                         | `member:read` (+ `member:read-all`)             | yes      |
+| `ondx schemas create`                           | Register a schema and its fields        | `schema:write` (+ `schema:write-all`)           |          |
+| `ondx schemas list`                             | List schemas                            | `schema:read` (+ `schema:read-all`)             | yes      |
+| `ondx schemas get`                              | Show a schema and its fields            | `schema:read` (+ `schema:read-all`)             | yes      |
+| `ondx applications create`                      | Register an application and its client  | `application:write` (+ `application:write-all`) |          |
+| `ondx applications list`, `get`                 | List or show applications               | `application:read` (+ `application:read-all`)   | yes      |
+| `ondx policy update`                            | Replace an application's granted fields | `application:write` (+ `application:write-all`) |          |
+| `ondx version`, `ondx --version`                | Print version and build info            | none                                            |          |
+| `ondx help`, `-h`, `--help`                     | List the commands                       | none                                            |          |
 
-Every command that logs in or calls the Portal Backend also accepts `--profile`, and those that call the Portal Backend accept `--pb-url`, `--credentials-path` and `--insecure` (see [Configuration](#configuration)). Run `ondx <command> -h` for the flags of one command.
+Every command that logs in or calls the Portal Backend accepts `--profile`, `--credentials-path` and `--insecure`, and those that call the Portal Backend also accept `--pb-url` (see [Configuration](#configuration)). The token is cached in `~/.openndx/credentials.json` for no profile or the `local` profile, and in `credentials-<profile>.json` beside it for any other; `--credentials-path` names another file. Run `ondx <command> -h` for the flags of one command.
 
 ### `ondx login`
 
-| Flag | Env var | Meaning |
-|---|---|---|
-| `--issuer` | `NDX_ISSUER` | Identity provider base URL. The authorization and token endpoints are discovered from `{issuer}/.well-known/openid-configuration`. |
-| `--auth-url`, `--token-url` | `NDX_AUTH_URL`, `NDX_TOKEN_URL` | Explicit endpoints; override discovery. Needed only if the provider does not serve that document. |
-| `--client-id` | `NDX_CLIENT_ID` | OAuth2 public client ID (required). |
-| `--scopes` | `NDX_SCOPES` | Space-separated scopes. Must include the Portal Backend scopes your commands need. |
-| `--extra key=value` | | Extra authorization and token parameter, repeatable, for example `resource=...`. Saved with the token and reused on refresh. |
-| `--callback-port` | | Fixed local port for the redirect. `0` means a random port. See [Callback port](#callback-port). |
-| `--no-browser` | | Print the login URL instead of opening a browser. |
+| Flag                        | Env var                         | Meaning                                                                                                                            |
+| --------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `--issuer`                  | `NDX_ISSUER`                    | Identity provider base URL. The authorization and token endpoints are discovered from `{issuer}/.well-known/openid-configuration`. |
+| `--auth-url`, `--token-url` | `NDX_AUTH_URL`, `NDX_TOKEN_URL` | Explicit endpoints; override discovery. Needed only if the provider does not serve that document.                                  |
+| `--client-id`               | `NDX_CLIENT_ID`                 | OAuth2 public client ID (required).                                                                                                |
+| `--scopes`                  | `NDX_SCOPES`                    | Space-separated scopes. Must include the Portal Backend scopes your commands need.                                                 |
+| `--extra key=value`         |                                 | Extra authorization and token parameter, repeatable, for example `resource=...`. Saved with the token and reused on refresh.       |
+| `--callback-port`           |                                 | Fixed local port for the redirect. `0` means a random port. See [Callback port](#callback-port).                                   |
+| `--no-browser`              |                                 | Print the login URL instead of opening a browser.                                                                                  |
 
 ### `ondx members`
 
@@ -134,24 +133,24 @@ Every command that logs in or calls the Portal Backend also accepts `--profile`,
 
 **Precedence** for a setting: command-line flag, then its `NDX_*` environment variable, then the selected profile. The profile is the one named by `--profile` or `NDX_PROFILE`, otherwise the current profile.
 
-| Environment variable | Used by |
-|---|---|
-| `NDX_PROFILE` | every command: which profile to use |
-| `NDX_ISSUER`, `NDX_AUTH_URL`, `NDX_TOKEN_URL`, `NDX_CLIENT_ID`, `NDX_SCOPES` | `login` |
-| `NDX_PB_URL` | every command that calls the Portal Backend |
+| Environment variable                                                         | Used by                                     |
+| ---------------------------------------------------------------------------- | ------------------------------------------- |
+| `NDX_PROFILE`                                                                | every command: which profile to use         |
+| `NDX_ISSUER`, `NDX_AUTH_URL`, `NDX_TOKEN_URL`, `NDX_CLIENT_ID`, `NDX_SCOPES` | `login`                                     |
+| `NDX_PB_URL`                                                                 | every command that calls the Portal Backend |
 
 Callback port, `--insecure`, `--extra` and the profile's `resource` have no environment variable.
 
 **Profiles** are stored in `~/.openndx/config.json`. A built-in `local` profile always exists:
 
-| Setting | `local` value |
-|---|---|
-| Issuer | `http://localhost:8090` (ThunderID) |
-| Client ID, callback port | `NDX_CLI`, `8765` |
-| Resource | `http://pb.openndx.local` |
-| Portal Backend URL | `http://localhost:8083` |
-| Scopes | `openid roles email` and every Portal Backend scope |
-| `--insecure` | `true` |
+| Setting                  | `local` value                                       |
+| ------------------------ | --------------------------------------------------- |
+| Issuer                   | `http://localhost:8090` (ThunderID)                 |
+| Client ID, callback port | `NDX_CLI`, `8765`                                   |
+| Resource                 | `http://pb.openndx.local`                           |
+| Portal Backend URL       | `http://localhost:8083`                             |
+| Scopes                   | `openid roles email` and every Portal Backend scope |
+| `--insecure`             | `true`                                              |
 
 To work with several environments, such as local, staging and production, save each one as a profile instead of passing `--issuer`, `--client-id` and `--pb-url` on every command. `ondx profile set <name>` creates or updates a profile and changes only the flags you pass: `--issuer`, `--auth-url`, `--token-url`, `--client-id`, `--scopes`, `--callback-port`, `--resource`, `--pb-url`, `--insecure`. Each non-`local` profile has its own token cache, `~/.openndx/credentials-<name>.json`, so switching profiles never reuses another provider's token.
 

@@ -21,11 +21,11 @@ stateDiagram-v2
 
 `POST /internal/api/v1/consents` is idempotent per `(ownerId, appId)`:
 
-| Existing `pending` or `approved` consent | Result |
-|---|---|
-| None | A new `pending` consent is created. |
-| Same fields | The existing consent is returned unchanged. |
-| Different fields | The existing consent is set to `revoked` (with `updatedBy` = `System: revoked due to new consent with different fields`) and a new `pending` consent is created, in one transaction. |
+| Existing `pending` or `approved` consent | Result                                                                                                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| None                                     | A new `pending` consent is created.                                                                                                                                                  |
+| Same fields                              | The existing consent is returned unchanged.                                                                                                                                          |
+| Different fields                         | The existing consent is set to `revoked` (with `updatedBy` = `System: revoked due to new consent with different fields`) and a new `pending` consent is created, in one transaction. |
 
 A partial unique index on `(owner_id, app_id)` for `pending` and `approved` rows enforces the one-active-consent rule in the database.
 
@@ -35,11 +35,11 @@ The response is `{consentId, status, consentPortalUrl, fields}`. `consentPortalU
 
 ## Durations
 
-| Setting | Values | Default |
-|---|---|---|
-| `consentType` | `realtime`, `offline` | `realtime` |
-| Pending timeout | 1 hour for `realtime`, 24 hours for `offline` | |
-| `grantDuration` | `PT1H`, `PT6H`, `PT12H`, `P1D`, `P7D`, `P30D` | `PT1H` |
+| Setting         | Values                                        | Default    |
+| --------------- | --------------------------------------------- | ---------- |
+| `consentType`   | `realtime`, `offline`                         | `realtime` |
+| Pending timeout | 1 hour for `realtime`, 24 hours for `offline` |            |
+| `grantDuration` | `PT1H`, `PT6H`, `PT12H`, `P1D`, `P7D`, `P30D` | `PT1H`     |
 
 The grant starts when the owner approves: `grantExpiresAt` is the approval time plus `grantDuration`. The Orchestration Engine sends no `grantDuration`, so consents it creates grant one hour of access.
 
@@ -57,11 +57,11 @@ The write is conditional on the status that was read, so a concurrent decision i
 
 `PUT /api/v1/consents/{consentId}` accepts one action:
 
-| Action | Allowed from | Result |
-|---|---|---|
-| `approve` | `pending` | `approved`, sets `grantExpiresAt` |
-| `reject` | `pending` | `rejected` |
-| `revoke` | `approved` | `revoked` (`grantExpiresAt` is kept to show the withdrawn grant) |
+| Action    | Allowed from | Result                                                           |
+| --------- | ------------ | ---------------------------------------------------------------- |
+| `approve` | `pending`    | `approved`, sets `grantExpiresAt`                                |
+| `reject`  | `pending`    | `rejected`                                                       |
+| `revoke`  | `approved`   | `revoked` (`grantExpiresAt` is kept to show the withdrawn grant) |
 
 Any other combination returns `409` with `CONSENT_NOT_PENDING` or `CONSENT_NOT_REVOCABLE`. The update is conditional on the current status, so when two decisions race exactly one wins.
 
@@ -77,14 +77,14 @@ Signing keys are fetched from `idp.jwksURL` on the first portal call and cached 
 
 `consent_records` (created by [schema.sql](schema.sql)):
 
-| Column | Notes |
-|---|---|
-| `consent_id` | uuid primary key |
-| `owner_id`, `app_id`, `app_name` | The data owner, the consumer application's `client_id`, and its display name. |
-| `status`, `type` | See above. |
-| `fields` | jsonb list of `{fieldName, schemaId, displayName, description, owner}`. |
-| `grant_duration`, `grant_expires_at` | Requested duration, and the expiry set on approval. |
-| `pending_expires_at` | Set while pending, cleared on a decision. |
-| `consent_portal_url`, `updated_by`, `created_at`, `updated_at` | |
+| Column                                                         | Notes                                                                         |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `consent_id`                                                   | uuid primary key                                                              |
+| `owner_id`, `app_id`, `app_name`                               | The data owner, the consumer application's `client_id`, and its display name. |
+| `status`, `type`                                               | See above.                                                                    |
+| `fields`                                                       | jsonb list of `{fieldName, schemaId, displayName, description, owner}`.       |
+| `grant_duration`, `grant_expires_at`                           | Requested duration, and the expiry set on approval.                           |
+| `pending_expires_at`                                           | Set while pending, cleared on a decision.                                     |
+| `consent_portal_url`, `updated_by`, `created_at`, `updated_at` |                                                                               |
 
 The service opens one connection pool (default 25 open, 5 idle, 1 hour lifetime, 30 minute idle timeout) through [`internal/database`](../../internal/database) and closes it on shutdown. It does not create or migrate tables. The `session_id` column is not used by any code path.

@@ -17,13 +17,13 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ## Prerequisites
 
-| Tool | Version | Used for |
-|---|---|---|
-| [Go](https://go.dev/dl/) | 1.26.4 or later, as set in [`go.mod`](go.mod) | Every service and the `ondx` CLI |
-| A C compiler, such as gcc or clang | Any recent version | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables |
-| Git, GNU Make and curl | Any recent version | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl. |
-| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup`, which installs its dependencies |
-| [Docker](https://docs.docker.com/get-docker/) with Compose v2 | Any recent version | The local stack (`make up`, `make deps`) and the integration tests. The unit tests do not need it. |
+| Tool                                                                    | Version                                                                                    | Used for                                                                                           |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| [Go](https://go.dev/dl/)                                                | 1.26.4 or later, as set in [`go.mod`](go.mod)                                              | Every service and the `ondx` CLI                                                                   |
+| A C compiler, such as gcc or clang                                      | Any recent version                                                                         | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables    |
+| Git, GNU Make and curl                                                  | Any recent version                                                                         | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl.             |
+| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup`, which installs its dependencies                              |
+| [Docker](https://docs.docker.com/get-docker/) with Compose v2           | Any recent version                                                                         | The local stack (`make up`, `make deps`) and the integration tests. The unit tests do not need it. |
 
 On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang.
 
@@ -102,12 +102,12 @@ cd portals/apps/consent && pnpm dev    # reads public/config.js
 
 Before the first run, create the configuration files, which Git ignores, from the examples next to them:
 
-| Copy | To | Then |
-|---|---|---|
-| `cmd/pdp/config.example.yaml` | `cmd/pdp/config.yaml` | |
-| `cmd/ce/config.example.yaml` | `cmd/ce/config.yaml` | |
-| `cmd/oe/config.example.yaml` | `cmd/oe/config.yaml` | |
-| `cmd/pb/config.example.yaml` | `cmd/pb/config.yaml` | |
+| Copy                                            | To                                      | Then                                                                          |
+| ----------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| `cmd/pdp/config.example.yaml`                   | `cmd/pdp/config.yaml`                   |                                                                               |
+| `cmd/ce/config.example.yaml`                    | `cmd/ce/config.yaml`                    |                                                                               |
+| `cmd/oe/config.example.yaml`                    | `cmd/oe/config.yaml`                    |                                                                               |
+| `cmd/pb/config.example.yaml`                    | `cmd/pb/config.yaml`                    |                                                                               |
 | `portals/apps/consent/public/config.example.js` | `portals/apps/consent/public/config.js` | Set `idpClientId: 'CONSENT_PORTAL'` and `idpBaseUrl: 'http://localhost:8090'` |
 
 The example configurations point at the ports that `make deps` publishes on `localhost`, and read their secrets from the environment. An `export` lasts only for its terminal, so set them in each terminal you start a service from. With the Compose defaults:
@@ -135,32 +135,32 @@ Running the Policy Decision Point or the Consent Engine natively means running t
 
 ### Viewing Audit Records
 
-The Orchestration Engine and the Portal Backend send their audit records only to an OpenTelemetry endpoint, set in the `otel` section of their config, and never write them to their own logs. The committed configs leave that section commented out, so by default the records are dropped and each of the two services logs `otel log export is off: audit records (category=audit) are not retained` at startup. To see the records locally:
+The Orchestration Engine and the Portal Backend send their [audit records](internal/audit/README.md) only to the OpenTelemetry endpoint in the `otel` section of their config. The committed configs leave that section commented out, so by default the records are dropped, and each of the two services logs `otel log export is off` at startup. To see the records locally:
 
 1. Start a local [OpenObserve](https://github.com/openobserve/openobserve) with the stack: `make up OTEL=1` or `make deps OTEL=1`. It listens on <http://localhost:5080> and keeps no data once its container is removed. Without `OTEL=1` it isn't started.
 2. Uncomment the `otel` block at the end of the config each service reads:
    - in Docker, `cmd/oe/config.docker.yaml` and `cmd/pb/config.docker.yaml`. These files are committed, so leave that change out of your commits;
    - run natively, your `cmd/oe/config.yaml` and `cmd/pb/config.yaml`, copied from the examples.
-3. Restart the two services: `docker compose up -d --force-recreate --no-deps orchestration-engine portal-backend`, or stop and rerun `go run .`. The startup warning above is gone once export is on.
+3. Restart the two services: `docker compose up -d --force-recreate --no-deps orchestration-engine portal-backend`, or stop and rerun `go run .`. With export on, the startup warning doesn't appear.
 4. Open <http://localhost:5080> and sign in as `root@example.com` with password `Complexpass#123`, fixed local defaults from `compose.yml` rather than secrets. Under **Logs**, choose the `default` stream and filter with `category='audit'`.
 
-`make down` stops OpenObserve as well. The records' attributes are listed in [cmd/oe/CONFIGURATION.md](cmd/oe/CONFIGURATION.md#otel) and [cmd/pb/CONFIGURATION.md](cmd/pb/CONFIGURATION.md#opentelemetry-and-audit).
+`make down` stops OpenObserve as well.
 
 ## Running Tests and Quality Checks
 
 Every Go target works on the whole module. For the full list of commands, run `make help`.
 
-| Command | What it does |
-|---|---|
-| `make build` | `go build ./...` |
-| `make test` | `go test -race ./...`. To test some packages, run for example `make test PKG=./internal/pdp/...`. |
-| `make test-integration` | Runs the [integration tests](#integration-tests) against services in Docker |
-| `make fmt` | Formats Go code with `gofumpt` and `goimports` |
-| `make lint` | Runs golangci-lint with [`.golangci.yml`](.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags. |
-| `make license` | Adds the [license header](#license-headers) to files that lack it |
-| `make license-check` | Lists the files without the license header, and fails if there are any, as CI does |
-| `make check` | Checks that `go.mod` and `go.sum` are tidy, then runs `make license-check`, `make lint` and `make test`. It changes no files. |
-| `make clean` | Removes `bin/` and the coverage files |
+| Command                 | What it does                                                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `make build`            | `go build ./...`                                                                                                                 |
+| `make test`             | `go test -race ./...`. To test some packages, run for example `make test PKG=./internal/pdp/...`.                                |
+| `make test-integration` | Runs the [integration tests](#integration-tests) against services in Docker                                                      |
+| `make fmt`              | Formats Go code with `gofumpt` and `goimports`                                                                                   |
+| `make lint`             | Runs golangci-lint with [`.golangci.yml`](.golangci.yml): vet, staticcheck, gosec and the rest. `LINT_FLAGS` passes extra flags. |
+| `make license`          | Adds the [license header](#license-headers) to files that lack it                                                                |
+| `make license-check`    | Lists the files without the license header, and fails if there are any, as CI does                                               |
+| `make check`            | Checks that `go.mod` and `go.sum` are tidy, then runs `make license-check`, `make lint` and `make test`. It changes no files.    |
+| `make clean`            | Removes `bin/` and the coverage files                                                                                            |
 
 Before you push, run `make fmt` and `make check`.
 
@@ -197,7 +197,7 @@ The integration tests live in `tests/integration`, which is a separate Go module
 make test-integration
 ```
 
-This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
+This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. Before starting them, it runs `go mod tidy` in `tests/integration` and stops if `go.mod` or `go.sum` then has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
 
 Many of the tests are skipped, rather than failed, when a database or service they need is unreachable, so check the skip messages in the output.
 
@@ -206,6 +206,7 @@ Many of the tests are skipped, rather than failed, when a database or service th
 - Keep each pull request focused on a single issue. If a change is large, consider splitting it into a series of smaller pull requests.
 - Add or update tests for any behavior that you add or change.
 - Update the documentation that your change affects, including the component's README.
+- Write comments and documentation about the code as it is now: what it does and why. Leave out its history, such as what it used to do, what was removed or renamed, or which pull request changed it. Commit messages and release notes record that.
 - Each service describes its API in `cmd/<svc>/openapi.yaml`. Any change to a route, a request or response body, a query parameter, a status code, an error code, a required scope or a validation rule must update the specification in the same pull request. The specification describes what the code does. If the code and the specification disagree because the code is wrong, file an issue rather than documenting the intended behavior as if it had shipped.
 - The Admin and Member portals are paused prototypes. Please do not change them.
 
@@ -235,7 +236,7 @@ Commit titles and pull request titles follow the [Conventional Commits](https://
 <type>(<scope>)!: <description>
 ```
 
-- **Type** is the kind of change. This repository uses `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci` and `style`.
+- **Type** is the kind of change. This repository uses `feat`, `fix`, `refactor`, `docs`, `test`, `build`, `chore`, `ci` and `style`. `build` is for the build system and external dependencies, such as a new version of an image the stack runs.
 - **Scope** is the component that the change affects, such as `oe`, `pdp`, `ce`, `pb` or `ondx`, or another area, such as `deploy`, `authn` or `release`. Separate multiple scopes with commas, as in `refactor(pdp,pb)`. Changes that affect the whole repository, such as a formatting pass, omit the scope.
 - **`!`** marks a breaking change, such as a removed or renamed endpoint. Omit it otherwise. For a breaking change, add a `BREAKING CHANGE:` footer to the commit body that explains what users of the change must do.
 - **Description** is written in lowercase and in the imperative mood, without a final period. For example: `refactor(pdp,pb)!: rename the policy metadata API to field policies`.
@@ -269,7 +270,7 @@ Each component's validate workflow runs when a pull request changes that compone
 - For the Consent Portal, the workflow runs `eslint`, and builds and scans the Docker image.
 - For the Consent Engine, a `database` job also runs the PostgreSQL tests in `cmd/ce` and `internal/database` against PostgreSQL 17. Locally, these tests are skipped unless `TEST_DATABASE_URL` is set; see [Unit Tests](#unit-tests).
 
-The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point, the Consent Engine, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
+The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point or the Consent Engine, a shared package they use, `go.mod`, `go.sum` or `tests/integration`. The `paths` filters in `.github/workflows/integration-tests.yml` list them. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
 
 ### Review and Merge
 
