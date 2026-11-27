@@ -41,7 +41,7 @@ cd cmd/pb && go run .
 
 ## Configuration
 
-PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), PB reads only the OpenTelemetry SDK's `OTEL_*` variables that the `otel` section has no key for ([CONFIGURATION.md](CONFIGURATION.md#opentelemetry-and-audit)). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), the libraries PB uses read their standard variables, such as the OpenTelemetry SDK's `OTEL_*` variables that `otel` has no key for ([internal/audit](../../internal/audit/README.md#export)) and PostgreSQL's `PG*`. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. Required keys:
 

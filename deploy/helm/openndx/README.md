@@ -109,7 +109,7 @@ kubectl create secret generic openndx-secrets \
 rm db-password pb-client-secret data-consumer-client-secret
 ```
 
-The Orchestration Engine and Portal Backend send audit records only as OpenTelemetry logs over OTLP/HTTP; while `config.otel.endpoint` is empty they drop them and log a warning at startup. To keep them, point each service's `config.otel` at your collector or backend, with any credentials taken from a Secret through its `env`:
+The Orchestration Engine and Portal Backend send [audit records](../../../internal/audit/README.md) only to the OpenTelemetry endpoint in `config.otel`, and drop them while it is empty. To keep them, point each service's `config.otel` at your collector or backend, with any credentials taken from a Secret through its `env`:
 
 ```yaml
 portalBackend:

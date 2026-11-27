@@ -41,7 +41,7 @@ The Orchestration Engine and the Consent Portal call the CE, so to use them with
 
 ## Configuration
 
-The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), it reads only the metrics settings, such as `SERVICE_NAME` and `OTEL_METRICS_EXPORTER`, listed under [Metrics](#metrics). The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
+The CE reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yaml` in the working directory. There are no other flags. Besides `CONFIG_PATH` and the variables named by placeholders (below), it reads the metrics settings listed under [Metrics](#metrics), and the libraries it uses read their standard variables, such as the OpenTelemetry SDK's other `OTEL_*` variables and PostgreSQL's `PG*`. The Docker image sets `CONFIG_PATH=/app/config/config.yaml` and has no config file of its own, so mount one there. Compose mounts [config.docker.yaml](config.docker.yaml).
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. The placeholder must be the whole value, and an unset or empty variable stops the service.
 
@@ -90,7 +90,7 @@ Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "..."
 | `GET /api/v1/consents/{consentId}` | One consent. `403` if it belongs to someone else.                                                                     |
 | `PUT /api/v1/consents/{consentId}` | Body `{"action": "approve" \| "reject" \| "revoke"}`. `409` if the consent is not in a state that allows the action.  |
 
-**System:** `GET /health` (`{"service": "consent-engine", "status": "healthy"}`) and `GET /metrics` (Prometheus), both unauthenticated.
+**System:** `GET /health` (`{"service": "consent-engine", "status": "healthy"}`) and `/metrics` (Prometheus, any method), both unauthenticated.
 
 ## How it works
 
@@ -110,16 +110,16 @@ The CE is the only service that records metrics. It serves them at `GET /metrics
 | `http_requests_ratio_total` | Counter | `http_request_method`, `http_route`, `http_response_status_code` |
 | `http_request_duration_seconds` | Histogram | `http_request_method`, `http_route` |
 
-`http_route` is the route template, such as `/api/v1/consents/:id`, so IDs don't create new series. Every metric also has an `otel_scope_name` label, and the `target_info` metric gives the service's `service_name` and `service_version`.
+`http_route` comes from the request path: a segment that looks like an ID becomes `:id`, as in `/api/v1/consents/:id`, so IDs don't create new series. A path without such a segment, such as `/api/v1/consents` or `/health`, and any request answered with `404`, is recorded as `unknown`. The word `internal` also looks like an ID, so `/internal/api/v1/consents` is recorded as `/:id/api/v1/consents`. Every metric also has `otel_scope_name` and `otel_scope_version` labels, and the `target_info` metric gives the service's `service_name` and `service_version`.
 
-The metrics are configured through the environment, read the first time the CE records or serves a metric:
+The metrics are configured through these environment variables, read at startup:
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `OTEL_METRICS_EXPORTER` | `prometheus` | `prometheus` serves the metrics at `/metrics`, `otlp` pushes them to an OTLP endpoint, and `none` turns metrics off. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | | The OTLP endpoint. Required for `otlp`, and it must use `https` unless `OTEL_EXPORTER_OTLP_INSECURE` is `true`. Only the host is used, so a backend that serves OTLP under a path, such as OpenObserve, can't receive them yet (#707). |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | | The OTLP endpoint. Required for `otlp`, and it must use `https` unless `OTEL_EXPORTER_OTLP_INSECURE` is `true`. The metrics go to its path plus `/v1/metrics`. |
 | `OTEL_EXPORTER_OTLP_HEADERS` | | Extra headers for `otlp`, such as an API key, as `key1=value1,key2=value2`. |
-| `OTEL_EXPORTER_OTLP_INSECURE` | `false` | `true` allows an `http` OTLP endpoint. For development only. |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `false` | `true` allows an `http` endpoint, and sends the metrics over plain HTTP whatever the endpoint's scheme. For development only. |
 | `SERVICE_NAME` | `openndx-service` | The `service_name` on `target_info`. |
 | `SERVICE_VERSION` | `dev` | The `service_version` on `target_info`. |
 

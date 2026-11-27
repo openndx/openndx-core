@@ -105,7 +105,7 @@ sequenceDiagram
 - With `pdp.url` empty, the OE returns provider data without any authorization or consent check. Always set it.
 - Keep provider and OTLP secrets out of the config file with `"{{env:NAME}}"` or `"{{file:/path}}"`.
 - The OE sends no CORS headers, so browsers can't call it directly. Its callers are machine clients.
-- Audit events (`DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH`) are written as OpenTelemetry log records with `category=audit` and sent only to the `otel` endpoint, never to stdout. With no endpoint they are dropped, and startup logs a warning. Records are batched in memory and flushed at shutdown, so records not yet sent are lost if the process is killed or the endpoint stays unreachable. They name the application, the fields asked for and the outcome, not the query text, its arguments or provider data.
+- Audit records go only to the `otel` endpoint, and are dropped when none is set. A `CONSENT_CHECK` record holds the data owner's ID, so the audit backend holds personal data. What each record holds: [internal/audit](../../internal/audit/README.md).
 
 ## Development
 

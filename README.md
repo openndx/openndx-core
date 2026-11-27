@@ -119,7 +119,7 @@ The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/co
 
 ## Exporting data
 
-OpenNDX doesn't keep the data that consumers request: the Orchestration Engine has no database, and its audit records name the fields requested, not the query text or the data that providers return. The platform's own records can be exported as JSON:
+OpenNDX doesn't keep the data that consumers request: the Orchestration Engine has no database, and its [audit records](internal/audit/README.md) hold the fields requested and the data owner's ID, not the query text or the values in the providers' `data`. The platform's own records can be exported as JSON:
 
 - members, schemas and applications, with the `--json` option of the `ondx` `list` and `get` commands, or through the [Portal Backend API](cmd/pb/README.md);
 - field policies and access grants, from the Policy Decision Point at `GET /api/v1/policy/fields` and `GET /api/v1/policy/grants` ([API](cmd/pdp/README.md)).
@@ -128,7 +128,7 @@ OpenNDX doesn't keep the data that consumers request: the Orchestration Engine h
 
 - **Tutorial:** the [end-to-end walkthrough](dev/WALKTHROUGH.md), which runs the platform with the [mock providers](dev/README.md).
 - **How-to guides:** [add a data provider](cmd/oe/PROVIDER_CONFIGURATION.md), [deploy with Helm](deploy/helm/openndx/README.md), [make a release](docs/RELEASE.md).
-- **Reference:** each component's README, linked from the [table above](#architecture), with its configuration and `openapi.yaml`; the [policy model](cmd/pdp/POLICY_MODEL.md), the [consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md) and the [Portal Backend's authorization](cmd/pb/AUTHORIZATION.md); the [`ondx` CLI](cmd/ondx/README.md).
+- **Reference:** each component's README, linked from the [table above](#architecture), with its configuration and `openapi.yaml`; the [policy model](cmd/pdp/POLICY_MODEL.md), the [consent lifecycle](cmd/ce/CONSENT_LIFECYCLE.md) and the [Portal Backend's authorization](cmd/pb/AUTHORIZATION.md); the [audit records](internal/audit/README.md); the [`ondx` CLI](cmd/ondx/README.md).
 - **Contributor and ops references:** [integration tests](tests/integration/README.md), [Consent Engine metrics](cmd/ce/README.md#metrics), [viewing audit records](CONTRIBUTING.md#viewing-audit-records)
 
 ## Get help
