@@ -67,8 +67,9 @@ curl --fail --silent --show-error http://localhost:4000/health
 curl --fail --silent --show-error http://localhost:5173/health
 ```
 
-These show that each process is answering. They do not check the database, and
-they do not prove that a provider query works. The checks in steps 6–9 do that.
+These show that each process is answering. ThunderID's readiness check includes
+its own database; the others do not check a database. None of them prove that a
+provider query works. The checks in steps 6–9 do that.
 
 ## 3. Log in as the operator
 
