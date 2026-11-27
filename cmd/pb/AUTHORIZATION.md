@@ -4,18 +4,13 @@ How the Portal Backend decides who a caller is and what they may do. The overvie
 
 ## Authentication
 
-Every `/api/v1/*` request needs `Authorization: Bearer <access token>`. The token is validated by [`internal/authn`](../../internal/authn/README.md) against the identity provider's signing keys (`idp.jwksURL`, cached for 5 minutes):
+Every `/api/v1/*` request needs `Authorization: Bearer <access token>`, which must pass the [token checks](../../internal/authn/README.md#token-checks) of `internal/authn` against the identity provider's signing keys (`idp.jwksURL`). A token that fails them gets `401`. For PB:
 
-| Check | Requirement |
+| Claim | Requirement |
 |---|---|
-| Signature | Valid for a key in the JWKS. |
-| `iss` | Equals `idp.issuer`. |
 | `aud` | Contains `idp.audience`, PB's resource-server identifier. A token for any other audience is rejected, whichever client it was issued to. Clients request the audience as `resource=<idp.audience>` when they log in. |
-| `sub`, `client_id` | Both present. |
 | `scope` | Space-separated scopes; see below. |
 | `ouId` | Optional. The caller's organization unit, which links the caller to a member. `email` is read when present. |
-
-A missing or invalid token returns `401` with `{"error": "unauthorized", "message": "..."}`.
 
 ## Scopes
 

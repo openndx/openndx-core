@@ -21,8 +21,8 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `logging.format` | `json` | `json` or `text`. Every line carries `service`, `version` and, when set, `environment`. |
 | `schemaPath` | `schema.graphql` | The consumer schema file. A relative path is resolved against the directory of the config file. See [Schema](#schema). |
 | `idp` | | Consumer token validation. `idp.jwksURL`, `idp.issuer` and `idp.audience` are **required**. See [idp](#idp). |
-| `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. |
-| `consentEngine.url` | | Consent Engine URL, which must end in `/internal/api/v1` because the OE appends `/consents`. If the PDP requires consent and this is empty, the request fails with `CE_ERROR`. |
+| `pdp.url` | | Policy Decision Point base URL. The OE appends `/api/v1/policy/decide`. If empty, the PDP and consent checks are skipped. The OE waits up to 10 seconds for each call. |
+| `consentEngine.url` | | Consent Engine URL, which must end in `/internal/api/v1` because the OE appends `/consents`. If the PDP requires consent and this is empty, the request fails with `CE_ERROR`. The OE waits up to 10 seconds for each call. |
 | `consentEngine.ownerIdArgName` | | **Required when `consentEngine.url` is set.** The query argument that carries the ID of the data owner whose consent is asked, matched by name (for example `nic`) on every field of the query, aliases included. It is read only when the PDP requires consent, so a query that needs none can be keyed by any argument (for example a vehicle's `regNo`). When consent is required and the query has no non-empty string value for it, the OE returns `MISSING_IDENTIFIER`; if it has several different values, `AMBIGUOUS_IDENTIFIER`. |
 | `audit.actorType`, `audit.actorId` | `SERVICE`, `orchestration-engine` | The actor recorded on the audit events the OE initiates: `POLICY_CHECK`, `CONSENT_CHECK` and `PROVIDER_FETCH`. On `DATA_REQUEST` the actor is the consumer application. |
 | `providers` | | Data providers; see below and [PROVIDER_CONFIGURATION.md](PROVIDER_CONFIGURATION.md). |
@@ -77,7 +77,7 @@ The variable is named after `targetArgName`, with a suffix such as `_2` when two
 
 ### idp
 
-How the OE authenticates data consumers on `POST /public/graphql`. The only other route, `/health`, is not authenticated. Tokens are validated by the shared [`internal/authn`](../../internal/authn) package, which the Portal Backend and the Consent Engine also use. Every token's signature is verified; no setting skips it.
+How the OE authenticates data consumers on `POST /public/graphql`. The only other route, `/health`, is not authenticated. Tokens are validated by the shared [`internal/authn`](../../internal/authn/README.md) package, which the Portal Backend and the Consent Engine also use. Every token's signature is verified; no setting skips it.
 
 | Key | Default | Notes |
 |---|---|---|
@@ -89,20 +89,7 @@ How the OE authenticates data consumers on `POST /public/graphql`. The only othe
 
 The OE exits at startup if `jwksURL`, `issuer` or `audience` is missing or invalid. In Docker Compose, [config.docker.yaml](config.docker.yaml) fetches the keys from ThunderID's address on the Compose network (`http://thunderid:8090/oauth2/jwks`), and reads the issuer from `IDP_PUBLIC_URL` (ThunderID's public URL) and the audience from `IDP_AUDIENCE` (default `http://api.openndx.local`).
 
-A consumer sends an access token in the `Authorization: Bearer <token>` header. In the bundled stack, consumers are machine clients that get a ThunderID `client_credentials` token requested with `resource=http://api.openndx.local`; see the example in [dev/README.md](../../dev/README.md). The token must pass these checks:
-
-| Check | Requirement |
-|---|---|
-| Signature | `RS256`, `RS384` or `RS512`, signed by a key in the JWKS at `idp.jwksURL`, with a `kid` header that names the key. |
-| `iss` | Equals `idp.issuer`. |
-| `aud` | Contains `idp.audience`. |
-| `exp` | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
-| `sub` | Present. |
-| `client_id` | Present. It becomes the application's identity (`applicationId`) for the PDP and the Consent Engine. |
-
-A request without a valid token gets `401` with a JSON body: `{"error":"unauthorized","message":"authentication required"}` when there is no token, and `{"error":"unauthorized","message":"invalid authentication token"}` when the token fails a check. The reason is logged at debug level, not returned.
-
-The signing keys are fetched on the first request, not at startup, so the OE starts even when the identity provider is not yet up. They are cached for 5 minutes. A token whose `kid` is not in the cached set triggers one refresh, so key rotation needs no restart.
+A consumer sends an access token in the `Authorization: Bearer <token>` header. In the bundled stack, consumers are machine clients that get a ThunderID `client_credentials` token requested with `resource=http://api.openndx.local`; see the example in [dev/README.md](../../dev/README.md). The checks the token must pass, the `401` responses and how the signing keys are cached are in [internal/authn](../../internal/authn/README.md#token-checks). The token's `client_id` becomes the application's identity (`applicationId`) for the PDP and the Consent Engine.
 
 In production:
 
@@ -172,4 +159,4 @@ Mutations and subscriptions are rejected: with `BAD_REQUEST` when the schema has
 
 A provider failure doesn't fail the whole query. The fields that provider serves are `null`, each with a `PROVIDER_ERROR` at its `path`, and the other providers' data is returned. As in the GraphQL spec, a `null` in a non-null field (`String!`) makes its parent `null` instead, up to the nearest field that can be `null`; the error then reads `Cannot return null for non-nullable field …`. If that reaches a non-null root field, `data` is `null`.
 
-HTTP-level errors: `400` for an unreadable request body, `401` with a JSON body such as `{"error":"unauthorized","message":"invalid authentication token"}` for a missing or invalid token.
+HTTP-level errors: `400` with the plain-text body `Bad request: invalid JSON` for a request body that isn't valid JSON, and `401` for a missing or invalid token, with the JSON body described in [internal/authn](../../internal/authn/README.md#token-checks).

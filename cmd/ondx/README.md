@@ -32,7 +32,7 @@ Run `brew upgrade ondx` to update it.
 curl -fsSL https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.sh | sh
 ```
 
-The script downloads the archive for your operating system and CPU from the latest release, checks it against the release's `checksums.txt`, and installs `ondx` to `/usr/local/bin` if that directory is writable, or to `~/.local/bin` otherwise. Set `ONDX_VERSION` to install a specific release, for example `ONDX_VERSION=v0.7.0`, or `ONDX_INSTALL_DIR` to choose the directory.
+The script downloads the archive for your operating system and CPU from the latest release, checks it against the release's `checksums.txt`, and installs `ondx` to `/usr/local/bin` if that directory is writable, or to `~/.local/bin` otherwise. Set `ONDX_VERSION` to install a specific release, for example `ONDX_VERSION=v0.7.0`, `ONDX_INSTALL_DIR` to choose the directory, or `ONDX_REPO` to download from a fork or mirror instead of `openndx/openndx-core`.
 
 ### Install script (Windows)
 
@@ -40,7 +40,7 @@ The script downloads the archive for your operating system and CPU from the late
 irm https://raw.githubusercontent.com/openndx/openndx-core/main/scripts/install.ps1 | iex
 ```
 
-The script downloads the amd64 or arm64 build, checks it against the release's `checksums.txt`, installs `ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that directory to your user `PATH`. Open a new terminal afterwards. Set `$env:ONDX_VERSION` to install a specific release, or `$env:ONDX_INSTALL_DIR` to choose the directory. Run the script again to upgrade.
+The script downloads the amd64 or arm64 build, checks it against the release's `checksums.txt`, installs `ondx.exe` to `%LOCALAPPDATA%\Programs\ondx`, and adds that directory to your user `PATH`. Open a new terminal afterwards. Set `$env:ONDX_VERSION` to install a specific release, `$env:ONDX_INSTALL_DIR` to choose the directory, or `$env:ONDX_REPO` to download from a fork or mirror. Run the script again to upgrade.
 
 ### Manual download
 
@@ -90,9 +90,10 @@ Every Portal Backend route checks an OAuth2 scope (see [authorization](https://g
 | `ondx applications create` | Register an application and its client | `application:write` (+ `application:write-all`) | |
 | `ondx applications list`, `get` | List or show applications | `application:read` (+ `application:read-all`) | yes |
 | `ondx policy update` | Replace an application's granted fields | `application:write` (+ `application:write-all`) | |
-| `ondx version` | Print version and build info | none | |
+| `ondx version`, `ondx --version` | Print version and build info | none | |
+| `ondx help`, `-h`, `--help` | List the commands | none | |
 
-Every command that logs in or calls the Portal Backend also accepts `--profile`, and those that call the Portal Backend accept `--pb-url`, `--credentials-path` and `--insecure` (see [Configuration](#configuration)). Run `ondx <command> -h` for the flags of one command.
+Every command that logs in or calls the Portal Backend accepts `--profile`, `--credentials-path` and `--insecure`, and those that call the Portal Backend also accept `--pb-url` (see [Configuration](#configuration)). The token is cached in `~/.openndx/credentials.json` for no profile or the `local` profile, and in `credentials-<profile>.json` beside it for any other; `--credentials-path` names another file. Run `ondx <command> -h` for the flags of one command.
 
 ### `ondx login`
 

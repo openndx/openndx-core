@@ -61,7 +61,7 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600` | Connection pool. |
 | `database.idleTimeout` | `30m` | Closes connections idle this long. |
 
-The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect.
+The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect. It also exits if it can't connect to the database within 10 seconds.
 
 ## API
 

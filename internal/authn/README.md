@@ -31,9 +31,26 @@ authn:
       required: true
 ```
 
-A token is accepted when its signature, `iss`, `aud` and `exp` check out, it carries non-empty `sub` and `client_id` claims, and it carries every standard identity claim configured as required. How the token was obtained (`grant_type`) plays no part: a person signing in through a client and a system using client credentials get the same `Principal`, distinguished only by the roles, scopes and claims they carry. All validated claims are available through `Claims()` — custom claims need no configuration.
+A token is accepted when it passes the [token checks](#token-checks). How the token was obtained (`grant_type`) plays no part: a person signing in through a client and a system using client credentials get the same `Principal`, distinguished only by the roles, scopes and claims they carry. All validated claims are available through `Claims()` — custom claims need no configuration.
 
 > **Note:** `audience` is what binds a token to this service: any client the IdP issues a token for this audience is accepted. Which clients may call the service is authorization policy, not this package's concern — restrict it in authz or the application using `AuthContext.ClientID()`. If your IdP sets `aud` to the requesting client rather than the API, configure an audience / API resource for the service in the IdP.
+
+## Token checks
+
+A request sends the token as `Authorization: Bearer <token>`. The token must pass these checks:
+
+| Check | Requirement |
+|---|---|
+| Signature | `RS256`, `RS384` or `RS512`, by a key in the JWKS at `jwksURL`. The token's `kid` header names the key. |
+| `iss` | Equals `issuer`. |
+| `aud` | Contains `audience`. |
+| `exp` | Present and in the future, with 30 seconds of leeway. `nbf`, when present, must not be in the future, with the same leeway. |
+| `sub`, `client_id` | Present and not empty. |
+| `email`, `ouId`, `ouHandle` | Present and not blank, when [configured as required](#standard-identity-claims). |
+
+A request without a valid token gets `401` with a JSON body: `{"error":"unauthorized","message":"authentication required"}` when it has no token, and `{"error":"unauthorized","message":"invalid authentication token"}` when the token fails a check. The reason is logged at debug level, not returned.
+
+The keys are fetched from `jwksURL` on the first request, not at startup, so a service starts even while the identity provider is down. They are cached for 5 minutes, and a token whose `kid` isn't in the cache triggers one refresh, so key rotation needs no restart. `insecureSkipTLSVerify: true` skips TLS certificate checks on that fetch; use it only in local development.
 
 ## Middleware
 
@@ -142,16 +159,16 @@ The view and all typed accessors are nil-safe. `Claims` has no public map or mut
 | `Strings(name)` | Returns a JSON array of strings, or nil for a missing, null or wrong-type claim. An empty array returns a non-nil empty slice. Only `scope` also accepts a whitespace-delimited string and treats null as an empty slice. |
 | `Lookup(name)` | Returns `(value, present)` using JSON-decoded types: `string`, `float64`, `bool`, `[]any`, `map[string]any`, or nil. Missing is `(nil, false)`; JSON null is `(nil, true)`. |
 
-Lookup names are exact top-level keys, with no dotted-path or nested expansion. Custom names are case-sensitive, including namespaced names such as `https://app.example.com/department`; `nic` and `NIC` can coexist. To preserve existing standard-claim binding, case variants of standard names are canonicalized at decode time (`EMAIL` → `email`, `SUB` → `sub`, `OUID` → `ouId`). Access them using the canonical names above. Names are never whitespace-trimmed. Duplicate keys and multiple spellings of the same standard claim reject the token, preventing ambiguous identity or grants.
+Lookup names are exact top-level keys, with no dotted-path or nested expansion. Custom names are case-sensitive, including namespaced names such as `https://app.example.com/department`; `nic` and `NIC` can coexist. Case variants of standard names are canonicalized at decode time (`EMAIL` → `email`, `SUB` → `sub`, `OUID` → `ouId`). Access them using the canonical names above. Names are never whitespace-trimmed. Duplicate keys and multiple spellings of the same standard claim reject the token, preventing ambiguous identity or grants.
 
-Normalization preserves the previous identity behavior:
+Values are normalized as follows:
 
 - `email`, `ouId`, `ouHandle` and custom string claims are whitespace-trimmed, as are the elements of top-level arrays consisting entirely of strings. Nested objects and mixed arrays are unchanged. Null and blank claims remain present for inspection.
-- `sub`, `client_id` and registered JWT claims retain the values used during validation, without trimming. Required `sub` and `client_id` retain their existing non-empty check. `aud` keeps its original string or array shape; numeric dates keep their decoded shape.
+- `sub`, `client_id` and registered JWT claims retain the values used during validation, without trimming. `sub` and `client_id` must be non-empty. `aud` keeps its original string or array shape; numeric dates keep their decoded shape.
 - `roles` must be an array of strings (or absent/null). Each role is trimmed. A role such as `"Customs Officer"` remains one role; a free-text `roles` string rejects the token.
-- `scope` keeps its existing parsing: a whitespace-delimited string or an array of strings. Array entries are not trimmed; the existing decoder accepts null array entries as empty strings. A blank/null scope or empty array yields an empty slice; missing scope yields nil. `Scopes()` and `Claims().Strings("scope")` agree.
+- `scope` is a whitespace-delimited string or an array of strings. Array entries are not trimmed, and null array entries are read as empty strings. A blank/null scope or empty array yields an empty slice; missing scope yields nil. `Scopes()` and `Claims().Strings("scope")` agree.
 
-Signature, issuer, audience, expiry, not-before, required-claim and standard-claim type checks still run before any claims view is returned.
+Signature, issuer, audience, expiry, not-before, required-claim and standard-claim type checks run before any claims view is returned.
 
 ## Health check
 

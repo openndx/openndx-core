@@ -197,7 +197,7 @@ The integration tests live in `tests/integration`, which is a separate Go module
 make test-integration
 ```
 
-This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. It stops early if `tests/integration/go.mod` or `go.sum` has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
+This runs `tests/integration/run-local-tests.sh`, which starts the databases and services defined in `docker-compose.db.yml` and `docker-compose.test.yml`, runs `go test -race ./...`, and then removes the containers and their volumes. Before starting them, it runs `go mod tidy` in `tests/integration` and stops if `go.mod` or `go.sum` then has uncommitted changes, unless `SKIP_GO_MOD_CHECK` is set.
 
 Many of the tests are skipped, rather than failed, when a database or service they need is unreachable, so check the skip messages in the output.
 

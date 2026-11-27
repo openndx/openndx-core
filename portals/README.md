@@ -18,7 +18,6 @@ portals/
 │   ├── admin/
 │   ├── consent/
 │   └── member/
-├── packages/            # shared code; only a README so far
 ├── package.json         # Node >= 24, pnpm 11.1.3 (packageManager)
 ├── pnpm-workspace.yaml  # apps/* and packages/*
 └── setup-portals.sh
@@ -93,7 +92,7 @@ pnpm --filter consent-portal run lint
 
 Apart from the license headers, the Make targets and the pre-commit hook cover Go code only; the consent portal's validation workflow builds and lints it in CI. Admin and member validation workflows can be dispatched manually; neither portal is published automatically. pnpm commands remain available for prototype exploration.
 
-`packages/` is empty, so each app carries its own copy of the `window.configs` typing, the audit log service, the schema and application types, the logo, and the nginx and entrypoint files. See [packages/README.md](packages/README.md).
+The apps share no code: each carries its own copy of the `window.configs` typing, the audit log service, the schema and application types, the logo, and the nginx and entrypoint files.
 
 ## More docs
 

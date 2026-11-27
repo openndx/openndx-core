@@ -20,7 +20,7 @@ All components are configured from [`values.yaml`](./values.yaml):
 
 ### Service configuration
 
-Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`. The only exceptions are the deployment's public URLs, which the chart fills in when left empty, and the URLs one service uses to call another, which it fills in when left out (see [Required values](#required-values)). Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
+Each Go service's `config` block in `values.yaml` **is** its `config.yaml`, with the same schema as `cmd/<svc>/config.example.yaml` (keys in `cmd/<svc>/README.md`, and in `CONFIGURATION.md` for the OE and PB). The chart renders it as-is into a ConfigMap mounted at `/app/config/config.yaml`. The only exceptions are the deployment's public URLs, which the chart fills in when left empty, and the URLs one service uses to call another, which it fills in when left out (see [Required values](#required-values)). Extra files go under `configFiles` and are mounted beside it (the Orchestration Engine's `schema.graphql`).
 
 Keep `config` non-secret. A secret goes in as a `"{{env:NAME}}"` placeholder, which the service resolves at startup from its environment (see [Secrets](#secrets)).
 
@@ -242,6 +242,10 @@ From outside the cluster, the `/internal` API is kept off by the ingress itself:
 The Orchestration Engine, PDP, Consent Engine and Portal Backend meet the Kubernetes Pod Security Standards "restricted" profile by default: they run as a non-root user, with privilege escalation off, every capability dropped, and the `RuntimeDefault` seccomp profile.
 
 The Consent Portal doesn't yet. Its image runs nginx as root on port 80 and writes `config.js` into its own filesystem at startup, so the chart sets only `seccompProfile: RuntimeDefault` for it. In a namespace that enforces "restricted", its pod is rejected; enforce `baseline` there instead (`pod-security.kubernetes.io/enforce: baseline`), which it meets. This lasts until the image runs unprivileged ([#767](https://github.com/openndx/openndx-core/issues/767)).
+
+## Scaling
+
+Each component runs `replicaCount` pods (default 1). To scale one on CPU instead, set its `autoscaling.enabled: true`, with `minReplicas`, `maxReplicas` and `targetCPUUtilizationPercentage`. The chart then creates a HorizontalPodAutoscaler and leaves the replica count to it. `values.yaml` lists these keys under `orchestrationEngine`, and every component reads them.
 
 ## Usage
 
