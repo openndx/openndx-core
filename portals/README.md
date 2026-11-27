@@ -4,11 +4,11 @@ The OpenNDX web apps, kept in one pnpm workspace. This page covers what they sha
 
 ## Overview
 
-| App | Users | Talks to | Status | In Compose |
-|---|---|---|---|---|
-| [Consent Portal](apps/consent/README.md) (`consent-portal`) | Citizens approving or revoking access to their data | Consent Engine, identity provider | Actively maintained; released | yes, port 5173 |
-| [Admin Portal](apps/admin/README.md) (`admin-portal`) | Operators managing members and reviewing submissions | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no |
-| [Member Portal](apps/member/README.md) (`member-portal`) | Staff of member organizations registering schemas and applications | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no |
+| App                                                         | Users                                                              | Talks to                                         | Status                                                        | In Compose     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------- | -------------- |
+| [Consent Portal](apps/consent/README.md) (`consent-portal`) | Citizens approving or revoking access to their data                | Consent Engine, identity provider                | Actively maintained; released                                 | yes, port 5173 |
+| [Admin Portal](apps/admin/README.md) (`admin-portal`)       | Operators managing members and reviewing submissions               | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no             |
+| [Member Portal](apps/member/README.md) (`member-portal`)    | Staff of member organizations registering schemas and applications | Portal Backend, audit service, identity provider | Development paused; unsupported; excluded from release images | no             |
 
 All three are React 19, TypeScript, Vite and Tailwind apps served in Docker by nginx. The consent portal is actively maintained. Admin and member remain in this workspace as unsupported prototypes, with no committed fixes, dependency updates, or compatibility guarantees. Each README describes the historical code and its integration gaps. Manage the platform through the [`ondx` CLI](../cmd/ondx/README.md) or [Portal Backend API](../cmd/pb/README.md).
 
@@ -47,11 +47,11 @@ The apps are configured at **runtime**, so one build serves any environment. Eac
 
 The three apps use three different naming conventions. Use the names in this table:
 
-| App | `window.configs` keys | Docker environment variables | Scope list format |
-|---|---|---|---|
-| Consent | `consentEngineUrl`, `idpBaseUrl`, `idpClientId`, `idpScope`, `idpSignInRedirectUrl`, `idpSignOutRedirectUrl` | `CONSENT_ENGINE_URL`, `IDP_BASE_URL`, `IDP_CLIENT_ID`, `IDP_SCOPE`, `IDP_SIGN_IN_REDIRECT_URL`, `IDP_SIGN_OUT_REDIRECT_URL` | space-separated |
-| Admin | `VITE_API_URL`, `VITE_LOGS_URL`, `VITE_IDP_CLIENT_ID`, `VITE_IDP_BASE_URL`, `VITE_IDP_SCOPE`, `VITE_IDP_ADMIN_ROLE`, `VITE_SIGN_IN_REDIRECT_URL`, `VITE_SIGN_OUT_REDIRECT_URL` | the same names | comma-separated |
-| Member | `API_URL`, `LOGS_URL`, `CLIENT_ID`, `BASE_URL`, `SCOPE`, `SIGN_IN_REDIRECT_URL`, `SIGN_OUT_REDIRECT_URL` | each key with a `VITE_` prefix (`VITE_API_URL`, ...) | comma-separated |
+| App     | `window.configs` keys                                                                                                                                                          | Docker environment variables                                                                                                | Scope list format |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Consent | `consentEngineUrl`, `idpBaseUrl`, `idpClientId`, `idpScope`, `idpSignInRedirectUrl`, `idpSignOutRedirectUrl`                                                                   | `CONSENT_ENGINE_URL`, `IDP_BASE_URL`, `IDP_CLIENT_ID`, `IDP_SCOPE`, `IDP_SIGN_IN_REDIRECT_URL`, `IDP_SIGN_OUT_REDIRECT_URL` | space-separated   |
+| Admin   | `VITE_API_URL`, `VITE_LOGS_URL`, `VITE_IDP_CLIENT_ID`, `VITE_IDP_BASE_URL`, `VITE_IDP_SCOPE`, `VITE_IDP_ADMIN_ROLE`, `VITE_SIGN_IN_REDIRECT_URL`, `VITE_SIGN_OUT_REDIRECT_URL` | the same names                                                                                                              | comma-separated   |
+| Member  | `API_URL`, `LOGS_URL`, `CLIENT_ID`, `BASE_URL`, `SCOPE`, `SIGN_IN_REDIRECT_URL`, `SIGN_OUT_REDIRECT_URL`                                                                       | each key with a `VITE_` prefix (`VITE_API_URL`, ...)                                                                        | comma-separated   |
 
 To check that a config loaded, open the portal, then in the browser console inspect `window.configs`, and confirm `config.js` returns `200` in the Network tab.
 
@@ -59,13 +59,13 @@ To check that a config loaded, open the portal, then in the browser console insp
 
 ## Ports
 
-| Where | Port |
-|---|---|
-| Vite dev server, every app | 5173 by default |
-| Admin and member | `VITE_PORT` changes it |
-| Consent | `-- --port <n>` only: `pnpm --filter consent-portal run dev -- --port 5180` |
-| Docker image | nginx on 80 (`GET /health` answers) |
-| Compose `consent-portal` | host 5173 to container 80 |
+| Where                      | Port                                                                        |
+| -------------------------- | --------------------------------------------------------------------------- |
+| Vite dev server, every app | 5173 by default                                                             |
+| Admin and member           | `VITE_PORT` changes it                                                      |
+| Consent                    | `-- --port <n>` only: `pnpm --filter consent-portal run dev -- --port 5180` |
+| Docker image               | nginx on 80 (`GET /health` answers)                                         |
+| Compose `consent-portal`   | host 5173 to container 80                                                   |
 
 All apps default to the same port, so run one at a time or change the port and register the new origin (redirect URL and CORS) with the identity provider.
 

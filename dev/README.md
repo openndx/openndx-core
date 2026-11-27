@@ -18,7 +18,7 @@ who clones just `openndx` — no sibling checkout, no path coupling.
 ## What's included
 
 | Service           | Port | Protocol         | Role                                                                           |
-|-------------------|------|------------------|--------------------------------------------------------------------------------|
+| ----------------- | ---- | ---------------- | ------------------------------------------------------------------------------ |
 | `drp-api`         | 9090 | REST (internal)  | Raw mock Digital Registration Provider API                                     |
 | `drp-api-adapter` | 9091 | GraphQL          | Subgraph in front of `drp-api` — this is what `oe` calls as the `drp` provider |
 | `rgd-api`         | 8080 | GraphQL + OAuth2 | Mock Registrar General's Department API — the `rgd` provider                   |
@@ -131,7 +131,7 @@ It's an nginx-served static build; `config.js` is generated at container
 startup from env vars (`entrypoint.sh`), already wired to this stack's
 ThunderID/consent-engine.
 
-Open http://localhost:5173 (or `${CONSENT_PORTAL_PORT}` if you overrode it —
+Open <http://localhost:5173> (or `${CONSENT_PORTAL_PORT}` if you overrode it —
 see `.env.example`).
 
 Don't use `portals/setup-portals.sh` for local testing here — it's a separate

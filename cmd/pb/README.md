@@ -45,12 +45,12 @@ PB reads one YAML file: the `-config` flag, else `CONFIG_PATH`, else `config.yam
 
 A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that environment variable or file at startup, so secrets stay out of the file. Required keys:
 
-| Key | Notes |
-|---|---|
-| `idp.jwksURL`, `idp.issuer`, `idp.audience` | Validate incoming tokens. `audience` is PB's resource-server identifier. |
-| `idp.management.baseURL`, `.clientID`, `.clientSecret` | PB's own client for ThunderID's management API. |
-| `pdp.url` | Policy Decision Point. |
-| `database.postgres.host`, `.user`, `.password` | |
+| Key                                                    | Notes                                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `idp.jwksURL`, `idp.issuer`, `idp.audience`            | Validate incoming tokens. `audience` is PB's resource-server identifier. |
+| `idp.management.baseURL`, `.clientID`, `.clientSecret` | PB's own client for ThunderID's management API.                          |
+| `pdp.url`                                              | Policy Decision Point.                                                   |
+| `database.postgres.host`, `.user`, `.password`         |                                                                          |
 
 Every key, its default and the environment variable it replaces: [CONFIGURATION.md](CONFIGURATION.md).
 
@@ -58,15 +58,15 @@ Every key, its default and the environment variable it replaces: [CONFIGURATION.
 
 All routes are under `/api/v1` and need `Authorization: Bearer <token>`. Full schemas: [openapi.yaml](openapi.yaml). Success responses are the bare resource, lists are `{items, count}`, and errors are `{"error": "<message>"}`.
 
-| Resource | Endpoints | Scope |
-|---|---|---|
-| Members | `GET /members`, `GET /members/{memberId}`<br>`POST /members`<br>`PUT /members/{memberId}` | `member:read`<br>`member:write-all`<br>`member:write` |
-| Schemas | `GET /schemas`, `GET /schemas/{schemaId}`<br>`POST /schemas`, `PUT /schemas/{schemaId}` | `schema:read`<br>`schema:write` |
-| Schema field policies | `GET /schemas/{schemaId}/field-policies`<br>`PATCH`, `DELETE` on `.../field-policies/{id}`<br>`DELETE .../field-policies/{id}/allowlist/{applicationId}` | `schema:read`<br>`schema:write` |
-| Schema submissions | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}` | `schema-submission:read`<br>`schema-submission:write` |
-| Applications | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write` |
-| Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}` | `application-submission:read`<br>`application-submission:write` |
-| Consent bypass grants | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke` | `consent-bypass:read`<br>`consent-bypass:write` |
+| Resource                | Endpoints                                                                                                                                                           | Scope                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Members                 | `GET /members`, `GET /members/{memberId}`<br>`POST /members`<br>`PUT /members/{memberId}`                                                                           | `member:read`<br>`member:write-all`<br>`member:write`           |
+| Schemas                 | `GET /schemas`, `GET /schemas/{schemaId}`<br>`POST /schemas`, `PUT /schemas/{schemaId}`                                                                             | `schema:read`<br>`schema:write`                                 |
+| Schema field policies   | `GET /schemas/{schemaId}/field-policies`<br>`PATCH`, `DELETE` on `.../field-policies/{id}`<br>`DELETE .../field-policies/{id}/allowlist/{applicationId}`            | `schema:read`<br>`schema:write`                                 |
+| Schema submissions      | `GET /schema-submissions`, `GET .../{submissionId}`<br>`POST /schema-submissions`, `PUT .../{submissionId}`                                                         | `schema-submission:read`<br>`schema-submission:write`           |
+| Applications            | `GET /applications`, `GET /applications/{applicationId}`<br>`POST /applications`, `PUT /applications/{applicationId}`<br>`PUT /applications/{applicationId}/policy` | `application:read`<br>`application:write`                       |
+| Application submissions | `GET /application-submissions`, `GET .../{submissionId}`<br>`POST /application-submissions`, `PUT .../{submissionId}`                                               | `application-submission:read`<br>`application-submission:write` |
+| Consent bypass grants   | `GET /consent-bypass-grants`<br>`POST /applications/{applicationId}/consent-bypass-grants`, `POST /consent-bypass-grants/{grantId}/revoke`                          | `consent-bypass:read`<br>`consent-bypass:write`                 |
 
 Outside `/api/v1`, with no authentication: `GET /health` (liveness only, it does not check the database). The authorization model, including the `-all` scopes and what each ThunderID role may do, is in [AUTHORIZATION.md](AUTHORIZATION.md).
 

@@ -52,14 +52,14 @@ To use another port: `pnpm --filter consent-portal run dev -- --port 5180`, and 
 
 The portal reads `window.configs`, filled in at **runtime** from `config.js` (loaded by `index.html`), so one build serves any environment. In Docker the container writes `config.js` at startup from environment variables.
 
-| `window.configs` key | Docker environment variable | Meaning |
-|---|---|---|
-| `consentEngineUrl` | `CONSENT_ENGINE_URL` | Consent Engine API base **including** `/api/v1`, for example `http://localhost:8081/api/v1`. Called from the browser, so it must be reachable from the user's machine. |
-| `idpBaseUrl` | `IDP_BASE_URL` | OIDC issuer URL. Endpoints come from `<idpBaseUrl>/.well-known/openid-configuration`. |
-| `idpClientId` | `IDP_CLIENT_ID` | OAuth2 public client ID. |
-| `idpScope` | `IDP_SCOPE` | Scopes to request. Default `openid profile email`. |
-| `idpSignInRedirectUrl` | `IDP_SIGN_IN_REDIRECT_URL` | Where the identity provider returns after login. |
-| `idpSignOutRedirectUrl` | `IDP_SIGN_OUT_REDIRECT_URL` | Where it returns after logout. |
+| `window.configs` key    | Docker environment variable | Meaning                                                                                                                                                                |
+| ----------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consentEngineUrl`      | `CONSENT_ENGINE_URL`        | Consent Engine API base **including** `/api/v1`, for example `http://localhost:8081/api/v1`. Called from the browser, so it must be reachable from the user's machine. |
+| `idpBaseUrl`            | `IDP_BASE_URL`              | OIDC issuer URL. Endpoints come from `<idpBaseUrl>/.well-known/openid-configuration`.                                                                                  |
+| `idpClientId`           | `IDP_CLIENT_ID`             | OAuth2 public client ID.                                                                                                                                               |
+| `idpScope`              | `IDP_SCOPE`                 | Scopes to request. Default `openid profile email`.                                                                                                                     |
+| `idpSignInRedirectUrl`  | `IDP_SIGN_IN_REDIRECT_URL`  | Where the identity provider returns after login.                                                                                                                       |
+| `idpSignOutRedirectUrl` | `IDP_SIGN_OUT_REDIRECT_URL` | Where it returns after logout.                                                                                                                                         |
 
 All but `idpScope` are required; the app stops with an error naming the missing keys. Compose values (all pointing at `localhost`, because the browser fetches them) are in [compose.yml](../../../compose.yml).
 
@@ -67,10 +67,10 @@ All but `idpScope` are required; the app stops with an error naming the missing 
 
 Every call sends `Authorization: Bearer <access token>` to the Consent Engine:
 
-| Call | Used for |
-|---|---|
-| `GET /consents?limit=&offset=[&status=pending]` | The list, with Pending and All tabs |
-| `GET /consents/{consentId}` | The detail and decision page |
+| Call                                                                             | Used for                                   |
+| -------------------------------------------------------------------------------- | ------------------------------------------ |
+| `GET /consents?limit=&offset=[&status=pending]`                                  | The list, with Pending and All tabs        |
+| `GET /consents/{consentId}`                                                      | The detail and decision page               |
 | `PUT /consents/{consentId}` with `{"action": "approve" \| "reject" \| "revoke"}` | Deciding, and revoking an approved consent |
 
 A `401` shows a "session expired, sign in again" message, a `403` goes to an unauthorized page, and a `409` means the consent can no longer be changed. Routes: `/`, `/consents`, `/consents/:consentId`, `/login`, `/success`, `/error`, `/unauthorized`.

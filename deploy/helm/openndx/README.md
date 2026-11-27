@@ -6,13 +6,13 @@ A single Helm chart for deploying the maintained OpenNDX services on Kubernetes.
 
 All components are configured from [`values.yaml`](./values.yaml):
 
-| Component | Key | Default | Description |
-|---|---|---|---|
-| **Orchestration Engine** | `orchestrationEngine` | *Always deployed* | Core GraphQL federation engine (`POST /public/graphql`) |
-| **Policy Decision Point** | `policyDecisionPoint.enabled` | `true` | Field-level access decisions from field policies and access grants (`internal/pdp`) |
-| **Consent Engine** | `consentEngine.enabled` | `true` | Data-owner consent lifecycle service (`internal/ce`) |
-| **Consent Portal** | `consentPortal.enabled` | `true` | Citizen-facing React UI for approving/rejecting consents |
-| **Portal Backend** | `portalBackend.enabled` | `true` | Management API for members, schemas, applications, and submissions (`internal/pb`) |
+| Component                 | Key                           | Default           | Description                                                                         |
+| ------------------------- | ----------------------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| **Orchestration Engine**  | `orchestrationEngine`         | _Always deployed_ | Core GraphQL federation engine (`POST /public/graphql`)                             |
+| **Policy Decision Point** | `policyDecisionPoint.enabled` | `true`            | Field-level access decisions from field policies and access grants (`internal/pdp`) |
+| **Consent Engine**        | `consentEngine.enabled`       | `true`            | Data-owner consent lifecycle service (`internal/ce`)                                |
+| **Consent Portal**        | `consentPortal.enabled`       | `true`            | Citizen-facing React UI for approving/rejecting consents                            |
+| **Portal Backend**        | `portalBackend.enabled`       | `true`            | Management API for members, schemas, applications, and submissions (`internal/pb`)  |
 
 > **Embedded identity provider:** OpenNDX requires ThunderID as its embedded IdP. It signs the tokens every service validates, and Portal Backend provisions application clients through its management API, so a generic OIDC provider is not a substitute. Install it from ThunderID's published chart before this one (see [Embedded identity provider (ThunderID)](#embedded-identity-provider-thunderid)).
 >
@@ -84,12 +84,12 @@ The chart creates no Secret and assumes nothing about how yours are laid out. Ea
 
 The defaults read from one Secret named `openndx-secrets`. An override file merges into them by name, so it only needs the entries it changes; set an entry to `null` to drop it.
 
-| Env var | Secret key | Set for | Purpose |
-|---|---|---|---|
-| `DB_USER` | `dbUser` | PDP, Consent Engine, Portal Backend | PostgreSQL user |
-| `DB_PASSWORD` | `dbPassword` | PDP, Consent Engine, Portal Backend | PostgreSQL password |
-| `PORTAL_BACKEND_CLIENT_SECRET` | `pbClientSecret` | Portal Backend, ThunderID setup job | Client secret of `config.idp.management.clientID`; ThunderID seeds the client with it |
-| `DATA_CONSUMER_CLIENT_SECRET` | `dataConsumerClientSecret` | ThunderID setup job | Secret of the local-dev `DATA_CONSUMER` client; drop it with that client from `application.yaml` |
+| Env var                        | Secret key                 | Set for                             | Purpose                                                                                          |
+| ------------------------------ | -------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `DB_USER`                      | `dbUser`                   | PDP, Consent Engine, Portal Backend | PostgreSQL user                                                                                  |
+| `DB_PASSWORD`                  | `dbPassword`               | PDP, Consent Engine, Portal Backend | PostgreSQL password                                                                              |
+| `PORTAL_BACKEND_CLIENT_SECRET` | `pbClientSecret`           | Portal Backend, ThunderID setup job | Client secret of `config.idp.management.clientID`; ThunderID seeds the client with it            |
+| `DATA_CONSUMER_CLIENT_SECRET`  | `dataConsumerClientSecret` | ThunderID setup job                 | Secret of the local-dev `DATA_CONSUMER` client; drop it with that client from `application.yaml` |
 
 Read the credentials from files rather than passing them on the command line, where they end up in shell history. Each file's bytes become the value exactly, so write it without a trailing newline (`read -rs` prompts without echoing; `printf '%s'` adds no newline), and delete the files once the Secret exists:
 
@@ -130,25 +130,25 @@ The records carry `category=audit`, so the backend can route them to their own s
 
 The chart ships no URLs for the deployment's public addresses or for anything it doesn't deploy, so the defaults alone don't install. Until the values below are set, `helm install` (and `helm template`) fails and lists every one that is missing. Only the enabled services' values are checked.
 
-| Value | What it is |
-|---|---|
-| `global.idpPublicURL` | ThunderID's public URL (its `configuration.server.publicUrl`). Fills in every service's `config.idp.issuer` and the Consent Portal's `idpBaseURL`. |
-| `orchestrationEngine.configFiles."schema.graphql"` | The consumer GraphQL schema. Pass it with `--set-file`. |
-| `portalBackend.config.cors.allowedOrigins` | The browser origins allowed to call Portal Backend, which refuses to start without one. |
-| `consentEngine.config.consentPortalURL` | The Consent Portal's URL, used in consent links. Derived from the Consent Portal's ingress. |
-| `consentPortal.config.consentEngineURL` | The Consent Engine's public API (`.../api/v1`), called from the browser. Derived from the Consent Engine's ingress. |
-| `consentPortal.config.idpSignInRedirectURL`, `idpSignOutRedirectURL` | Where ThunderID returns after sign-in and sign-out. Derived from the Consent Portal's ingress. |
-| `networkPolicy.ingressFrom` | Where the ingress controller's pods run. Required while any ingress is enabled (see [Network policies](#network-policies)). |
+| Value                                                                | What it is                                                                                                                                         |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `global.idpPublicURL`                                                | ThunderID's public URL (its `configuration.server.publicUrl`). Fills in every service's `config.idp.issuer` and the Consent Portal's `idpBaseURL`. |
+| `orchestrationEngine.configFiles."schema.graphql"`                   | The consumer GraphQL schema. Pass it with `--set-file`.                                                                                            |
+| `portalBackend.config.cors.allowedOrigins`                           | The browser origins allowed to call Portal Backend, which refuses to start without one.                                                            |
+| `consentEngine.config.consentPortalURL`                              | The Consent Portal's URL, used in consent links. Derived from the Consent Portal's ingress.                                                        |
+| `consentPortal.config.consentEngineURL`                              | The Consent Engine's public API (`.../api/v1`), called from the browser. Derived from the Consent Engine's ingress.                                |
+| `consentPortal.config.idpSignInRedirectURL`, `idpSignOutRedirectURL` | Where ThunderID returns after sign-in and sign-out. Derived from the Consent Portal's ingress.                                                     |
+| `networkPolicy.ingressFrom`                                          | Where the ingress controller's pods run. Required while any ingress is enabled (see [Network policies](#network-policies)).                        |
 
 A derived URL is the first host of that service's ingress, with `https` when the host is listed under the ingress's `tls`, and `http` otherwise. It is only derived when that service is enabled and its ingress is turned on; otherwise, set the value itself. A value you set always wins.
 
 The URLs one service uses to call another are left out of `values.yaml`, and the chart fills each in with the release's own Service while that service is enabled, whatever the release is named:
 
-| Value | Filled in with | When its service is disabled |
-|---|---|---|
-| `orchestrationEngine.config.pdp.url` | `http://<fullname>-pdp:8082` | Set it to an external PDP, or to `""` to switch off authorization and consent. |
+| Value                                          | Filled in with                              | When its service is disabled                                                                         |
+| ---------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `orchestrationEngine.config.pdp.url`           | `http://<fullname>-pdp:8082`                | Set it to an external PDP, or to `""` to switch off authorization and consent.                       |
 | `orchestrationEngine.config.consentEngine.url` | `http://<fullname>-ce:8081/internal/api/v1` | Set it to an external Consent Engine. Not needed while the Orchestration Engine's `pdp.url` is `""`. |
-| `portalBackend.config.pdp.url` | `http://<fullname>-pdp:8082` | Set it to an external PDP. The Portal Backend requires one, so `""` fails too. |
+| `portalBackend.config.pdp.url`                 | `http://<fullname>-pdp:8082`                | Set it to an external PDP. The Portal Backend requires one, so `""` fails too.                       |
 
 `<fullname>` is the prefix of every resource the chart creates: `fullnameOverride` when set, otherwise `<release>-openndx`, or just the release name when it already contains `openndx`. The port is the service's `service.port`. A value you set, `""` included, is used as-is. Left out with its service disabled, the install fails rather than calling a Service that doesn't exist, so switching off authorization is always an explicit `pdp.url: ""`.
 
@@ -208,10 +208,10 @@ portalBackend:
 
 The PDP's API (including `POST /api/v1/policy/grants`) and the Consent Engine's `/internal/api/v1` have no authentication. They rely on the network, so the chart ships a NetworkPolicy for each service, on by default (`networkPolicy.enabled`). Each one limits inbound traffic to the service's port:
 
-| Service | Accepts traffic from |
-|---|---|
-| Policy Decision Point | The Orchestration Engine and Portal Backend |
-| Consent Engine | The Orchestration Engine, plus `networkPolicy.ingressFrom` while its ingress is enabled |
+| Service                                              | Accepts traffic from                                                                                       |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Policy Decision Point                                | The Orchestration Engine and Portal Backend                                                                |
+| Consent Engine                                       | The Orchestration Engine, plus `networkPolicy.ingressFrom` while its ingress is enabled                    |
 | Orchestration Engine, Portal Backend, Consent Portal | `networkPolicy.ingressFrom` while its ingress is enabled; anyone when it has no ingress and no `extraFrom` |
 
 Each service also accepts the peers in its own `<service>.networkPolicy.extraFrom`.

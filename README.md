@@ -52,20 +52,20 @@ flowchart LR
 
 The Policy Decision Point, Consent Engine and Portal Backend each keep their own PostgreSQL database; the Orchestration Engine has none. Detail for every component is in its README, linked below.
 
-| Component | Role | Port | Docs |
-|---|---|---|---|
-| Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
-| Policy Decision Point (PDP) | Field policies, access grants, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
-| Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
-| Portal Backend (PB) | Management API for members, schemas, applications | 8083 | [cmd/pb](cmd/pb/README.md) |
-| `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
-| Consent Portal | Citizen app to approve or revoke consent | 5173 | [portals/apps/consent](portals/apps/consent/README.md) |
-| Admin Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/admin](portals/apps/admin/README.md) |
-| Member Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/member](portals/apps/member/README.md) |
-| ThunderID | Identity provider bundled for local use | 8090 | [thunderid/](thunderid) |
-| OpenObserve | Optional local receiver for the OE's and PB's audit records, started by `make up OTEL=1` or `make deps OTEL=1` | 5080 | [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) |
-| PostgreSQL | Databases for the services above | 5432 | [init-db.sql](init-db.sql) |
-| Mock providers | Sample data providers for local use | 9090, 9091, 8080 | [dev/](dev/README.md) |
+| Component                   | Role                                                                                                           | Port             | Docs                                                           |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| Orchestration Engine (OE)   | Federated GraphQL gateway for data requests                                                                    | 4000             | [cmd/oe](cmd/oe/README.md)                                     |
+| Policy Decision Point (PDP) | Field policies, access grants, access decisions                                                                | 8082             | [cmd/pdp](cmd/pdp/README.md)                                   |
+| Consent Engine (CE)         | Consent lifecycle: request, approve, reject, expire, revoke                                                    | 8081             | [cmd/ce](cmd/ce/README.md)                                     |
+| Portal Backend (PB)         | Management API for members, schemas, applications                                                              | 8083             | [cmd/pb](cmd/pb/README.md)                                     |
+| `ondx` CLI                  | Operator command line for the Portal Backend                                                                   | n/a              | [cmd/ondx](cmd/ondx/README.md)                                 |
+| Consent Portal              | Citizen app to approve or revoke consent                                                                       | 5173             | [portals/apps/consent](portals/apps/consent/README.md)         |
+| Admin Portal                | Unsupported prototype; development paused; excluded from release images                                        | n/a              | [portals/apps/admin](portals/apps/admin/README.md)             |
+| Member Portal               | Unsupported prototype; development paused; excluded from release images                                        | n/a              | [portals/apps/member](portals/apps/member/README.md)           |
+| ThunderID                   | Identity provider bundled for local use                                                                        | 8090             | [thunderid/](thunderid)                                        |
+| OpenObserve                 | Optional local receiver for the OE's and PB's audit records, started by `make up OTEL=1` or `make deps OTEL=1` | 5080             | [Viewing audit records](CONTRIBUTING.md#viewing-audit-records) |
+| PostgreSQL                  | Databases for the services above                                                                               | 5432             | [init-db.sql](init-db.sql)                                     |
+| Mock providers              | Sample data providers for local use                                                                            | 9090, 9091, 8080 | [dev/](dev/README.md)                                          |
 
 Ports are the Docker Compose defaults. ThunderID's and the mock providers' ports are fixed; the others can be changed in `.env`, and [.env.example](.env.example) lists every variable that `compose.yml` reads.
 
@@ -100,13 +100,13 @@ The [Helm chart](deploy/helm/openndx/README.md) installs the four services and t
 
 ## Dependencies
 
-| Dependency | Used for | License |
-|---|---|---|
-| [PostgreSQL](https://www.postgresql.org/) | The databases of the Policy Decision Point, Consent Engine and Portal Backend | PostgreSQL License |
-| [ThunderID](https://github.com/thunder-id/thunderid) | Identity provider. It issues the tokens that the Orchestration Engine, Consent Engine and Portal Backend check, and the Portal Backend creates application clients in it. | Apache-2.0 |
-| [OpenNSW/core](https://github.com/OpenNSW/core) | Shared Go libraries, for example for configuration, databases and CORS | Apache-2.0 |
-| [OpenTelemetry](https://opentelemetry.io/) | Exporting the Orchestration Engine's and Portal Backend's audit records over OTLP, through `OpenNSW/core/telemetry` | Apache-2.0 |
-| [OpenObserve](https://github.com/openobserve/openobserve) (optional, local only) | Receives audit records and other telemetry under `make up OTEL=1` or `make deps OTEL=1` | AGPL-3.0 |
+| Dependency                                                                       | Used for                                                                                                                                                                  | License            |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| [PostgreSQL](https://www.postgresql.org/)                                        | The databases of the Policy Decision Point, Consent Engine and Portal Backend                                                                                             | PostgreSQL License |
+| [ThunderID](https://github.com/thunder-id/thunderid)                             | Identity provider. It issues the tokens that the Orchestration Engine, Consent Engine and Portal Backend check, and the Portal Backend creates application clients in it. | Apache-2.0         |
+| [OpenNSW/core](https://github.com/OpenNSW/core)                                  | Shared Go libraries, for example for configuration, databases and CORS                                                                                                    | Apache-2.0         |
+| [OpenTelemetry](https://opentelemetry.io/)                                       | Exporting the Orchestration Engine's and Portal Backend's audit records over OTLP, through `OpenNSW/core/telemetry`                                                       | Apache-2.0         |
+| [OpenObserve](https://github.com/openobserve/openobserve) (optional, local only) | Receives audit records and other telemetry under `make up OTEL=1` or `make deps OTEL=1`                                                                                   | AGPL-3.0           |
 
 The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/consent/package.json](portals/apps/consent/package.json).
 

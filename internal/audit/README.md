@@ -8,12 +8,12 @@ The audit records of the Orchestration Engine (OE) and the Portal Backend (PB): 
 
 Every consumer query produces these records, and the records of one query share a `traceID`:
 
-| Event | Written | Actor (`actorType`, `actorID`) | Target (`targetType`, `targetID`) | Metadata |
-|---|---|---|---|---|
-| `DATA_REQUEST` | When the query arrives, before it is parsed | `APPLICATION`, the token's `client_id` | `SERVICE`, `SERVICE` | The application ID |
-| `POLICY_CHECK` | After the Policy Decision Point's decision | `audit.actorType`, `audit.actorId` (default `SERVICE`, `orchestration-engine`) | `SERVICE`, `policy-decision-point` | The application ID and the fields asked for; the decision, with each field's outcome and obligations, such as `audit.consent_bypassed` |
-| `CONSENT_CHECK` | After the Consent Engine call, when consent is required | The same | `SERVICE`, `consent-engine` | The application ID, the owner ID (the value of the query argument named by `consentEngine.ownerIdArgName`) and the number of fields; the consent's ID, status and portal URL |
-| `PROVIDER_FETCH` | After each provider sub-query | The same | `SERVICE`, the provider's schema ID | The application ID, schema ID and fields asked for; whether the provider returned errors, how many, the first three as the provider returned them, and the top-level keys of its `data` |
+| Event            | Written                                                 | Actor (`actorType`, `actorID`)                                                 | Target (`targetType`, `targetID`)   | Metadata                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATA_REQUEST`   | When the query arrives, before it is parsed             | `APPLICATION`, the token's `client_id`                                         | `SERVICE`, `SERVICE`                | The application ID                                                                                                                                                                      |
+| `POLICY_CHECK`   | After the Policy Decision Point's decision              | `audit.actorType`, `audit.actorId` (default `SERVICE`, `orchestration-engine`) | `SERVICE`, `policy-decision-point`  | The application ID and the fields asked for; the decision, with each field's outcome and obligations, such as `audit.consent_bypassed`                                                  |
+| `CONSENT_CHECK`  | After the Consent Engine call, when consent is required | The same                                                                       | `SERVICE`, `consent-engine`         | The application ID, the owner ID (the value of the query argument named by `consentEngine.ownerIdArgName`) and the number of fields; the consent's ID, status and portal URL            |
+| `PROVIDER_FETCH` | After each provider sub-query                           | The same                                                                       | `SERVICE`, the provider's schema ID | The application ID, schema ID and fields asked for; whether the provider returned errors, how many, the first three as the provider returned them, and the top-level keys of its `data` |
 
 A record's `status` is `FAILURE` when the call fails, in which case the metadata holds the error message. It is also `FAILURE` when the application isn't allowed a field or its access has expired (`POLICY_CHECK`), and when the provider returns GraphQL errors (`PROVIDER_FETCH`). Otherwise it is `SUCCESS`.
 
@@ -34,17 +34,17 @@ A request rejected before the service call leaves no record, for example one wit
 
 Each record has the message `audit` and these attributes:
 
-| Attribute | Present | Value |
-|---|---|---|
-| `category` | Always | `audit` |
-| `eventType` | Always | `DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH` or `MANAGEMENT_EVENT` |
-| `action` | PB only | `CREATE`, `UPDATE` or `DELETE` |
-| `status` | Always | `SUCCESS` or `FAILURE` |
-| `actorType`, `actorID` | Always | See above |
-| `targetType` | Always | `SERVICE` (OE) or `RESOURCE` (PB) |
-| `targetID` | When known | See above |
-| `traceID` | OE only | Shared by the records of one query |
-| `metadata` | When set | See above |
+| Attribute              | Present    | Value                                                                                   |
+| ---------------------- | ---------- | --------------------------------------------------------------------------------------- |
+| `category`             | Always     | `audit`                                                                                 |
+| `eventType`            | Always     | `DATA_REQUEST`, `POLICY_CHECK`, `CONSENT_CHECK`, `PROVIDER_FETCH` or `MANAGEMENT_EVENT` |
+| `action`               | PB only    | `CREATE`, `UPDATE` or `DELETE`                                                          |
+| `status`               | Always     | `SUCCESS` or `FAILURE`                                                                  |
+| `actorType`, `actorID` | Always     | See above                                                                               |
+| `targetType`           | Always     | `SERVICE` (OE) or `RESOURCE` (PB)                                                       |
+| `targetID`             | When known | See above                                                                               |
+| `traceID`              | OE only    | Shared by the records of one query                                                      |
+| `metadata`             | When set   | See above                                                                               |
 
 The attribute names are those of the `LogSink` in [`OpenNSW/core/platform/audit`](https://github.com/OpenNSW/core/tree/main/platform/audit), so a query on `category='audit'` finds the audit records of OpenNDX and the NSW alike. The NSW's records differ in two ways: they always carry `action`, and they can carry a `message`.
 
