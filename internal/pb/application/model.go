@@ -24,8 +24,8 @@ type Application struct {
 	SelectedFields         SelectedFieldRecords `gorm:"column:selected_fields;type:jsonb;not null" json:"selectedFields"`
 	MemberID               string               `gorm:"column:member_id;not null" json:"memberId"`
 	Version                string               `gorm:"column:version;not null" json:"version"`
-	IdpApplicationID       *string              `gorm:"column:idp_application_id" json:"idpApplicationId,omitempty"` // Until the data migration is done this can be nullable
-	IdpClientID            *string              `gorm:"column:idp_client_id" json:"idpClientId,omitempty"`           // Until the data migration is done this can be nullable
+	IdpApplicationID       *string              `gorm:"column:idp_application_id" json:"idpApplicationId,omitempty"`
+	IdpClientID            *string              `gorm:"column:idp_client_id" json:"idpClientId,omitempty"`
 	kernel.BaseModel
 
 	// Relationships

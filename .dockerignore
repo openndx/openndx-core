@@ -1,5 +1,5 @@
 # Only Go source + go.mod/go.sum are needed to build a service binary.
-# The build context is now the repo root, so exclude everything that isn't
+# The build context is the repo root, so exclude everything that isn't
 # Go source to keep it small and cache-stable.
 
 # Frontend apps & their dependency trees — not needed to build a Go binary
@@ -19,8 +19,7 @@ docs/
 cmd/oe/PROVIDER_CONFIGURATION.md
 
 # Orchestration Engine: config provided at runtime via mount/env, never baked
-# into the image (was covered by cmd/oe/.dockerignore before the build context
-# moved to the repo root)
+# into the image.
 cmd/oe/config.yaml
 cmd/oe/config.example.yaml
 cmd/oe/config.docker.yaml

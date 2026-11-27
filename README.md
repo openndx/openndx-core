@@ -57,7 +57,7 @@ The Policy Decision Point, Consent Engine and Portal Backend each keep their own
 | Orchestration Engine (OE) | Federated GraphQL gateway for data requests | 4000 | [cmd/oe](cmd/oe/README.md) |
 | Policy Decision Point (PDP) | Field policies, access grants, access decisions | 8082 | [cmd/pdp](cmd/pdp/README.md) |
 | Consent Engine (CE) | Consent lifecycle: request, approve, reject, expire, revoke | 8081 | [cmd/ce](cmd/ce/README.md) |
-| Portal Backend (PB) | Management API for members, schemas, applications (to be renamed Management Server) | 8083 | [cmd/pb](cmd/pb/README.md) |
+| Portal Backend (PB) | Management API for members, schemas, applications | 8083 | [cmd/pb](cmd/pb/README.md) |
 | `ondx` CLI | Operator command line for the Portal Backend | n/a | [cmd/ondx](cmd/ondx/README.md) |
 | Consent Portal | Citizen app to approve or revoke consent | 5173 | [portals/apps/consent](portals/apps/consent/README.md) |
 | Admin Portal | Unsupported prototype; development paused; excluded from release images | n/a | [portals/apps/admin](portals/apps/admin/README.md) |

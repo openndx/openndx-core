@@ -94,7 +94,6 @@ func IsExactRoute(route string) bool {
 }
 
 // Handler returns the metrics HTTP handler
-// This now uses OpenTelemetry under the hood, but maintains backward compatibility
 // For Prometheus exporter, this returns the Prometheus metrics endpoint
 // For OTLP exporter, this returns a simple status endpoint
 func Handler() http.Handler {
@@ -103,7 +102,6 @@ func Handler() http.Handler {
 }
 
 // HTTPMetricsMiddleware wraps an HTTP handler to record metrics
-// This now uses OpenTelemetry under the hood, but maintains backward compatibility
 func HTTPMetricsMiddleware(next http.Handler) http.Handler {
 	ensureInitialized()
 	return otelHTTPMetricsMiddleware(next)
@@ -290,14 +288,12 @@ func isCommonPathWord(word string) bool {
 }
 
 // RecordExternalCall records an external service call
-// This now uses OpenTelemetry under the hood, but maintains backward compatibility
 func RecordExternalCall(target, operation string, duration time.Duration, err error) {
 	ensureInitialized()
 	otelRecordExternalCall(target, operation, duration, err)
 }
 
 // RecordBusinessEvent records a business event
-// This now uses OpenTelemetry under the hood, but maintains backward compatibility
 func RecordBusinessEvent(action, outcome string) {
 	ensureInitialized()
 	otelRecordBusinessEvent(action, outcome)

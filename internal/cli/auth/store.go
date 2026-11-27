@@ -34,11 +34,11 @@ func (t *Token) Expired() bool {
 }
 
 // DefaultCredentialsPath returns the default location for cached CLI
-// credentials for the given profile name. Each non-default profile gets its
-// own file - they're logins against different identity providers/clients,
-// so caching them together would let switching profiles silently pick up
-// the wrong token. The default profile keeps the original, un-suffixed path
-// for backward compatibility with credentials cached before profiles existed.
+// credentials for the given profile name: ~/.openndx/credentials.json for no
+// profile or the local profile, and credentials-<profile>.json beside it for
+// any other. Each profile logs in against its own identity provider or client,
+// so a shared file would let switching profiles silently pick up the wrong
+// token.
 func DefaultCredentialsPath(profileName string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

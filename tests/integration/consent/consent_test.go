@@ -420,16 +420,14 @@ func TestConsent_DatabaseVerification(t *testing.T) {
 	})
 }
 
-// TestConsent_GetByOwnerEmailNoLongerSupported verifies that lookups by the
-// removed ownerEmail query parameter are rejected: a user is identified only by
-// the canonical ownerId (UID), so ownerEmail alone no longer satisfies the
-// required owner identifier.
-func TestConsent_GetByOwnerEmailNoLongerSupported(t *testing.T) {
+// TestConsent_GetByOwnerEmailRejected verifies that a lookup with ownerEmail
+// but no ownerId returns 400: the lookup identifies the owner only by ownerId,
+// and ignores ownerEmail.
+func TestConsent_GetByOwnerEmailRejected(t *testing.T) {
 	appID := "test-app-email-1"
 	ownerEmail := "test-owner-email-1@example.com"
 
-	// The ownerEmail parameter is no longer recognized; without ownerId the
-	// request is missing its required owner identifier and must return 400.
+	// Without ownerId the request has no owner identifier, so it must return 400.
 	resp, err := http.Get(consentBaseURL + "/internal/api/v1/consents?ownerEmail=" + url.QueryEscape(ownerEmail) + "&appId=" + appID)
 	require.NoError(t, err)
 	defer resp.Body.Close()
