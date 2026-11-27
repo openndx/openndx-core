@@ -510,12 +510,12 @@ func TestRegisterRoutes_DeduplicatesTemplates(t *testing.T) {
 
 func TestParseOTLPEndpointHost(t *testing.T) {
 	tests := []struct {
-		name        string
-		endpoint    string
-		insecure    bool
-		wantHost    string
-		wantInsec   bool
-		wantErrSub  string
+		name       string
+		endpoint   string
+		insecure   bool
+		wantHost   string
+		wantInsec  bool
+		wantErrSub string
 	}{
 		{
 			name:      "https endpoint",
@@ -526,9 +526,9 @@ func TestParseOTLPEndpointHost(t *testing.T) {
 		{
 			name:      "http with insecure",
 			endpoint:  "http://otel-collector:4318",
-			insecure:   true,
+			insecure:  true,
 			wantHost:  "otel-collector:4318",
-			wantInsec:  true,
+			wantInsec: true,
 		},
 		{
 			name:       "scheme-less rejected",
