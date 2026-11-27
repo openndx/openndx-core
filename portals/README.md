@@ -12,7 +12,7 @@ The OpenNDX web apps, kept in one pnpm workspace. This page covers what they sha
 
 All three are React 19, TypeScript, Vite and Tailwind apps served in Docker by nginx. The consent portal is actively maintained. Admin and member remain in this workspace as unsupported prototypes, with no committed fixes, dependency updates, or compatibility guarantees. Each README describes the historical code and its integration gaps. Manage the platform through the [`ondx` CLI](../cmd/ondx/README.md) or [Portal Backend API](../cmd/pb/README.md).
 
-```
+```text
 portals/
 ├── apps/
 │   ├── admin/
