@@ -94,9 +94,12 @@ All from `portals/`:
 ```bash
 pnpm --filter consent-portal run build     # type-check and production build
 pnpm --filter consent-portal run lint
+pnpm --filter consent-portal run test
 ```
 
-There is no test script. To run the portal against the other services, see [running the platform](../../../CONTRIBUTING.md#running-the-platform). Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
+Vitest and React Testing Library cover `ConsentDetailPage`: approve and deny, revoke confirmation, a 409 reload, and inactive statuses. CI runs `pnpm --filter consent-portal run test` in `.github/workflows/consent-portal-validate.yml`.
+
+To run the portal against the other services, see [running the platform](../../../CONTRIBUTING.md#running-the-platform). Docker builds must use `portals/` as the build context (`docker build -f portals/apps/consent/Dockerfile portals`), as Compose does.
 
 Source is in [`src`](src): `pages` (routes), `contexts/ConsentContext.tsx` (consent state and decisions), `components`, `types`.
 
