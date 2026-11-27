@@ -64,7 +64,7 @@ The first four keys are required.
 
 A mapped argument is sent with every provider field under its `targetArgPath` that is selected below the consumer field carrying the argument. When aliases give the same mapped argument different values, the OE sends a separate provider query for each value.
 
-The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https://graphql.github.io/graphql-over-http/draft/) `variables` member, not written into the query text. The value is the consumer's, after variable defaults and schema defaults are applied, and it may be a list or an input object. For example, with the mapping above, the DRP provider receives:
+The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https://http-spec.graphql.org/draft/) `variables` member, not written into the query text. The value is the consumer's, after variable defaults and schema defaults are applied, and it may be a list or an input object. For example, with the mapping above, the DRP provider receives:
 
 ```json
 {

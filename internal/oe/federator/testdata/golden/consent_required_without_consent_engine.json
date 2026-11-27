@@ -16,11 +16,11 @@
       "requiredFields": [
         {
           "fieldName": "vehicle.getVehicleByRegNo.make",
-          "schemaId": "dmt-v1"
+          "schemaId": "vehicle-registry-v1"
         },
         {
           "fieldName": "vehicle.getVehicleByRegNo.ownerName",
-          "schemaId": "dmt-v1"
+          "schemaId": "vehicle-registry-v1"
         }
       ]
     }

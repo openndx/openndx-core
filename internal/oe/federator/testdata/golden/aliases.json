@@ -2,13 +2,13 @@
   "response": {
     "data": {
       "a": {
-        "name": "Nimal Perera"
+        "name": "Suresh Fernando"
       },
       "b": {
         "birth": {
           "day": "1990-01-01"
         },
-        "home": "12 Galle Road, Colombo"
+        "home": "105 Main Street, Central City"
       }
     }
   },
@@ -17,35 +17,35 @@
       "applicationId": "app-golden",
       "requiredFields": [
         {
+          "fieldName": "getPersonInfo.birthDate",
+          "schemaId": "civil-registry-v1"
+        },
+        {
           "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         },
         {
           "fieldName": "person.permanentAddress",
-          "schemaId": "drp-v1"
-        },
-        {
-          "fieldName": "getPersonInfo.birthDate",
-          "schemaId": "rgd-v1"
+          "schemaId": "identity-registry-v1"
         }
       ]
     }
   ],
   "consentRequests": [],
   "providerRequests": {
-    "drp-v1": [
+    "civil-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
+        "query": "query Querycivil_registry_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthDate } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ],
-    "rgd-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Queryrgd_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthDate } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ]
@@ -73,7 +73,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "civil-registry-v1"
     },
     {
       "eventType": "PROVIDER_FETCH",
@@ -81,7 +81,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "rgd-v1"
+      "targetId": "identity-registry-v1"
     }
   ]
 }

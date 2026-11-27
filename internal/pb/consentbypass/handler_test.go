@@ -186,7 +186,7 @@ func (e *bypassTestEnv) serve(method, path, body string, user callertest.TestUse
 
 func (e *bypassTestEnv) grant(user callertest.TestUser) *httptest.ResponseRecorder {
 	return e.serve(http.MethodPost, "/api/v1/applications/"+e.applicationID+"/consent-bypass-grants",
-		`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"Police Act s.12","grantDuration":"30d"}`, user)
+		`{"fields":[{"schemaId":"identity-registry","fieldName":"person.nic"}],"legalBasis":"Police Act s.12","grantDuration":"30d"}`, user)
 }
 
 func TestConsentBypassEndpoints_GrantListRevoke(t *testing.T) {
@@ -277,7 +277,7 @@ func TestConsentBypassEndpoints_Errors(t *testing.T) {
 	}{
 		"unknown application": {
 			"/api/v1/applications/app-missing/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x","grantDuration":"30d"}`, http.StatusNotFound,
+			`{"fields":[{"schemaId":"identity-registry","fieldName":"person.nic"}],"legalBasis":"x","grantDuration":"30d"}`, http.StatusNotFound,
 		},
 		"invalid body": {"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants", `{`, http.StatusBadRequest},
 		"no fields": {
@@ -286,11 +286,11 @@ func TestConsentBypassEndpoints_Errors(t *testing.T) {
 		},
 		"no legal basis": {
 			"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":" ","grantDuration":"30d"}`, http.StatusBadRequest,
+			`{"fields":[{"schemaId":"identity-registry","fieldName":"person.nic"}],"legalBasis":" ","grantDuration":"30d"}`, http.StatusBadRequest,
 		},
 		"no grant duration": {
 			"/api/v1/applications/" + env.applicationID + "/consent-bypass-grants",
-			`{"fields":[{"schemaId":"drp","fieldName":"person.nic"}],"legalBasis":"x"}`, http.StatusBadRequest,
+			`{"fields":[{"schemaId":"identity-registry","fieldName":"person.nic"}],"legalBasis":"x"}`, http.StatusBadRequest,
 		},
 	}
 	for name, tt := range tests {

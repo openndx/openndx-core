@@ -33,40 +33,40 @@ input Filter {
 }
 
 type PersonInfo {
-	fullName: String @sourceInfo(schemaId: "drp-v1", providerField: "person.fullName")
-	tags: [String] @sourceInfo(schemaId: "drp-v1", providerField: "person.tags")
-	ownedVehicles: [Vehicle!] @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.list.data")
+	fullName: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.fullName")
+	tags: [String] @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.tags")
+	ownedVehicles: [Vehicle!] @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.list.data")
 	untracked: String
 	contacts: [Contact]
 }
 
 type Contact {
-	phone: String @sourceInfo(schemaId: "drp-v1", providerField: "person.phone")
+	phone: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.phone")
 }
 
 type Vehicle {
-	regNo: String! @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.list.data.registrationNumber")
-	make: String @sourceInfo(schemaId: "dmt-v1", providerField: "make")
+	regNo: String! @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.list.data.registrationNumber")
+	make: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "make")
 	owner: Owner
 }
 
 type Owner {
-	name: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.list.data.owner.name")
+	name: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.list.data.owner.name")
 }
 
 type Required {
-	value: String! @sourceInfo(schemaId: "drp-v1", providerField: "required.value")
-	optional: String @sourceInfo(schemaId: "drp-v1", providerField: "required.optional")
+	value: String! @sourceInfo(schemaId: "identity-registry-v1", providerField: "required.value")
+	optional: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "required.optional")
 }
 `
 
 var planTestMappings = []*graphql.ArgMapping{
-	{SchemaID: "drp-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"},
-	{SchemaID: "drp-v1", SourceArgPath: "personInfo-lang", TargetArgPath: "person", TargetArgName: "lang"},
-	{SchemaID: "drp-v1", SourceArgPath: "personInfo-year", TargetArgPath: "person", TargetArgName: "year"},
-	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "vehicle.list", TargetArgName: "ownerNic"},
-	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-filter", TargetArgPath: "vehicle.list", TargetArgName: "filter", TargetArgType: "VehicleFilter"},
-	{SchemaID: "drp-v1", SourceArgPath: "required-nic", TargetArgPath: "required", TargetArgName: "nic"},
+	{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"},
+	{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-lang", TargetArgPath: "person", TargetArgName: "lang"},
+	{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-year", TargetArgPath: "person", TargetArgName: "year"},
+	{SchemaID: "vehicle-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "vehicle.list", TargetArgName: "ownerNic"},
+	{SchemaID: "vehicle-registry-v1", SourceArgPath: "personInfo-filter", TargetArgPath: "vehicle.list", TargetArgName: "filter", TargetArgType: "VehicleFilter"},
+	{SchemaID: "identity-registry-v1", SourceArgPath: "required-nic", TargetArgPath: "required", TargetArgName: "nic"},
 }
 
 // planFor normalizes and plans query against planTestSchema.
@@ -102,24 +102,24 @@ func TestBuildPlan(t *testing.T) {
 		_, p := planFor(t, `{ personInfo(nic: "1", lang: SI) { fullName tags ownedVehicles { regNo make owner { name } } untracked __typename } }`, nil)
 
 		require.Len(t, p.fetches, 2)
-		drp, dmt := p.fetches[0], p.fetches[1]
-		assert.Equal(t, "drp-v1", drp.schemaID)
-		assert.Equal(t, `query Querydrp_v1 ($lang: Lang!, $nic: String!) { person(lang: $lang, nic: $nic) { fullName tags } }`, compact(drp.query))
-		assert.Equal(t, map[string]any{"lang": "SI", "nic": "1"}, drp.variables)
-		assert.Equal(t, []string{"person.fullName", "person.tags"}, drp.fields)
+		identityRegistry, vehicleRegistry := p.fetches[0], p.fetches[1]
+		assert.Equal(t, "identity-registry-v1", identityRegistry.schemaID)
+		assert.Equal(t, `query Queryidentity_registry_v1 ($lang: Lang!, $nic: String!) { person(lang: $lang, nic: $nic) { fullName tags } }`, compact(identityRegistry.query))
+		assert.Equal(t, map[string]any{"lang": "SI", "nic": "1"}, identityRegistry.variables)
+		assert.Equal(t, []string{"person.fullName", "person.tags"}, identityRegistry.fields)
 
-		assert.Equal(t, "dmt-v1", dmt.schemaID)
-		assert.Equal(t, `query Querydmt_v1 ($ownerNic: String!) { vehicle { list(ownerNic: $ownerNic) { data { registrationNumber make owner { name } } } } }`, compact(dmt.query),
+		assert.Equal(t, "vehicle-registry-v1", vehicleRegistry.schemaID)
+		assert.Equal(t, `query Queryvehicle_registry_v1 ($ownerNic: String!) { vehicle { list(ownerNic: $ownerNic) { data { registrationNumber make owner { name } } } } }`, compact(vehicleRegistry.query),
 			"a list item's field declared outside the list is read by its last segment")
-		assert.Equal(t, map[string]any{"ownerNic": "1"}, dmt.variables)
-		assert.Equal(t, []string{"vehicle.list.data.registrationNumber", "vehicle.list.data.make", "vehicle.list.data.owner.name"}, dmt.fields)
+		assert.Equal(t, map[string]any{"ownerNic": "1"}, vehicleRegistry.variables)
+		assert.Equal(t, []string{"vehicle.list.data.registrationNumber", "vehicle.list.data.make", "vehicle.list.data.owner.name"}, vehicleRegistry.fields)
 
 		assert.Equal(t, []policy.RequiredField{
-			{SchemaID: "drp-v1", FieldName: "person.fullName"},
-			{SchemaID: "drp-v1", FieldName: "person.tags"},
-			{SchemaID: "dmt-v1", FieldName: "vehicle.list.data.registrationNumber"},
-			{SchemaID: "dmt-v1", FieldName: "vehicle.list.data.make"},
-			{SchemaID: "dmt-v1", FieldName: "vehicle.list.data.owner.name"},
+			{SchemaID: "identity-registry-v1", FieldName: "person.fullName"},
+			{SchemaID: "identity-registry-v1", FieldName: "person.tags"},
+			{SchemaID: "vehicle-registry-v1", FieldName: "vehicle.list.data.registrationNumber"},
+			{SchemaID: "vehicle-registry-v1", FieldName: "vehicle.list.data.make"},
+			{SchemaID: "vehicle-registry-v1", FieldName: "vehicle.list.data.owner.name"},
 		}, p.requiredFields(), "only leaves are authorized, not the list container")
 	})
 
@@ -127,10 +127,10 @@ func TestBuildPlan(t *testing.T) {
 		_, p := planFor(t, `{ a: personInfo(nic: "1") { fullName } b: personInfo(nic: "1") { name: fullName tags } }`, nil)
 
 		require.Len(t, p.fetches, 1)
-		assert.Equal(t, `query Querydrp_v1 ($nic: String!) { person(nic: $nic) { fullName tags } }`, compact(p.fetches[0].query))
+		assert.Equal(t, `query Queryidentity_registry_v1 ($nic: String!) { person(nic: $nic) { fullName tags } }`, compact(p.fetches[0].query))
 		assert.Equal(t, []policy.RequiredField{
-			{SchemaID: "drp-v1", FieldName: "person.fullName"},
-			{SchemaID: "drp-v1", FieldName: "person.tags"},
+			{SchemaID: "identity-registry-v1", FieldName: "person.fullName"},
+			{SchemaID: "identity-registry-v1", FieldName: "person.tags"},
 		}, p.requiredFields(), "a provider field read twice is authorized once")
 	})
 
@@ -148,7 +148,7 @@ func TestBuildPlan(t *testing.T) {
 			map[string]any{"year": float64(2024)})
 
 		require.Len(t, p.fetches, 1)
-		assert.Equal(t, `query Querydrp_v1 ($lang: Lang!, $nic: String!, $year: Int!) { person(lang: $lang, nic: $nic, year: $year) { fullName } }`,
+		assert.Equal(t, `query Queryidentity_registry_v1 ($lang: Lang!, $nic: String!, $year: Int!) { person(lang: $lang, nic: $nic, year: $year) { fullName } }`,
 			compact(p.fetches[0].query), "a nullable consumer type is declared non-null when the value isn't null")
 		assert.Equal(t, map[string]any{"lang": "SI", "nic": "1", "year": float64(2024)}, p.fetches[0].variables,
 			"a variable's default is forwarded")
@@ -158,7 +158,7 @@ func TestBuildPlan(t *testing.T) {
 		_, p := planFor(t, `{ personInfo(nic: "1", year: null) { fullName } }`, nil)
 
 		require.Len(t, p.fetches, 1)
-		assert.Equal(t, `query Querydrp_v1 ($nic: String!, $year: Int) { person(nic: $nic, year: $year) { fullName } }`, compact(p.fetches[0].query))
+		assert.Equal(t, `query Queryidentity_registry_v1 ($nic: String!, $year: Int) { person(nic: $nic, year: $year) { fullName } }`, compact(p.fetches[0].query))
 		assert.Equal(t, map[string]any{"nic": "1", "year": nil}, p.fetches[0].variables)
 	})
 
@@ -167,7 +167,7 @@ func TestBuildPlan(t *testing.T) {
 			map[string]any{"filter": map[string]any{"makes": []any{"Toyota", "Honda"}, "since": float64(2020)}})
 
 		require.Len(t, p.fetches, 1)
-		assert.Equal(t, `query Querydmt_v1 ($filter: VehicleFilter, $ownerNic: String!) { vehicle { list(filter: $filter, ownerNic: $ownerNic) { data { registrationNumber } } } }`,
+		assert.Equal(t, `query Queryvehicle_registry_v1 ($filter: VehicleFilter, $ownerNic: String!) { vehicle { list(filter: $filter, ownerNic: $ownerNic) { data { registrationNumber } } } }`,
 			compact(p.fetches[0].query), "targetArgType is declared as given")
 		assert.Equal(t, map[string]any{
 			"filter":   map[string]any{"makes": []any{"Toyota", "Honda"}, "since": float64(2020)},
@@ -185,12 +185,12 @@ func TestBuildPlan(t *testing.T) {
 
 	t.Run("suffixes a variable whose name is already taken", func(t *testing.T) {
 		_, p := planWith(t, `{ personInfo(nic: "1", year: 2024) { tags } }`, nil, []*graphql.ArgMapping{
-			{SchemaID: "drp-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "id"},
-			{SchemaID: "drp-v1", SourceArgPath: "personInfo-year", TargetArgPath: "person.tags", TargetArgName: "id", TargetArgType: "ID!"},
+			{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "id"},
+			{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-year", TargetArgPath: "person.tags", TargetArgName: "id", TargetArgType: "ID!"},
 		})
 
 		require.Len(t, p.fetches, 1)
-		assert.Equal(t, `query Querydrp_v1 ($id: String!, $id_2: ID!) { person(id: $id) { tags(id: $id_2) } }`, compact(p.fetches[0].query))
+		assert.Equal(t, `query Queryidentity_registry_v1 ($id: String!, $id_2: ID!) { person(id: $id) { tags(id: $id_2) } }`, compact(p.fetches[0].query))
 		assert.Equal(t, map[string]any{"id": "1", "id_2": int64(2024)}, p.fetches[0].variables)
 	})
 

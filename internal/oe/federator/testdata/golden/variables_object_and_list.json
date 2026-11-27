@@ -5,11 +5,11 @@
         "ownedVehicles": [
           {
             "make": "Toyota",
-            "regNo": "CAB-1234"
+            "regNo": "ABC-1234"
           },
           {
             "make": "Honda",
-            "regNo": "WP-5678"
+            "regNo": "XYZ-5678"
           }
         ]
       }
@@ -21,20 +21,20 @@
       "requiredFields": [
         {
           "fieldName": "vehicle.getVehicleInfos.data.make",
-          "schemaId": "dmt-v1"
+          "schemaId": "vehicle-registry-v1"
         },
         {
           "fieldName": "vehicle.getVehicleInfos.data.registrationNumber",
-          "schemaId": "dmt-v1"
+          "schemaId": "vehicle-registry-v1"
         }
       ]
     }
   ],
   "consentRequests": [],
   "providerRequests": {
-    "dmt-v1": [
+    "vehicle-registry-v1": [
       {
-        "query": "query Querydmt_v1 ( $filter : VehicleFilterInput $ownerNic : String ! ) { vehicle { getVehicleInfos ( filter : $filter ownerNic : $ownerNic ) { data { registrationNumber make } } } }",
+        "query": "query Queryvehicle_registry_v1 ( $filter : VehicleFilterInput $ownerNic : String ! ) { vehicle { getVehicleInfos ( filter : $filter ownerNic : $ownerNic ) { data { registrationNumber make } } } }",
         "variables": {
           "filter": {
             "makes": [
@@ -43,7 +43,7 @@
             ],
             "registeredAfter": 2020
           },
-          "ownerNic": "199012345678"
+          "ownerNic": "naresh@ndx.fl"
         }
       }
     ]
@@ -71,7 +71,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "dmt-v1"
+      "targetId": "vehicle-registry-v1"
     }
   ]
 }

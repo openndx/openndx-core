@@ -52,14 +52,14 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 		OwnerIDArgName: "nic",
 		Providers: []provider.Config{
 			{
-				ID:  "drp-schema",
+				ID:  "identity-registry-schema",
 				URL: providerServer.URL,
 			},
 		},
 		PdpURL: pdpServer.URL,
 		ArgMapping: []*graphql.ArgMapping{
 			{
-				SchemaID:      "drp-schema",
+				SchemaID:      "identity-registry-schema",
 				TargetArgName: "nic",
 				SourceArgPath: "personInfo-nic",
 				TargetArgPath: "person",
@@ -71,10 +71,10 @@ func TestFederateQuery_WithMockSchema(t *testing.T) {
 	schemaSDL := `
 		directive @sourceInfo(providerField: String!, schemaId: String!) on FIELD_DEFINITION
 		type Query {
-			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "drp-schema")
+			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "identity-registry-schema")
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
 		}
 	`
 
@@ -126,20 +126,20 @@ func TestFederateQuery_DataOwnerIdentification(t *testing.T) {
 	schemaSDL := `
 		directive @sourceInfo(providerField: String!, schemaId: String!) on FIELD_DEFINITION
 		type Query {
-			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "drp-schema")
-			sessionInfo(requestId: String!): SessionInfo @sourceInfo(providerField: "session", schemaId: "drp-schema")
+			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "identity-registry-schema")
+			sessionInfo(requestId: String!): SessionInfo @sourceInfo(providerField: "session", schemaId: "identity-registry-schema")
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
 		}
 		type SessionInfo {
-			status: String @sourceInfo(providerField: "session.status", schemaId: "drp-schema")
+			status: String @sourceInfo(providerField: "session.status", schemaId: "identity-registry-schema")
 		}
 	`
 	argMapping := []*graphql.ArgMapping{
-		{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
-		{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "fullName-nic", TargetArgPath: "person.fullName"},
-		{SchemaID: "drp-schema", TargetArgName: "requestId", SourceArgPath: "sessionInfo-requestId", TargetArgPath: "session"},
+		{SchemaID: "identity-registry-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
+		{SchemaID: "identity-registry-schema", TargetArgName: "nic", SourceArgPath: "fullName-nic", TargetArgPath: "person.fullName"},
+		{SchemaID: "identity-registry-schema", TargetArgName: "requestId", SourceArgPath: "sessionInfo-requestId", TargetArgPath: "session"},
 	}
 
 	// setupFederator wires a Federator whose PDP mock always requires consent
@@ -154,7 +154,7 @@ func TestFederateQuery_DataOwnerIdentification(t *testing.T) {
 				AppAuthorized:           true,
 				AppRequiresOwnerConsent: true,
 				ConsentRequiredFields: []policy.ConsentRequiredField{
-					{FieldName: "fullName", SchemaID: "drp-schema"},
+					{FieldName: "fullName", SchemaID: "identity-registry-schema"},
 				},
 			}
 			_ = json.NewEncoder(w).Encode(resp)
@@ -242,7 +242,7 @@ func TestFederateQuery_PDPDeny(t *testing.T) {
 		PdpURL:         pdpServer.URL,
 		ArgMapping: []*graphql.ArgMapping{
 			{
-				SchemaID:      "drp-schema",
+				SchemaID:      "identity-registry-schema",
 				TargetArgName: "nic",
 				SourceArgPath: "personInfo-nic",
 				TargetArgPath: "person",
@@ -253,10 +253,10 @@ func TestFederateQuery_PDPDeny(t *testing.T) {
 	schemaSDL := `
 		directive @sourceInfo(providerField: String!, schemaId: String!) on FIELD_DEFINITION
 		type Query {
-			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "drp-schema")
+			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "identity-registry-schema")
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
 		}
 	`
 	f := newTestFederator(t, cfg, staticSchema(schemaSDL))
@@ -308,7 +308,7 @@ func TestNew(t *testing.T) {
 	t.Run("fails when a targetArgType isn't a GraphQL type", func(t *testing.T) {
 		_, err := New(Deps{Providers: providers, Schemas: schemas}, Options{
 			OwnerIDArgName: "nic",
-			ArgMapping:     []*graphql.ArgMapping{{SchemaID: "drp", SourceArgPath: "a-nic", TargetArgPath: "person", TargetArgName: "nic", TargetArgType: "[ID"}},
+			ArgMapping:     []*graphql.ArgMapping{{SchemaID: "identity-registry", SourceArgPath: "a-nic", TargetArgPath: "person", TargetArgName: "nic", TargetArgType: "[ID"}},
 		})
 		assert.EqualError(t, err, `fatal configuration error: argMappings[0].targetArgType: "[ID" is not a GraphQL type`)
 	})
@@ -396,16 +396,16 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 	schemaSDL := `
 		directive @sourceInfo(providerField: String!, schemaId: String!) on FIELD_DEFINITION
 		type Query {
-			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "drp-schema")
+			personInfo(nic: String!): PersonInfo @sourceInfo(providerField: "person", schemaId: "identity-registry-schema")
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
 		}
 	`
 	opts := Options{
 		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
-			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
+			{SchemaID: "identity-registry-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},
 	}
 	req := graphql.Request{Query: `query { personInfo(nic: "123") { fullName } }`}
@@ -413,7 +413,7 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 	consentRequired := &policy.PdpResponse{
 		AppAuthorized:           true,
 		AppRequiresOwnerConsent: true,
-		ConsentRequiredFields:   []policy.ConsentRequiredField{{FieldName: "person.fullName", SchemaID: "drp-schema"}},
+		ConsentRequiredFields:   []policy.ConsentRequiredField{{FieldName: "person.fullName", SchemaID: "identity-registry-schema"}},
 	}
 
 	t.Run("calls the injected policy decider and consent requester", func(t *testing.T) {
@@ -470,12 +470,12 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 	})
 
 	t.Run("sends sub-queries through the injected provider client and audits them", func(t *testing.T) {
-		drp := &fakeProvider{resp: graphql.Response{Data: map[string]interface{}{
+		identityRegistry := &fakeProvider{resp: graphql.Response{Data: map[string]interface{}{
 			"person": map[string]interface{}{"fullName": "Jane Doe"},
 		}}}
 		auditor := &recordingAuditor{}
 		f, err := New(Deps{
-			Providers: fakeRegistry{"drp-schema": drp},
+			Providers: fakeRegistry{"identity-registry-schema": identityRegistry},
 			Schemas:   staticSchema(schemaSDL),
 			Auditor:   auditor,
 		}, opts)
@@ -485,14 +485,14 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 
 		require.Empty(t, resp.Errors)
 		assert.Equal(t, map[string]interface{}{"fullName": "Jane Doe"}, resp.Data["personInfo"])
-		require.Len(t, drp.got, 1)
-		assert.Contains(t, drp.got[0].Query, `person(nic: $nic)`)
-		assert.Equal(t, map[string]interface{}{"nic": "123"}, drp.got[0].Variables)
+		require.Len(t, identityRegistry.got, 1)
+		assert.Contains(t, identityRegistry.got[0].Query, `person(nic: $nic)`)
+		assert.Equal(t, map[string]interface{}{"nic": "123"}, identityRegistry.got[0].Variables)
 		require.Len(t, auditor.fetches, 1)
 		assert.Equal(t, ProviderFetch{
 			ApplicationID:   "app-123",
-			SchemaID:        "drp-schema",
-			Query:           drp.got[0].Query,
+			SchemaID:        "identity-registry-schema",
+			Query:           identityRegistry.got[0].Query,
 			RequestedFields: []string{"person.fullName"},
 		}, auditor.fetches[0])
 		assert.NoError(t, auditor.errs[0])
@@ -501,7 +501,7 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 	t.Run("audits a failed provider fetch and reports its fields as null", func(t *testing.T) {
 		auditor := &recordingAuditor{}
 		f, err := New(Deps{
-			Providers: fakeRegistry{"drp-schema": &fakeProvider{err: fmt.Errorf("connection refused")}},
+			Providers: fakeRegistry{"identity-registry-schema": &fakeProvider{err: fmt.Errorf("connection refused")}},
 			Schemas:   staticSchema(schemaSDL),
 			Auditor:   auditor,
 		}, opts)
@@ -511,7 +511,7 @@ func TestFederateQuery_InjectedDeps(t *testing.T) {
 
 		assert.Equal(t, map[string]interface{}{"fullName": nil}, resp.Data["personInfo"])
 		assert.Equal(t, []interface{}{map[string]interface{}{
-			"message":    "Failed to fetch data from provider for schema drp-schema",
+			"message":    "Failed to fetch data from provider for schema identity-registry-schema",
 			"path":       []any{"personInfo", "fullName"},
 			"extensions": map[string]interface{}{"code": errors.CodeProviderError},
 		}}, resp.Errors)
@@ -526,13 +526,13 @@ func TestFederateQuery_ValidatesAgainstSchema(t *testing.T) {
 			personInfo(nic: String!): PersonInfo
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
 		}
 	`
 	opts := Options{
 		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
-			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
+			{SchemaID: "identity-registry-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},
 	}
 
@@ -549,9 +549,9 @@ func TestFederateQuery_ValidatesAgainstSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("rejects a query with a "+tt.name, func(t *testing.T) {
 			pdp := &fakePolicy{resp: &policy.PdpResponse{AppAuthorized: true}}
-			drp := &fakeProvider{}
+			identityRegistry := &fakeProvider{}
 			f, err := New(Deps{
-				Providers: fakeRegistry{"drp-schema": drp},
+				Providers: fakeRegistry{"identity-registry-schema": identityRegistry},
 				Schemas:   staticSchema(schemaSDL),
 				Policy:    pdp,
 			}, opts)
@@ -565,7 +565,7 @@ func TestFederateQuery_ValidatesAgainstSchema(t *testing.T) {
 			assert.Equal(t, map[string]interface{}{"code": errors.CodeBadRequest}, reported["extensions"])
 			assert.NotEmpty(t, reported["locations"])
 			assert.Nil(t, pdp.got, "an invalid query must not reach the PDP")
-			assert.Empty(t, drp.got, "an invalid query must not reach a provider")
+			assert.Empty(t, identityRegistry.got, "an invalid query must not reach a provider")
 		})
 	}
 }
@@ -578,21 +578,21 @@ func TestFederateQuery_SharedSchemaConcurrently(t *testing.T) {
 			personInfo(nic: String!): PersonInfo
 		}
 		type PersonInfo {
-			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "drp-schema")
-			address: String @sourceInfo(providerField: "person.address", schemaId: "drp-schema")
+			fullName: String @sourceInfo(providerField: "person.fullName", schemaId: "identity-registry-schema")
+			address: String @sourceInfo(providerField: "person.address", schemaId: "identity-registry-schema")
 		}
 	`)
 	require.NoError(t, err)
-	drp := &fakeProvider{resp: graphql.Response{Data: map[string]interface{}{
-		"person": map[string]interface{}{"fullName": "Jane Doe", "address": "Colombo"},
+	identityRegistry := &fakeProvider{resp: graphql.Response{Data: map[string]interface{}{
+		"person": map[string]interface{}{"fullName": "Jane Doe", "address": "Central City"},
 	}}}
 	f, err := New(Deps{
-		Providers: fakeRegistry{"drp-schema": drp},
+		Providers: fakeRegistry{"identity-registry-schema": identityRegistry},
 		Schemas:   fixedSchema{compiled},
 	}, Options{
 		OwnerIDArgName: "nic",
 		ArgMapping: []*graphql.ArgMapping{
-			{SchemaID: "drp-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
+			{SchemaID: "identity-registry-schema", TargetArgName: "nic", SourceArgPath: "personInfo-nic", TargetArgPath: "person"},
 		},
 	})
 	require.NoError(t, err)
@@ -606,7 +606,7 @@ func TestFederateQuery_SharedSchemaConcurrently(t *testing.T) {
 				graphql.Request{Query: `query { personInfo(nic: "123") { fullName address } }`},
 				&auth.ConsumerAssertion{ApplicationID: "app-123"})
 			assert.Empty(t, resp.Errors)
-			assert.Equal(t, map[string]interface{}{"fullName": "Jane Doe", "address": "Colombo"}, resp.Data["personInfo"])
+			assert.Equal(t, map[string]interface{}{"fullName": "Jane Doe", "address": "Central City"}, resp.Data["personInfo"])
 		}()
 	}
 	wg.Wait()
@@ -620,13 +620,13 @@ func (s fixedSchema) Active(context.Context) (*schema.CompiledSchema, error) { r
 func TestProviderLookup(t *testing.T) {
 	p := &fakeProvider{}
 	registry := ProviderLookup(func(schemaID string) (*fakeProvider, bool) {
-		if schemaID == "drp-schema" {
+		if schemaID == "identity-registry-schema" {
 			return p, true
 		}
 		return nil, false
 	})
 
-	got, ok := registry.Get("drp-schema")
+	got, ok := registry.Get("identity-registry-schema")
 	require.True(t, ok)
 	assert.Same(t, p, got)
 

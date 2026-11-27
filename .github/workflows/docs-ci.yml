@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
+# Checks the Markdown files on pull requests to main that change a Markdown
+# file or a docs check setting; otherwise the checks are skipped. A manual run
+# checks everything. Each job runs the make target developers run locally, so
+# the tool versions are pinned once, in the Makefile.
+name: Docs CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lists the files this pull request changes, and reports whether any is one
+  # this workflow checks. The jobs below skip only when this job succeeds and
+  # finds none; if it fails, they run.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.match.outputs.run }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Match changed files
+        id: match
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PATTERN: '\.md$|\.markdownlint-cli2\.jsonc$|^lychee\.toml$|^\.vale\.ini$|^\.github/styles/|^\.github/workflows/docs-ci\.yml$|^Makefile$'
+        run: |
+          # A manual run has no pull request to compare, so it checks everything.
+          if [ -z "$BASE" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # --no-renames lists both paths of a rename, so a file moved out of a
+          # watched path still counts as a change to it.
+          FILES=$(git diff --no-renames --name-only "$BASE...$HEAD")
+          if grep -qE "$PATTERN" <<< "$FILES"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "None of the changed files is one this workflow checks, so its jobs are skipped."
+          fi
+
+  markdownlint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run markdownlint
+        run: make mdlint
+
+  linkcheck:
+    name: Link Check
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run lychee
+        env:
+          # When a github.com link fails, lychee checks through the GitHub API
+          # whether its repository exists.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make linkcheck
+
+  prose:
+    name: Prose Check
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Vale
+        # Advisory: findings are listed in this step's log without failing the
+        # job. Add project words to .github/styles/config/vocabularies/OpenNDX/accept.txt.
+        continue-on-error: true
+        run: make prose

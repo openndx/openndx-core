@@ -3,9 +3,9 @@
     "data": {
       "personInfo": {
         "birthInfo": {
-          "place": "Kandy"
+          "place": "Northville"
         },
-        "fullName": "Nimal Perera"
+        "fullName": "Suresh Fernando"
       }
     }
   },
@@ -14,31 +14,31 @@
       "applicationId": "app-golden",
       "requiredFields": [
         {
-          "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "fieldName": "getPersonInfo.birthPlace",
+          "schemaId": "civil-registry-v1"
         },
         {
-          "fieldName": "getPersonInfo.birthPlace",
-          "schemaId": "rgd-v1"
+          "fieldName": "person.fullName",
+          "schemaId": "identity-registry-v1"
         }
       ]
     }
   ],
   "consentRequests": [],
   "providerRequests": {
-    "drp-v1": [
+    "civil-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
+        "query": "query Querycivil_registry_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthPlace } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ],
-    "rgd-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Queryrgd_v1 ( $nic : String ! ) { getPersonInfo ( nic : $nic ) { birthPlace } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ]
@@ -66,7 +66,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "civil-registry-v1"
     },
     {
       "eventType": "PROVIDER_FETCH",
@@ -74,7 +74,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "rgd-v1"
+      "targetId": "identity-registry-v1"
     }
   ]
 }

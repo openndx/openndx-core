@@ -40,7 +40,7 @@ func TestAuditor_RequestReceived(t *testing.T) {
 	sink := &audit.CaptureSink{}
 	auditor := NewAuditor(sink, "SERVICE", "orchestration-engine")
 
-	ctx := auditor.RequestReceived(context.Background(), "app-1", `query { person(nic: "199012345678") { name } }`)
+	ctx := auditor.RequestReceived(context.Background(), "app-1", `query { person(nic: "naresh@ndx.fl") { name } }`)
 
 	event := onlyRecord(t, sink)
 	if event.EventType != "DATA_REQUEST" || event.ActorType != "APPLICATION" || event.ActorID != "app-1" {
@@ -89,15 +89,15 @@ func TestAuditor_PolicyCheck(t *testing.T) {
 		auditor := NewAuditor(sink, "SERVICE", "orchestration-engine")
 
 		fields := []policy.FieldOutcome{
-			{SchemaID: "drp", FieldName: "person.name", Outcome: policy.OutcomeAllow, Obligations: []string{"audit.consent_bypassed"}},
-			{SchemaID: "drp", FieldName: "person.photo", Outcome: policy.OutcomeConsentRequired},
+			{SchemaID: "identity-registry", FieldName: "person.name", Outcome: policy.OutcomeAllow, Obligations: []string{"audit.consent_bypassed"}},
+			{SchemaID: "identity-registry", FieldName: "person.photo", Outcome: policy.OutcomeConsentRequired},
 		}
 		auditor.PolicyCheck(context.Background(), "app-1", &policy.PdpRequest{AppId: "app-1"},
 			&policy.PdpResponse{
 				Fields:                  fields,
 				AppAuthorized:           true,
 				AppRequiresOwnerConsent: true,
-				ConsentRequiredFields:   []policy.ConsentRequiredField{{SchemaID: "drp", FieldName: "person.photo"}},
+				ConsentRequiredFields:   []policy.ConsentRequiredField{{SchemaID: "identity-registry", FieldName: "person.photo"}},
 			}, nil)
 
 		event := onlyRecord(t, sink)
@@ -158,7 +158,7 @@ func TestAuditor_ConsentCheck(t *testing.T) {
 func TestAuditor_ProviderFetch(t *testing.T) {
 	fetch := federator.ProviderFetch{
 		ApplicationID:   "app-1",
-		SchemaID:        "drp-schema",
+		SchemaID:        "identity-registry-schema",
 		Query:           "query { person { name } }",
 		RequestedFields: []string{"person.name"},
 	}
@@ -173,12 +173,12 @@ func TestAuditor_ProviderFetch(t *testing.T) {
 		if event.EventType != "PROVIDER_FETCH" || event.Status != audit.StatusSuccess {
 			t.Errorf("Expected a successful PROVIDER_FETCH, got %s %s", event.Status, event.EventType)
 		}
-		if event.TargetID != "drp-schema" {
-			t.Errorf("Expected target drp-schema, got %v", event.TargetID)
+		if event.TargetID != "identity-registry-schema" {
+			t.Errorf("Expected target identity-registry-schema, got %v", event.TargetID)
 		}
 		meta := responseMetadata(t, event)
-		if meta["applicationId"] != "app-1" || meta["schemaId"] != "drp-schema" {
-			t.Errorf("Expected app-1 and drp-schema in the response metadata, got %v", meta)
+		if meta["applicationId"] != "app-1" || meta["schemaId"] != "identity-registry-schema" {
+			t.Errorf("Expected app-1 and identity-registry-schema in the response metadata, got %v", meta)
 		}
 		if fields, _ := meta["requestedFields"].([]string); len(fields) != 1 || fields[0] != "person.name" {
 			t.Errorf("Expected requested field person.name, got %v", meta["requestedFields"])

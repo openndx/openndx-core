@@ -2,15 +2,15 @@
   "response": {
     "data": {
       "personInfo": {
-        "fullName": "Nimal Perera",
+        "fullName": "Suresh Fernando",
         "ownedVehicles": [
           {
             "make": "Toyota",
-            "regNo": "CAB-1234"
+            "regNo": "ABC-1234"
           },
           {
             "make": "Honda",
-            "regNo": "WP-5678"
+            "regNo": "XYZ-5678"
           }
         ]
       }
@@ -21,35 +21,35 @@
       "applicationId": "app-golden",
       "requiredFields": [
         {
+          "fieldName": "person.fullName",
+          "schemaId": "identity-registry-v1"
+        },
+        {
           "fieldName": "vehicle.getVehicleInfos.data.make",
-          "schemaId": "dmt-v1"
+          "schemaId": "vehicle-registry-v1"
         },
         {
           "fieldName": "vehicle.getVehicleInfos.data.registrationNumber",
-          "schemaId": "dmt-v1"
-        },
-        {
-          "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "vehicle-registry-v1"
         }
       ]
     }
   ],
   "consentRequests": [],
   "providerRequests": {
-    "dmt-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Querydmt_v1 ( $ownerNic : String ! ) { vehicle { getVehicleInfos ( ownerNic : $ownerNic ) { data { registrationNumber make } } } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
         "variables": {
-          "ownerNic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ],
-    "drp-v1": [
+    "vehicle-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
+        "query": "query Queryvehicle_registry_v1 ( $ownerNic : String ! ) { vehicle { getVehicleInfos ( ownerNic : $ownerNic ) { data { registrationNumber make } } } }",
         "variables": {
-          "nic": "199012345678"
+          "ownerNic": "naresh@ndx.fl"
         }
       }
     ]
@@ -77,7 +77,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "dmt-v1"
+      "targetId": "identity-registry-v1"
     },
     {
       "eventType": "PROVIDER_FETCH",
@@ -85,7 +85,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "vehicle-registry-v1"
     }
   ]
 }

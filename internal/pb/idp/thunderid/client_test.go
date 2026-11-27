@@ -95,7 +95,7 @@ func TestClient_CreateApplication(t *testing.T) {
 		client, fake := newTestClient(t, roleID)
 
 		created, err := client.CreateApplication(context.Background(), &idp.Application{
-			Name: "Passport Application", Description: "d", OuID: "ou-die",
+			Name: "Passport Application", Description: "d", OuID: "ou-immigration",
 		})
 
 		require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestClient_CreateApplication(t *testing.T) {
 
 		assert.Equal(t, map[string]string{"scope": "system", "resource": "https://localhost:8090/mcp"}, fake.tokenForm)
 		require.NotNil(t, fake.created)
-		assert.Equal(t, "ou-die", fake.created.OuID)
+		assert.Equal(t, "ou-immigration", fake.created.OuID)
 		assert.Equal(t, "m2m", fake.created.Type)
 		require.Len(t, fake.created.InboundAuthConfig, 1)
 		assert.Equal(t, []string{"client_credentials"}, fake.created.InboundAuthConfig[0].Config.GrantTypes)
@@ -117,7 +117,7 @@ func TestClient_CreateApplication(t *testing.T) {
 	t.Run("skips the role assignment when no role is configured", func(t *testing.T) {
 		client, fake := newTestClient(t, "")
 
-		_, err := client.CreateApplication(context.Background(), &idp.Application{Name: "App", OuID: "ou-die"})
+		_, err := client.CreateApplication(context.Background(), &idp.Application{Name: "App", OuID: "ou-immigration"})
 
 		require.NoError(t, err)
 		assert.Nil(t, fake.assigned)
@@ -127,7 +127,7 @@ func TestClient_CreateApplication(t *testing.T) {
 		client, fake := newTestClient(t, roleID)
 		fake.assignStatus = http.StatusInternalServerError
 
-		created, err := client.CreateApplication(context.Background(), &idp.Application{Name: "App", OuID: "ou-die"})
+		created, err := client.CreateApplication(context.Background(), &idp.Application{Name: "App", OuID: "ou-immigration"})
 
 		assert.Nil(t, created)
 		assert.ErrorContains(t, err, "failed to assign data-consumer role")
@@ -140,7 +140,7 @@ func TestClient_CreateApplication(t *testing.T) {
 		defer cancel()
 		fake.cancelOnAssign = cancel
 
-		created, err := client.CreateApplication(ctx, &idp.Application{Name: "App", OuID: "ou-die"})
+		created, err := client.CreateApplication(ctx, &idp.Application{Name: "App", OuID: "ou-immigration"})
 
 		assert.Nil(t, created)
 		assert.ErrorIs(t, err, context.Canceled)
@@ -150,7 +150,7 @@ func TestClient_CreateApplication(t *testing.T) {
 	t.Run("rejects and deletes an application created without a client secret", func(t *testing.T) {
 		client, fake := newTestClient(t, roleID)
 
-		created, err := client.CreateApplication(context.Background(), &idp.Application{Name: "NoSecret", OuID: "ou-die"})
+		created, err := client.CreateApplication(context.Background(), &idp.Application{Name: "NoSecret", OuID: "ou-immigration"})
 
 		assert.Nil(t, created)
 		assert.ErrorContains(t, err, "no client id or secret")
@@ -161,7 +161,7 @@ func TestClient_CreateApplication(t *testing.T) {
 	t.Run("returns ThunderID's error message", func(t *testing.T) {
 		client, _ := newTestClient(t, roleID)
 
-		_, err := client.CreateApplication(context.Background(), &idp.Application{Name: "Dup", OuID: "ou-die"})
+		_, err := client.CreateApplication(context.Background(), &idp.Application{Name: "Dup", OuID: "ou-immigration"})
 
 		assert.EqualError(t, err, "thunderid POST /applications: Application already exists (APP-1020): An application with the same name already exists")
 	})

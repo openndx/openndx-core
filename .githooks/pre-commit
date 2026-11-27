@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Adds the license header to staged files that lack it, then runs `make check`
-# when a commit touches Go code. `make setup` installs it.
+# Adds the license header to staged files that lack it, lints the staged
+# Markdown, then runs `make check` when a commit touches Go code. `make setup`
+# installs it.
 # Skip it for one commit with `git commit --no-verify`.
 
 # Add the SPDX license header to staged files that lack it, and stage the
@@ -29,6 +30,31 @@ EOF
 		printf '  %s\n' "${LICENSE_MISSING[@]}"
 		scripts/license-headers.sh add "${LICENSE_MISSING[@]}" || exit 1
 		git add -- "${LICENSE_MISSING[@]}"
+	fi
+fi
+
+# Lint the staged Markdown with markdownlint (rules: .markdownlint-cli2.jsonc;
+# the version matches MDLINT_VERSION in the Makefile). The staged content is
+# copied out of the index, so a partly staged file is checked as it will be
+# committed. The paused Admin and Member portals are left out. Skip this step
+# with SKIP_MDLINT=1; without npx (Node.js) it is skipped with a warning.
+MD_STAGED=()
+while IFS= read -r -d '' f; do MD_STAGED+=("$f"); done \
+	< <(git diff --cached --name-only -z --diff-filter=ACMR -- '*.md' ':!portals/apps/admin' ':!portals/apps/member')
+if [ "${#MD_STAGED[@]}" -gt 0 ] && [ -z "${SKIP_MDLINT:-}" ]; then
+	if command -v npx >/dev/null 2>&1; then
+		echo "pre-commit: running markdownlint on the staged Markdown (skip with SKIP_MDLINT=1)"
+		MDLINT_TREE=$(mktemp -d)
+		git checkout-index --prefix="$MDLINT_TREE/" -- "${MD_STAGED[@]}" .markdownlint-cli2.jsonc || exit 1
+		(cd "$MDLINT_TREE" && npx --yes markdownlint-cli2@0.23.2 --no-globs "${MD_STAGED[@]}")
+		MDLINT_STATUS=$?
+		rm -rf "$MDLINT_TREE"
+		if [ "$MDLINT_STATUS" -ne 0 ]; then
+			echo "pre-commit: most findings can be fixed with make mdlint-fix"
+			exit 1
+		fi
+	else
+		echo "pre-commit: npx not found, so markdownlint is skipped; install Node.js to lint Markdown"
 	fi
 fi
 
