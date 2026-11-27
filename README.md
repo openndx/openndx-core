@@ -124,6 +124,10 @@ OpenNDX doesn't keep the data that consumers request: the Orchestration Engine h
 - members, schemas and applications, with the `--json` option of the `ondx` `list` and `get` commands, or through the [Portal Backend API](cmd/pb/README.md);
 - field policies and access grants, from the Policy Decision Point at `GET /api/v1/policy/fields` and `GET /api/v1/policy/grants` ([API](cmd/pdp/README.md)).
 
+## Privacy
+
+OpenNDX is self-hosted. The organization that runs an exchange is responsible for the personal data in it, and the software sends no usage data or telemetry to Lanka Software Foundation. [PRIVACY.md](PRIVACY.md) describes what personal data each component keeps, how the design protects it, how data owners' requests are handled, and what deletion and retention support exists today.
+
 ## Documentation
 
 - **Tutorial:** the [end-to-end walkthrough](dev/WALKTHROUGH.md), which runs the platform with the [mock providers](dev/README.md).
