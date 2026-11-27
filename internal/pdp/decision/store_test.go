@@ -469,8 +469,3 @@ func TestService_GetPolicyDecision_EdgeCases(t *testing.T) {
 		}, resp.Fields)
 	})
 }
-
-// Error path tests for GetPolicyDecision
-// Note: Tests that require closing database connections to simulate errors have been removed
-// as they cannot be properly mocked with SQLite. These error scenarios should be tested
-// in integration tests with a real PostgreSQL database.

@@ -44,7 +44,7 @@ The script downloads the amd64 or arm64 build, checks it against the release's `
 
 ### Manual download
 
-Download `ondx_<os>_<arch>.tar.gz`, or `ondx_windows_<arch>.zip` on Windows, from the release page. Each archive from v0.4.0 onward has a build provenance attestation, which you can verify with the GitHub CLI:
+Download `ondx_<os>_<arch>.tar.gz`, or `ondx_windows_<arch>.zip` on Windows, from the release page. Each archive has a build provenance attestation, which you can verify with the GitHub CLI:
 
 ```bash
 gh attestation verify ondx_linux_amd64.tar.gz --repo openndx/openndx-core
@@ -63,8 +63,6 @@ This needs Go 1.26.4 or later. It installs `ondx` to `GOBIN`, or to `$(go env GO
 ### From source
 
 From a checkout of this repository, `go build -o ondx ./cmd/ondx` writes `ondx` to the current directory. To run it without building, use `go run ./cmd/ondx <command>`.
-
-> **Version note.** `members list`, `members get`, `schemas list`, `schemas get` and `profile set --resource` need v0.5.0 or later. Run `ondx version` to check which build you have.
 
 ## Quick start
 

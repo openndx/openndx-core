@@ -117,7 +117,7 @@ The OE writes its audit events as OpenTelemetry log records and sends them over 
 | Key | Default | Notes |
 |---|---|---|
 | `otel.endpoint` | | OTLP/HTTP base URL, for example `http://otel-collector:4318`. `/v1/logs` (and `/v1/traces`, `/v1/metrics`) is appended. Empty turns export off. |
-| `otel.logs.endpoint` | | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; the OE produces no traces or metrics yet. |
+| `otel.logs.endpoint` | | Full URL for logs alone, path included. Overrides `otel.endpoint` for logs. `otel.traces.endpoint` and `otel.metrics.endpoint` exist too; the OE produces no traces or metrics. |
 | `otel.serviceName` | `orchestration-engine` | The `service.name` resource attribute. |
 | `otel.headers` | | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. |
 

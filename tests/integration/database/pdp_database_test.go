@@ -32,10 +32,6 @@ func TestPolicyDecisionPoint_DatabaseConnection(t *testing.T) {
 	assert.NoError(t, sqlDB.Ping())
 }
 
-// NOTE: Tests for ConnectGormDB with invalid configs have been removed.
-// These tests require importing service packages which creates module dependency issues.
-// Connection error handling is tested at the service level in unit tests.
-
 // TestPolicyDecisionPoint_SetupPostgresTestDB_NoConnection tests that SetupPostgresTestDB handles connection failures gracefully
 func TestPolicyDecisionPoint_SetupPostgresTestDB_NoConnection(t *testing.T) {
 	cleanup := testutils.WithTestDBEnvFull(t, map[string]string{

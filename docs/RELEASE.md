@@ -24,7 +24,7 @@ Go to **Actions** → **Release - Build and Publish Maintained Components** → 
 
 ## Artifacts
 
-All images are published to **ghcr.io/openndx/** (previously `ghcr.io/openndx/openndx-core/`; existing tags under the old path remain available but are no longer updated):
+All images are published to **ghcr.io/openndx/**:
 
 | Category     | Service               | Image Name              |
 |:-------------|:----------------------|:------------------------|
@@ -50,15 +50,14 @@ For a tag push, GoReleaser also:
 
 ## Paused portals
 
-Starting with the first release containing this change, Admin and Member Portals
-are excluded from release images and automatic publishing. Their source remains
-available as unsupported prototypes; there is no committed maintenance or backend
-compatibility. Previously published images and release tags are retained as
-historical artifacts, and their old `latest` tags do not indicate current support.
+Releases don't build or publish the Admin and Member Portals. Their source stays
+in the repository as unsupported prototypes, with no maintenance and no promise
+of backend compatibility. Their images and tags in the registry, `latest`
+included, don't mean they are supported.
 
-Use the `ondx` CLI or Portal Backend API for management. The Consent Portal and
-Portal Backend remain maintained and released. The GoReleaser release footer
-includes this notice in future release notes.
+Use the `ondx` CLI or the Portal Backend API for management. The Consent Portal
+and Portal Backend are maintained and released. The GoReleaser release footer
+repeats this notice in each release's notes.
 
 ## Verification
 ```bash

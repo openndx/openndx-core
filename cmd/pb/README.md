@@ -2,8 +2,6 @@
 
 The management REST API of OpenNDX: members, provider schemas, consumer applications, and the submissions that create them. It validates callers' tokens, enforces scope-based access, and keeps the Policy Decision Point and the identity provider in step with what it stores.
 
-> **Naming.** PB is planned to be renamed **Management Server**. Until then the code, image, service and environment names all say `portal-backend` or `pb`; the [rename checklist](#rename-note) lists every place the name appears.
-
 ## Overview
 
 ```mermaid
@@ -115,16 +113,6 @@ make check                                                            # tidy, ch
 Tests run without external services; `internal/authn` holds the token validation code. Docker image: `docker build -t portal-backend -f cmd/pb/Dockerfile .` from the repo root.
 
 Code is in [`internal/pb`](../../internal/pb): `member`, `schema`, `application` and `consentbypass` (one package per bounded context: a service and handler, and a model when it stores data in PB), `kernel` (types shared by those packages), `caller` (scopes and the caller's member), `policy` (PDP client), `idp/thunderid` (ThunderID client), `middleware` (audit records, written through the shared [`internal/audit`](../../internal/audit)), `database/dbtest` (test databases). The configuration is in [`config.go`](config.go). PB connects through the shared [`internal/database`](../../internal/database), which uses `OpenNSW/core/database`; CORS is [`OpenNSW/core/cors`](https://github.com/OpenNSW/core/tree/main/cors). Token validation is in [`internal/authn`](../../internal/authn/README.md).
-
-## Rename note
-
-When PB becomes Management Server, these identifiers embed the current name:
-
-- Compose service, container and image: `portal-backend`, `pb-${ENVIRONMENT}`, `ghcr.io/openndx/portal-backend`; Makefile service name and CI workflows (`portal-backend-validate`, `portal-backend-publish`)
-- Go packages `internal/pb` and `internal/cli/pbclient`; the `"portal-backend"` string in `/health`
-- Environment variables `PB_PORT`, `DB_NAME_PB`, `PB_AUDIENCE`, and the `ondx` flag and variable `--pb-url` / `NDX_PB_URL`
-- The token audience `http://pb.openndx.local`, which clients request as `resource=`
-- ThunderID seed data in `thunderid/bootstrap`: the `PORTAL_BACKEND` client, the `PortalBackendSystem` role and the "Portal Backend Resource Server"
 
 ## More docs
 
