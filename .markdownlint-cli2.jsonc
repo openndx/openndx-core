@@ -1,0 +1,40 @@
+// markdownlint-cli2 settings, shared by the pre-commit hook, `make mdlint`,
+// CI (.github/workflows/docs-ci.yml) and the markdownlint editor extension.
+// Rules: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+{
+  "config": {
+    "default": true,
+
+    // Paragraphs are kept on one line.
+    "MD013": false,
+
+    // Consecutive notes and GitHub alerts are separate blockquotes, which
+    // GitHub renders as separate boxes.
+    "MD028": false,
+
+    "MD003": { "style": "atx" },
+    "MD004": { "style": "dash" },
+    "MD029": { "style": "ordered" },
+    "MD035": { "style": "---" },
+    "MD046": { "style": "fenced" },
+    "MD048": { "style": "backtick" },
+    // `make mdlint-fix` runs Prettier, which writes _emphasis_.
+    "MD049": { "style": "underscore" },
+    "MD050": { "style": "asterisk" },
+    "MD055": { "style": "leading_and_trailing" },
+    // Pad table cells so the columns line up in the raw Markdown, as Prettier does.
+    "MD060": { "style": "aligned" }
+  },
+  "globs": ["**/*.md"],
+  "gitignore": true,
+  // Paused prototypes, which AGENTS.md says not to change.
+  "ignores": ["portals/apps/admin/**", "portals/apps/member/**"],
+  "overrides": [
+    {
+      // GitHub shows the pull request title above this template, so it starts at ##.
+      "filter": [".github/pull_request_template.md"],
+      "config": { "MD041": { "level": 2 } },
+      "combine": "merge"
+    }
+  ]
+}

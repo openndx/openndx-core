@@ -93,7 +93,7 @@ curl -X POST http://localhost:4000/public/graphql \
   -d '{"query":"query { personInfo(nic: \"748213\") { fullName profession birthInfo { birthPlace district } } }"}'
 ```
 
-`748213` (and a few other sample NICs — see
+`748213` (and a few other sample IDs — see
 `dev/providers/drp-api/mock_data.json` and `dev/providers/rgd-api/mock_data.json`)
 exists in both the DRP and RGD mock datasets, so a `personInfo` query can pull
 fields from both providers in one request. The mock data uses the fictional

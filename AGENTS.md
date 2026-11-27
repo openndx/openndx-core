@@ -29,6 +29,8 @@ make up OTEL=1                          # (or deps) also start a local OpenObser
 go test ./internal/pdp/fieldpolicy -run TestService_PatchPolicy -count=1
 make lint LINT_FLAGS=--new-from-rev=HEAD   # only issues in uncommitted changes
 make help                               # every target
+make docs-check                         # markdownlint, lychee and Vale on the Markdown (lychee and Vale need Docker)
+make mdlint-fix                         # fix the Markdown lint findings and align the tables
 ```
 
 - `make lint` and `make check` lint the whole module and fail on any issue; CI reports only issues on changed lines. `git fetch upstream && make lint LINT_FLAGS=--new-from-merge-base=upstream/main` shows what CI will report. The pre-commit hook can be skipped with `git commit --no-verify`.
