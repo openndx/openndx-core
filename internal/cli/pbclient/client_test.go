@@ -262,9 +262,9 @@ func TestGetSchema_Success(t *testing.T) {
 		capturedMethod = r.Method
 
 		resp := schema.SchemaResponse{
-			SchemaID:   "drp-person-v1",
+			SchemaID:   "identity-registry-v1",
 			MemberID:   "mem_123",
-			SchemaName: "DRP Person",
+			SchemaName: "Identity Registry Person",
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -273,16 +273,16 @@ func TestGetSchema_Success(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "test-token")
-	resp, err := client.GetSchema(context.Background(), "drp-person-v1")
+	resp, err := client.GetSchema(context.Background(), "identity-registry-v1")
 
 	assert.NoError(t, err)
 	if assert.NotNil(t, resp) {
-		assert.Equal(t, "drp-person-v1", resp.SchemaID)
+		assert.Equal(t, "identity-registry-v1", resp.SchemaID)
 		assert.Equal(t, "mem_123", resp.MemberID)
 	}
 
 	assert.Equal(t, "Bearer test-token", capturedAuth)
-	assert.Equal(t, "/api/v1/schemas/drp-person-v1", capturedPath)
+	assert.Equal(t, "/api/v1/schemas/identity-registry-v1", capturedPath)
 	assert.Equal(t, http.MethodGet, capturedMethod)
 }
 
@@ -372,8 +372,8 @@ func TestListSchemaFieldPolicies_Success(t *testing.T) {
 		capturedMethod = r.Method
 		resp := map[string]any{
 			"items": []policy.FieldPolicyResponse{
-				{ID: "pm_1", SchemaID: "drp-person-v1", FieldName: "person.fullName", RequiresAllowlist: true},
-				{ID: "pm_2", SchemaID: "drp-person-v1", FieldName: "person.nic", RequiresAllowlist: true, RequiresConsent: true},
+				{ID: "pm_1", SchemaID: "identity-registry-v1", FieldName: "person.fullName", RequiresAllowlist: true},
+				{ID: "pm_2", SchemaID: "identity-registry-v1", FieldName: "person.nic", RequiresAllowlist: true, RequiresConsent: true},
 			},
 			"count": 2,
 		}
@@ -383,10 +383,10 @@ func TestListSchemaFieldPolicies_Success(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, "token")
-	fields, err := client.ListSchemaFieldPolicies(context.Background(), "drp-person-v1")
+	fields, err := client.ListSchemaFieldPolicies(context.Background(), "identity-registry-v1")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "/api/v1/schemas/drp-person-v1/field-policies", capturedPath)
+	assert.Equal(t, "/api/v1/schemas/identity-registry-v1/field-policies", capturedPath)
 	assert.Equal(t, http.MethodGet, capturedMethod)
 	assert.Equal(t, 2, fields.Count)
 	if assert.Len(t, fields.Items, 2) {

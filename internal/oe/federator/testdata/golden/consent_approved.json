@@ -2,8 +2,8 @@
   "response": {
     "data": {
       "personInfo": {
-        "address": "12 Galle Road, Colombo",
-        "fullName": "Nimal Perera"
+        "address": "105 Main Street, Central City",
+        "fullName": "Suresh Fernando"
       }
     }
   },
@@ -13,11 +13,11 @@
       "requiredFields": [
         {
           "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         },
         {
           "fieldName": "person.permanentAddress",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         }
       ]
     }
@@ -27,11 +27,11 @@
       "appId": "app-golden",
       "consentRequirement": {
         "owner": "citizen",
-        "ownerId": "199012345678",
+        "ownerId": "naresh@ndx.fl",
         "fields": [
           {
             "fieldName": "person.permanentAddress",
-            "schemaId": "drp-v1",
+            "schemaId": "identity-registry-v1",
             "displayName": "Address",
             "owner": "citizen"
           }
@@ -41,11 +41,11 @@
     }
   ],
   "providerRequests": {
-    "drp-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ]
@@ -81,7 +81,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "identity-registry-v1"
     }
   ]
 }

@@ -41,20 +41,20 @@ union Searchable = PersonInfo | Vehicle
 
 type PersonInfo implements Node {
 	id: ID
-	fullName: String @sourceInfo(schemaId: "drp-v1", providerField: "person.fullName")
-	address: String @sourceInfo(schemaId: "drp-v1", providerField: "person.permanentAddress")
-	ownedVehicles(year: Int): [Vehicle] @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data")
+	fullName: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.fullName")
+	address: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.permanentAddress")
+	ownedVehicles(year: Int): [Vehicle] @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data")
 	birthInfo: BirthInfo
 }
 
 type BirthInfo {
-	date: String @sourceInfo(schemaId: "rgd-v1", providerField: "getPersonInfo.birthDate")
+	date: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthDate")
 }
 
 type Vehicle implements Node {
 	id: ID
-	regNo: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data.registrationNumber")
-	make: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data.make")
+	regNo: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data.registrationNumber")
+	make: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data.make")
 }
 `
 
@@ -104,7 +104,7 @@ func TestBuild(t *testing.T) {
 
 		fullName := person.Selections[0]
 		assert.Equal(t, []string{"personInfo", "fullName"}, fullName.Path)
-		assert.Equal(t, &schema.SourceInfo{SchemaID: "drp-v1", ProviderField: "person.fullName"}, fullName.SourceInfo)
+		assert.Equal(t, &schema.SourceInfo{SchemaID: "identity-registry-v1", ProviderField: "person.fullName"}, fullName.SourceInfo)
 		assert.Nil(t, fullName.Selections)
 
 		date := person.Selections[1].Selections[0]
@@ -200,15 +200,15 @@ func TestBuild(t *testing.T) {
 			query ($nic: String!, $lang: String, $year: Int = 2020) {
 				personInfo(nic: $nic, lang: $lang) { ownedVehicles(year: $year) { make } }
 				vehicles { make }
-			}`, map[string]any{"nic": "199012345678"})
+			}`, map[string]any{"nic": "naresh@ndx.fl"})
 
 		person := op.Fields[0]
-		assert.Equal(t, map[string]any{"nic": "199012345678", "lang": "en"}, person.Arguments,
+		assert.Equal(t, map[string]any{"nic": "naresh@ndx.fl", "lang": "en"}, person.Arguments,
 			"a variable the request leaves out falls back to the argument's default")
 		assert.Equal(t, map[string]any{"year": int64(2020)}, person.Selections[0].Arguments,
 			"a variable's default applies")
 		assert.Empty(t, op.Fields[1].Arguments, "an optional argument without a default is absent")
-		assert.Equal(t, map[string]any{"nic": "199012345678", "year": int64(2020)}, op.Variables)
+		assert.Equal(t, map[string]any{"nic": "naresh@ndx.fl", "year": int64(2020)}, op.Variables)
 	})
 
 	t.Run("coerces literal arguments", func(t *testing.T) {
@@ -256,8 +256,8 @@ func TestBuild(t *testing.T) {
 }
 
 func TestBindArguments(t *testing.T) {
-	drp := &graphql.ArgMapping{SchemaID: "drp-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"}
-	dmt := &graphql.ArgMapping{SchemaID: "dmt-v1", SourceArgPath: "personInfo-ownedVehicles-year", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "year"}
+	identityRegistry := &graphql.ArgMapping{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"}
+	vehicleRegistry := &graphql.ArgMapping{SchemaID: "vehicle-registry-v1", SourceArgPath: "personInfo-ownedVehicles-year", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "year"}
 
 	t.Run("binds each occurrence by the full path", func(t *testing.T) {
 		op := mustBuild(t, `
@@ -267,15 +267,15 @@ func TestBindArguments(t *testing.T) {
 				ownerOf(nic: "333") { fullName }
 			}`, nil)
 
-		bindings := op.BindArguments([]*graphql.ArgMapping{drp, dmt, nil})
+		bindings := op.BindArguments([]*graphql.ArgMapping{identityRegistry, vehicleRegistry, nil})
 
 		require.Len(t, bindings, 3)
-		assert.Same(t, drp, bindings[0].Mapping)
+		assert.Same(t, identityRegistry, bindings[0].Mapping)
 		assert.Equal(t, "111", bindings[0].Value)
 		assert.Equal(t, []string{"a"}, bindings[0].Field.Path)
 		assert.Equal(t, "222", bindings[1].Value)
 		assert.Equal(t, []string{"b"}, bindings[1].Field.Path)
-		assert.Same(t, dmt, bindings[2].Mapping)
+		assert.Same(t, vehicleRegistry, bindings[2].Mapping)
 		assert.Equal(t, int64(2024), bindings[2].Value)
 		assert.Equal(t, []string{"a", "ownedVehicles"}, bindings[2].Field.Path)
 	})
@@ -284,7 +284,7 @@ func TestBindArguments(t *testing.T) {
 		op := mustBuild(t, `query { personInfo(nic: "1") { ownedVehicles { make } } }`, nil)
 		lang := &graphql.ArgMapping{SourceArgPath: "personInfo-lang"}
 
-		bindings := op.BindArguments([]*graphql.ArgMapping{lang, dmt})
+		bindings := op.BindArguments([]*graphql.ArgMapping{lang, vehicleRegistry})
 
 		require.Len(t, bindings, 1)
 		assert.Same(t, lang, bindings[0].Mapping)

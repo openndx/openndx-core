@@ -1398,7 +1398,7 @@ components:
             config can reference it (`@sourceInfo(schemaId: ...)`) the same
             way in every environment. A UUID is generated when it's omitted.
             It can't be changed after creation; a taken ID returns 409.
-          example: "drp-person-v1"
+          example: "identity-registry-v1"
         schemaName:
           type: string
           description: Name of the schema

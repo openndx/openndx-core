@@ -56,25 +56,25 @@ type Query {
 }
 
 type Vehicle {
-	make: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleByRegNo.make")
-	ownerName: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleByRegNo.ownerName")
+	make: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleByRegNo.make")
+	ownerName: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleByRegNo.ownerName")
 }
 
 type PersonInfo {
-	fullName: String @sourceInfo(schemaId: "drp-v1", providerField: "person.fullName")
-	address: String @sourceInfo(schemaId: "drp-v1", providerField: "person.permanentAddress")
+	fullName: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.fullName")
+	address: String @sourceInfo(schemaId: "identity-registry-v1", providerField: "person.permanentAddress")
 	birthInfo: BirthInfo
-	ownedVehicles: [VehicleInfo] @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data")
+	ownedVehicles: [VehicleInfo] @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data")
 }
 
 type BirthInfo {
-	date: String @sourceInfo(schemaId: "rgd-v1", providerField: "getPersonInfo.birthDate")
-	place: String @sourceInfo(schemaId: "rgd-v1", providerField: "getPersonInfo.birthPlace")
+	date: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthDate")
+	place: String @sourceInfo(schemaId: "civil-registry-v1", providerField: "getPersonInfo.birthPlace")
 }
 
 type VehicleInfo {
-	regNo: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data.registrationNumber")
-	make: String @sourceInfo(schemaId: "dmt-v1", providerField: "vehicle.getVehicleInfos.data.make")
+	regNo: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data.registrationNumber")
+	make: String @sourceInfo(schemaId: "vehicle-registry-v1", providerField: "vehicle.getVehicleInfos.data.make")
 }
 
 input VehicleFilter {
@@ -84,11 +84,11 @@ input VehicleFilter {
 `
 
 var goldenArgMappings = []*graphql.ArgMapping{
-	{SchemaID: "drp-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"},
-	{SchemaID: "rgd-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "getPersonInfo", TargetArgName: "nic"},
-	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "ownerNic"},
-	{SchemaID: "dmt-v1", SourceArgPath: "personInfo-vehicleFilter", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "filter", TargetArgType: "VehicleFilterInput"},
-	{SchemaID: "dmt-v1", SourceArgPath: "vehicle-regNo", TargetArgPath: "vehicle.getVehicleByRegNo", TargetArgName: "registrationNumber"},
+	{SchemaID: "identity-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "person", TargetArgName: "nic"},
+	{SchemaID: "civil-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "getPersonInfo", TargetArgName: "nic"},
+	{SchemaID: "vehicle-registry-v1", SourceArgPath: "personInfo-nic", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "ownerNic"},
+	{SchemaID: "vehicle-registry-v1", SourceArgPath: "personInfo-vehicleFilter", TargetArgPath: "vehicle.getVehicleInfos", TargetArgName: "filter", TargetArgType: "VehicleFilterInput"},
+	{SchemaID: "vehicle-registry-v1", SourceArgPath: "vehicle-regNo", TargetArgPath: "vehicle.getVehicleByRegNo", TargetArgName: "registrationNumber"},
 }
 
 type goldenProvider struct {
@@ -97,12 +97,12 @@ type goldenProvider struct {
 }
 
 var goldenProviders = []goldenProvider{
-	{schemaID: "drp-v1", data: `{"person": {"fullName": "Nimal Perera", "permanentAddress": "12 Galle Road, Colombo"}}`},
-	{schemaID: "rgd-v1", data: `{"getPersonInfo": {"birthDate": "1990-01-01", "birthPlace": "Kandy"}}`},
-	{schemaID: "dmt-v1", data: `{"vehicle": {"getVehicleInfos": {"data": [
-		{"registrationNumber": "CAB-1234", "make": "Toyota"},
-		{"registrationNumber": "WP-5678", "make": "Honda"}
-	]}, "getVehicleByRegNo": {"make": "Toyota", "ownerName": "Nimal Perera"}}}`},
+	{schemaID: "identity-registry-v1", data: `{"person": {"fullName": "Suresh Fernando", "permanentAddress": "105 Main Street, Central City"}}`},
+	{schemaID: "civil-registry-v1", data: `{"getPersonInfo": {"birthDate": "1990-01-01", "birthPlace": "Northville"}}`},
+	{schemaID: "vehicle-registry-v1", data: `{"vehicle": {"getVehicleInfos": {"data": [
+		{"registrationNumber": "ABC-1234", "make": "Toyota"},
+		{"registrationNumber": "XYZ-5678", "make": "Honda"}
+	]}, "getVehicleByRegNo": {"make": "Toyota", "ownerName": "Suresh Fernando"}}}`},
 }
 
 type goldenCase struct {
@@ -132,7 +132,7 @@ func consentRequired() *policy.PdpResponse {
 		AppAuthorized:           true,
 		AppRequiresOwnerConsent: true,
 		ConsentRequiredFields: []policy.ConsentRequiredField{
-			{FieldName: "person.permanentAddress", SchemaID: "drp-v1", DisplayName: strPtr("Address")},
+			{FieldName: "person.permanentAddress", SchemaID: "identity-registry-v1", DisplayName: strPtr("Address")},
 		},
 	}
 }
@@ -140,25 +140,25 @@ func consentRequired() *policy.PdpResponse {
 var goldenCases = []goldenCase{
 	{
 		name:    "single_provider_scalars",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
 	},
 	{
 		name:    "multi_provider_nested_object",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName birthInfo { date place } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date place } } }`},
 	},
 	{
 		name:    "array_field",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName ownedVehicles { regNo make } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName ownedVehicles { regNo make } } }`},
 	},
 	{
 		name:    "all_providers",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address birthInfo { date } ownedVehicles { regNo } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address birthInfo { date } ownedVehicles { regNo } } }`},
 	},
 	{
 		name: "variables",
 		request: graphql.Request{
 			Query:     `query GetPerson($nic: String!) { personInfo(nic: $nic) { fullName birthInfo { place } } }`,
-			Variables: map[string]interface{}{"nic": "199012345678"},
+			Variables: map[string]interface{}{"nic": "naresh@ndx.fl"},
 		},
 	},
 	{
@@ -169,7 +169,7 @@ var goldenCases = []goldenCase{
 				personInfo(nic: $nic, vehicleFilter: $filter) { ownedVehicles { regNo make } }
 			}`,
 			Variables: map[string]interface{}{
-				"nic":    "199012345678",
+				"nic":    "naresh@ndx.fl",
 				"filter": map[string]interface{}{"makes": []interface{}{"Toyota", "Honda"}, "registeredAfter": 2020},
 			},
 		},
@@ -178,45 +178,45 @@ var goldenCases = []goldenCase{
 		// A variable the request leaves out is forwarded with its default.
 		name: "variable_default",
 		request: graphql.Request{
-			Query: `query GetPerson($nic: String = "199012345678") { personInfo(nic: $nic) { fullName } }`,
+			Query: `query GetPerson($nic: String = "naresh@ndx.fl") { personInfo(nic: $nic) { fullName } }`,
 		},
 	},
 	{
 		name:    "pdp_skipped_when_not_configured",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
 		noPDP:   true,
 	},
 	{
 		name:    "pdp_denied",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:      false,
-			UnauthorizedFields: []policy.ConsentRequiredField{{FieldName: "person.permanentAddress", SchemaID: "drp-v1"}},
+			UnauthorizedFields: []policy.ConsentRequiredField{{FieldName: "person.permanentAddress", SchemaID: "identity-registry-v1"}},
 		},
 	},
 	{
 		name:    "pdp_access_expired",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:    true,
 			AppAccessExpired: true,
-			ExpiredFields:    []policy.ConsentRequiredField{{FieldName: "person.fullName", SchemaID: "drp-v1"}},
+			ExpiredFields:    []policy.ConsentRequiredField{{FieldName: "person.fullName", SchemaID: "identity-registry-v1"}},
 		},
 	},
 	{
 		name:      "pdp_error",
-		request:   graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName } }`},
+		request:   graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
 		pdpStatus: http.StatusInternalServerError,
 	},
 	{
 		name:        "consent_approved",
-		request:     graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		ceResponse:  &consent.ConsentResponseInternalView{ConsentID: "consent-1", Status: consent.StatusApproved},
 	},
 	{
 		name:        "consent_pending",
-		request:     graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		ceResponse: &consent.ConsentResponseInternalView{
 			ConsentID:        "consent-2",
@@ -227,7 +227,7 @@ var goldenCases = []goldenCase{
 	{
 		// A consent the owner revoked must not be served, even though it was approved before.
 		name:        "consent_revoked",
-		request:     graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		// The consent engine sends a portal URL only for pending consents.
 		ceResponse: &consent.ConsentResponseInternalView{ConsentID: "consent-3", Status: consent.StatusRevoked},
@@ -255,22 +255,22 @@ var goldenCases = []goldenCase{
 		// A query keyed by an argument other than the foundational ID is served
 		// when no field requires consent.
 		name:    "non_foundational_key_without_consent",
-		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		request: graphql.Request{Query: `query { vehicle(regNo: "ABC-1234") { make } }`},
 	},
 	{
 		name:    "non_foundational_key_pdp_not_configured",
-		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		request: graphql.Request{Query: `query { vehicle(regNo: "ABC-1234") { make } }`},
 		noPDP:   true,
 	},
 	{
 		// Consent needs the data owner's ID, which a query keyed by regNo lacks.
 		name:    "non_foundational_key_consent_required",
-		request: graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make ownerName } }`},
+		request: graphql.Request{Query: `query { vehicle(regNo: "ABC-1234") { make ownerName } }`},
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:           true,
 			AppRequiresOwnerConsent: true,
 			ConsentRequiredFields: []policy.ConsentRequiredField{
-				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "dmt-v1", DisplayName: strPtr("Owner name")},
+				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "vehicle-registry-v1", DisplayName: strPtr("Owner name")},
 			},
 		},
 	},
@@ -278,30 +278,30 @@ var goldenCases = []goldenCase{
 		// Consent that isn't set up is reported as such, not as a query
 		// missing the data owner's ID.
 		name:      "consent_required_without_consent_engine",
-		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make ownerName } }`},
+		request:   graphql.Request{Query: `query { vehicle(regNo: "ABC-1234") { make ownerName } }`},
 		noConsent: true,
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:           true,
 			AppRequiresOwnerConsent: true,
 			ConsentRequiredFields: []policy.ConsentRequiredField{
-				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "dmt-v1", DisplayName: strPtr("Owner name")},
+				{FieldName: "vehicle.getVehicleByRegNo.ownerName", SchemaID: "vehicle-registry-v1", DisplayName: strPtr("Owner name")},
 			},
 		},
 	},
 	{
 		name:      "non_foundational_key_without_consent_engine",
-		request:   graphql.Request{Query: `query { vehicle(regNo: "CAB-1234") { make } }`},
+		request:   graphql.Request{Query: `query { vehicle(regNo: "ABC-1234") { make } }`},
 		noConsent: true,
 	},
 	{
 		name:    "aliases",
-		request: graphql.Request{Query: `query { a: personInfo(nic: "199012345678") { name: fullName } b: personInfo(nic: "199012345678") { home: address birth: birthInfo { day: date } } }`},
+		request: graphql.Request{Query: `query { a: personInfo(nic: "naresh@ndx.fl") { name: fullName } b: personInfo(nic: "naresh@ndx.fl") { home: address birth: birthInfo { day: date } } }`},
 	},
 	{
 		name: "fragments_skip_include",
 		request: graphql.Request{
 			Query: `query Person($withBirth: Boolean!) {
-				personInfo(nic: "199012345678") {
+				personInfo(nic: "naresh@ndx.fl") {
 					...names
 					address @skip(if: true)
 					... on PersonInfo { birthInfo @include(if: $withBirth) { place } }
@@ -314,27 +314,27 @@ var goldenCases = []goldenCase{
 	{
 		// A non-2xx status is a failure even when the body is a GraphQL response.
 		name:           "provider_error_status_with_json_body",
-		request:        graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName birthInfo { date } } }`},
-		providerStatus: map[string]int{"rgd-v1": http.StatusServiceUnavailable},
-		providerBody:   map[string]string{"rgd-v1": `{"data": {"getPersonInfo": {"birthDate": "stale"}}}`},
+		request:        graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		providerStatus: map[string]int{"civil-registry-v1": http.StatusServiceUnavailable},
+		providerBody:   map[string]string{"civil-registry-v1": `{"data": {"getPersonInfo": {"birthDate": "stale"}}}`},
 	},
 	{
 		name:         "provider_graphql_errors",
-		request:      graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName birthInfo { date } } }`},
-		providerBody: map[string]string{"rgd-v1": `{"data": {"getPersonInfo": null}, "errors": [{"message": "person not found", "path": ["getPersonInfo"]}]}`},
+		request:      graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		providerBody: map[string]string{"civil-registry-v1": `{"data": {"getPersonInfo": null}, "errors": [{"message": "person not found", "path": ["getPersonInfo"]}]}`},
 	},
 	{
 		name:    "mutation_rejected",
-		request: graphql.Request{Query: `mutation { personInfo(nic: "199012345678") { fullName } }`},
+		request: graphql.Request{Query: `mutation { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
 	},
 	{
 		name:    "invalid_query_syntax",
-		request: graphql.Request{Query: `query { personInfo(nic: "199012345678" { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl" { fullName } }`},
 	},
 	{
 		name:           "provider_failure",
-		request:        graphql.Request{Query: `query { personInfo(nic: "199012345678") { fullName birthInfo { date } } }`},
-		providerStatus: map[string]int{"rgd-v1": http.StatusInternalServerError},
+		request:        graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		providerStatus: map[string]int{"civil-registry-v1": http.StatusInternalServerError},
 	},
 }
 

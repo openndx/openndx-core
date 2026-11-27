@@ -2,18 +2,18 @@
   "response": {
     "data": {
       "personInfo": {
-        "fullName": "Nimal Perera"
+        "fullName": "Suresh Fernando"
       }
     }
   },
   "policyRequests": [],
   "consentRequests": [],
   "providerRequests": {
-    "drp-v1": [
+    "identity-registry-v1": [
       {
-        "query": "query Querydrp_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
+        "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
         "variables": {
-          "nic": "199012345678"
+          "nic": "naresh@ndx.fl"
         }
       }
     ]
@@ -33,7 +33,7 @@
       "actorType": "SERVICE",
       "actorId": "orchestration-engine",
       "targetType": "SERVICE",
-      "targetId": "drp-v1"
+      "targetId": "identity-registry-v1"
     }
   ]
 }

@@ -928,7 +928,7 @@ func runSchemasCreate(ctx context.Context, args []string) error {
 
 	fs := flag.NewFlagSet("schemas create", flag.ExitOnError)
 	fs.String("profile", profileName, "Named profile to use for defaults (env NDX_PROFILE; see 'ondx profile list')")
-	schemaID := fs.String("schema-id", "", "Schema ID, e.g. drp-person-v1, to match the Orchestration Engine's @sourceInfo(schemaId: ...). Defaults to a generated UUID; can't be changed later")
+	schemaID := fs.String("schema-id", "", "Schema ID, e.g. identity-registry-v1, to match the Orchestration Engine's @sourceInfo(schemaId: ...). Defaults to a generated UUID; can't be changed later")
 	name := fs.String("name", "", "Schema name (required)")
 	description := fs.String("description", "", "Schema description")
 	endpoint := fs.String("endpoint", "", "Provider GraphQL endpoint (required)")

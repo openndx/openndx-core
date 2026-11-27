@@ -16,7 +16,7 @@
       "requiredFields": [
         {
           "fieldName": "person.fullName",
-          "schemaId": "drp-v1"
+          "schemaId": "identity-registry-v1"
         }
       ]
     }
