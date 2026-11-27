@@ -89,7 +89,7 @@ or to the provider that holds the record. OpenNDX helps operators answer them:
 
 ## Deletion and retention
 
-OpenNDX doesn't yet delete personal data on a schedule or through its APIs.
+OpenNDX doesn't delete personal data on a schedule or through its APIs.
 - **Consent records are kept as history** after they expire, are rejected or are revoked. An operator who needs to delete them, for example to answer an erasure request, deletes them in the Consent Engine database.
 - **Member contact details** can be changed through the management API and deleted in the Portal Backend database.
 - **Audit records are kept as long as the operator's OpenTelemetry backend keeps them.** Set retention there.
