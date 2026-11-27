@@ -42,8 +42,10 @@ func isValidTraceID(id string) bool {
 		return false
 	}
 	for _, c := range id {
-		if !(c == '-' || (c >= '0' && c <= '9') ||
-			(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+		if c != '-' &&
+			(c < '0' || c > '9') &&
+			(c < 'a' || c > 'z') &&
+			(c < 'A' || c > 'Z') {
 			return false
 		}
 	}
