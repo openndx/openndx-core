@@ -28,3 +28,5 @@ These exist for the [walkthrough](../dev/WALKTHROUGH.md) and the [sample data](.
 - the `DATA_CONSUMER` client in `application.yaml`, and its assignment to the `DataConsumerGetData` role in `resource.yaml`. Keep the role: Portal Backend assigns it to every application it creates;
 - the `NDX_CLI` client, which the `local` profile of the `ondx` CLI logs in with. For another deployment, register a client for `ondx` and save it in a profile ([cmd/ondx/README.md](../cmd/ondx/README.md#configuration));
 - the local origins in `cors.yaml`.
+
+Sign-up in the Consent Portal is off. The Consent Engine reads a data owner's ID from the `email` claim (`IDP_SUBJECT_CLAIM`), and ThunderID doesn't verify the email of an account that signs itself up, so the citizens are the accounts in `users.yaml`.

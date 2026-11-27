@@ -51,7 +51,11 @@ url: "{{ .CONSENT_PORTAL_URL }}"
 logoUrl: "avatar:shape=rounded,variant=anonymous_entity,content=shield,colors=0"
 authFlowId: 01900000-0000-7000-8000-000000000061
 registrationFlowId: 01900000-0000-7000-8000-000000000064
-isRegistrationFlowEnabled: true
+# Sign-up is off. consent-engine takes the email claim as the data owner's ID,
+# and ThunderID doesn't verify the email of an account that signs itself up, so
+# an account signed up with someone else's email could decide on their
+# consents. The citizens are the accounts in users.yaml.
+isRegistrationFlowEnabled: false
 signOutFlowId: 01900000-0000-7000-8000-00000000006a
 recoveryFlowId: 01900000-0000-7000-8000-000000000067
 isRecoveryFlowEnabled: true
