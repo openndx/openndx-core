@@ -6,7 +6,7 @@ Records data-owner consent for data access requests and runs the consent lifecyc
 
 ```mermaid
 flowchart LR
-    OE[Orchestration Engine] -->|create and check consent<br/>internal API, no auth| CE
+    OE[Orchestration Engine] -->|create consent<br/>internal API, no auth| CE
     CP[Consent Portal] -->|list, view, decide<br/>portal API, JWT| CE
     CE --> DB[(PostgreSQL: consent_engine)]
     CE -.->|fetch signing keys| IDP[ThunderID]
@@ -14,7 +14,7 @@ flowchart LR
 
 | Caller | Uses |
 |---|---|
-| Orchestration Engine | Internal API: creates a consent when the PDP says the owner must consent, and reads its status |
+| Orchestration Engine | Internal API: creates a consent when the PDP says the owner must consent, and reads its status from the response |
 | Consent Portal ([portals/apps/consent](../../portals/apps/consent/README.md)) | Portal API with the citizen's access token: list, view, approve, reject, revoke |
 
 The only outbound call is the identity provider's JWKS endpoint, used to verify portal tokens. The CE does not emit audit events.
@@ -69,13 +69,13 @@ A value written as `"{{env:NAME}}"` or `"{{file:/path}}"` is read from that envi
 | `database.postgres.pool.maxOpenConns`, `.maxIdleConns`, `.maxConnLifetimeSeconds` | `25`, `5`, `3600`          | Connection pool.                                                                                                       |
 | `database.idleTimeout`                                                            | `30m`                      | Closes connections idle this long.                                                                                     |
 
-The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect.
+The service checks the file at startup and exits with an error naming the bad key. Keys it does not know are ignored, so check the spelling of any key that seems to have no effect. It also exits if it can't connect to the database within 10 seconds.
 
 ## API
 
-Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "...", "message": "..."}}`, except a portal call with a missing or invalid token, which gets the shared authentication layer's `401` body, `{"error": "unauthorized", "message": "..."}`. Token checks: [CONSENT_LIFECYCLE.md](CONSENT_LIFECYCLE.md#who-may-decide).
+Full schemas: [openapi.yaml](openapi.yaml). Errors are `{"error": {"code": "...", "message": "..."}}`, except a portal call with a missing or invalid token, which gets the `401` body of [internal/authn](../../internal/authn/README.md#token-checks), `{"error": "unauthorized", "message": "..."}`. The owner check is in [CONSENT_LIFECYCLE.md](CONSENT_LIFECYCLE.md#who-may-decide).
 
-**Internal API** (no authentication, for the Orchestration Engine):
+**Internal API** (no authentication; the Orchestration Engine calls `POST /internal/api/v1/consents`):
 
 | Method and path                                 | Purpose                                                                                                                                       |
 |-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|

@@ -12,7 +12,7 @@ make test-integration
 
 This runs [`run-local-tests.sh`](run-local-tests.sh), which:
 
-1. checks that Docker is running, and that this module's `go.mod` and `go.sum` have no uncommitted changes (`SKIP_GO_MOD_CHECK=1` skips that check);
+1. checks that Docker is running, runs `go mod tidy`, and stops if this module's `go.mod` or `go.sum` then has uncommitted changes (`SKIP_GO_MOD_CHECK=1` skips that check);
 2. starts the test stack with `docker compose -f docker-compose.db.yml -f docker-compose.test.yml up -d --build`, and waits until each service is healthy;
 3. runs `go test -v -race -timeout 30m ./...`;
 4. removes the containers and their volumes.

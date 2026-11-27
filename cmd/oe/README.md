@@ -67,7 +67,7 @@ Every key with its default, and the error codes: [CONFIGURATION.md](CONFIGURATIO
 | `POST /public/graphql` | Bearer token | Federated query. Body `{query, variables, operationName}`; response `{data, errors}`. Only one `query` operation per request. |
 | `GET /health` | none | `{"service": "orchestration-engine", "status": "healthy"}` |
 
-[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here, and its token requirements in [CONFIGURATION.md](CONFIGURATION.md#idp).
+[openapi.yaml](openapi.yaml) describes `/health`. `/public/graphql` is described here, and its token checks in [internal/authn](../../internal/authn/README.md#token-checks).
 
 ## How it works
 

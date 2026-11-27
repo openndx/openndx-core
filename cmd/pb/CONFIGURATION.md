@@ -43,17 +43,17 @@ PB creates and deletes each application's OAuth2 client through ThunderID's mana
 
 | Key | Default | Notes |
 |---|---|---|
-| `idp.management.baseURL` | none | **Required.** ThunderID base URL for management calls. |
+| `idp.management.baseURL` | none | **Required.** ThunderID base URL for management calls. PB waits up to 15 seconds for each call. |
 | `idp.management.clientID`, `.clientSecret` | none | **Required.** PB's own client (`PORTAL_BACKEND` in the bundled stack). |
 | `idp.management.scopes` | empty | Scopes for the management token (`[system]`). |
-| `idp.management.resource` | empty | Resource server the `system` scope belongs to. ThunderID needs it for that scope. |
-| `idp.management.dataConsumerRoleID` | empty | Role assigned to every created application client, which grants it `getdata`. If empty, role assignment is skipped. |
+| `idp.management.resource` | empty | Resource server the `system` scope belongs to. ThunderID needs it for that scope. The bundled stack sets `https://localhost:8090/mcp`, the fixed identifier of ThunderID's built-in System resource server. |
+| `idp.management.dataConsumerRoleID` | empty | Role assigned to every created application client, which grants it `getdata`. If empty, role assignment is skipped. The bundled stack sets the ID of the `DataConsumerGetData` role in [resource.yaml](../../thunderid/bootstrap/resource.yaml). |
 
 ## Policy Decision Point
 
 | Key | Default | Notes |
 |---|---|---|
-| `pdp.url` | none | **Required.** `http` or `https` URL. PB calls the PDP without authentication. |
+| `pdp.url` | none | **Required.** `http` or `https` URL. PB calls the PDP without authentication, and waits up to 10 seconds for each call. |
 
 ## OpenTelemetry and audit
 
