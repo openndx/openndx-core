@@ -112,9 +112,9 @@ The Go and Node.js libraries are listed in [go.mod](go.mod) and [portals/apps/co
 
 ## Standards
 
-- [GraphQL](https://spec.graphql.org/) for consumer queries, and [GraphQL over HTTP](https://graphql.github.io/graphql-over-http/draft/) for the calls to providers.
-- [OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749) access tokens: the client credentials grant for data consumers, and the authorization code grant with [PKCE](https://www.rfc-editor.org/rfc/rfc7636) for the Consent Portal and `ondx`.
-- [JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc7519), verified with the identity provider's [JSON Web Key Set](https://www.rfc-editor.org/rfc/rfc7517).
+- [GraphQL](https://spec.graphql.org/) for consumer queries, and [GraphQL over HTTP](https://http-spec.graphql.org/draft/) for the calls to providers.
+- [OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749.html) access tokens: the client credentials grant for data consumers, and the authorization code grant with [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html) for the Consent Portal and `ondx`.
+- [JSON Web Tokens](https://www.rfc-editor.org/rfc/rfc7519.html), verified with the identity provider's [JSON Web Key Set](https://www.rfc-editor.org/rfc/rfc7517.html).
 - [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.3) descriptions of the services' HTTP APIs, in each `cmd/<service>/openapi.yaml`.
 
 ## Exporting data

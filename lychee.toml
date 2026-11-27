@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Lanka Software Foundation
+
+# lychee link checker settings, used by `make linkcheck` and CI
+# (.github/workflows/docs-ci.yml).
+# Reference: https://lychee.cli.rs/guides/config/
+
+# Check #anchors in links between Markdown files, as well as the files.
+include_fragments = "full"
+
+# Local stack addresses (localhost, private IPs) are not reachable from CI.
+exclude_all_private = true
+
+exclude = [
+  # Hostnames that only resolve inside Docker Compose or a deployment: public
+  # hosts always contain a dot, so a hostname without one is a service name.
+  '^https?://[^./:]+([:/]|$)',
+  '^https?://[^/]*\.local([:/]|$)',
+  # Placeholder hosts in examples.
+  '^https?://([^/]*\.)?example\.(com|org)',
+  # Pull requests, issues and commits on GitHub. They don't move once they
+  # exist, and checking them on every pull request fails on GitHub's
+  # occasional 502s and 503s.
+  '^https://github\.com/[^/]+/[^/]+/(pull|issues|commit)/',
+  # Links that redirect by design: the newest release, and the private
+  # vulnerability report form, which needs a GitHub sign-in.
+  '^https://github\.com/[^/]+/[^/]+/releases/latest$',
+  '^https://github\.com/[^/]+/[^/]+/security/advisories/new$',
+]
+
+# The paused Admin and Member portals, which AGENTS.md says not to change, are
+# not checked.
+exclude_path = ['(^|/)tmp/', '(^|/)node_modules/', '^portals/apps/(admin|member)/']
+
+# Links to this repository's files on main, such as the absolute links in
+# cmd/ondx/README.md, are checked against the files checked out at /input
+# (`make linkcheck` mounts the repository there). That checks the branch being
+# changed, and avoids GitHub's 503s for many requests in a row.
+remap = ['^https://github\.com/openndx/openndx-core/(?:blob|tree)/main/(.*)$ file:///input/$1']
+
+# Rate-limited responses mean the link exists.
+accept = ["100..=103", "200..=299", "429"]
+
+max_retries = 3
+# Seconds before the first retry; each later one waits twice as long (5, 10,
+# 20), to ride out a brief GitHub 5xx.
+retry_wait_time = 5
+timeout = 20

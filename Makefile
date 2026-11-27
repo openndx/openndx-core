@@ -51,8 +51,20 @@ endif
 # Mock data providers OE federates to (see dev/README.md).
 PROVIDERS := docker compose -f dev/compose.yml
 
+# Docs checks, the same as the Docs CI workflow (.github/workflows/docs-ci.yml).
+# markdownlint and Prettier run through npx (Node.js); lychee and Vale run in
+# Docker. The pre-commit hook pins the same markdownlint-cli2 version.
+MDLINT_VERSION := 0.23.2
+# markdownlint --fix cannot pad tables, so mdlint-fix runs Prettier for them.
+PRETTIER_VERSION := 3.9.9
+LYCHEE_IMAGE := lycheeverse/lychee:0.24.2
+VALE_IMAGE := jdkato/vale:v3.24.0
+# Every tracked Markdown file except the paused Admin and Member portals'.
+# Lazy (=), so git runs only for a target that uses the list.
+MD_FILES = $(shell git ls-files "*.md" ":!portals/apps/admin" ":!portals/apps/member")
+
 .DEFAULT_GOAL := help
-.PHONY: help setup build test test-integration fmt lint license license-check check deps up down clean
+.PHONY: help setup build test test-integration fmt lint license license-check check mdlint mdlint-fix linkcheck prose docs-check deps up down clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-17s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -91,6 +103,22 @@ check: ## Check go.mod is tidy and the license headers, lint and test, changing 
 	$(MAKE) --no-print-directory license-check
 	$(MAKE) --no-print-directory lint LINT_FLAGS=
 	$(MAKE) --no-print-directory test PKG=./...
+
+mdlint: ## Lint the Markdown files (rules: .markdownlint-cli2.jsonc)
+	npx --yes markdownlint-cli2@$(MDLINT_VERSION) --no-globs $(MD_FILES)
+
+mdlint-fix: ## Apply markdownlint's fixes and align the tables with Prettier
+	npx --yes markdownlint-cli2@$(MDLINT_VERSION) --fix --no-globs $(MD_FILES) || true
+	npx --yes prettier@$(PRETTIER_VERSION) --prose-wrap preserve --embedded-language-formatting off --write $(MD_FILES)
+	npx --yes markdownlint-cli2@$(MDLINT_VERSION) --no-globs $(MD_FILES)
+
+linkcheck: ## Check the links and #anchors in the Markdown files with lychee (needs Docker)
+	docker run --rm -e GITHUB_TOKEN -v "$(CURDIR):/input" -w /input $(LYCHEE_IMAGE) --no-progress $(MD_FILES)
+
+prose: ## Check spelling and term casing in the Markdown files with Vale (needs Docker)
+	docker run --rm -v "$(CURDIR):/docs" -w /docs $(VALE_IMAGE) $(MD_FILES)
+
+docs-check: mdlint linkcheck prose ## Run the docs checks: mdlint, linkcheck, prose
 
 deps: ## Start only the dependencies in Docker, to run the services natively (OTEL=1 adds OpenObserve)
 	docker compose $(COMPOSE_PROFILE) up -d $(DEPS)

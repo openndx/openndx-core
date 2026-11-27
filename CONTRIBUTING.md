@@ -17,13 +17,13 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ## Prerequisites
 
-| Tool                                                                    | Version                                                                                    | Used for                                                                                           |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| [Go](https://go.dev/dl/)                                                | 1.26.4 or later, as set in [`go.mod`](go.mod)                                              | Every service and the `ondx` CLI                                                                   |
-| A C compiler, such as gcc or clang                                      | Any recent version                                                                         | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables    |
-| Git, GNU Make and curl                                                  | Any recent version                                                                         | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl.             |
-| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal, and `make setup`, which installs its dependencies                              |
-| [Docker](https://docs.docker.com/get-docker/) with Compose v2           | Any recent version                                                                         | The local stack (`make up`, `make deps`) and the integration tests. The unit tests do not need it. |
+| Tool                                                                      | Version                                                                                    | Used for                                                                                                                                                           |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Go](https://go.dev/dl/)                                                  | 1.26.4 or later, as set in [`go.mod`](go.mod)                                              | Every service and the `ondx` CLI                                                                                                                                   |
+| A C compiler, such as gcc or clang                                        | Any recent version                                                                         | The Go unit tests, which use SQLite through cgo, and the race detector that `make test` enables                                                                    |
+| Git, GNU Make and curl                                                    | Any recent version                                                                         | The `make` commands and the pre-commit hook. `make` downloads golangci-lint with curl.                                                                             |
+| [Node.js](https://nodejs.org/en) and [pnpm](https://pnpm.io/installation) | Node 24 or later, and pnpm 11, as pinned in [`portals/package.json`](portals/package.json) | The Consent Portal and `make setup`, which installs its dependencies. `make mdlint` and the pre-commit hook run markdownlint with it.                              |
+| [Docker](https://docs.docker.com/get-docker/) with Compose v2             | Any recent version                                                                         | The local stack (`make up`, `make deps`), the integration tests, and the link and spelling checks (`make linkcheck`, `make prose`). The unit tests do not need it. |
 
 On macOS, the Xcode Command Line Tools (`xcode-select --install`) provide Make, Git and clang.
 
@@ -55,7 +55,7 @@ Run it again after pulling changes to the portal's dependencies. It does not cre
 
 ### The Pre-commit Hook
 
-On every commit, the hook first adds the [license header](#license-headers) to staged files that lack it, and stages the result. Then, when the commit stages a `.go` file, `go.mod`, `go.sum` or `.golangci.yml`, it runs `make check` and blocks the commit if it fails. `make check` changes no files. It checks the working tree, so unstaged changes count too. Other commits, such as documentation changes, skip `make check`.
+On every commit, the hook first adds the [license header](#license-headers) to staged files that lack it, and stages the result. When the commit stages a Markdown file, it then lints the staged content with markdownlint, if Node.js is installed; `SKIP_MDLINT=1` skips that step. Then, when the commit stages a `.go` file, `go.mod`, `go.sum` or `.golangci.yml`, it runs `make check` and blocks the commit if it fails. `make check` changes no files. It checks the working tree, so unstaged changes count too. Other commits, such as documentation changes, skip `make check`.
 
 To skip the hook for one commit, run `git commit --no-verify`.
 
@@ -160,9 +160,14 @@ Every Go target works on the whole module. For the full list of commands, run `m
 | `make license`          | Adds the [license header](#license-headers) to files that lack it                                                                |
 | `make license-check`    | Lists the files without the license header, and fails if there are any, as CI does                                               |
 | `make check`            | Checks that `go.mod` and `go.sum` are tidy, then runs `make license-check`, `make lint` and `make test`. It changes no files.    |
+| `make mdlint`           | Lints the Markdown files with markdownlint and [`.markdownlint-cli2.jsonc`](.markdownlint-cli2.jsonc)                            |
+| `make mdlint-fix`       | Applies markdownlint's fixes and aligns the tables with Prettier                                                                 |
+| `make linkcheck`        | Checks the links and `#anchors` in the Markdown files with lychee. Needs Docker.                                                 |
+| `make prose`            | Checks spelling and term casing in the Markdown files with Vale. Needs Docker.                                                   |
+| `make docs-check`       | Runs `make mdlint`, `make linkcheck` and `make prose`                                                                            |
 | `make clean`            | Removes `bin/` and the coverage files                                                                                            |
 
-Before you push, run `make fmt` and `make check`.
+Before you push, run `make fmt` and `make check`, and `make docs-check` when you change Markdown.
 
 ### Unit Tests
 
@@ -270,7 +275,11 @@ Each component's validate workflow runs when a pull request changes that compone
 - For the Consent Portal, the workflow runs `eslint`, and builds and scans the Docker image.
 - For the Consent Engine, a `database` job also runs the PostgreSQL tests in `cmd/ce` and `internal/database` against PostgreSQL 17. Locally, these tests are skipped unless `TEST_DATABASE_URL` is set; see [Unit Tests](#unit-tests).
 
-The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point or the Consent Engine, a shared package they use, `go.mod`, `go.sum` or `tests/integration`. The `paths` filters in `.github/workflows/integration-tests.yml` list them. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
+The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point or the Consent Engine, a shared package they use, `go.mod`, `go.sum` or `tests/integration`. The `paths` filters in `.github/workflows/integration-tests.yml` list them.
+
+The Docs CI workflow runs `make mdlint`, `make linkcheck` and `make prose` when a pull request changes a Markdown file or a docs check setting. The prose check lists Vale's findings without failing; add a word it doesn't know to [`.github/styles/config/vocabularies/OpenNDX/accept.txt`](.github/styles/config/vocabularies/OpenNDX/accept.txt).
+
+A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
 
 ### Review and Merge
 
