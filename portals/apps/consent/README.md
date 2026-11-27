@@ -83,7 +83,7 @@ A `401` shows a "session expired, sign in again" message, a `403` goes to an una
 
 ## Security and deployment
 
-- **Identity provider client.** A public client with authorization-code and PKCE, and exact redirect URIs for the sign-in and sign-out URLs. In the bundled stack that is the ThunderID `CONSENT_PORTAL` client, which registers `<portal URL>` and `<portal URL>/callback` ([thunderid/bootstrap/application.yaml](../../../thunderid/bootstrap/application.yaml)). The same origin must be in ThunderID's CORS list ([cors.yaml](../../../thunderid/bootstrap/cors.yaml), currently `http://localhost:5173`).
+- **Identity provider client.** A public client with authorization-code and PKCE, and exact redirect URIs for the sign-in and sign-out URLs. In the bundled stack that is the ThunderID `CONSENT_PORTAL` client, which registers `<portal URL>` for both ([thunderid/bootstrap/application.yaml](../../../thunderid/bootstrap/application.yaml)). The same origin must be in ThunderID's CORS list ([cors.yaml](../../../thunderid/bootstrap/cors.yaml), currently `http://localhost:5173`).
 - **Consent Engine.** It must allow the portal's origin (the origin of its `consentPortalURL` is always allowed) and check tokens against the same issuer. Its `idp.audience` must match the token's `aud`; Compose sets it to `CONSENT_PORTAL` through `CONSENT_ENGINE_AUDIENCE`.
 - **Content security.** The nginx image allows connections to `self`, `http:` and `https:` origins, so the browser can reach the Consent Engine and the identity provider.
 

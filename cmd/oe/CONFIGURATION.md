@@ -112,7 +112,7 @@ In production:
 
 ## otel
 
-The OE writes its audit events as OpenTelemetry log records and sends them over OTLP/HTTP with [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). They go only to this endpoint, never to stdout.
+OpenTelemetry export over OTLP/HTTP, through [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). It carries the OE's audit records, which go nowhere else. What the records hold, and what happens when export is off or fails, is in [internal/audit](../../internal/audit/README.md).
 
 | Key | Default | Notes |
 |---|---|---|
@@ -121,15 +121,11 @@ The OE writes its audit events as OpenTelemetry log records and sends them over 
 | `otel.serviceName` | `orchestration-engine` | The `service.name` resource attribute. |
 | `otel.headers` | | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. |
 
-With export off, the OE logs `otel log export is off: audit records (category=audit) are not retained` at startup and drops every audit record. Records are batched in memory and flushed when the OE shuts down; any still unsent when the process is killed, or while the endpoint is unreachable, are lost.
-
-Each record has the message `audit` and these attributes, the same shape the NSW's `OpenNSW/core/platform/audit` writes, so one query finds both: `category` (`audit`), `eventType`, `status` (`SUCCESS` or `FAILURE`), `actorType`, `actorID`, `targetType`, and when set `targetID`, `traceID` and `metadata`. The metadata names the application, the fields asked for and the outcome; it never holds the query text, its arguments or provider data.
-
-For a local backend, `make up OTEL=1` or `make deps OTEL=1` also starts OpenObserve on `http://localhost:5080`, and the commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at it. They stay commented by default; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
+The commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at the local OpenObserve that `make up OTEL=1` and `make deps OTEL=1` start; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
 
 ## Environment variables
 
-Apart from the placeholders in the config file, the OE reads only `CONFIG_PATH`, and the OpenTelemetry SDK reads the `OTEL_*` variables `otel` has no key for, such as `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_EXPORTER_OTLP_TIMEOUT`. `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` are ignored; reference them from the config file if needed. The OE does not load `.env` files. It records no metrics and serves no `/metrics`.
+Apart from the placeholders in the config file, the OE reads `CONFIG_PATH`. The OpenTelemetry SDK reads the `OTEL_*` variables that `otel` has no key for, which [internal/audit](../../internal/audit/README.md#export) lists. The OE does not load `.env` files. It records no metrics and serves no `/metrics`.
 
 ## Schema
 

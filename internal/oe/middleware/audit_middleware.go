@@ -101,8 +101,8 @@ func (a *Auditor) PolicyCheck(ctx context.Context, appID string, req *policy.Pdp
 		responseMetadata["authorized"] = resp.AppAuthorized
 		responseMetadata["consentRequired"] = resp.AppRequiresOwnerConsent
 		responseMetadata["accessExpired"] = resp.AppAccessExpired
-		// Per-field outcomes, with any obligations the policy returned.
-		// Absent when the PDP predates per-field outcomes.
+		// Per-field outcomes, with any obligations the policy returned, when the
+		// response has them.
 		if resp.Fields != nil {
 			responseMetadata["fields"] = resp.Fields
 		}

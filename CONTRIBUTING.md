@@ -135,16 +135,16 @@ Running the Policy Decision Point or the Consent Engine natively means running t
 
 ### Viewing Audit Records
 
-The Orchestration Engine and the Portal Backend send their audit records only to an OpenTelemetry endpoint, set in the `otel` section of their config, and never write them to their own logs. The committed configs leave that section commented out, so by default the records are dropped and each of the two services logs `otel log export is off: audit records (category=audit) are not retained` at startup. To see the records locally:
+The Orchestration Engine and the Portal Backend send their [audit records](internal/audit/README.md) only to the OpenTelemetry endpoint in the `otel` section of their config. The committed configs leave that section commented out, so by default the records are dropped, and each of the two services logs `otel log export is off` at startup. To see the records locally:
 
 1. Start a local [OpenObserve](https://github.com/openobserve/openobserve) with the stack: `make up OTEL=1` or `make deps OTEL=1`. It listens on <http://localhost:5080> and keeps no data once its container is removed. Without `OTEL=1` it isn't started.
 2. Uncomment the `otel` block at the end of the config each service reads:
    - in Docker, `cmd/oe/config.docker.yaml` and `cmd/pb/config.docker.yaml`. These files are committed, so leave that change out of your commits;
    - run natively, your `cmd/oe/config.yaml` and `cmd/pb/config.yaml`, copied from the examples.
-3. Restart the two services: `docker compose up -d --force-recreate --no-deps orchestration-engine portal-backend`, or stop and rerun `go run .`. The startup warning above is gone once export is on.
+3. Restart the two services: `docker compose up -d --force-recreate --no-deps orchestration-engine portal-backend`, or stop and rerun `go run .`. With export on, the startup warning doesn't appear.
 4. Open <http://localhost:5080> and sign in as `root@example.com` with password `Complexpass#123`, fixed local defaults from `compose.yml` rather than secrets. Under **Logs**, choose the `default` stream and filter with `category='audit'`.
 
-`make down` stops OpenObserve as well. The records' attributes are listed in [cmd/oe/CONFIGURATION.md](cmd/oe/CONFIGURATION.md#otel) and [cmd/pb/CONFIGURATION.md](cmd/pb/CONFIGURATION.md#opentelemetry-and-audit).
+`make down` stops OpenObserve as well.
 
 ## Running Tests and Quality Checks
 
@@ -270,7 +270,7 @@ Each component's validate workflow runs when a pull request changes that compone
 - For the Consent Portal, the workflow runs `eslint`, and builds and scans the Docker image.
 - For the Consent Engine, a `database` job also runs the PostgreSQL tests in `cmd/ce` and `internal/database` against PostgreSQL 17. Locally, these tests are skipped unless `TEST_DATABASE_URL` is set; see [Unit Tests](#unit-tests).
 
-The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point, the Consent Engine, `internal/database`, `internal/monitoring`, `internal/utils`, `go.mod`, `go.sum` or `tests/integration`. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
+The integration tests run when a pull request changes the Orchestration Engine, the Policy Decision Point or the Consent Engine, a shared package they use, `go.mod`, `go.sum` or `tests/integration`. The `paths` filters in `.github/workflows/integration-tests.yml` list them. A TruffleHog secret scan and the [license header check](#license-headers) run on every pull request, and CodeRabbit, an automated reviewer, also comments on pull requests.
 
 ### Review and Merge
 

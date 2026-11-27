@@ -57,7 +57,7 @@ PB creates and deletes each application's OAuth2 client through ThunderID's mana
 
 ## OpenTelemetry and audit
 
-PB writes an audit record for every create, update and delete (see [AUTHORIZATION.md](AUTHORIZATION.md#audit)) as an OpenTelemetry log record, and sends it over OTLP/HTTP with [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). Records go only to this endpoint, never to stdout.
+OpenTelemetry export over OTLP/HTTP, through [`OpenNSW/core/telemetry`](https://github.com/OpenNSW/core/tree/main/telemetry). It carries PB's audit records, which go nowhere else. What the records hold, and what happens when export is off or fails, is in [internal/audit](../../internal/audit/README.md).
 
 | Key | Default | Notes |
 |---|---|---|
@@ -66,11 +66,7 @@ PB writes an audit record for every create, update and delete (see [AUTHORIZATIO
 | `otel.serviceName` | `portal-backend` | The `service.name` resource attribute. |
 | `otel.headers` | empty | Sent with every export, for example `Authorization: "{{env:OTEL_AUTH_HEADER}}"`. |
 
-With export off, PB logs `otel log export is off: audit records (category=audit) are not retained` at startup and drops every audit record. Records are batched in memory and flushed when PB shuts down; any still unsent when the process is killed, or while the endpoint is unreachable, are lost.
-
-Each record has the message `audit` and the attributes `category` (`audit`), `eventType` (`MANAGEMENT_EVENT`), `action` (`CREATE`, `UPDATE` or `DELETE`), `status`, `actorType`, `actorID`, `targetType` (`RESOURCE`), `targetID` when known, and `metadata` with `resource` and `clientId`. That is the same shape the NSW's `OpenNSW/core/platform/audit` writes, so one query finds both.
-
-The OpenTelemetry SDK also reads the `OTEL_*` variables `otel` has no key for, such as `OTEL_RESOURCE_ATTRIBUTES` and `OTEL_EXPORTER_OTLP_TIMEOUT`. `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` are ignored. For a local backend, `make up OTEL=1` or `make deps OTEL=1` also starts OpenObserve on `http://localhost:5080`, and the commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at it. They stay commented by default; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
+The commented `otel` blocks at the end of [config.example.yaml](config.example.yaml) and [config.docker.yaml](config.docker.yaml) point at the local OpenObserve that `make up OTEL=1` and `make deps OTEL=1` start; [Viewing audit records](../../CONTRIBUTING.md#viewing-audit-records) has the steps.
 
 ## Database
 
