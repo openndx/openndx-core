@@ -206,6 +206,7 @@ Many of the tests are skipped, rather than failed, when a database or service th
 - Keep each pull request focused on a single issue. If a change is large, consider splitting it into a series of smaller pull requests.
 - Add or update tests for any behavior that you add or change.
 - Update the documentation that your change affects, including the component's README.
+- Write comments and documentation about the code as it is now: what it does and why. Leave out its history, such as what it used to do, what was removed or renamed, or which pull request changed it. Commit messages and release notes record that.
 - Each service describes its API in `cmd/<svc>/openapi.yaml`. Any change to a route, a request or response body, a query parameter, a status code, an error code, a required scope or a validation rule must update the specification in the same pull request. The specification describes what the code does. If the code and the specification disagree because the code is wrong, file an issue rather than documenting the intended behavior as if it had shipped.
 - The Admin and Member portals are paused prototypes. Please do not change them.
 
@@ -235,7 +236,7 @@ Commit titles and pull request titles follow the [Conventional Commits](https://
 <type>(<scope>)!: <description>
 ```
 
-- **Type** is the kind of change. This repository uses `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci` and `style`.
+- **Type** is the kind of change. This repository uses `feat`, `fix`, `refactor`, `docs`, `test`, `build`, `chore`, `ci` and `style`. `build` is for the build system and external dependencies, such as a new version of an image the stack runs.
 - **Scope** is the component that the change affects, such as `oe`, `pdp`, `ce`, `pb` or `ondx`, or another area, such as `deploy`, `authn` or `release`. Separate multiple scopes with commas, as in `refactor(pdp,pb)`. Changes that affect the whole repository, such as a formatting pass, omit the scope.
 - **`!`** marks a breaking change, such as a removed or renamed endpoint. Omit it otherwise. For a breaking change, add a `BREAKING CHANGE:` footer to the commit body that explains what users of the change must do.
 - **Description** is written in lowercase and in the imperative mood, without a final period. For example: `refactor(pdp,pb)!: rename the policy metadata API to field policies`.
