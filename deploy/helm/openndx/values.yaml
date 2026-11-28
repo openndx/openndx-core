@@ -213,16 +213,16 @@ orchestrationEngine:
     # Data providers federated by the Orchestration Engine. The chart deploys
     # none: list yours, one per schema ID the consumer schema's @sourceInfo
     # uses (cmd/oe/PROVIDER_CONFIGURATION.md). For example:
-    #   - id: drp-person-v1
-    #     url: https://drp.example.org/graphql
+    #   - id: identity-registry-v1
+    #     url: https://identity-registry.example.org/graphql
     #     auth:
     #       type: apiKey
     #       apiKey:
     #         key: X-API-Key
-    #         value: "{{env:DRP_API_KEY}}"
+    #         value: "{{env:IDENTITY_REGISTRY_API_KEY}}"
     providers: []
     # Argument mappings from consumer schema arguments to provider arguments,
-    # e.g. {schemaId: drp-person-v1, targetArgName: nic,
+    # e.g. {schemaId: identity-registry-v1, targetArgName: nic,
     # sourceArgPath: personInfo-nic, targetArgPath: person, targetArgType: "ID!"}
     argMappings: []
     # OpenTelemetry export over OTLP/HTTP. Audit records are sent only as OTLP
@@ -449,6 +449,9 @@ consentEngine:
       # Empty: global.idpPublicURL.
       issuer: ""
       audience: CONSENT_PORTAL
+      # Matched against a consent's owner ID. Users must not be able to change it:
+      # refuse ThunderID's PUT /users/me (README, "Refuse self-service attribute
+      # changes").
       subjectClaim: nic
       insecureSkipTLSVerify: false
     database:

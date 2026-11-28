@@ -1,4 +1,4 @@
-(?i)(suresh|ramesh|naresh|gomesh)
+(?i)(suresh|ramesh|naresh|gomesh|dinesh|mahesh)
 (?i)accessors?
 (?i)APIs
 (?i)authn

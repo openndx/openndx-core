@@ -27,7 +27,7 @@
       "appId": "app-golden",
       "consentRequirement": {
         "owner": "citizen",
-        "ownerId": "naresh@ndx.fl",
+        "ownerId": "FL-2954817360",
         "fields": [
           {
             "fieldName": "person.permanentAddress",
@@ -45,7 +45,7 @@
       {
         "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName permanentAddress } }",
         "variables": {
-          "nic": "naresh@ndx.fl"
+          "nic": "FL-2954817360"
         }
       }
     ]

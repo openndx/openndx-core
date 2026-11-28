@@ -36,7 +36,7 @@ Keep `config` non-secret. A secret goes in as a `"{{env:NAME}}"` placeholder, wh
 
 ThunderID publishes its chart at `oci://ghcr.io/thunder-id/helm-charts/thunderid`. Install it in the same namespace as a release named `thunderid`: the chart then names its Service `thunderid-service`, and the default `idp` URLs in [`values.yaml`](./values.yaml) (`http://thunderid-service:8090`) work unchanged. With another release name the Service is `<release>-thunderid-service`; update every service's `config.idp.jwksURL` and Portal Backend's `config.idp.management.baseURL` to match.
 
-OpenNDX needs ThunderID seeded with its resource server and clients (`CONSENT_PORTAL`, `PORTAL_BACKEND`, `NDX_CLI`) and its CORS origins. These are the bootstrap files in [`thunderid/bootstrap/`](../../../thunderid/bootstrap/), which Compose also uses. Load them into a ConfigMap and pass the values they template (`{{ .CONSENT_PORTAL_URL }}`, `{{ .PORTAL_BACKEND_CLIENT_SECRET }}`, ...) to the chart's setup job. Edit the files first for a shared deployment: `application.yaml` and `users.yaml` also seed a local-dev `DATA_CONSUMER` client and sample citizen user, and `cors.yaml` lists the local origins.
+OpenNDX needs ThunderID seeded with its resource servers and roles, the `CONSENT_PORTAL` and `PORTAL_BACKEND` clients, and its CORS origins. These are the bootstrap files in [`thunderid/bootstrap/`](../../../thunderid/bootstrap/), which Compose also uses. Load them into a ConfigMap and pass the values they template (`{{ .CONSENT_PORTAL_URL }}`, `{{ .PORTAL_BACKEND_CLIENT_SECRET }}`, ...) to the chart's setup job. Edit the files first for a shared deployment: they also seed entries for local use only, such as the sample users, the `DATA_CONSUMER` and `NDX_CLI` clients and the local CORS origins, which [thunderid/README.md](../../../thunderid/README.md#entries-for-local-use-only) lists.
 
 ```bash
 kubectl create configmap openndx-thunderid-bootstrap \
@@ -77,6 +77,21 @@ setup:
 ```
 
 ThunderID's database, ingress, admin credentials and other settings are configured through its own chart values: run `helm show values oci://ghcr.io/thunder-id/helm-charts/thunderid --version 1.1.1` for the full list.
+
+#### Refuse self-service attribute changes
+
+Any signed-in ThunderID user can change their own attributes with `PUT /users/me`, and ThunderID has no setting to turn the route off. That includes the claim the Consent Engine matches against a consent's owner (`consentEngine.config.idp.subjectClaim`, `nic` by default): a citizen could set it to the ID of someone without an account and decide on that person's consents. OpenNDX doesn't call the route, so refuse it at the ingress or gateway that exposes ThunderID. In nginx, for example, beside the `location /` that passes everything else to ThunderID:
+
+```nginx
+location ~ ^/users/me/?$ {
+    limit_except GET {
+        deny all;
+    }
+    proxy_pass http://thunderid-service:8090;
+}
+```
+
+`curl -i -X PUT https://idp.example.org/users/me` must then return `403` from the gateway; ThunderID itself answers `401`.
 
 ### Secrets
 
@@ -172,17 +187,17 @@ orchestrationEngine:
     tls: [{hosts: [api.example.org], secretName: api-tls}]
   config:
     providers:
-      - id: drp-person-v1
-        url: https://drp.example.org/graphql
+      - id: identity-registry-v1
+        url: https://identity-registry.example.org/graphql
         auth:
           type: apiKey
           apiKey:
             key: X-API-Key
-            value: "{{env:DRP_API_KEY}}"
+            value: "{{env:IDENTITY_REGISTRY_API_KEY}}"
   env:
-    DRP_API_KEY:
+    IDENTITY_REGISTRY_API_KEY:
       valueFrom:
-        secretKeyRef: {name: openndx-secrets, key: drpApiKey}
+        secretKeyRef: {name: openndx-secrets, key: identityRegistryApiKey}
 
 consentEngine:
   ingress:

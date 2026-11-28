@@ -1,63 +1,47 @@
-# Local dev sandbox: mock data providers
+# Local dev sandbox: sample data providers
 
-`oe` (the Orchestration Engine) federates queries out to real data providers.
-This folder brings up mock member services locally so you can exercise the
-full exchange flow.
+The Orchestration Engine (OE) federates each query to data providers. This folder runs sample providers locally, so the whole exchange can be tried on one machine.
 
-For the complete flow, follow the **[local end-to-end walkthrough with `ondx`](WALKTHROUGH.md)**.
-It covers starting the stack, operator login, registering members and both mock
-schemas, granting application policy, citizen consent approval, and checking the
-returned DRP/RGD data.
+For the complete flow, follow the **[local end-to-end walkthrough with `ondx`](WALKTHROUGH.md)**. It covers starting the stack, operator login, registering members and both provider schemas, granting an application access, approving the citizen's consent, and checking the data each provider returns.
 
-The services are the DRP and RGD mocks from the
-[openndx-farajaland](https://github.com/openndx/openndx-farajaland) reference
-country implementation. We depend only on their **published Docker images**,
-not on that repo being checked out next to this one, so this works for anyone
-who clones just `openndx` — no sibling checkout, no path coupling.
+The providers are the mock member services of [openndx-farajaland](https://github.com/openndx/openndx-farajaland), a sample country implementation, run from its published images. Nothing else from that repository is needed.
 
 ## What's included
 
-| Service           | Port | Protocol         | Role                                                                           |
-| ----------------- | ---- | ---------------- | ------------------------------------------------------------------------------ |
-| `drp-api`         | 9090 | REST (internal)  | Raw mock Digital Registration Provider API                                     |
-| `drp-api-adapter` | 9091 | GraphQL          | Subgraph in front of `drp-api` — this is what `oe` calls as the `drp` provider |
-| `rgd-api`         | 8080 | GraphQL + OAuth2 | Mock Registrar General's Department API — the `rgd` provider                   |
+| Service                     | Port | Protocol        | Role                                                                                                   |
+| --------------------------- | ---- | --------------- | ------------------------------------------------------------------------------------------------------ |
+| `identity-registry-api`     | 9090 | REST            | The Identity Registry's person records, served only to requests with its API key                       |
+| `identity-registry-adapter` | 9091 | GraphQL         | GraphQL service in front of `identity-registry-api`: the OE's `identity-registry-v1` provider          |
+| `civil-registry-api`        | 8080 | GraphQL, OAuth2 | The Civil Registry's birth records: the OE's `civil-registry-v1` provider, which issues its own tokens |
 
-`cmd/oe/config.docker.yaml` (used by the root `compose.yml` stack) and
-`cmd/oe/config.example.yaml` (used when running `oe` outside Docker) are
-already wired to these ports.
+The images are published as `ghcr.io/openndx/<service>` for linux/amd64 and linux/arm64, with the sample data built in; [compose.yml](compose.yml) pins their tags. The two Identity Registry services read their settings from [providers/](providers). [cmd/oe/config.docker.yaml](../cmd/oe/config.docker.yaml) (the OE in Compose) and [cmd/oe/config.example.yaml](../cmd/oe/config.example.yaml) (the OE run natively) point at these ports, with the providers' credentials.
+
+## Sample data
+
+Both providers hold the same six fictional people, each identified by a NIC, `FL-` and 10 digits: Suresh Fernando `FL-4829105736`, Ramesh Fernando `FL-7316048259`, Naresh Fernando `FL-2954817360`, Gomesh Fernando `FL-6081734925`, Dinesh Fernando `FL-3647209158` and Mahesh Fernando `FL-9172563804`. A query passes the NIC in the consumer schema's `nic` argument, so one `personInfo` query can read fields from both providers.
 
 ## Usage
 
-`make up` and `make deps` start these with the rest of the stack. To start them on their own:
+`make up` and `make deps` start these with the rest of the stack. To start them on their own, from the repository root:
 
 ```bash
-# From the repo root
 docker compose -f dev/compose.yml up -d
 ```
 
-The images are published for `linux/arm64` only, so `compose.yml` pins that platform. Docker Desktop emulates it on Intel and AMD machines. Docker Engine on Intel or AMD Linux needs emulation installed once: `docker run --privileged --rm tonistiigi/binfmt --install arm64`.
-
-Then bring up the rest of the exchange stack (Postgres, ThunderID, PDP, CE,
-and `oe` itself), which already knows how to reach the containers above via
-`host.docker.internal`:
+Then bring up the rest of the exchange stack (PostgreSQL, ThunderID, the PDP, the CE, the OE, Portal Backend and the Consent Portal). The OE in Compose reaches the providers through `host.docker.internal`:
 
 ```bash
 docker compose up -d --build postgres thunderid policy-decision-point \
   consent-engine consent-portal orchestration-engine portal-backend
 ```
 
-Or, if you're iterating on `oe` itself and don't want to rebuild its image on
-every change, run it natively against the same providers instead of the
-containerized `orchestration-engine` service:
+Or, if you're iterating on the OE itself and don't want to rebuild its image on every change, run it natively against the same providers instead of the containerized `orchestration-engine` service:
 
 ```bash
 go run ./cmd/oe -config cmd/oe/config.example.yaml
 ```
 
-The example config's `idp` section points at the local ThunderID, which OE uses
-to verify consumer tokens; `idp.issuer` must match the `iss` ThunderID stamps,
-its public URL.
+The example config's `idp` section points at the local ThunderID, which the OE uses to verify consumer tokens; `idp.issuer` must match the `iss` ThunderID stamps, its public URL.
 
 ## Trying it
 
@@ -65,12 +49,7 @@ its public URL.
 curl http://localhost:4000/health
 ```
 
-OE's GraphQL endpoint requires a consumer access token issued by ThunderID for OE's
-audience. OE verifies its signature, issuer and audience with `internal/authn`
-(`IDP_*` in `compose.yml`; see the `idp` section of `cmd/oe/CONFIGURATION.md`). Get one
-for the seeded M2M
-data-consumer client (`thunderid/bootstrap/application.yaml`, `DATA_CONSUMER`; secret is
-`DATA_CONSUMER_CLIENT_SECRET`, default `1234`):
+The OE's GraphQL endpoint requires a consumer access token issued by ThunderID for the OE's audience. The OE verifies its signature, issuer and audience with `internal/authn` (`IDP_*` in `compose.yml`; see the `idp` section of [cmd/oe/CONFIGURATION.md](../cmd/oe/CONFIGURATION.md)). Get one for the sample `DATA_CONSUMER` client ([thunderid/README.md](../thunderid/README.md)); its secret is `DATA_CONSUMER_CLIENT_SECRET`, default `1234`:
 
 ```bash
 TOKEN=$(curl -s -u "DATA_CONSUMER:1234" \
@@ -80,84 +59,43 @@ TOKEN=$(curl -s -u "DATA_CONSUMER:1234" \
   | jq -r .access_token)
 ```
 
-`resource=http://api.openndx.local` is the OE resource server declared in `thunderid/bootstrap/resource.yaml`; the
-`getdata` scope comes from the `DataConsumerGetData` role, not a requested scope
-param.
+`resource=http://api.openndx.local` is the OE resource server declared in `thunderid/bootstrap/resource.yaml`; the `getdata` scope comes from the `DataConsumerGetData` role, not a requested scope parameter.
 
-Then call OE with it:
+Then call the OE with it:
 
 ```bash
 curl -X POST http://localhost:4000/public/graphql \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query { personInfo(nic: \"748213\") { fullName profession birthInfo { birthPlace district } } }"}'
+  -d '{"query":"query { personInfo(nic: \"FL-4829105736\") { fullName profession birthInfo { birthPlace district } } }"}'
 ```
 
-`748213` (and a few other sample IDs — see
-`dev/providers/drp-api/mock_data.json` and `dev/providers/rgd-api/mock_data.json`)
-exists in both the DRP and RGD mock datasets, so a `personInfo` query can pull
-fields from both providers in one request. The mock data uses the fictional
-names (Suresh, Ramesh, Naresh, Gomesh) used for test accounts across our other
-projects, not real people.
+This request needs field policies, application grants, and citizen consent. A freshly started stack has none of those. Follow the [walkthrough](WALKTHROUGH.md#4-register-members-and-both-provider-schemas) to register them with `ondx`, then use the client credentials printed for your registered application. The seeded `DATA_CONSUMER` client above has no automatic policy grants.
 
-This request needs field policies, application grants, and citizen consent.
-A freshly started stack has none of those. Follow the
-[walkthrough](WALKTHROUGH.md#4-register-members-and-both-provider-schemas) to
-register them with `ondx`, then use the client credentials printed for your
-registered application. The seeded `DATA_CONSUMER` client above has no automatic
-policy grants.
+To approve the consent yourself, log in to the consent portal (see [Consent portal](#consent-portal) below) as the matching seeded `Citizen` account (`thunderid/bootstrap/users.yaml`), password `1234` for all of them:
 
-To approve the consent yourself, log in to the consent portal (see
-[Consent portal](#consent-portal) below) as the matching seeded `Citizen`
-account (`thunderid/bootstrap/users.yaml`), password `1234` for all of them:
+| Username | NIC             |
+| -------- | --------------- |
+| `suresh` | `FL-4829105736` |
+| `ramesh` | `FL-7316048259` |
+| `naresh` | `FL-2954817360` |
+| `gomesh` | `FL-6081734925` |
 
-| Username | `nic`    |
-| -------- | -------- |
-| `suresh` | `748213` |
-| `ramesh` | `512346` |
-| `naresh` | `398217` |
-| `gomesh` | `674529` |
-
-Each account's `nic` attribute is identical to its mock DRP/RGD record, and
-`IDP_SUBJECT_CLAIM=nic` (the `compose.yml` default) tells consent-engine to match that
-claim against the consent record's owner id, so logging in as e.g. `suresh`
-is recognized as the owner of NIC `748213` and can approve a request for it.
+The OE takes a consent's owner ID from the query's `nic` argument, and the consent-engine matches it against the token claim named by `IDP_SUBJECT_CLAIM`. Compose sets that claim to `nic`, so logging in as `suresh` is recognized as the owner of `FL-4829105736` and can approve a request for it.
 
 ### Consent portal
 
-`compose.yml` now builds and runs the consent portal too (`consent-portal`
-service, `portals/apps/consent/Dockerfile`) — no separate `pnpm` step needed.
-It's an nginx-served static build; `config.js` is generated at container
-startup from env vars (`entrypoint.sh`), already wired to this stack's
-ThunderID/consent-engine.
+`compose.yml` builds and runs the consent portal (`consent-portal` service, `portals/apps/consent/Dockerfile`), so no separate `pnpm` step is needed. It's an nginx-served static build; `config.js` is generated at container startup from environment variables (`entrypoint.sh`) and points at this stack's ThunderID and consent-engine.
 
-Open <http://localhost:5173> (or `${CONSENT_PORTAL_PORT}` if you overrode it —
-see `.env.example`).
+Open <http://localhost:5173> (or `${CONSENT_PORTAL_PORT}` if you overrode it; see `.env.example`).
 
-Don't use `portals/setup-portals.sh` for local testing here — it's a separate
-helper for running all three portals via `pnpm dev` against a generic
-(Asgardeo-shaped) IdP, and its default consent-portal port (`5175`) doesn't
-match the `5173` baked into `CONSENT_PORTAL_URL`, ThunderID's registered
-redirect URIs, and `thunderid/bootstrap/cors.yaml`'s allowed origins — it
-isn't wired for this sandbox.
+Don't use `portals/setup-portals.sh` for local testing here. It's a separate helper for running all three portals with `pnpm dev` against a generic identity provider, and its consent-portal port (`5175`) doesn't match the `5173` in `CONSENT_PORTAL_URL`, ThunderID's registered redirect URIs, and `thunderid/bootstrap/cors.yaml`'s allowed origins.
 
-Use the exact consent URL returned by OE, including its `consentId` parameter,
-and use a separate browser session from the management operator. The
-[walkthrough](WALKTHROUGH.md#8-request-and-approve-citizen-consent) describes
-approval and the required data checks after retrying the query.
+Use the exact consent URL returned by the OE, including its `consentId` parameter, and use a separate browser session from the management operator. The [walkthrough](WALKTHROUGH.md#8-request-and-approve-citizen-consent) describes approval and the required data checks after retrying the query.
 
 ## Stopping
 
 ```bash
 docker compose down
 docker compose -f dev/compose.yml down
-```
-
-## Pinning versions
-
-Image tags default to `v0.1.0` (matches `openndx-farajaland/members/run-member-services.sh`).
-Override with env vars if needed:
-
-```bash
-IMAGE_TAG=v0.2.0 docker compose -f dev/compose.yml up -d
 ```

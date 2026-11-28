@@ -108,10 +108,10 @@ func TestOwnerSubject_UsesTokenSubject(t *testing.T) {
 func TestOwnerSubject_UsesConfiguredClaim(t *testing.T) {
 	authenticate, key := newTestAuthn(t)
 
-	w, subject := serveAuthenticated(t, authenticate, "nic", "Bearer "+signToken(t, key, jwt.MapClaims{"nic": "naresh@ndx.fl"}))
+	w, subject := serveAuthenticated(t, authenticate, "nic", "Bearer "+signToken(t, key, jwt.MapClaims{"nic": "FL-2954817360"}))
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "naresh@ndx.fl", subject)
+	assert.Equal(t, "FL-2954817360", subject)
 }
 
 func TestOwnerSubject_UsesStandardClaims(t *testing.T) {
@@ -140,7 +140,7 @@ func TestOwnerSubject_RejectsNonStringIdentifiers(t *testing.T) {
 	authenticate, key := newTestAuthn(t)
 	for name, value := range map[string]any{
 		"null": nil, "blank": " \t ", "number": 123, "boolean": true,
-		"array": []string{"naresh@ndx.fl"}, "object": map[string]any{"nic": "naresh@ndx.fl"},
+		"array": []string{"FL-2954817360"}, "object": map[string]any{"nic": "FL-2954817360"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			w, subject := serveAuthenticated(t, authenticate, "nic",

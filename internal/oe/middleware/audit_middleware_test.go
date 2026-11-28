@@ -40,7 +40,7 @@ func TestAuditor_RequestReceived(t *testing.T) {
 	sink := &audit.CaptureSink{}
 	auditor := NewAuditor(sink, "SERVICE", "orchestration-engine")
 
-	ctx := auditor.RequestReceived(context.Background(), "app-1", `query { person(nic: "naresh@ndx.fl") { name } }`)
+	ctx := auditor.RequestReceived(context.Background(), "app-1", `query { person(nic: "FL-2954817360") { name } }`)
 
 	event := onlyRecord(t, sink)
 	if event.EventType != "DATA_REQUEST" || event.ActorType != "APPLICATION" || event.ActorID != "app-1" {
