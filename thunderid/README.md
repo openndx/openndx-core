@@ -29,4 +29,4 @@ These exist for the [walkthrough](../dev/WALKTHROUGH.md) and the [sample data](.
 - the `NDX_CLI` client, which the `local` profile of the `ondx` CLI logs in with. For another deployment, register a client for `ondx` and save it in a profile ([cmd/ondx/README.md](../cmd/ondx/README.md#configuration));
 - the local origins in `cors.yaml`.
 
-Sign-up in the Consent Portal is off. The Consent Engine reads a data owner's ID from the `email` claim (`IDP_SUBJECT_CLAIM`), and ThunderID doesn't verify the email of an account that signs itself up, so the citizens are the accounts in `users.yaml`.
+Sign-up in the Consent Portal is off: the citizens are the accounts in `users.yaml`. An account that signs itself up is a `Person`, which has no `nic`, the claim the Consent Engine reads a data owner's ID from (`IDP_SUBJECT_CLAIM`), so it couldn't use the Consent Portal.
