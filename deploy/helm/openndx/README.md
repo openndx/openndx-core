@@ -78,6 +78,21 @@ setup:
 
 ThunderID's database, ingress, admin credentials and other settings are configured through its own chart values: run `helm show values oci://ghcr.io/thunder-id/helm-charts/thunderid --version 1.1.1` for the full list.
 
+#### Refuse self-service attribute changes
+
+Any signed-in ThunderID user can change their own attributes with `PUT /users/me`, and ThunderID has no setting to turn the route off. That includes the claim the Consent Engine matches against a consent's owner (`consentEngine.config.idp.subjectClaim`, `nic` by default): a citizen could set it to the ID of someone without an account and decide on that person's consents. OpenNDX doesn't call the route, so refuse it at the ingress or gateway that exposes ThunderID. In nginx, for example, beside the `location /` that passes everything else to ThunderID:
+
+```nginx
+location ~ ^/users/me/?$ {
+    limit_except GET {
+        deny all;
+    }
+    proxy_pass http://thunderid-service:8090;
+}
+```
+
+`curl -i -X PUT https://idp.example.org/users/me` must then return `403` from the gateway; ThunderID itself answers `401`.
+
 ### Secrets
 
 The chart creates no Secret and assumes nothing about how yours are laid out. Each service has an `env` map (name to a plain value, or to a map such as `valueFrom: {secretKeyRef: {name, key}}`) and an `envFrom` list; they supply the environment variables its `config` references as `"{{env:NAME}}"`. Create the Secrets however you like (kubectl, External Secrets Operator, Sealed Secrets, ...), one shared or one per service, and point `env` at them. A variable a config references but `env` doesn't set stops that service at startup.

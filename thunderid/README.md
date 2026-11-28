@@ -30,3 +30,5 @@ These exist for the [walkthrough](../dev/WALKTHROUGH.md) and the [sample data](.
 - the local origins in `cors.yaml`.
 
 Sign-up in the Consent Portal is off: the citizens are the accounts in `users.yaml`. An account that signs itself up is a `Person`, which has no `nic`, the claim the Consent Engine reads a data owner's ID from (`IDP_SUBJECT_CLAIM`), so it couldn't use the Consent Portal.
+
+Signed-in users can still change their own attributes, `nic` included, with `PUT /users/me`, which ThunderID keeps open to every signed-in user. The local stack leaves it open, since its sample passwords are public; a shared deployment must refuse it ([Helm README](../deploy/helm/openndx/README.md#refuse-self-service-attribute-changes)).

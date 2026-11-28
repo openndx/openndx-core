@@ -449,6 +449,9 @@ consentEngine:
       # Empty: global.idpPublicURL.
       issuer: ""
       audience: CONSENT_PORTAL
+      # Matched against a consent's owner ID. Users must not be able to change it:
+      # refuse ThunderID's PUT /users/me (README, "Refuse self-service attribute
+      # changes").
       subjectClaim: nic
       insecureSkipTLSVerify: false
     database:
