@@ -13,7 +13,7 @@
       {
         "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
         "variables": {
-          "nic": "naresh@ndx.fl"
+          "nic": "FL-2954817360"
         }
       }
     ]

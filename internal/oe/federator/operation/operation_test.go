@@ -200,15 +200,15 @@ func TestBuild(t *testing.T) {
 			query ($nic: String!, $lang: String, $year: Int = 2020) {
 				personInfo(nic: $nic, lang: $lang) { ownedVehicles(year: $year) { make } }
 				vehicles { make }
-			}`, map[string]any{"nic": "naresh@ndx.fl"})
+			}`, map[string]any{"nic": "FL-2954817360"})
 
 		person := op.Fields[0]
-		assert.Equal(t, map[string]any{"nic": "naresh@ndx.fl", "lang": "en"}, person.Arguments,
+		assert.Equal(t, map[string]any{"nic": "FL-2954817360", "lang": "en"}, person.Arguments,
 			"a variable the request leaves out falls back to the argument's default")
 		assert.Equal(t, map[string]any{"year": int64(2020)}, person.Selections[0].Arguments,
 			"a variable's default applies")
 		assert.Empty(t, op.Fields[1].Arguments, "an optional argument without a default is absent")
-		assert.Equal(t, map[string]any{"nic": "naresh@ndx.fl", "year": int64(2020)}, op.Variables)
+		assert.Equal(t, map[string]any{"nic": "FL-2954817360", "year": int64(2020)}, op.Variables)
 	})
 
 	t.Run("coerces literal arguments", func(t *testing.T) {
@@ -355,17 +355,17 @@ func TestBuild_SampleSchema(t *testing.T) {
 					district
 				}
 			}
-			other: personInfo(nic: "ramesh@ndx.fl") { fullName }
+			other: personInfo(nic: "FL-7316048259") { fullName }
 		}
 		fragment identity on PersonInfo { fullName sex dateOfBirth }`})
 	require.NoError(t, err)
 	require.Empty(t, validator.ValidateWithRules(compiled.Schema, doc, nil))
 
-	op, err := Build(compiled, doc, "Person", map[string]any{"nic": "suresh@ndx.fl", "withBirth": true})
+	op, err := Build(compiled, doc, "Person", map[string]any{"nic": "FL-4829105736", "withBirth": true})
 	require.NoError(t, err)
 
 	assert.Equal(t, strings.TrimLeft(`
-citizen (personInfo) nic=suresh@ndx.fl
+citizen (personInfo) nic=FL-4829105736
   fullName <- identity-registry-v1 person.fullName
   sex <- civil-registry-v1 getPersonInfo.sex
   dateOfBirth <- civil-registry-v1 getPersonInfo.birthDate
@@ -373,7 +373,7 @@ citizen (personInfo) nic=suresh@ndx.fl
   birthInfo
     place (birthPlace) <- civil-registry-v1 getPersonInfo.birthPlace
     district <- civil-registry-v1 getPersonInfo.district
-other (personInfo) nic=ramesh@ndx.fl
+other (personInfo) nic=FL-7316048259
   fullName <- identity-registry-v1 person.fullName
 `, "\n"), render(op.Fields))
 
@@ -387,7 +387,7 @@ other (personInfo) nic=ramesh@ndx.fl
 	for _, binding := range op.BindArguments([]*graphql.ArgMapping{identityRegistry, civilRegistry}) {
 		bound = append(bound, fmt.Sprintf("%s %s=%v", binding.Mapping.SchemaID, strings.Join(binding.Field.Path, "."), binding.Value))
 	}
-	assert.Equal(t, []string{"identity-registry-v1 citizen=suresh@ndx.fl", "identity-registry-v1 other=ramesh@ndx.fl", "civil-registry-v1 citizen=suresh@ndx.fl", "civil-registry-v1 other=ramesh@ndx.fl"}, bound)
+	assert.Equal(t, []string{"identity-registry-v1 citizen=FL-4829105736", "identity-registry-v1 other=FL-7316048259", "civil-registry-v1 citizen=FL-4829105736", "civil-registry-v1 other=FL-7316048259"}, bound)
 }
 
 // render prints fields one per line, indented by depth: the response key, the

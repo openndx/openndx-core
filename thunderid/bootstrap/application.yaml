@@ -85,10 +85,11 @@ inboundAuthConfig:
             attributes:
               - given_name
               - family_name
-              # consent-engine matches this claim against a consent's owner ID
-              # (IDP_SUBJECT_CLAIM=email in compose.yml).
               - email
               - name
+              # consent-engine matches this claim against a consent's owner ID
+              # (IDP_SUBJECT_CLAIM=nic in compose.yml).
+              - nic
         idToken:
           validityPeriod: 3600
           userAttributes:
@@ -96,6 +97,7 @@ inboundAuthConfig:
             - family_name
             - email
             - name
+            - nic
       scopeClaims:
         profile:
           - name

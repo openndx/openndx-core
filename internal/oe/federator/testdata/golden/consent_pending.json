@@ -32,7 +32,7 @@
       "appId": "app-golden",
       "consentRequirement": {
         "owner": "citizen",
-        "ownerId": "naresh@ndx.fl",
+        "ownerId": "FL-2954817360",
         "fields": [
           {
             "fieldName": "person.permanentAddress",

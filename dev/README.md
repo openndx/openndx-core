@@ -14,11 +14,11 @@ The providers are the mock member services of [openndx-farajaland](https://githu
 | `identity-registry-adapter` | 9091 | GraphQL         | GraphQL service in front of `identity-registry-api`: the OE's `identity-registry-v1` provider          |
 | `civil-registry-api`        | 8080 | GraphQL, OAuth2 | The Civil Registry's birth records: the OE's `civil-registry-v1` provider, which issues its own tokens |
 
-The images are `ghcr.io/openndx/<service>:v0.1.0`, for linux/amd64 and linux/arm64, with the sample data built in. The two Identity Registry services read their settings from [providers/](providers). [cmd/oe/config.docker.yaml](../cmd/oe/config.docker.yaml) (the OE in Compose) and [cmd/oe/config.example.yaml](../cmd/oe/config.example.yaml) (the OE run natively) point at these ports, with the providers' credentials.
+The images are published as `ghcr.io/openndx/<service>` for linux/amd64 and linux/arm64, with the sample data built in; [compose.yml](compose.yml) pins their tags. The two Identity Registry services read their settings from [providers/](providers). [cmd/oe/config.docker.yaml](../cmd/oe/config.docker.yaml) (the OE in Compose) and [cmd/oe/config.example.yaml](../cmd/oe/config.example.yaml) (the OE run natively) point at these ports, with the providers' credentials.
 
 ## Sample data
 
-Both providers hold the same six fictional people, each identified by email: `suresh@ndx.fl`, `ramesh@ndx.fl`, `naresh@ndx.fl`, `gomesh@ndx.fl`, `dinesh@ndx.fl` and `mahesh@ndx.fl`. A query passes the email in the consumer schema's `nic` argument, so one `personInfo` query can read fields from both providers.
+Both providers hold the same six fictional people, each identified by a NIC, `FL-` and 10 digits: Suresh Fernando `FL-4829105736`, Ramesh Fernando `FL-7316048259`, Naresh Fernando `FL-2954817360`, Gomesh Fernando `FL-6081734925`, Dinesh Fernando `FL-3647209158` and Mahesh Fernando `FL-9172563804`. A query passes the NIC in the consumer schema's `nic` argument, so one `personInfo` query can read fields from both providers.
 
 ## Usage
 
@@ -67,21 +67,21 @@ Then call the OE with it:
 curl -X POST http://localhost:4000/public/graphql \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"query":"query { personInfo(nic: \"suresh@ndx.fl\") { fullName profession birthInfo { birthPlace district } } }"}'
+  -d '{"query":"query { personInfo(nic: \"FL-4829105736\") { fullName profession birthInfo { birthPlace district } } }"}'
 ```
 
 This request needs field policies, application grants, and citizen consent. A freshly started stack has none of those. Follow the [walkthrough](WALKTHROUGH.md#4-register-members-and-both-provider-schemas) to register them with `ondx`, then use the client credentials printed for your registered application. The seeded `DATA_CONSUMER` client above has no automatic policy grants.
 
 To approve the consent yourself, log in to the consent portal (see [Consent portal](#consent-portal) below) as the matching seeded `Citizen` account (`thunderid/bootstrap/users.yaml`), password `1234` for all of them:
 
-| Username | Email           |
+| Username | NIC             |
 | -------- | --------------- |
-| `suresh` | `suresh@ndx.fl` |
-| `ramesh` | `ramesh@ndx.fl` |
-| `naresh` | `naresh@ndx.fl` |
-| `gomesh` | `gomesh@ndx.fl` |
+| `suresh` | `FL-4829105736` |
+| `ramesh` | `FL-7316048259` |
+| `naresh` | `FL-2954817360` |
+| `gomesh` | `FL-6081734925` |
 
-The OE takes a consent's owner ID from the query's `nic` argument, and the consent-engine matches it against the token claim named by `IDP_SUBJECT_CLAIM`. Compose sets that claim to `email`, so logging in as `suresh` is recognized as the owner of `suresh@ndx.fl` and can approve a request for it.
+The OE takes a consent's owner ID from the query's `nic` argument, and the consent-engine matches it against the token claim named by `IDP_SUBJECT_CLAIM`. Compose sets that claim to `nic`, so logging in as `suresh` is recognized as the owner of `FL-4829105736` and can approve a request for it.
 
 ### Consent portal
 

@@ -294,7 +294,7 @@ func TestCommittedConfigsFederate(t *testing.T) {
 		}{
 			{
 				name:      "public Identity Registry literal",
-				request:   graphql.Request{Query: `query { personInfo(nic: "suresh@ndx.fl") { fullName } }`},
+				request:   graphql.Request{Query: `query { personInfo(nic: "FL-4829105736") { fullName } }`},
 				providers: []string{"identity-registry-v1"},
 				want:      map[string]interface{}{"fullName": "Suresh Fernando"},
 			},
@@ -302,7 +302,7 @@ func TestCommittedConfigsFederate(t *testing.T) {
 				name: "public Identity Registry variable",
 				request: graphql.Request{
 					Query:     `query Person($nic: String!) { personInfo(nic: $nic) { fullName } }`,
-					Variables: map[string]interface{}{"nic": "suresh@ndx.fl"},
+					Variables: map[string]interface{}{"nic": "FL-4829105736"},
 				},
 				providers: []string{"identity-registry-v1"},
 				want:      map[string]interface{}{"fullName": "Suresh Fernando"},
@@ -311,14 +311,14 @@ func TestCommittedConfigsFederate(t *testing.T) {
 				name: "Civil Registry variable",
 				request: graphql.Request{
 					Query:     `query Person($nic: String!) { personInfo(nic: $nic) { birthInfo { district } } }`,
-					Variables: map[string]interface{}{"nic": "suresh@ndx.fl"},
+					Variables: map[string]interface{}{"nic": "FL-4829105736"},
 				},
 				providers: []string{"civil-registry-v1"},
 				want:      map[string]interface{}{"birthInfo": map[string]interface{}{"district": "Central"}},
 			},
 			{
 				name:      "both providers",
-				request:   graphql.Request{Query: `query { personInfo(nic: "suresh@ndx.fl") { fullName profession birthInfo { birthPlace district } } }`},
+				request:   graphql.Request{Query: `query { personInfo(nic: "FL-4829105736") { fullName profession birthInfo { birthPlace district } } }`},
 				providers: []string{"identity-registry-v1", "civil-registry-v1"},
 				want: map[string]interface{}{
 					"fullName": "Suresh Fernando", "profession": "Software Engineer",
@@ -348,7 +348,7 @@ func TestCommittedConfigsFederate(t *testing.T) {
 							http.Error(w, "invalid request", http.StatusBadRequest)
 							return
 						}
-						if !assert.Contains(t, request.Query, `(nic: $nic)`) || !assert.Equal(t, "suresh@ndx.fl", request.Variables["nic"]) {
+						if !assert.Contains(t, request.Query, `(nic: $nic)`) || !assert.Equal(t, "FL-4829105736", request.Variables["nic"]) {
 							http.Error(w, "missing nic", http.StatusBadRequest)
 							return
 						}

@@ -56,7 +56,7 @@ Leave out `auth` for a provider that needs none. `timeout` (default `10s`) and `
 `argMappings` tells the OE how the consumer's argument becomes the provider's. Say the consumer asks:
 
 ```graphql
-query { personInfo(nic: "suresh@ndx.fl") { fullName } }
+query { personInfo(nic: "FL-4829105736") { fullName } }
 ```
 
 and the provider expects `person(nic: "...") { fullName }`. The mapping is:
@@ -71,7 +71,7 @@ argMappings:
 
 `sourceArgPath` is the consumer-side argument: the consumer field path from the root, then the argument name, joined with dashes (`personInfo-nic`). `targetArgPath` is the provider field the argument is attached to, a leading part of the provider field path: `person` for `person.fullName`. The argument goes on that field only. Add one mapping per provider argument.
 
-The OE sends the value as a GraphQL variable, `person(nic: $nic)` with `{"variables": {"nic": "suresh@ndx.fl"}}`, declared with the consumer argument's type (`String!` here). If the provider's argument has a different type, set `targetArgType` on the mapping (see [CONFIGURATION.md](CONFIGURATION.md#argmappings)). The provider validates the variable's type strictly: a `String!` variable is rejected for an `ID!` argument, though an inlined string was accepted. The sample providers declare `nic: ID!`, so their mappings set:
+The OE sends the value as a GraphQL variable, `person(nic: $nic)` with `{"variables": {"nic": "FL-4829105736"}}`, declared with the consumer argument's type (`String!` here). If the provider's argument has a different type, set `targetArgType` on the mapping (see [CONFIGURATION.md](CONFIGURATION.md#argmappings)). The provider validates the variable's type strictly: a `String!` variable is rejected for an `ID!` argument, though an inlined string was accepted. The sample providers declare `nic: ID!`, so their mappings set:
 
 ```yaml
     targetArgType: "ID!"

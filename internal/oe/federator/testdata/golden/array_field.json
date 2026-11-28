@@ -41,7 +41,7 @@
       {
         "query": "query Queryidentity_registry_v1 ( $nic : String ! ) { person ( nic : $nic ) { fullName } }",
         "variables": {
-          "nic": "naresh@ndx.fl"
+          "nic": "FL-2954817360"
         }
       }
     ],
@@ -49,7 +49,7 @@
       {
         "query": "query Queryvehicle_registry_v1 ( $ownerNic : String ! ) { vehicle { getVehicleInfos ( ownerNic : $ownerNic ) { data { registrationNumber make } } } }",
         "variables": {
-          "ownerNic": "naresh@ndx.fl"
+          "ownerNic": "FL-2954817360"
         }
       }
     ]

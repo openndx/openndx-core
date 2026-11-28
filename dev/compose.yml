@@ -14,7 +14,7 @@
 
 services:
   identity-registry-api:
-    image: ghcr.io/openndx/identity-registry-api:v0.1.0
+    image: ghcr.io/openndx/identity-registry-api:v0.2.0
     container_name: dev-identity-registry-api
     ports:
       - "9090:9090"
@@ -39,7 +39,7 @@ services:
   # GraphQL service for the OE's civil-registry-v1 provider, with an OAuth2
   # client-credentials token endpoint at /oauth/token.
   civil-registry-api:
-    image: ghcr.io/openndx/civil-registry-api:v0.1.0
+    image: ghcr.io/openndx/civil-registry-api:v0.2.0
     container_name: dev-civil-registry-api
     ports:
       - "8080:8080"

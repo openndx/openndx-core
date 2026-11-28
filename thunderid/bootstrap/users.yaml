@@ -4,9 +4,10 @@
 # LOCAL-DEV ONLY: the user type of the sample citizens below, the data owners
 # who log in to the Consent Portal. The Consent Engine matches the token claim
 # named by idp.subjectClaim against a consent's owner ID, which the OE takes
-# from the query's `nic` argument. Compose sets that claim to `email`, and the
-# sample providers identify a person by email, so a citizen's email is required
-# and unique. application.yaml puts it in the Consent Portal's access tokens.
+# from the query's `nic` argument. Compose sets that claim to `nic`, and the
+# sample providers identify a person by NIC ("FL-" and 10 digits), so a
+# citizen's nic is required and unique. application.yaml puts it in the Consent
+# Portal's tokens.
 resource_type: user_type
 id: 01900000-0000-7000-8000-000000000032
 category: user
@@ -21,11 +22,16 @@ schema:
     displayName: Username
     required: true
     unique: true
+  nic:
+    type: string
+    displayName: National Identity Card Number
+    required: true
+    unique: true
+    regex: "^FL-[0-9]{10}$"
   email:
     type: string
     displayName: Email
-    required: true
-    unique: true
+    required: false
     regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
   name:
     type: string
@@ -51,7 +57,7 @@ schema:
 ---
 # LOCAL-DEV ONLY: sample citizens, each the owner of a person record in the
 # sample providers' data (dev/README.md). Log in to the Consent Portal as
-# "suresh" to approve a `personInfo(nic: "suresh@ndx.fl")` request.
+# "suresh" to approve a `personInfo(nic: "FL-4829105736")` request.
 resource_type: user
 id: 01900000-0000-7000-8000-000000000031
 type: Citizen
@@ -59,6 +65,7 @@ ouHandle: default
 attributes:
   username: suresh
   sub: suresh
+  nic: FL-4829105736
   email: suresh@ndx.fl
   name: Suresh Fernando
   given_name: Suresh
@@ -66,7 +73,7 @@ attributes:
 credentials:
   password: "1234"
 ---
-# LOCAL-DEV ONLY: as "suresh" above, for ramesh@ndx.fl.
+# LOCAL-DEV ONLY: as "suresh" above, for FL-7316048259.
 resource_type: user
 id: 01900000-0000-7000-8000-000000000033
 type: Citizen
@@ -74,6 +81,7 @@ ouHandle: default
 attributes:
   username: ramesh
   sub: ramesh
+  nic: FL-7316048259
   email: ramesh@ndx.fl
   name: Ramesh Fernando
   given_name: Ramesh
@@ -81,7 +89,7 @@ attributes:
 credentials:
   password: "1234"
 ---
-# LOCAL-DEV ONLY: as "suresh" above, for naresh@ndx.fl.
+# LOCAL-DEV ONLY: as "suresh" above, for FL-2954817360.
 resource_type: user
 id: 01900000-0000-7000-8000-000000000034
 type: Citizen
@@ -89,6 +97,7 @@ ouHandle: default
 attributes:
   username: naresh
   sub: naresh
+  nic: FL-2954817360
   email: naresh@ndx.fl
   name: Naresh Fernando
   given_name: Naresh
@@ -96,7 +105,7 @@ attributes:
 credentials:
   password: "1234"
 ---
-# LOCAL-DEV ONLY: as "suresh" above, for gomesh@ndx.fl.
+# LOCAL-DEV ONLY: as "suresh" above, for FL-6081734925.
 resource_type: user
 id: 01900000-0000-7000-8000-000000000035
 type: Citizen
@@ -104,6 +113,7 @@ ouHandle: default
 attributes:
   username: gomesh
   sub: gomesh
+  nic: FL-6081734925
   email: gomesh@ndx.fl
   name: Gomesh Fernando
   given_name: Gomesh

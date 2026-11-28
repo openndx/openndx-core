@@ -449,7 +449,7 @@ consentEngine:
       # Empty: global.idpPublicURL.
       issuer: ""
       audience: CONSENT_PORTAL
-      subjectClaim: email
+      subjectClaim: nic
       insecureSkipTLSVerify: false
     database:
       driver: postgres

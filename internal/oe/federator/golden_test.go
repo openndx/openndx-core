@@ -140,25 +140,25 @@ func consentRequired() *policy.PdpResponse {
 var goldenCases = []goldenCase{
 	{
 		name:    "single_provider_scalars",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address } }`},
 	},
 	{
 		name:    "multi_provider_nested_object",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date place } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName birthInfo { date place } } }`},
 	},
 	{
 		name:    "array_field",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName ownedVehicles { regNo make } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName ownedVehicles { regNo make } } }`},
 	},
 	{
 		name:    "all_providers",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address birthInfo { date } ownedVehicles { regNo } } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address birthInfo { date } ownedVehicles { regNo } } }`},
 	},
 	{
 		name: "variables",
 		request: graphql.Request{
 			Query:     `query GetPerson($nic: String!) { personInfo(nic: $nic) { fullName birthInfo { place } } }`,
-			Variables: map[string]interface{}{"nic": "naresh@ndx.fl"},
+			Variables: map[string]interface{}{"nic": "FL-2954817360"},
 		},
 	},
 	{
@@ -169,7 +169,7 @@ var goldenCases = []goldenCase{
 				personInfo(nic: $nic, vehicleFilter: $filter) { ownedVehicles { regNo make } }
 			}`,
 			Variables: map[string]interface{}{
-				"nic":    "naresh@ndx.fl",
+				"nic":    "FL-2954817360",
 				"filter": map[string]interface{}{"makes": []interface{}{"Toyota", "Honda"}, "registeredAfter": 2020},
 			},
 		},
@@ -178,17 +178,17 @@ var goldenCases = []goldenCase{
 		// A variable the request leaves out is forwarded with its default.
 		name: "variable_default",
 		request: graphql.Request{
-			Query: `query GetPerson($nic: String = "naresh@ndx.fl") { personInfo(nic: $nic) { fullName } }`,
+			Query: `query GetPerson($nic: String = "FL-2954817360") { personInfo(nic: $nic) { fullName } }`,
 		},
 	},
 	{
 		name:    "pdp_skipped_when_not_configured",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName } }`},
 		noPDP:   true,
 	},
 	{
 		name:    "pdp_denied",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address } }`},
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:      false,
 			UnauthorizedFields: []policy.ConsentRequiredField{{FieldName: "person.permanentAddress", SchemaID: "identity-registry-v1"}},
@@ -196,7 +196,7 @@ var goldenCases = []goldenCase{
 	},
 	{
 		name:    "pdp_access_expired",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName } }`},
 		pdpResponse: &policy.PdpResponse{
 			AppAuthorized:    true,
 			AppAccessExpired: true,
@@ -205,18 +205,18 @@ var goldenCases = []goldenCase{
 	},
 	{
 		name:      "pdp_error",
-		request:   graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
+		request:   graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName } }`},
 		pdpStatus: http.StatusInternalServerError,
 	},
 	{
 		name:        "consent_approved",
-		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		ceResponse:  &consent.ConsentResponseInternalView{ConsentID: "consent-1", Status: consent.StatusApproved},
 	},
 	{
 		name:        "consent_pending",
-		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		ceResponse: &consent.ConsentResponseInternalView{
 			ConsentID:        "consent-2",
@@ -227,7 +227,7 @@ var goldenCases = []goldenCase{
 	{
 		// A consent the owner revoked must not be served, even though it was approved before.
 		name:        "consent_revoked",
-		request:     graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName address } }`},
+		request:     graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName address } }`},
 		pdpResponse: consentRequired(),
 		// The consent engine sends a portal URL only for pending consents.
 		ceResponse: &consent.ConsentResponseInternalView{ConsentID: "consent-3", Status: consent.StatusRevoked},
@@ -295,13 +295,13 @@ var goldenCases = []goldenCase{
 	},
 	{
 		name:    "aliases",
-		request: graphql.Request{Query: `query { a: personInfo(nic: "naresh@ndx.fl") { name: fullName } b: personInfo(nic: "naresh@ndx.fl") { home: address birth: birthInfo { day: date } } }`},
+		request: graphql.Request{Query: `query { a: personInfo(nic: "FL-2954817360") { name: fullName } b: personInfo(nic: "FL-2954817360") { home: address birth: birthInfo { day: date } } }`},
 	},
 	{
 		name: "fragments_skip_include",
 		request: graphql.Request{
 			Query: `query Person($withBirth: Boolean!) {
-				personInfo(nic: "naresh@ndx.fl") {
+				personInfo(nic: "FL-2954817360") {
 					...names
 					address @skip(if: true)
 					... on PersonInfo { birthInfo @include(if: $withBirth) { place } }
@@ -314,26 +314,26 @@ var goldenCases = []goldenCase{
 	{
 		// A non-2xx status is a failure even when the body is a GraphQL response.
 		name:           "provider_error_status_with_json_body",
-		request:        graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		request:        graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName birthInfo { date } } }`},
 		providerStatus: map[string]int{"civil-registry-v1": http.StatusServiceUnavailable},
 		providerBody:   map[string]string{"civil-registry-v1": `{"data": {"getPersonInfo": {"birthDate": "stale"}}}`},
 	},
 	{
 		name:         "provider_graphql_errors",
-		request:      graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		request:      graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName birthInfo { date } } }`},
 		providerBody: map[string]string{"civil-registry-v1": `{"data": {"getPersonInfo": null}, "errors": [{"message": "person not found", "path": ["getPersonInfo"]}]}`},
 	},
 	{
 		name:    "mutation_rejected",
-		request: graphql.Request{Query: `mutation { personInfo(nic: "naresh@ndx.fl") { fullName } }`},
+		request: graphql.Request{Query: `mutation { personInfo(nic: "FL-2954817360") { fullName } }`},
 	},
 	{
 		name:    "invalid_query_syntax",
-		request: graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl" { fullName } }`},
+		request: graphql.Request{Query: `query { personInfo(nic: "FL-2954817360" { fullName } }`},
 	},
 	{
 		name:           "provider_failure",
-		request:        graphql.Request{Query: `query { personInfo(nic: "naresh@ndx.fl") { fullName birthInfo { date } } }`},
+		request:        graphql.Request{Query: `query { personInfo(nic: "FL-2954817360") { fullName birthInfo { date } } }`},
 		providerStatus: map[string]int{"civil-registry-v1": http.StatusInternalServerError},
 	},
 }

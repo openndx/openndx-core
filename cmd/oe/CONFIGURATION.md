@@ -69,7 +69,7 @@ The OE sends each mapped argument as a variable in the [GraphQL over HTTP](https
 ```json
 {
   "query": "query Queryidentity_registry_v1($nic: ID!) { person(nic: $nic) { fullName } }",
-  "variables": {"nic": "suresh@ndx.fl"}
+  "variables": {"nic": "FL-4829105736"}
 }
 ```
 
